@@ -13,9 +13,9 @@ Last updated: 2026-06-24
 | Bid Tracking | Google Sheets | ✅ LIVE | 3 project sheets |
 | Documents | Google Drive | ✅ LIVE | Bid tracker xlsx exports working |
 | Email | Microsoft 365 / Graph API | ✅ LIVE | Drafts, inbox, attachments |
-| Truth Store | PostgreSQL 16 | 🔜 READY | docker-compose.yml configured, not started |
-| Vector Store | Qdrant | 🔜 READY | docker-compose.yml configured, not started |
-| Cache | Redis 7 | 🔜 READY | docker-compose.yml configured, not started |
+| Truth Store | PostgreSQL 16 | ✅ LIVE | hci_os DB, 7 tables loaded, port 5432 |
+| Vector Store | Qdrant | ✅ LIVE | 0 collections (ready to populate), port 6333 |
+| Cache | Redis 7 | ✅ LIVE | port 6379 |
 | API Layer | FastAPI | 🔜 PLANNED | Not started |
 | Agents | OpenClaw | 🔜 PLANNED | Not started |
 | GitHub Remote | github.com/buck-HCI-AI | ✅ LIVE | Private repo, all commits pushed |
@@ -73,4 +73,5 @@ Last updated: 2026-06-24
 2. CO Highlands Roofing — confirm contact first name in HubSpot
 3. 101F bid emails (4 Outlook drafts) — review and send when ready
 4. 1355R — clarify Jeff Kubica / fire suppression bid scope
-5. `docker-compose up -d postgres qdrant redis` — start data stack (no blockers)
+5. Seed Postgres with current project/vendor/bid data
+6. Create Qdrant collections and ingest vendor/bid memory
