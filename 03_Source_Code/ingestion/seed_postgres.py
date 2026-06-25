@@ -71,6 +71,7 @@ PROJECTS = [
     ("64 Eastwood",    "64 Eastwood Dr.",    "Exterior & Site",     "332246098523", "1yAmLo3IIp3Vqs3BQJ6QB2O4as0KqXMZxcVvjzGBZDcQ"),
     ("101 Francis",    "101 W Francis St.",  "Full Interior Remodel","332313009897","1JExX5CeVBedTEFitM8B6hveF4Prhk0Oy6BZSBu058LE"),
     ("1355 Riverside", "1355 Riverside Dr.", "Full Remodel",         None,          "1-64X4XGc4P_GmYl7DRt8nGsBNfaVdP_G3qwfBLJSsnA"),
+    ("83 Sagebrusch",  "83 Sagebrusch Ln.",  "TBD",                  None,          None),
 ]
 
 def seed_projects(cur):
