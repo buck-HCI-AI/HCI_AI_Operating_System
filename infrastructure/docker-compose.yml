@@ -1,0 +1,159 @@
+# HCI AI Operating System — Infrastructure Phase 1
+# Portable: runs unchanged on MacBook Air M5 and Mac mini M4 Pro
+#
+# Start:   docker compose up -d
+# Stop:    docker compose down
+# Destroy: docker compose down -v   (WARNING: deletes all data volumes)
+#
+# Prerequisites: copy .env.example to .env and fill in passwords
+
+services:
+
+  # ── PostgreSQL 16 — Operational Truth Store ───────────────────────────────
+  # Stores: projects, vendors, bids, meetings, daily logs, lessons learned,
+  #         HubSpot sync tables, Houzz sync tables, drive sync log
+  postgres:
+    image: postgres:16-alpine
+    container_name: hci_postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-hci_os}
+      POSTGRES_USER:     ${POSTGRES_USER:-hci_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    networks:
+      - hci_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hci_admin} -d ${POSTGRES_DB:-hci_os}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Redis 7 — Cache and Workflow Queue ────────────────────────────────────
+  # Used by: n8n performance, workflow state, temporary data, future agent queue
+  redis:
+    image: redis:7-alpine
+    container_name: hci_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+      --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - hci_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── MinIO — Object Storage ────────────────────────────────────────────────
+  # Stores: bid PDFs, drawings, AI artifacts, site photos, database backups
+  # API:     http://localhost:9000
+  # Console: http://localhost:9001
+  minio:
+    image: minio/minio:latest
+    container_name: hci_minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER:     ${MINIO_ROOT_USER:-hci_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - hci_net
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local 2>/dev/null || curl -sf http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── MinIO Init — Bucket Bootstrap (runs once, then exits) ─────────────────
+  # Creates the five canonical HCI buckets per Data Architecture directive.
+  # hci-raw-documents:        all incoming files land here first
+  # hci-processed-documents:  extracted text, normalized outputs
+  # hci-ai-artifacts:         AI summaries, leveling reports
+  # hci-backups:              Postgres dumps, snapshots
+  # hci-ingestion-quarantine: failed or suspicious ingestion
+  minio-init:
+    image: minio/mc:latest
+    container_name: hci_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER:     ${MINIO_ROOT_USER:-hci_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD;
+        mc mb --ignore-existing local/hci-raw-documents;
+        mc mb --ignore-existing local/hci-processed-documents;
+        mc mb --ignore-existing local/hci-ai-artifacts;
+        mc mb --ignore-existing local/hci-backups;
+        mc mb --ignore-existing local/hci-ingestion-quarantine;
+        echo 'MinIO buckets ready:';
+        mc ls local/;
+      "
+    networks:
+      - hci_net
+    restart: "no"
+
+  # ── Qdrant — Vector Memory Store ─────────────────────────────────────────
+  # Stores: project_memory, vendor_memory, bid_memory, sop_memory,
+  #         lessons_memory, drive_memory, meeting_memory
+  # REST:   http://localhost:6333
+  # gRPC:   localhost:6334
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: hci_qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - ./qdrant/config.yaml:/qdrant/config/production.yaml:ro
+    networks:
+      - hci_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+# ── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  qdrant_data:
+    driver: local
+
+# ── Network ────────────────────────────────────────────────────────────────
+networks:
+  hci_net:
+    driver: bridge
+    name: hci_net

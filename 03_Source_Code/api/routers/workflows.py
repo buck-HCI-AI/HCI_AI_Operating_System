@@ -156,6 +156,16 @@ def sync_houzz(visible: bool = False):
     from sync_houzz import run
     return run(headless=not visible)
 
+@router.post("/sync/drive")
+def sync_drive():
+    """
+    Read all Google Drive files (PDF, DOCX, XLSX, GDOC, GSHEET) → Qdrant drive_memory.
+    Skips unchanged files (mtime-tracked in Postgres drive_sync_log).
+    Run weekly or on-demand — not daily.
+    """
+    from sync_drive import run
+    return run()
+
 @router.post("/sync/all")
 def sync_all():
     """Run Houzz sync then HubSpot sync — same as morning startup sequence."""

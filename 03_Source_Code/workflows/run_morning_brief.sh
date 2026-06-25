@@ -13,6 +13,7 @@ PYTHON="/usr/local/bin/python3"
 WF_DIR="/Users/buckadams/HCI_AI_Operating_System/03_Source_Code/workflows"
 INT_DIR="/Users/buckadams/HCI_AI_Operating_System/03_Source_Code/integrations"
 PYTHONPATH="$INT_DIR:$WF_DIR"
+DOW=$(date +%u)  # 1=Monday … 7=Sunday
 
 echo "" >> "$LOG"
 echo "======================================" >> "$LOG"
@@ -36,6 +37,15 @@ for i in {1..15}; do
     fi
     sleep 2
 done
+
+# ── Step 0: Drive sync (Mondays only) ────────────────────────────────────────
+if [ "$DOW" = "1" ]; then
+    echo "$(date): [0/5] Drive sync (weekly)..." >> "$LOG"
+    curl -sf -X POST http://localhost:8000/workflows/sync/drive \
+      -H "Content-Type: application/json" >> "$LOG" 2>&1
+    echo "" >> "$LOG"
+    echo "$(date): Drive sync done" >> "$LOG"
+fi
 
 # ── Step 1: Houzz sync ────────────────────────────────────────────────────────
 echo "$(date): [1/5] Houzz sync..." >> "$LOG"

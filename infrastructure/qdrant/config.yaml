@@ -1,0 +1,27 @@
+# Qdrant Production Configuration — HCI AI Operating System
+# Mounted at /qdrant/config/production.yaml inside the container
+
+service:
+  host: 0.0.0.0
+  http_port: 6333
+  grpc_port: 6334
+  max_request_size_mb: 32
+
+storage:
+  storage_path: /qdrant/storage
+  snapshots_path: /qdrant/snapshots
+  on_disk_payload: true
+
+# Collections pre-created by ingestion scripts at runtime.
+# Reference: /05_Database/qdrant/collections.md
+#
+# Active collections:
+#   project_memory   — site logs, meeting notes, daily logs (dim: 384)
+#   vendor_memory    — vendor profiles, trade notes (dim: 384)
+#   bid_memory       — bid entries, scope descriptions (dim: 384)
+#   sop_memory       — SOPs, operating procedures (dim: 384)
+#   lessons_memory   — lessons learned (dim: 384)
+#   drive_memory     — Google Drive file contents (dim: 384)
+#   meeting_memory   — meeting transcripts and summaries (dim: 384)
+
+log_level: INFO
