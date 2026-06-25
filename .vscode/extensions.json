@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "ms-python.python",
+    "ms-python.pylint",
+    "pkief.material-icon-theme",
+    "eamodio.gitlens"
+  ]
+}

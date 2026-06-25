@@ -18,7 +18,9 @@ Last updated: 2026-06-24
 | Cache | Redis 7 | 🔜 READY | docker-compose.yml configured, not started |
 | API Layer | FastAPI | 🔜 PLANNED | Not started |
 | Agents | OpenClaw | 🔜 PLANNED | Not started |
-| GitHub Remote | gh CLI installed | 🔧 BLOCKED | Needs `! gh auth login` (Buck browser action) |
+| GitHub Remote | github.com/buck-HCI-AI | ✅ LIVE | Private repo, all commits pushed |
+| VS Code | Claude Code extension v2.1.191 | ✅ LIVE | Workspace configured |
+| Remote Access | Tailscale | ✅ LIVE | Mac IP: 100.97.100.69 |
 
 ---
 
@@ -59,15 +61,16 @@ Last updated: 2026-06-24
 ## Repository
 
 - Local: `/Users/buckadams/HCI_AI_Operating_System/`
-- Branch: `main` — 3 commits as of 2026-06-24
-- GitHub remote: NOT YET CONFIGURED
+- GitHub: `github.com/buck-HCI-AI/HCI_AI_Operating_System` (private) ✅
+- Google Drive: `My Drive/HCI_AI_Operating_System/` ✅
+- Tailscale: Mac reachable at `100.97.100.69`
 
 ---
 
 ## Open Buck Action Items
 
-1. `! gh auth login` — enables GitHub remote creation
-2. HubSpot Settings → Email → Connect personal email (Outlook linked inbox)
-3. CO Highlands Roofing — confirm contact first name in HubSpot
-4. 101F bid emails (4 Outlook drafts) — review and send when ready
-5. 1355R — clarify Jeff Kubica / fire suppression bid scope
+1. HubSpot Settings → Email → Connect personal email (Outlook linked inbox)
+2. CO Highlands Roofing — confirm contact first name in HubSpot
+3. 101F bid emails (4 Outlook drafts) — review and send when ready
+4. 1355R — clarify Jeff Kubica / fire suppression bid scope
+5. `docker-compose up -d postgres qdrant redis` — start data stack (no blockers)
