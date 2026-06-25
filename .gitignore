@@ -32,7 +32,9 @@ tmp/
 *.sql.gz
 *.dump
 
-# Large binaries
+# Large binaries — exclude by default; allow governing docs explicitly
 *.xlsx
 *.docx
 *.pdf
+!01_Engineering_Library/*.pdf
+!09_PDFs/*.pdf
