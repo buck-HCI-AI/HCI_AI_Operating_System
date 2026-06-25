@@ -1,5 +1,5 @@
-# PROJECT_STATUS.md
-**HCI AI Operating System — Live Build Status**
+# 00_STATUS.md
+**HCI AI Operating System — Live System Status**
 Last updated: 2026-06-24
 
 ---
@@ -13,12 +13,12 @@ Last updated: 2026-06-24
 | Bid Tracking | Google Sheets | ✅ LIVE | 3 project sheets |
 | Documents | Google Drive | ✅ LIVE | Bid tracker xlsx exports working |
 | Email | Microsoft 365 / Graph API | ✅ LIVE | Drafts, inbox, attachments |
-| Truth Store | PostgreSQL 16 | 🔜 READY TO START | docker-compose.yml configured |
-| Vector Store | Qdrant | 🔜 READY TO START | docker-compose.yml configured |
-| Cache | Redis 7 | 🔜 READY TO START | docker-compose.yml configured |
+| Truth Store | PostgreSQL 16 | 🔜 READY | docker-compose.yml configured, not started |
+| Vector Store | Qdrant | 🔜 READY | docker-compose.yml configured, not started |
+| Cache | Redis 7 | 🔜 READY | docker-compose.yml configured, not started |
 | API Layer | FastAPI | 🔜 PLANNED | Not started |
 | Agents | OpenClaw | 🔜 PLANNED | Not started |
-| GitHub | Remote repo | 🔧 BLOCKED | Needs `gh auth login` (Buck browser action) |
+| GitHub Remote | gh CLI installed | 🔧 BLOCKED | Needs `! gh auth login` (Buck browser action) |
 
 ---
 
@@ -37,38 +37,37 @@ Last updated: 2026-06-24
 
 ## Active Projects
 
-| Project | HubSpot Deal | Sheet ID | Bids In | Packages Total | Stage |
+| Project | HubSpot Deal | Sheet ID | Bids In | Packages | Stage |
 |---|---|---|---|---|---|
-| 64 Eastwood Dr. | 332246098523 | 1yAmLo3IIp3Vqs3BQJ6QB2O4as0KqXMZxcVvjzGBZDcQ | 2 (High-Con $148,290, Teckton $7,150) | 13 | Leveling |
+| 64 Eastwood Dr. | 332246098523 | 1yAmLo3IIp3Vqs3BQJ6QB2O4as0KqXMZxcVvjzGBZDcQ | 2 (High-Con $148,290 / Teckton $7,150) | 13 | Leveling |
 | 101 Francis St. | 332313009897 / 332367829692 | 1kWdF7qfqh9d0_k0Q5cZXhVeQDCKKUe0v2pQlCqwrQ_c | 1 | ~15 TBD | Bids Receiving |
 | 1355 Riverside Dr. | (separate deal) | 1e2kOhixkEn4G0QYjHhTkj7D38fKuPCrg9cHRZJfbBhI | TBD | 30 | Bids Receiving |
 
 ---
 
-## Integration Layer (Python, /03_Source_Code/integrations/)
+## Integration Layer — /03_Source_Code/integrations/
 
-| File | Status | Notes |
-|---|---|---|
-| credentials.py | ✅ DONE | AES-256-CBC decrypt from n8n SQLite |
-| hubspot.py | ✅ DONE | deals, tasks, notes, pipeline stages |
-| google_sheets.py | ✅ DONE | read/write bid trackers |
-| microsoft_graph.py | ✅ DONE | inbox, drafts, attachments |
+| File | Status |
+|---|---|
+| credentials.py | ✅ AES-256-CBC decrypt from n8n SQLite |
+| hubspot.py | ✅ deals, tasks, notes, pipeline stages |
+| google_sheets.py | ✅ read/write bid trackers |
+| microsoft_graph.py | ✅ inbox, drafts, attachments |
 
 ---
 
 ## Repository
 
 - Local: `/Users/buckadams/HCI_AI_Operating_System/`
-- Branch: `main`
-- Commits: 3 (as of 2026-06-24)
-- GitHub remote: NOT YET CONFIGURED — blocked on `gh auth login`
+- Branch: `main` — 3 commits as of 2026-06-24
+- GitHub remote: NOT YET CONFIGURED
 
 ---
 
 ## Open Buck Action Items
 
-1. Run `! gh auth login` to connect GitHub CLI → then remote repo can be created
+1. `! gh auth login` — enables GitHub remote creation
 2. HubSpot Settings → Email → Connect personal email (Outlook linked inbox)
-3. CO Highlands Roofing — confirm contact first name for HubSpot
+3. CO Highlands Roofing — confirm contact first name in HubSpot
 4. 101F bid emails (4 Outlook drafts) — review and send when ready
 5. 1355R — clarify Jeff Kubica / fire suppression bid scope

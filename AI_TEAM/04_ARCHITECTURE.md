@@ -1,4 +1,4 @@
-# ARCHITECTURE.md
+# 04_ARCHITECTURE.md
 **HCI AI Operating System — System Architecture**
 Version: 1.0 | Last updated: 2026-06-24
 
