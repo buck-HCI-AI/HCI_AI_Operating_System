@@ -68,7 +68,7 @@ Read `AI_TEAM/06_NEXT_SESSION.md` and start the first task listed.
 |---|---|---|
 | FastAPI server (port 8000) | `com.hci.api-server` launchd — KeepAlive | `/tmp/hci_api_server.log` |
 | WF-007 Bid Leveling | Morning startup script → n8n webhook | `/tmp/hci_morning_startup.log` |
-| WF-003 Morning Brief email | Morning startup script → POST /workflows/wf003 | `/tmp/hci_morning_startup.log` |
+| WF-003 Morning Brief → buck@hendricksoninc.com | Morning startup script → POST /workflows/wf003 | `/tmp/hci_morning_startup.log` |
 
 ### MANUAL — Buck triggers only
 

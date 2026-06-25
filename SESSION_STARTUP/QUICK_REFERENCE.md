@@ -33,7 +33,7 @@ Last updated: 2026-06-24
 | What | When | Log |
 |---|---|---|
 | FastAPI server | Always (KeepAlive, auto-restart) | `/tmp/hci_api_server.log` |
-| WF-007 Bid Leveling + WF-003 Morning Brief | Mac login + 7AM daily | `/tmp/hci_morning_startup.log` |
+| WF-007 Bid Leveling + WF-003 Morning Brief → buck@hendricksoninc.com | Mac login + 7AM daily | `/tmp/hci_morning_startup.log` |
 
 **launchd agents:**
 ```bash

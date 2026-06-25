@@ -12,7 +12,7 @@ from hubspot import get_overdue_tasks
 from microsoft_graph import list_inbox, send_email
 
 DB = dict(host="localhost", port=5432, dbname="hci_os", user="hci_admin", password="hci_postgres_2026")
-BUCK_EMAIL = ("Buck Adams", "buck@ahmaspen.com")
+BUCK_EMAIL = ("Buck Adams", "buck@hendricksoninc.com")
 
 
 def _pg_rows(sql, params=None):
