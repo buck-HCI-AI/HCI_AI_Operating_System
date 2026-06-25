@@ -1,0 +1,54 @@
+# HCI AI — External Storage Override
+# Redirects all Docker persistent data to ${HCI_STORAGE_ROOT} on an external drive.
+# This file overrides the named volumes in docker-compose.yml with bind mounts.
+#
+# Usage:
+#   HCI_STORAGE_ROOT=/Volumes/HCI_AI_DEV
+#   docker compose -f docker-compose.yml -f docker-compose.storage.yml up -d
+#
+# Prerequisites:
+#   1. External drive formatted as APFS, GUID Partition Map, named HCI_AI_DEV
+#   2. Drive has folder structure created by setup_storage_drive.sh
+#   3. HCI_STORAGE_ROOT is set in .env (or exported in shell)
+#
+# Migration from named volumes to bind mounts:
+#   Run infrastructure/migrate_volumes.sh before switching to this override.
+#
+# To revert to named volumes (laptop mode):
+#   docker compose up -d   (omit the -f flag)
+
+services:
+
+  postgres:
+    volumes:
+      - ${HCI_STORAGE_ROOT}/05_Docker_Volumes/postgres:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+
+  redis:
+    volumes:
+      - ${HCI_STORAGE_ROOT}/05_Docker_Volumes/redis:/data
+
+  minio:
+    volumes:
+      - ${HCI_STORAGE_ROOT}/03_MinIO_Data:/data
+
+  qdrant:
+    volumes:
+      - ${HCI_STORAGE_ROOT}/05_Docker_Volumes/qdrant:/qdrant/storage
+      - ./qdrant/config.yaml:/qdrant/config/production.yaml:ro
+
+# Suppress named volume declarations so Docker doesn't create them alongside bind mounts.
+# The bind-mount paths above take full precedence.
+volumes:
+  postgres_data:
+    external: true
+    name: "hci_postgres_named_unused"
+  redis_data:
+    external: true
+    name: "hci_redis_named_unused"
+  minio_data:
+    external: true
+    name: "hci_minio_named_unused"
+  qdrant_data:
+    external: true
+    name: "hci_qdrant_named_unused"

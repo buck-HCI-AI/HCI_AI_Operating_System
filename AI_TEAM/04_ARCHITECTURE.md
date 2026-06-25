@@ -59,26 +59,32 @@ LIVE EXTERNAL SYSTEMS:
 ## Data Layer Detail
 
 ### PostgreSQL 16 — Truth Store
-- **Connection:** `postgresql://hci:hci_secure_pass@localhost:5432/hci_ai`
-- **Schema:** `/05_Database/postgres/schema.sql`
-- **Tables:** `projects`, `vendors`, `bid_packages`, `bid_entries`, `lessons_learned`, `meetings`, `daily_logs`
+- **Connection:** `postgresql://hci_admin@localhost:5432/hci_os`
+- **Schema:** `/infrastructure/postgres/init.sql` (also `/05_Database/postgres/schema.sql`)
+- **Tables (14):** `projects`, `vendors`, `bid_packages`, `bid_entries`, `lessons_learned`, `meetings`, `daily_logs`, `hubspot_deals`, `hubspot_notes`, `hubspot_tasks`, `houzz_projects`, `houzz_daily_logs`, `houzz_schedule_items`, `drive_sync_log`
 - **Rule:** Postgres is authoritative for structured facts. No data lives only in Google Sheets.
 
-### Qdrant — Meaning / Vector Store
+### Qdrant — Vector Memory Store
 - **Connection:** `http://localhost:6333`
-- **Collections:** (defined in `/05_Database/qdrant/collections.md`)
-  - `project_memory` — project context, scope, decisions
-  - `vendor_memory` — vendor history, performance, relationships
-  - `meeting_memory` — meeting notes and action items
-  - `lessons_learned` — what worked, what didn't
-  - `bid_memory` — bid history and leveling decisions
-  - `constitution_memory` — HCI AI Constitution principles
-  - `photo_memory` — site photos with metadata
-- **Embedding model:** TBD (OpenAI text-embedding-3-small recommended)
+- **Embedding model:** `BAAI/bge-small-en-v1.5` (384-dim, local via fastembed)
+- **Collections:**
+  - `project_memory` — site logs, meeting notes, HubSpot deals (offsets: 0, 20000, 30000)
+  - `vendor_memory` — vendor profiles, trade notes
+  - `bid_memory` — bid entries, scope descriptions
+  - `sop_memory` — SOPs, operating procedures
+  - `lessons_memory` — lessons learned
+  - `drive_memory` — Google Drive file contents (2,335 chunks, offset 40000)
+  - `meeting_memory` — meeting transcripts and summaries
 
-### Redis 7 — Temporary State
+### Redis 7 — Cache and Queue
 - **Connection:** `redis://localhost:6379`
-- **Use:** Agent session state, workflow job tracking, rate limit counters
+- **Use:** Agent session state, workflow job tracking, rate limit counters, n8n performance
+
+### MinIO — Object Storage (IaC ready, not yet started)
+- **API:** `http://localhost:9000`
+- **Console:** `http://localhost:9001`
+- **Buckets:** `hci-documents`, `hci-ai-artifacts`, `hci-backups`, `hci-images`
+- **Start:** `cd infrastructure && docker compose up -d minio minio-init`
 
 ---
 

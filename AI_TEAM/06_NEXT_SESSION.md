@@ -1,21 +1,25 @@
 # 06_NEXT_SESSION.md
 **Handoff notes — what the next session must do first.**
-Last updated: 2026-06-24 (end of Session 3)
+Last updated: 2026-06-25
 
 ---
 
 ## System State at Session End
 
-Everything is live and auto-starting. No manual docker or server commands needed at startup.
+Everything is live and auto-starting. Phase 3 (Dev Storage + KIE) complete.
 
 | Layer | Status |
 |---|---|
-| FastAPI (port 8000) | ✅ auto-starts via launchd on login |
-| WF-007 Bid Leveling | ✅ auto-runs at login + 7AM via launchd |
-| WF-003 Morning Brief | ✅ auto-runs at login + 7AM via launchd |
-| PostgreSQL / Qdrant / Redis | ✅ running in Docker |
-| WF-001 through WF-005 | ✅ built, manual trigger via POST |
-| GitHub | ✅ main branch, all committed |
+| FastAPI v0.2.0 (port 8000) | ✅ auto-starts via launchd on login |
+| Morning sequence | ✅ auto-runs at 7AM + login |
+| HubSpot + Houzz sync | ✅ daily auto-read |
+| Drive sync | ✅ weekly auto-read (Mondays) — 2,335 chunks in drive_memory |
+| PostgreSQL / Qdrant / Redis / MinIO | ✅ all running |
+| Infrastructure IaC | ✅ Phase 1 + storage override + drive scripts |
+| Knowledge Ingestion Engine | ✅ POST /ingest/file, /path, /batch |
+| WF-001 through WF-006 | ✅ built |
+| External Drive (HCI_AI_DEV) | ⚠️ Needs Buck to reformat — NTFS now |
+| GitHub branch | feature/data-architecture-document-storage |
 
 ---
 
@@ -24,41 +28,61 @@ Everything is live and auto-starting. No manual docker or server commands needed
 ### Step 1 — Health check
 ```bash
 curl -s http://localhost:8000/health | python3 -m json.tool
-cat /tmp/hci_morning_startup.log
+curl -s http://localhost:8000/docs   # verify /ingest routes appear
 ```
 
-### Step 2 — Confirm morning brief arrived
-Check buck@ahmaspen.com inbox for "HCI Morning Brief" email.
-If not received: `curl -X POST http://localhost:8000/workflows/wf003/morning-brief -H "Content-Type: application/json" -d '{"send":true}'`
+### Step 2 — Check if minio needs restart (may have stopped since last session)
+```bash
+curl -sf http://localhost:9000/minio/health/live && echo "MinIO OK" || echo "MinIO down"
+```
+If down: `cd infrastructure && docker compose up -d`
 
-### Step 3 — Tomorrow's priority tasks (in order)
+---
 
-1. **Preliminary project schedules in Drive**
-   - Create a schedule template document in Google Drive for each of the 3 active projects
-   - Structure: phases, milestones, key dates — ready for Buck to populate from MS Project
+## Next Priority Tasks (in order)
 
-2. **Bid leveling follow-up**
-   - Pull current bid leveling output: `curl -s http://localhost:8000/projects/3/summary`
-   - Review WF-007 output in Outlook drafts
-   - Identify packages with multiple bids ready for award recommendation
+### 1. Reformat WD My Passport → HCI_AI_DEV (Buck — 10 min)
+- Open Disk Utility → Select My Passport (physical disk) → Erase
+- Format: APFS | Scheme: GUID Partition Map | Name: HCI_AI_DEV
+- Then: `bash infrastructure/setup_storage_drive.sh`
+- Then activate external Docker storage: edit `.env`, add `HCI_STORAGE_ROOT=/Volumes/HCI_AI_DEV`
+- Then: `bash infrastructure/migrate_volumes.sh`
+- Then: `cd infrastructure && docker compose -f docker-compose.yml -f docker-compose.storage.yml up -d`
 
-3. **Houzz browser automation (Playwright)**
-   - Install Playwright: `pip3 install playwright && playwright install chromium`
-   - Build login + daily log entry script for Houzz Pro
-   - Wire into WF-004 so one log entry hits both HCI OS + Houzz
+### 2. Test Knowledge Ingestion Engine
+```bash
+# Drop a PDF into 00_Incoming and test:
+curl -X POST http://localhost:8000/ingest/batch \
+  -d '{"directory":"/Volumes/HCI_AI_DEV/00_Incoming"}'
+# Or test a single file:
+curl -X POST http://localhost:8000/ingest/path \
+  -d '{"path":"/path/to/test.pdf"}'
+```
+
+### 3. Merge feature branch to main
+```bash
+git checkout main
+git merge feature/data-architecture-document-storage
+git push
+```
+
+### 4. Agent Layer — Executive Agent
+- First agent: answers questions about projects, vendors, bids, schedule
+- Uses Qdrant drive_memory + project_memory for context
+- POST /agents/executive/query
+- Reference: 10_Agents/ directory (create if needed)
+
+### 5. Bid Leveling Follow-Up (1355 Riverside)
+- Multiple packages with 2+ bids ready for award analysis
+- Pull WF-007 output and generate award recommendations
 
 ---
 
 ## ChatGPT: Start Here
 
-Read in order:
 1. `AI_TEAM/00_STATUS.md`
 2. `AI_TEAM/04_ARCHITECTURE.md`
-3. `BOOK_00/README.md`
+3. `docs/KNOWLEDGE_INGESTION_ENGINE_v1.md`
+4. `docs/STORAGE_LAYER_CONFIGURATION_v1.md`
 
-**Open architecture questions for this session:**
-- Houzz Playwright automation: script structure and error recovery strategy
-- MS Project → Drive schedule template: what format (Google Doc, Sheet, or Slides)?
-- Agent layer design (Phase 4): which agent should be built first?
-
-Write decisions to `AI_TEAM/03_DECISIONS.md`.
+Open questions: Executive Agent design, MinIO auto-upload for AI artifacts, drive reformat.

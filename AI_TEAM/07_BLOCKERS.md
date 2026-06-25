@@ -4,16 +4,9 @@ Last updated: 2026-06-24
 
 ---
 
-## BLK-001 — GitHub Remote (OPEN)
-**Blocked on:** Buck running `! gh auth login` (requires browser)
-**Impact:** Repo has no remote. No off-machine backup. Can't share URL with ChatGPT.
-**Resolution command (after Buck logs in):**
-```bash
-gh repo create HCI_AI_Operating_System --private \
-  --source=/Users/buckadams/HCI_AI_Operating_System \
-  --remote=origin --push
-```
-**Blocking:** Nothing else — all other work can proceed locally.
+## BLK-001 — GitHub Remote (RESOLVED per status — verify)
+**Status:** 00_STATUS.md shows GitHub ✅ LIVE. Verify with `git remote -v`.
+**If still open:** run `! gh auth login` then create remote repo.
 
 ---
 

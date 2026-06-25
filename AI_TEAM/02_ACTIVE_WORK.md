@@ -1,49 +1,45 @@
 # 02_ACTIVE_WORK.md
 **What is being implemented right now — cleared at session end**
-Last updated: 2026-06-24
+Last updated: 2026-06-25
 
 ---
 
-## Current Sprint: AI_TEAM Structure + Collaboration Framework
+## Completed This Session: Infrastructure Phase 1
 
-**Status:** COMPLETING
-**Owner:** Claude Code
+**Directive:** `HCI_AI_Infrastructure_Phase_1_Master_Directive_for_Claude_Code.pdf`
+**Status:** COMPLETE
+**Engineer:** Claude Code
 
-### Completed this session
+### Deliverables
 
-- [x] Read and adopted `HCI_AI_Claude_Code_Operating_Charter_v0.1`
-- [x] Read and adopted `HCI_AI_Repository_Collaboration_Proposal_v1.0`
-- [x] Migrated AI_TEAM files to numbered scheme (00–08)
-- [x] Created BOOK_00 canonical engineering manual (seed)
-- [x] Committed governing PDFs to `01_Engineering_Library/`
-- [x] Committed Collaboration Proposal PDF
+- [x] `infrastructure/docker-compose.yml` — Postgres, Redis, MinIO, Qdrant with health checks + persistent volumes
+- [x] `infrastructure/.env.example` — all required env vars documented
+- [x] `infrastructure/README.md` — setup, operations, migration guide
+- [x] `infrastructure/postgres/init.sql` — full schema (14 tables) + seed data
+- [x] `infrastructure/redis/redis.conf` — memory, persistence, security settings
+- [x] `infrastructure/minio/init_buckets.sh` — bucket bootstrap script (4 buckets)
+- [x] `infrastructure/qdrant/config.yaml` — Qdrant production config
 
-### In Progress
+### Also completed this session
 
-- [ ] Final commit of this session's work
-
----
-
-## Last Active Task Before This Session
-
-**Session 1 completed (2026-06-24 morning):**
-- Processed Adam's email (Tolteck masonry bid $7,150 for 64 Eastwood)
-- Ran WF-007 bid leveling for 64EW and 101F
-- Fixed WF-007 Send Draft bug (upstream node reference)
-- Created 4 x 101F bid request emails (Pella Windows + 3 roofers)
-- Logged all emails as HubSpot engagements
+- [x] `sync_drive.py` — Google Drive full ingestion → Qdrant drive_memory
+  - 89 files processed, 2,335 chunks ingested
+  - Supports PDF, DOCX, XLSX, GDOC, GSHEET
+  - Weekly auto-run in morning sequence (Mondays)
+- [x] `POST /sync/drive` endpoint wired into FastAPI
+- [x] Installed python-docx + openpyxl
 
 ---
 
-## Handoff Notes for ChatGPT
+## MinIO — Next Step
 
-When reviewing this repo, the immediate open engineering question is:
+MinIO is now defined in `infrastructure/docker-compose.yml` but not yet started.
 
-**"What is the right schema for the memory ingestion pipeline?"**
+To start MinIO only:
+```bash
+cd /Users/buckadams/HCI_AI_Operating_System/infrastructure
+cp .env.example .env   # fill in MINIO_ROOT_PASSWORD
+docker compose up -d minio minio-init
+```
 
-Specifically:
-- How should HubSpot contact/company data map to Qdrant `vendor_memory`?
-- What embedding strategy for bid descriptions (short text vs. concatenated context)?
-- Should the FastAPI layer sit between n8n and Postgres, or should n8n write to Postgres directly via the Postgres n8n node?
-
-These decisions belong to ChatGPT (Architect). Once decided, Claude Code implements.
+Console at http://localhost:9001

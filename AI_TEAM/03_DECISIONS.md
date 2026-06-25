@@ -4,6 +4,20 @@ Most recent first.
 
 ---
 
+## DEC-008 — infrastructure/ is canonical IaC, root docker-compose.yml is legacy (2026-06-25)
+**Decision:** All Docker infrastructure lives in `infrastructure/docker-compose.yml`. Root `docker-compose.yml` (n8n only now) is legacy and will be absorbed or removed when services migrate.
+**Rationale:** Infrastructure Phase 1 directive requires `infrastructure/` directory as portable, version-controlled IaC. Root compose was pre-existing partial work.
+**Impact:** New services added to `infrastructure/docker-compose.yml` only. Mac mini M4 Pro setup starts from `infrastructure/`.
+
+---
+
+## DEC-007 — MinIO added as object store (2026-06-25)
+**Decision:** MinIO added as the fourth infrastructure service alongside Postgres, Redis, Qdrant.
+**Rationale:** Infrastructure Phase 1 directive specifies MinIO for bid PDFs, drawings, AI artifacts, backups, site photos.
+**Impact:** 4 buckets created on init: `hci-documents`, `hci-ai-artifacts`, `hci-backups`, `hci-images`. Console at localhost:9001.
+
+---
+
 ## DEC-006 — Claude Code Operating Charter adopted (2026-06-24)
 **Decision:** Adopt `HCI_AI_Claude_Code_Operating_Charter_v0.1` as the governing document for Claude Code's role and behavior.
 **Rationale:** Formalizes division of labor (ChatGPT = architect, Claude Code = implementer, Buck = owner/decider). Required AI_TEAM file set established.
