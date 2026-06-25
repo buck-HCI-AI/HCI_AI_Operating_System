@@ -1,0 +1,38 @@
+# Environment & secrets
+.env
+.env.local
+secrets/
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# n8n
+.n8n/
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+*.tmp
+
+# Database dumps (committed separately via backup workflow)
+*.sql.gz
+*.dump
+
+# Large binaries
+*.xlsx
+*.docx
+*.pdf
