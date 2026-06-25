@@ -68,3 +68,29 @@ STAGE = {
 }
 
 PIPELINE_ID = "2203777729"
+
+
+def create_deal(name: str, stage_key: str = "not_started", amount: float = None) -> tuple:
+    props = {
+        "dealname":    name,
+        "pipeline":    PIPELINE_ID,
+        "dealstage":   STAGE[stage_key],
+    }
+    if amount is not None:
+        props["amount"] = str(amount)
+    return _request("POST", "/crm/v3/objects/deals", {"properties": props})
+
+
+def get_overdue_tasks(limit: int = 20) -> list:
+    import time
+    now_ms = int(time.time() * 1000)
+    r, _ = _request("GET", f"/crm/v3/objects/tasks?limit={limit}"
+                    f"&properties=hs_task_subject,hs_task_status,hs_timestamp,hs_task_body"
+                    f"&filterGroups=%5B%7B%22filters%22%3A%5B%7B%22propertyName%22%3A%22hs_task_status%22%2C%22operator%22%3A%22EQ%22%2C%22value%22%3A%22NOT_STARTED%22%7D%5D%7D%5D")
+    results = (r or {}).get("results", [])
+    overdue = []
+    for t in results:
+        ts = t.get("properties", {}).get("hs_timestamp")
+        if ts and int(ts) < now_ms:
+            overdue.append(t)
+    return overdue

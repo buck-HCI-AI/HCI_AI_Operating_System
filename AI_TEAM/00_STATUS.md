@@ -14,9 +14,9 @@ Last updated: 2026-06-24
 | Documents | Google Drive | ✅ LIVE | Bid tracker xlsx exports working |
 | Email | Microsoft 365 / Graph API | ✅ LIVE | Drafts, inbox, attachments |
 | Truth Store | PostgreSQL 16 | ✅ LIVE | hci_os DB, 7 tables loaded, port 5432 |
-| Vector Store | Qdrant | ✅ LIVE | 0 collections (ready to populate), port 6333 |
+| Vector Store | Qdrant | ✅ LIVE | 7 collections, 465 vectors, port 6333 |
 | Cache | Redis 7 | ✅ LIVE | port 6379 |
-| API Layer | FastAPI | 🔜 PLANNED | Not started |
+| API Layer | FastAPI 0.138 + Uvicorn | ✅ LIVE | localhost:8000 — 5 routers, 20 endpoints |
 | Agents | OpenClaw | 🔜 PLANNED | Not started |
 | GitHub Remote | github.com/buck-HCI-AI | ✅ LIVE | Private repo, all commits pushed |
 | VS Code | Claude Code extension v2.1.191 | ✅ LIVE | Workspace configured |

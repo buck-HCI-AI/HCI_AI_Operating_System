@@ -89,6 +89,19 @@ def patch_draft(msg_id: str, subject: str = None, html_body: str = None) -> dict
     return r
 
 
+def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple:
+    """Send immediately via /me/sendMail. to: [(name, email), ...]"""
+    msg = {
+        "message": {
+            "subject": subject,
+            "body": {"contentType": "HTML", "content": html_body},
+            "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
+        },
+        "saveToSentItems": True,
+    }
+    return _request("POST", "/me/sendMail", body=msg)
+
+
 def list_drafts(top: int = 10) -> list[dict]:
     r, _ = _request("GET", "/me/mailFolders/drafts/messages", params={
         "$select": "id,subject,createdDateTime",

@@ -84,6 +84,40 @@ cd /Users/buckadams/HCI_AI_Operating_System && git add . && git commit -m "messa
 
 ---
 
+## FastAPI Layer
+
+```bash
+# Start API server (port 8000, auto-reload on file save)
+cd /Users/buckadams/HCI_AI_Operating_System/03_Source_Code/api
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Interactive docs (Swagger UI) — open in browser
+open http://localhost:8000/docs
+
+# Health check
+curl -s http://localhost:8000/health | python3 -m json.tool
+
+# List all projects
+curl -s http://localhost:8000/projects/
+
+# Project bid summary (id 3 = 1355 Riverside)
+curl -s http://localhost:8000/projects/3/summary | python3 -m json.tool
+
+# Semantic memory search — vendors
+curl -s "http://localhost:8000/memory/search/vendors?q=masonry+subcontractor"
+
+# Semantic search — all collections at once
+curl -s "http://localhost:8000/memory/search/all?q=concrete+foundation"
+
+# List Qdrant collections + vector counts
+curl -s http://localhost:8000/memory/collections
+
+# Via Tailscale (from any device on network)
+curl -s http://bucks-macbook-air.tail2b281e.ts.net:8000/health
+```
+
+---
+
 ## Python Scripts
 
 ```bash

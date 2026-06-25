@@ -7,79 +7,97 @@ Last updated: 2026-06-24
 ## Step 1 — Read AI_TEAM State
 
 ```bash
-# Quick read order:
 cat /Users/buckadams/HCI_AI_Operating_System/AI_TEAM/00_STATUS.md
 cat /Users/buckadams/HCI_AI_Operating_System/AI_TEAM/06_NEXT_SESSION.md
-cat /Users/buckadams/HCI_AI_Operating_System/AI_TEAM/07_BLOCKERS.md
 cat /Users/buckadams/HCI_AI_Operating_System/AI_TEAM/02_ACTIVE_WORK.md
 ```
-
-Or in VS Code: open `AI_TEAM/` folder and review the files.
 
 ---
 
 ## Step 2 — Verify System Health
 
 ```bash
-# n8n
-curl -s http://localhost:5678/healthz
+# Full health check (Postgres + Qdrant + Redis)
+curl -s http://localhost:8000/health | python3 -m json.tool
 
 # Docker containers
 docker ps --format "table {{.Names}}\t{{.Status}}"
 
+# n8n
+curl -s http://localhost:5678/healthz
+
 # Git status
 git -C /Users/buckadams/HCI_AI_Operating_System log --oneline -5
-git -C /Users/buckadams/HCI_AI_Operating_System status
 ```
 
-Expected healthy state:
-- n8n: `{"status":"ok"}`
-- Docker: `n8n_n8n_1` running (postgres/qdrant/redis not yet started)
-- Git: clean working tree, `main` branch
+**Expected healthy state:**
+- FastAPI `/health` → `"status": "healthy"` for postgres, qdrant, redis
+- Docker: `hci_postgres`, `hci_qdrant`, `hci_redis`, `n8n` all Up
+- FastAPI server is auto-started by launchd — if down, run: `cd /Users/buckadams/HCI_AI_Operating_System/03_Source_Code/api && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000`
 
 ---
 
-## Step 3 — Confirm No Duplicate Work
+## Step 3 — Check Git Log
 
 ```bash
 git -C /Users/buckadams/HCI_AI_Operating_System log --oneline -10
 ```
 
-Check the last commits before starting — don't re-implement something already done.
+Don't re-implement anything already committed.
 
 ---
 
-## Step 4 — Pick Up Highest Priority Task
+## Step 4 — Pick Up From Next Session File
 
-From `AI_TEAM/06_NEXT_SESSION.md`. Current highest priority:
+Read `AI_TEAM/06_NEXT_SESSION.md` and start the first task listed.
 
-**TASK-001:** Start the data stack
-```bash
-cd /Users/buckadams/HCI_AI_Operating_System
-docker-compose up -d postgres qdrant redis
-docker ps
-docker exec -it hci_postgres psql -U hci -d hci_ai -c "\dt"
-curl http://localhost:6333/collections
-```
+**Tomorrow's priorities (2026-06-25):**
+1. Confirm morning startup log ran clean — `cat /tmp/hci_morning_startup.log`
+2. Confirm morning brief email arrived at buck@ahmaspen.com
+3. Review bid leveling output
+4. Build preliminary project schedules in Drive
+5. Houzz browser automation (Playwright)
+
+---
+
+## Automation Map — What Runs Automatically vs Manually
+
+### AUTO — Runs at Mac Login + 7 AM Daily (launchd)
+
+| What | How | Log |
+|---|---|---|
+| FastAPI server (port 8000) | `com.hci.api-server` launchd — KeepAlive | `/tmp/hci_api_server.log` |
+| WF-007 Bid Leveling | Morning startup script → n8n webhook | `/tmp/hci_morning_startup.log` |
+| WF-003 Morning Brief email | Morning startup script → POST /workflows/wf003 | `/tmp/hci_morning_startup.log` |
+
+### MANUAL — Buck triggers only
+
+| Workflow | Trigger | When to use |
+|---|---|---|
+| WF-001 New Project | `POST /workflows/wf001/new-project` | New job starts |
+| WF-002 Meeting Intelligence | `POST /workflows/wf002/meeting` | After any site/owner/sub meeting |
+| WF-004 Daily Log | `POST /workflows/wf004/daily-log` | End of each site day |
+| WF-005 Lessons Learned | `POST /workflows/wf005/lesson` | Issue resolved / project closes |
+
+**Swagger UI (all endpoints, testable in browser):** `http://localhost:8000/docs`
 
 ---
 
 ## Session End Checklist
 
-Before ending any session, update:
+Update these files before ending:
 
 ```
 AI_TEAM/00_STATUS.md       — reflect current system state
 AI_TEAM/02_ACTIVE_WORK.md  — clear completed, note WIP
 AI_TEAM/06_NEXT_SESSION.md — write next session's first task
-AI_TEAM/07_BLOCKERS.md     — add/resolve blockers
-AI_TEAM/08_CHANGELOG.md    — log all changes
-AI_TEAM/03_DECISIONS.md    — log any engineering decisions made
+AI_TEAM/08_CHANGELOG.md    — log all changes made
+AI_TEAM/03_DECISIONS.md    — log any engineering decisions
 ```
 
-Then commit and push:
+Commit and push:
 ```bash
-git -C /Users/buckadams/HCI_AI_Operating_System add AI_TEAM/
+git -C /Users/buckadams/HCI_AI_Operating_System add -A
 git -C /Users/buckadams/HCI_AI_Operating_System commit -m "ops: update AI_TEAM session state"
 git -C /Users/buckadams/HCI_AI_Operating_System push origin main
 ```
