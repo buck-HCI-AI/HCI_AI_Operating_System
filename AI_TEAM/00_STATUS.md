@@ -17,7 +17,7 @@ Last updated: 2026-06-25
 | Vector Store | Qdrant | ✅ LIVE | 7 collections, 2,335+ vectors, port 6333 |
 | Cache | Redis 7 | ✅ LIVE | port 6379 |
 | Object Store | MinIO | ✅ LIVE | 5 buckets: raw-docs, processed, artifacts, backups, quarantine |
-| API Layer | FastAPI v0.2.0 + Uvicorn | ✅ LIVE | localhost:8000 — 7 routers, 27+ endpoints |
+| API Layer | FastAPI v1.0.0 + Uvicorn | ✅ LIVE | localhost:8000/api/v1 — 13 routers, 40+ endpoints, Swagger /docs |
 | Infrastructure IaC | infrastructure/ | ✅ BUILT | docker-compose + storage override + drive scripts |
 | Knowledge Ingestion Engine | ingestion/ | ✅ BUILT | 6-stage pipeline: POST /ingest/file /path /batch |
 | External Storage | WD My Passport 1TB | ⚠️ NEEDS REFORMAT | Currently NTFS — needs APFS + HCI_AI_DEV name |

@@ -4,6 +4,41 @@ Most recent first.
 
 ---
 
+## 2026-06-25 — API Layer v1 (Phase 4)
+
+**Engineer:** Claude Code | **Directive:** HCI_AI_API_Layer_v1_Master_Directive_for_Claude_Code.pdf
+
+### Added
+- `api/config.py` — Pydantic Settings class; all config from .env
+- `api/dependencies.py` — FastAPI deps: get_db, get_redis, get_minio, get_qdrant
+- `api/middleware/auth.py` — X-API-Key enforcement on /api/v1/* (dev mode = open)
+- `api/middleware/logging.py` — Request logging with latency (X-Response-Time-Ms header)
+- `api/schemas/common.py` — SuccessResponse, ErrorResponse, SystemStatusResponse, ServiceStatus
+- `api/schemas/documents.py` — DocumentResponse, DocumentListResponse, DocumentIngestResponse
+- `api/schemas/search.py` — SearchRequest, SearchResponse, SearchResult
+- `api/services/db.py` — PostgreSQL helpers: query, query_one, execute, execute_returning
+- `api/services/cache.py` — Redis get/set/delete with JSON + TTL
+- `api/services/storage.py` — MinIO: list_buckets, list_objects, put_object, presigned_url, delete
+- `api/services/vector.py` — Qdrant: search, list_collections, embed, collection routing
+- `api/routers/auth.py` — /api/v1/auth/status, /api/v1/auth/mode
+- `api/routers/documents.py` — /api/v1/documents CRUD + presigned download
+- `api/routers/storage.py` — /api/v1/storage bucket + object operations
+- `api/routers/search.py` — /api/v1/search unified semantic search with Redis caching
+- `api/routers/system.py` — /api/v1/system full health + latency + collections + storage
+- `api/routers/ai.py` — /api/v1/ai scaffold (agents list, query stub, classify)
+- `docs/API_LAYER_v1.md` — full endpoint reference, auth, architecture, module map
+
+### Changed
+- `api/main.py` — v1.0.0, RequestLogging + ApiKey middleware, /api/v1 prefix router, legacy routes preserved
+- `.env` — added MINIO_*, HCI_STORAGE_ROOT entries
+- `AI_TEAM/00_STATUS.md`, `06_NEXT_SESSION.md`, `08_CHANGELOG.md`
+- Installed: `pydantic-settings`, `minio` for /usr/local/bin/python3
+
+### Result
+`GET http://localhost:8000/api/v1/system` → all 4 services healthy (postgres, redis, minio, qdrant)
+
+---
+
 ## 2026-06-25 — Development Storage & Knowledge Ingestion Engine (Phase 3)
 
 **Engineer:** Claude Code | **Directive:** HCI_AI_Master_Directive_Development_Storage_and_Knowledge_Ingestion_v1.pdf
