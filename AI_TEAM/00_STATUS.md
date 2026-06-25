@@ -20,6 +20,8 @@ Last updated: 2026-06-24
 | Agents | OpenClaw | 🔜 PLANNED | Not started |
 | GitHub Remote | github.com/buck-HCI-AI | ✅ LIVE | Private repo, all commits pushed |
 | VS Code | Claude Code extension v2.1.191 | ✅ LIVE | Workspace configured |
+| Node.js | v26.3.1 + npm 11.16.0 | ✅ INSTALLED | Available for API layer / tooling |
+| Python | 3.13 + pycryptodome, psycopg2, redis, qdrant-client | ✅ INSTALLED | Integration scripts ready |
 | Remote Access | Tailscale | ✅ LIVE | Mac IP: 100.97.100.69 |
 
 ---
