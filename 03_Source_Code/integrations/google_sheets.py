@@ -6,8 +6,11 @@ Active trackers:
   101 Francis:    1JExX5CeVBedTEFitM8B6hveF4Prhk0Oy6BZSBu058LE  tab: Bid Tracking
   1355 Riverside: 1-64X4XGc4P_GmYl7DRt8nGsBNfaVdP_G3qwfBLJSsnA  tab: Sheet1
 """
-import json, urllib.error, urllib.parse, urllib.request
+import json, ssl, urllib.error, urllib.parse, urllib.request
+import certifi
 from credentials import get_google_token
+
+SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 
 def _token() -> str:
@@ -19,7 +22,7 @@ def read_range(sheet_id: str, range_: str) -> list[list]:
     req = urllib.request.Request(
         f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{urllib.parse.quote(range_)}")
     req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req) as r:
+    with urllib.request.urlopen(req, context=SSL_CTX) as r:
         return json.loads(r.read()).get("values", [])
 
 
@@ -35,7 +38,7 @@ def batch_update(sheet_id: str, updates: list[tuple[str, list]]) -> dict:
         data=body, method="POST")
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(req) as r:
+    with urllib.request.urlopen(req, context=SSL_CTX) as r:
         return json.loads(r.read())
 
 

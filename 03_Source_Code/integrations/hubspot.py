@@ -5,8 +5,11 @@ Stages: 3524209344=Not Started, 3524209345=Scope Ready, 3524209346=Sent Out,
         3524209347=Bids Receiving, 3524209348=Leveling, 3524209349=Awarded,
         3524209350=Not Awarded
 """
-import json, time, urllib.error, urllib.request
+import json, ssl, time, urllib.error, urllib.request
+import certifi
 from credentials import get_hubspot_auth
+
+SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 
 def _auth() -> str:
@@ -19,7 +22,7 @@ def _request(method: str, path: str, body: dict = None):
     req.add_header("Authorization", _auth())
     req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req) as r:
+        with urllib.request.urlopen(req, context=SSL_CTX) as r:
             return json.loads(r.read()), None
     except urllib.error.HTTPError as e:
         return None, f"{e.code}: {e.read().decode()[:300]}"

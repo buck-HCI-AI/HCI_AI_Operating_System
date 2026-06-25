@@ -2,10 +2,12 @@
 HCI AI — Microsoft Graph API client (Outlook / MS 365).
 Account: buck@hendricksoninc.com
 """
-import json, urllib.error, urllib.parse, urllib.request
+import json, ssl, urllib.error, urllib.parse, urllib.request
+import certifi
 from credentials import get_ms_token
 
-BASE = "https://graph.microsoft.com/v1.0"
+BASE    = "https://graph.microsoft.com/v1.0"
+SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 
 def _token() -> str:
@@ -23,7 +25,7 @@ def _request(method: str, path: str, body: dict = None, params: dict = None):
     if body:
         req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req) as r:
+        with urllib.request.urlopen(req, context=SSL_CTX) as r:
             content = r.read()
             return json.loads(content) if content else {}, None
     except urllib.error.HTTPError as e:

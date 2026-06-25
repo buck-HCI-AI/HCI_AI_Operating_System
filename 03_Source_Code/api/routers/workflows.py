@@ -121,3 +121,32 @@ def wf005_lesson(req: LessonRequest):
     if result.get("status") == "failed":
         raise HTTPException(500, result.get("error", "Unknown error"))
     return result
+
+
+# ── Daily syncs (read-only from external systems) ─────────────────────────────
+
+@router.post("/sync/hubspot")
+def sync_hubspot():
+    """Pull all HubSpot deals, notes, tasks → Postgres + Qdrant. Auto-runs at 6:50 AM."""
+    from sync_hubspot import run
+    return run()
+
+@router.post("/sync/houzz")
+def sync_houzz(visible: bool = False):
+    """
+    Read Houzz Pro daily logs + schedule → Postgres + Qdrant.
+    Requires HOUZZ_EMAIL and HOUZZ_PASSWORD in .env.
+    visible=true opens a browser window (for debugging).
+    Auto-runs at 6:45 AM.
+    """
+    from sync_houzz import run
+    return run(headless=not visible)
+
+@router.post("/sync/all")
+def sync_all():
+    """Run Houzz sync then HubSpot sync — same as morning startup sequence."""
+    from sync_houzz import run as houzz_run
+    from sync_hubspot import run as hs_run
+    houzz = houzz_run(headless=True)
+    hs    = hs_run()
+    return {"houzz": houzz, "hubspot": hs}

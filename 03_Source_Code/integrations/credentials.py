@@ -2,7 +2,10 @@
 HCI AI — n8n credential decryption utility.
 Decrypts OAuth tokens stored in n8n's SQLite database for direct API calls.
 """
-import base64, hashlib, json, os, sqlite3
+import base64, hashlib, json, os, sqlite3, ssl, urllib.parse, urllib.request
+import certifi
+
+SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 N8N_DB = os.path.expanduser("~/.n8n/database.sqlite")
 ENCRYPTION_KEY = os.environ.get("N8N_ENCRYPTION_KEY", "V2eUhJr67YMkYY1nFAFvnyOKMnGuhgSL")
@@ -51,7 +54,6 @@ def get_hubspot_auth() -> str:
 
 def get_google_token(service: str = "sheets") -> str:
     """Refreshes and returns a Google OAuth access token."""
-    import urllib.parse, urllib.request
     cred_id = CRED_IDS.get(f"google_{service}", CRED_IDS["google_sheets"])
     cred = decrypt_credential(cred_id)
     scope_map = {
@@ -69,13 +71,12 @@ def get_google_token(service: str = "sheets") -> str:
         "https://oauth2.googleapis.com/token",
         urllib.parse.urlencode(params).encode(), method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    with urllib.request.urlopen(req) as r:
+    with urllib.request.urlopen(req, context=SSL_CTX) as r:
         return json.loads(r.read())["access_token"]
 
 
 def get_ms_token() -> str:
     """Refreshes and returns a Microsoft Graph OAuth access token."""
-    import urllib.parse, urllib.request
     cred = decrypt_credential(CRED_IDS["outlook"])
     params = {
         "grant_type":    "refresh_token",
@@ -89,5 +90,5 @@ def get_ms_token() -> str:
     req = urllib.request.Request(
         token_url, urllib.parse.urlencode(params).encode(), method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    with urllib.request.urlopen(req) as r:
+    with urllib.request.urlopen(req, context=SSL_CTX) as r:
         return json.loads(r.read())["access_token"]
