@@ -99,11 +99,31 @@ All live integrations use OAuth tokens decrypted from n8n's SQLite database.
 
 ## n8n Configuration
 
-- **URL:** `http://localhost:5678`
+- **URL (local):** `http://localhost:5678`
+- **URL (Tailscale):** `http://bucks-macbook-air.tail2b281e.ts.net:5678`
 - **API Base:** `http://localhost:5678/api/v1/`
 - **API Key:** in `.env` as `N8N_API_KEY`
 - **Workflow IDs:**
   - WF-007: `Q1akV9pVnDkmATIo` (webhook path: `bid-leveling`)
+
+---
+
+## Tailscale Network
+
+- **Machine:** `bucks-macbook-air`
+- **Tailscale IP:** `100.97.100.69`
+- **MagicDNS hostname:** `bucks-macbook-air.tail2b281e.ts.net`
+- **Account:** `buck-HCI-AI`
+
+### Service URLs (accessible from any Tailscale device)
+
+| Service | Tailscale URL | Status |
+|---|---|---|
+| n8n | `http://bucks-macbook-air.tail2b281e.ts.net:5678` | ✅ LIVE |
+| PostgreSQL | `bucks-macbook-air.tail2b281e.ts.net:5432` | 🔜 When started |
+| Qdrant | `http://bucks-macbook-air.tail2b281e.ts.net:6333` | 🔜 When started |
+| Redis | `bucks-macbook-air.tail2b281e.ts.net:6379` | 🔜 When started |
+| FastAPI | `http://bucks-macbook-air.tail2b281e.ts.net:8000` | 🔜 Planned |
 
 ---
 
