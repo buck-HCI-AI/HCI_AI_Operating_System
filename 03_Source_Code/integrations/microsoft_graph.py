@@ -91,6 +91,39 @@ def patch_draft(msg_id: str, subject: str = None, html_body: str = None) -> dict
     return r
 
 
+def get_unread_messages(top: int = 50) -> list[dict]:
+    """All unread messages in inbox with full subject, sender, body preview."""
+    r, _ = _request("GET", "/me/mailFolders/inbox/messages", params={
+        "$select": "id,subject,from,receivedDateTime,hasAttachments,isRead,bodyPreview,conversationId",
+        "$filter": "isRead eq false",
+        "$top":    top,
+        "$orderby": "receivedDateTime desc",
+    })
+    return r.get("value", []) if r else []
+
+
+def move_message(msg_id: str, folder_id: str) -> tuple:
+    """Move a message to a folder by folder ID."""
+    eid = urllib.parse.quote(msg_id, safe="")
+    return _request("POST", f"/me/messages/{eid}/move", body={"destinationId": folder_id})
+
+
+def create_reply_draft(msg_id: str, html_body: str) -> dict:
+    """Create a reply draft in the same email thread."""
+    eid = urllib.parse.quote(msg_id, safe="")
+    r, err = _request("POST", f"/me/messages/{eid}/createReply", body={
+        "message": {"body": {"contentType": "HTML", "content": html_body}},
+    })
+    if err:
+        raise RuntimeError(err)
+    return r
+
+
+def mark_as_read(msg_id: str) -> tuple:
+    eid = urllib.parse.quote(msg_id, safe="")
+    return _request("PATCH", f"/me/messages/{eid}", body={"isRead": True})
+
+
 def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple:
     """Send immediately via /me/sendMail. to: [(name, email), ...]"""
     msg = {

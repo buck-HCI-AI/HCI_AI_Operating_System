@@ -60,19 +60,33 @@ def wf002_meeting(req: MeetingRequest):
 # ── WF-003: Morning Brief ─────────────────────────────────────────────────────
 
 class MorningBriefRequest(BaseModel):
-    send: bool = True   # False = return HTML preview without sending
+    send:         bool = True
+    inbox_result: Optional[dict] = None  # pass WF-006 output for enriched inbox section
 
 @router.post("/wf003/morning-brief")
 def wf003_morning_brief(req: MorningBriefRequest = MorningBriefRequest()):
     """WF-003: Compile and send the morning brief to Buck."""
     from wf003_morning_brief import run
-    return run(send=req.send)
+    return run(send=req.send, inbox_result=req.inbox_result)
 
 @router.get("/wf003/morning-brief/preview")
 def wf003_preview():
     """WF-003: Return morning brief HTML without sending."""
     from wf003_morning_brief import run
     return run(send=False)
+
+
+# ── WF-006: Inbox Review ──────────────────────────────────────────────────────
+
+class InboxReviewRequest(BaseModel):
+    max_emails:    int  = 30
+    create_drafts: bool = True
+
+@router.post("/wf006/inbox-review")
+def wf006_inbox_review(req: InboxReviewRequest = InboxReviewRequest()):
+    """WF-006: Read unread emails, classify, move to project folders, draft AI replies."""
+    from wf006_inbox_review import run
+    return run(max_emails=req.max_emails, create_drafts=req.create_drafts)
 
 
 # ── WF-004: Daily Log ─────────────────────────────────────────────────────────
