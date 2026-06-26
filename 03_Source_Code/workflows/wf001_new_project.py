@@ -6,10 +6,18 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "integrations"))
 
 import psycopg2, psycopg2.extras
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 from hubspot import create_deal, STAGE, PIPELINE_ID
 from memory_utils import upsert_one
 
-DB = dict(host="localhost", port=5432, dbname="hci_os", user="hci_admin", password="hci_postgres_2026")
+DB = dict(
+    host=os.environ.get("POSTGRES_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_PORT", 5432)),
+    dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+    user=os.environ.get("POSTGRES_USER", "hci_admin"),
+    password=os.environ.get("POSTGRES_PASSWORD", ""),
+)
 
 
 def run(

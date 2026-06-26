@@ -19,7 +19,13 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 HOUZZ_EMAIL    = os.environ.get("HOUZZ_EMAIL", "")
 HOUZZ_PASSWORD = os.environ.get("HOUZZ_PASSWORD", "")
 
-DB = dict(host="localhost", port=5432, dbname="hci_os", user="hci_admin", password="hci_postgres_2026")
+DB = dict(
+    host=os.environ.get("POSTGRES_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_PORT", 5432)),
+    dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+    user=os.environ.get("POSTGRES_USER", "hci_admin"),
+    password=os.environ.get("POSTGRES_PASSWORD", ""),
+)
 
 
 def pg():
@@ -90,20 +96,77 @@ def run(headless: bool = True) -> dict:
     print("\n=== Houzz Daily Sync ===")
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=headless)
-        ctx     = browser.new_context(viewport={"width": 1280, "height": 900})
-        page    = ctx.new_page()
+        browser = pw.chromium.launch(
+            headless=headless,
+            args=[
+                "--no-sandbox",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--disable-dev-shm-usage",
+            ]
+        )
+        ctx = browser.new_context(
+            viewport={"width": 1366, "height": 768},
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            locale="en-US",
+            timezone_id="America/Denver",
+            extra_http_headers={
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": '"macOS"',
+            }
+        )
+        page = ctx.new_page()
+        # Remove webdriver property
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         try:
             # ── Login ──────────────────────────────────────────────────────────
             print("  Logging into Houzz Pro...")
-            page.goto("https://pro.houzz.com/login", wait_until="networkidle", timeout=30000)
-            page.fill('input[type="email"], input[name="email"], #email', HOUZZ_EMAIL)
-            page.fill('input[type="password"], input[name="password"], #password', HOUZZ_PASSWORD)
-            page.keyboard.press("Enter")
-            page.wait_for_load_state("networkidle", timeout=20000)
+            page.goto("https://pro.houzz.com/login", wait_until="domcontentloaded", timeout=45000)
+            page.wait_for_timeout(4000)
 
-            if "login" in page.url.lower():
+            # Check for rate-limit page
+            if "429" in page.title() or "Too Many" in page.content()[:500]:
+                result["errors"].append("Houzz rate-limited (429). Wait a few minutes and retry.")
+                return result
+
+            # Try multiple selector strategies for email input
+            email_sel = None
+            for sel in ['input[type="email"]', 'input[name="email"]', '#email',
+                        'input[autocomplete="email"]', 'input[autocomplete="username"]',
+                        'input[placeholder*="email" i]', 'input[placeholder*="Email" i]']:
+                try:
+                    page.wait_for_selector(sel, timeout=3000)
+                    email_sel = sel
+                    break
+                except Exception:
+                    continue
+
+            if not email_sel:
+                # Dump page for debugging
+                title = page.title()
+                url   = page.url
+                result["errors"].append(f"Could not find email input. Page: '{title}' at {url}")
+                return result
+
+            page.fill(email_sel, HOUZZ_EMAIL)
+            for sel in ['input[type="password"]', 'input[name="password"]', '#password',
+                        'input[autocomplete="current-password"]']:
+                try:
+                    page.wait_for_selector(sel, timeout=2000)
+                    page.fill(sel, HOUZZ_PASSWORD)
+                    break
+                except Exception:
+                    continue
+
+            page.keyboard.press("Enter")
+            page.wait_for_load_state("networkidle", timeout=25000)
+            page.wait_for_timeout(3000)
+
+            if "login" in page.url.lower() or "signin" in page.url.lower():
                 result["errors"].append("Login failed — check HOUZZ_EMAIL and HOUZZ_PASSWORD in .env")
                 return result
             print("  ✓ Logged in")

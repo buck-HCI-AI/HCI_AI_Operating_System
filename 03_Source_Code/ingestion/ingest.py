@@ -248,12 +248,15 @@ def _stage_register(filename: str, checksum: str, object_key: Optional[str],
             conn.close()
             return document_id  # new UUID schema not yet applied — skip, data is in Qdrant
 
-        # Map project_number to project_id
+        # Map project_number to project_id via numeric prefix ILIKE (no project_number column)
         project_id = None
         if classification.get("project_number"):
+            import re
+            m = re.match(r'^(\d+)', str(classification["project_number"]).upper())
+            prefix = m.group(1) if m else classification["project_number"]
             cur.execute(
-                "SELECT id FROM projects WHERE project_number = %s LIMIT 1",
-                (classification["project_number"],)
+                "SELECT id FROM projects WHERE name ILIKE %s OR address ILIKE %s LIMIT 1",
+                (f"{prefix}%", f"{prefix}%")
             )
             row = cur.fetchone()
             if row:

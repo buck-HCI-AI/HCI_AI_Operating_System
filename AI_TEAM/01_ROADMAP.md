@@ -61,25 +61,57 @@ Last updated: 2026-06-24
 
 ---
 
-## Phase 4 — Agents
+## Phase 4 — SOP Execution Layer (COMPLETE ✅)
+
+**Goal:** 27 SOP workflows enforcing all HCI construction operating procedures
+- [x] Shared base layer (base_sop, approval_engine, stop_conditions, sop_kpi)
+- [x] 27 SOPs built: Plan Review → Safety → Inspection (SOP 04–30)
+- [x] 189 endpoints at `/api/v1/sop/`
+- [x] Event auto-emission from every SOP status transition
+
+---
+
+## Phase 5 — Platform Integration Layer (COMPLETE ✅)
+
+**Goal:** Shared services consumed by all workflows and SOPs
+- [x] Identity & Permissions — 12 roles, 42 permissions, authority levels
+- [x] Event Bus — standardized events, correlation IDs, persistence
+- [x] Notification Center — 17 types, escalation, construction-specific notifiers
+- [x] Audit Trail — immutable cross-service records (SOP + Workflow + Platform)
+- [x] Unified Search Gateway — intent routing (Postgres + Qdrant), confidence, citations
+- [x] 33 platform API endpoints; 39/39 tests passing
+- [x] BaseSOP auto-emits events to Event Bus on every status transition
+
+---
+
+## Phase 6 — Gate 5 Pilot + Go-Live
+
+**Goal:** Validate full system in production on live projects
+- [ ] 5-day pilot: 101 Francis, 64 Eastwood, 1355 Riverside (ends 2026-07-01)
+- [ ] Buck sign-off → production go-live authorized
+- [ ] Populate Qdrant: vendor_memory + drive_memory embedding run
+- [ ] Add launchd for WF-PM daily + exec health report
+
+---
+
+## Phase 7 — Agents (Future)
 
 **Goal:** Autonomous AI agents acting on behalf of HCI
-**Dependencies:** Phase 3
+**Dependencies:** Phase 5 Platform Layer (in place)
 
 - [ ] Executive Agent — daily brief, decision support, exception alerts
 - [ ] PM Agent — project status monitoring, milestone tracking
 - [ ] Bid Agent — bid analysis, leveling, award recommendations
 - [ ] Procurement Agent — vendor outreach, scope clarification, follow-ups
 - [ ] Historian Agent — lessons learned retrieval, institutional knowledge
-- [ ] Relationship Agent — contact history, health, follow-up prompts
 
 ---
 
-## Phase 5 — Dashboards
+## Phase 8 — Dashboards (Future)
 
 **Goal:** Visual operational intelligence
-**Dependencies:** Phase 4
+**Dependencies:** Phase 6 Go-Live
 
 - [ ] Executive Dashboard — project health, budget vs. actual, critical path
 - [ ] PM Dashboard — daily tasks, open issues, bid status
-- [ ] Universal Search — semantic search across all HCI knowledge
+- [ ] Unified Search UI — search across all HCI knowledge with citations

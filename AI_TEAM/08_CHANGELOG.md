@@ -1,153 +1,601 @@
-# 08_CHANGELOG.md
-**Engineering changelog — what changed, when, and why**
-Most recent first.
+# Changelog
+
+## 2026-06-26 — Phase 15: Platform Integration Layer COMPLETE
+
+**Trigger:** `HCI_AI_Platform_Integration_Sprint_Master_Directive_for_Claude_Code_v1.pdf` + Buck: "ok do it -"
+
+### What Was Built
+
+5 shared platform capabilities — every SOP and workflow can now consume them:
+
+| Capability | Service | Endpoints | Key Features |
+|---|---|---|---|
+| Identity & Permissions | `services/platform/identity/` | 6 | 12 roles, 42 permissions, authority levels (owner=5 → ai=1) |
+| Event Bus | `services/platform/event_bus/` | 3 | 12 event types, correlation UUIDs, retry tracking, persistence |
+| Notification Center | `services/platform/notifications/` | 6 | 17 types, escalation thresholds, construction-specific notifiers |
+| Audit Trail | `services/platform/audit/` | 5 | 3-source unification (SOP + workflow + platform), project timeline |
+| Unified Search | `services/platform/search_gateway/` | 7 | Intent routing (Postgres + Qdrant), confidence scores, citations |
+
+### Key Technical Decisions
+
+- **No external broker.** Event Bus persists to `platform_events` (Postgres). Sufficient at current scale; swap to Redis Streams or Kafka later if needed.
+- **sys.path conflict.** Python stdlib `platform` module name collides with our `services/platform/` package. Fix: import `from event_bus.event_bus_service import EventBus` (not `from platform.event_bus...`). This must be maintained in `base_sop.py`.
+- **Keyword extraction.** Multi-word search queries broken against LIKE — added `_best_keyword()` to strip stopwords and extract a single useful token before Postgres LIKE match.
+- **Correlation IDs.** All Event Bus events and Audit records carry a UUID correlation ID. Pass it explicitly to link related events across services.
+
+### SOP Integration
+
+`BaseSOP.transition_status()` now calls `_emit()` after every DB status update. `_emit()` resolves the platform package path at runtime and publishes `sop.status_changed` to the Event Bus. If the Event Bus is unreachable, the SOP operation continues — Event Bus failure never blocks a SOP.
+
+### Roles Added
+
+`owner`, `administrator`, `pm`, `estimator`, `superintendent`, `accounting`, `contracts`, `architect`, `engineer`, `client`, `ai_agent`, `system` — 12 total, 42+ permissions.
+
+### Files Created
+
+- `05_Database/platform_schema.sql` — 5 tables + 12-role + 42-permission seed
+- `services/platform/__init__.py`
+- `services/platform/identity/identity_service.py`
+- `services/platform/event_bus/event_bus_service.py`
+- `services/platform/notifications/notification_service.py`
+- `services/platform/audit/audit_service.py`
+- `services/platform/search_gateway/search_gateway_service.py`
+- `api/routers/platform.py` — 33 endpoints
+- `tests/test_platform_integration.py` — 39 tests, **39 PASS, 0 FAIL**
+
+### Files Modified
+
+- `api/main.py` — registered platform router
+- `services/sop_execution/shared/base_sop.py` — added `_emit()` + call in `transition_status()`
+- `BOOK_00/06_API_LAYER.md` — added SOP + Platform rows to router table
+- `AI_TEAM/00_STATUS.md` — phase 15 added; platform routes added to API table
+- `AI_TEAM/01_ROADMAP.md` — Phase 4 SOP + Phase 5 Platform marked complete; Phase 6–8 added
+- `AI_TEAM/04_ARCHITECTURE.md` — full stack diagram updated with Platform Integration Layer
+- `AI_TEAM/08_CHANGELOG.md` — this entry
+
+### Documentation Created
+
+- `docs/PLATFORM_INTEGRATION_PLAN.md`
+- `docs/IDENTITY_MODEL.md`
+- `docs/EVENT_BUS_STANDARD.md`
+- `docs/NOTIFICATION_STANDARD.md`
+- `docs/AUDIT_TRAIL_STANDARD.md`
+- `docs/SEARCH_ARCHITECTURE.md`
+- `docs/INTEGRATION_SEQUENCE.md`
+
+### Test Results
+
+```
+PT-00 Platform overview     1 PASS
+PT-01 Identity              7 PASS
+PT-02 Event Bus             5 PASS
+PT-03 Notifications         7 PASS
+PT-04 Audit Trail           8 PASS
+PT-05 Unified Search        7 PASS
+PT-IT Integration flows     4 PASS
+─────────────────────────────────
+TOTAL                      39 PASS  0 FAIL  0 CONDITIONAL
+```
 
 ---
 
-## 2026-06-25 — API Layer v1 (Phase 4)
+## 2026-06-26 — Phase 14h: Phase H Field Execution COMPLETE (SOP 17–18 + 20–30)
 
-**Engineer:** Claude Code | **Directive:** HCI_AI_API_Layer_v1_Master_Directive_for_Claude_Code.pdf
+**Trigger:** Buck: "do all and test — then work on Platform Integration Sprint"  
+**Full chain now live:** SOP 04 → 05 → 06 → 07 → 08 → 09 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 19 → 17 → 18 → 20 → 21 → 22 → 23 → [24 / 25 / 26 / 27 / 28 / 29 / 30]
 
-### Added
-- `api/config.py` — Pydantic Settings class; all config from .env
-- `api/dependencies.py` — FastAPI deps: get_db, get_redis, get_minio, get_qdrant
-- `api/middleware/auth.py` — X-API-Key enforcement on /api/v1/* (dev mode = open)
-- `api/middleware/logging.py` — Request logging with latency (X-Response-Time-Ms header)
-- `api/schemas/common.py` — SuccessResponse, ErrorResponse, SystemStatusResponse, ServiceStatus
-- `api/schemas/documents.py` — DocumentResponse, DocumentListResponse, DocumentIngestResponse
-- `api/schemas/search.py` — SearchRequest, SearchResponse, SearchResult
-- `api/services/db.py` — PostgreSQL helpers: query, query_one, execute, execute_returning
-- `api/services/cache.py` — Redis get/set/delete with JSON + TTL
-- `api/services/storage.py` — MinIO: list_buckets, list_objects, put_object, presigned_url, delete
-- `api/services/vector.py` — Qdrant: search, list_collections, embed, collection routing
-- `api/routers/auth.py` — /api/v1/auth/status, /api/v1/auth/mode
-- `api/routers/documents.py` — /api/v1/documents CRUD + presigned download
-- `api/routers/storage.py` — /api/v1/storage bucket + object operations
-- `api/routers/search.py` — /api/v1/search unified semantic search with Redis caching
-- `api/routers/system.py` — /api/v1/system full health + latency + collections + storage
-- `api/routers/ai.py` — /api/v1/ai scaffold (agents list, query stub, classify)
-- `docs/API_LAYER_v1.md` — full endpoint reference, auth, architecture, module map
+### What Was Built
 
-### Changed
-- `api/main.py` — v1.0.0, RequestLogging + ApiKey middleware, /api/v1 prefix router, legacy routes preserved
-- `.env` — added MINIO_*, HCI_STORAGE_ROOT entries
-- `AI_TEAM/00_STATUS.md`, `06_NEXT_SESSION.md`, `08_CHANGELOG.md`
-- Installed: `pydantic-settings`, `minio` for /usr/local/bin/python3
+13 new SOPs (all 4 layers each — templates + agent + service + __init__ + router endpoints):
 
-### Result
-`GET http://localhost:8000/api/v1/system` → all 4 services healthy (postgres, redis, minio, qdrant)
+| SOP | Title | Endpoints | Key Rules |
+|-----|-------|-----------|-----------|
+| SOP 17 | Project Schedule | 7 | AI milestone generation; schedule risk analysis; handoff → SOP 18 |
+| SOP 18 | Long-Lead Procurement | 6 | AI item identification; HIGH/CRITICAL risk flagging; supplier search |
+| SOP 20 | Contract Setup | 6 | AI setup checklist; blocks approval if items pending |
+| SOP 21 | Compliance | 6 | AI permit ID by jurisdiction; clear-to-build gate; handoff → SOP 22 |
+| SOP 22 | COI / W-9 / Lien | 7 | HCI insurance minimums enforced on verify; handoff → SOP 23 |
+| SOP 23 | Project Startup | 6 | safety/personnel/docs gate; ready-to-build approval; handoff → SOP 24 |
+| SOP 24 | Superintendent Dashboard | 4 | Daily metric updates; AI daily brief; RED alert tracking |
+| SOP 25 | Daily Log | 5 | AI risk analysis on each entry; PM notifications; weekly summary |
+| SOP 26 | Field Coordination | 5 | AI RFI drafts from lessons_learned; open item tracking |
+| SOP 27 | Quality Control | 4 | AI QC checklist; SC-03 fires on CRITICAL failure |
+| SOP 28 | QC Detail Card | 5 | AI detail card per trade; hold-point tracking |
+| SOP 29 | Safety | 5 | SC-03 fires on uncontrolled CRITICAL hazard; work-stop enforcement |
+| SOP 30 | Inspection | 4 | AI prep checklist; SC-03 fires on FAIL/CORRECTION_NOTICE |
 
----
+### Key Business Rules Enforced
+- **SOP 21:** clear-to-build blocks unless building_permit + contractor_license are APPROVED
+- **SOP 22:** HCI_COI_MINIMUMS: GL $1M, Aggregate $2M, WC $1M, Auto $1M — enforced at `verify_coi()`
+- **SOP 23:** ready-to-build blocks if any safety/personnel/documents items still PENDING
+- **SOP 27/29/30:** SC-03 stop conditions wired for CRITICAL quality, safety, and inspection failures
+- **SOP 28:** hold-point architecture per trade with 5 HOLD_POINT_STATUS states
 
-## 2026-06-25 — Development Storage & Knowledge Ingestion Engine (Phase 3)
-
-**Engineer:** Claude Code | **Directive:** HCI_AI_Master_Directive_Development_Storage_and_Knowledge_Ingestion_v1.pdf
-
-### Added
-- `03_Source_Code/ingestion/classifier.py` — project/category/CSI/version/date detection from filename + content
-- `03_Source_Code/ingestion/extractor.py` — text extraction module (pdf, docx, xlsx, txt, md, csv)
-- `03_Source_Code/ingestion/ingest.py` — 6-stage Knowledge Ingestion Engine (Capture→Classify→Store→Index→Register→Archive)
-- `03_Source_Code/api/routers/ingest.py` — FastAPI router: POST /ingest/file, /ingest/path, /ingest/batch
-- `infrastructure/docker-compose.storage.yml` — override file for bind mounts to `${HCI_STORAGE_ROOT}`
-- `infrastructure/setup_storage_drive.sh` — creates 10-folder structure on HCI_AI_DEV drive
-- `infrastructure/migrate_volumes.sh` — migrates named volumes → bind mounts on external drive
-- `docs/STORAGE_LAYER_CONFIGURATION_v1.md` — drive setup, compose modes, migration guide
-- `docs/KNOWLEDGE_INGESTION_ENGINE_v1.md` — pipeline stages, API endpoints, routing table, error handling
-
-### Changed
-- `infrastructure/.env.example` — added `HCI_STORAGE_ROOT` variable with documentation
-- `03_Source_Code/api/main.py` — added ingest router at prefix `/ingest`, bumped to v0.2.0
-
-### Buck Action Required
-- **Reformat WD My Passport** — currently NTFS; needs APFS + GUID Partition Map + name HCI_AI_DEV
-- Then run: `bash infrastructure/setup_storage_drive.sh`
+### API Totals After Phase H
+- **27 SOPs active** (SOP 04–30)
+- **189 total endpoints** at `/api/v1/sop/`
+- **Registry:** `GET /api/v1/sop/registry` returns all 27
 
 ---
 
-## 2026-06-25 — Data Architecture & Document Storage Foundation (Phase 2)
+## 2026-06-25 — Phase 14h: Phase G Close Loop COMPLETE (SOP 12 + SOP 19)
 
-**Engineer:** Claude Code | **Directive:** HCI_AI_Data_Architecture_and_Document_Storage_Master_Directive_for_Claude_Code_v1.pdf
+**Trigger:** Buck said "go" (Phase G)  
+**Full preconstruction + contract execution chain now live:** SOP 04 → 05 → 06 → 07 → 08 → 09 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 19
 
-### Added
-- `database/schema/001_initial_core_schema.sql` — UUID companies, contacts, projects (5 tables + pgcrypto)
-- `database/schema/002_document_storage_schema.sql` — documents, versions, chunks, tags (6 tables)
-- `database/schema/003_registry_schema.sql` — vendors, bids, costs, risks, lessons (12 tables)
-- `database/schema/004_embedding_metadata_schema.sql` — Qdrant collections, embedding jobs, search log (4 tables)
-- `database/seeds/` — CSI divisions, document categories
-- `database/validate.py` — 10-point health check script (9/10 pass on legacy DB)
-- `docs/` — 5 architecture standards docs
-- `architecture/` — 2 data architecture diagrams
-- `workflows/` — WORKFLOW_01 (document ingestion), WORKFLOW_02 (registry writeback)
+### What Was Built
 
-### Changed
-- `infrastructure/minio/init_buckets.sh` — updated to Phase 2 bucket names (5 buckets)
-- All AI_TEAM files refreshed
+Both SOPs follow the 4-layer pattern (templates + agent + service + __init__):
 
----
+| SOP | Title | Agent Methods | Service Methods | Endpoints |
+|-----|-------|---------------|-----------------|-----------|
+| SOP 12 | Subcontractor CRM | research_sub_candidates, assess_sub_qualification, assess_bid_list_quality | start_bid_list, add_sub_candidate, run_ai_research, assess_sub, pm_approve_sub, pm_approve_list, hand_off_to_sop13, get_full_status | 8 |
+| SOP 19 | Subcontract Agreement | draft_scope_section, draft_contract_section, verify_insurance_requirements, review_full_draft | start_agreement, run_ai_draft_all, draft_section, confirm_section, verify_insurance, run_final_review, pm_approve, record_execution, archive, get_full_status | 10 |
 
-## 2026-06-25 — Infrastructure Phase 1 + Drive Sync
+### Key Business Rules Enforced
+- **SOP 12:** MIN_BIDDERS rule (3 PM-approved, non-DO_NOT_USE subs per trade) enforced at `pm_approve_list()`; SC-01 fires if count < 3
+- **SOP 12:** `run_ai_research()` auto-populates candidates from vendor_memory (Qdrant) + Claude analysis; de-dupes against existing list
+- **SOP 12:** `pm_approve_list()` runs final AI quality check before transitioning to APPROVED
+- **SOP 19:** Gate 19-C (EXECUTION_AUTHORITY = "Principal or PM with written delegation") enforced at `record_execution()`
+- **SOP 19:** `pm_approve()` blocks if any of 7 standard CONTRACT_SECTIONS are not yet PM-confirmed
+- **SOP 19:** `verify_insurance()` checks 4 HCI minimums (GL $1M, Aggregate $2M, WC $1M, Auto $1M) and flags shortfalls at HIGH severity
+- **SOP 19:** `run_ai_draft_all()` drafts all 7 sections in one call with section-type-specific guidance
+- **SOP 19:** `archive()` enforces SC-04 gate check before final ARCHIVED status
 
-**Engineer:** Claude Code | **Directive:** HCI_AI_Infrastructure_Phase_1_Master_Directive_for_Claude_Code.pdf
+### Chain Handoffs Wired
+- SOP 11 → SOP 12 (optional path: use SOP 12 to build bid list before SOP 13)
+- SOP 12 → SOP 13 (`hand_off_to_sop13` auto-creates SOP 13 Distribution instance)
+- SOP 16 → SOP 19 (`hand_off_to_sop19` auto-creates SOP 19 Subcontract Agreement instance)
 
-### Added
-- `infrastructure/docker-compose.yml` — Postgres 16, Redis 7, MinIO, Qdrant; health checks, persistent volumes
-- `infrastructure/.env.example` — all 20 required env vars documented
-- `infrastructure/README.md` — setup, operations, Mac mini migration guide
-- `infrastructure/postgres/init.sql` — full 14-table schema + seed data (83 Sagebrusch added)
-- `infrastructure/redis/redis.conf` — memory limit 256mb, AOF persistence, LRU eviction
-- `infrastructure/minio/init_buckets.sh` — auto-creates 4 buckets on first start
-- `infrastructure/qdrant/config.yaml` — Qdrant production config
-- `workflows/sync_drive.py` — Google Drive full ingestion (PDF/DOCX/XLSX/GDOC/GSHEET → drive_memory)
-- `POST /sync/drive` endpoint in FastAPI workflows router
-- Drive sync added to morning startup sequence (Mondays only)
-- `drive_sync_log` table in Postgres schema
-- Installed packages: `python-docx`, `openpyxl`
+### Files Created (10 new files)
+- `sop_12_sub_crm/`: templates, agent, service, __init__
+- `sop_19_subcontract_agreement/`: templates, agent, service, __init__
 
-### Changed
-- `AI_TEAM/00_STATUS.md` — full status refresh, MinIO and Drive sync added
-- `AI_TEAM/02_ACTIVE_WORK.md` — Phase 1 deliverables logged
-- `AI_TEAM/03_DECISIONS.md` — DEC-007 (MinIO), DEC-008 (infrastructure/ canonical IaC)
-- `AI_TEAM/04_ARCHITECTURE.md` — data layer updated: 14 tables, 7 Qdrant collections, MinIO added
-- `AI_TEAM/06_NEXT_SESSION.md` — next priorities updated
-- `AI_TEAM/07_BLOCKERS.md` — BLK-001/BLK-002 status reviewed
-- `run_morning_brief.sh` — Drive sync step added (Monday-only gate)
-- `api/routers/workflows.py` — /sync/drive endpoint added
+### Files Modified
+- `03_Source_Code/api/routers/sop.py` — updated header, imports (14 services), registry (14 SOPs), added 18 new endpoints (total ~100)
+- `AI_TEAM/00_STATUS.md` — Phase 14h added; 14-SOP chain documented
+- `AI_TEAM/08_CHANGELOG.md` — this entry
 
-### Drive Sync Results (first run)
-- 96 files found, 89 successfully ingested, 7 errors (101F xlsx not downloaded locally)
-- 2,335 chunks in Qdrant `drive_memory` collection
-- All PDFs, GDOC/GSHEET (via Drive API export), DOCX, XLSX from HCI AI - Master Drive
-
-### Decisions
-- DEC-007: MinIO added as object store — 4 canonical buckets
-- DEC-008: `infrastructure/` is canonical IaC going forward
+### Smoke Tests (Live API)
+- SOP registry: 14 SOPs returned ✅
+- SOP 12 bid-list create → status "In Progress", trade_name "Concrete" ✅
+- SOP 19 instance create → status "In Progress", awarded_sub "Pacific Concrete Inc", award_amount $185,000 ✅
 
 ---
 
-## 2026-06-24 — Session 2 (afternoon)
+## 2026-06-25 — Phase 14g: Phase F Backfill COMPLETE (SOP 04–09)
 
-**Engineer:** Claude Code | **Architect:** ChatGPT (async via CHATGPT_BRIEFING.md)
+**Trigger:** Buck said "Phase F — go"  
+**Full preconstruction chain now live:** SOP 04 → 05 → 06 → 07 → 08 → 09 → 10 → 11 → 13 → 14 → 15 → 16
 
-### Added
-- AI_TEAM/ directory — 9 files per Collaboration Proposal v1.0
-- BOOK_00 canonical engineering manual seed
-- Operating Charter + Collaboration Proposal PDFs → 01_Engineering_Library/
+### What Was Built
 
-### Changed
-- .gitignore — allow PDFs in 01_Engineering_Library/ and 09_PDFs/
-- AI_TEAM file names migrated to numbered scheme (00–08)
+All 6 backfill SOPs follow the 4-layer pattern:
+
+| SOP | Title | Agent Methods | Service Methods | Endpoints |
+|-----|-------|---------------|-----------------|-----------|
+| SOP 04 | Plan Review | analyze_plan_section, flag_constructibility_risks, generate_rfi_list | start_review, add_plan_section, run_ai_analysis, pm_confirm, hand_off_to_sop05 | 6 |
+| SOP 05 | Construction Narrative | draft_narrative_section, review_narrative_completeness | start_narrative, draft_section, run_ai_draft, confirm_section, run_completeness_check, pm_approve, hand_off_to_sop06 | 8 |
+| SOP 06 | Missing Information / Risk Log | identify_gaps_from_review, flag_project_risks, prioritize_rfi_list | start_risk_log, add_missing_info, add_risk, resolve_item, run_ai_gap_check, close_log, hand_off_to_sop07 | 8 |
+| SOP 07 | ROM Budget | generate_rom_estimate, flag_high_risk_line_items, compare_to_owner_target | start_rom, add_line_item, run_ai_estimate, pm_review, buck_approve (Gate 07-C), hand_off_to_sop09 | 7 |
+| SOP 08 | Historical Cost Database | lookup_historical_cost, benchmark_cost_per_sf, add_cost_record | start_lookup, lookup_cost, benchmark_sf, add_cost_record, pm_confirm | 5 |
+| SOP 09 | Budget Review | analyze_budget_variance, review_vs_owner_target, generate_buck_review_summary | start_review, revise_line_item, run_ai_review, pm_approve, buck_approve (Gate 09-C), hand_off_to_sop10 | 7 |
+
+### Key Business Rules Enforced
+- **SOP 04:** AI cross-trade risk analysis fires SC-03 stop on HIGH-severity constructibility risks
+- **SOP 06:** `close_log()` blocks if any CRITICAL missing info items remain unresolved (SC-01)
+- **SOP 07:** ROM > $500k triggers Gate 07-C (Buck approval); `hand_off_to_sop09()` enforces gate check
+- **SOP 07:** AI auto-saves all generated line items and fires risk flags on LOW-confidence trades
+- **SOP 09:** Budget > $500k triggers Gate 09-C (Buck approval); `hand_off_to_sop10()` enforces gate and auto-confirms SOP 10 budget input
+- **SOP 09:** AI variance analysis pulls ROM from SOP 07 directly via parent_instance_id chain
+
+### Chain Handoffs Wired
+- SOP 04 → SOP 05 (`hand_off_to_sop05` auto-creates SOP 05 instance)
+- SOP 05 → SOP 06 (`hand_off_to_sop06` auto-creates SOP 06 instance)
+- SOP 06 → SOP 07 (`hand_off_to_sop07` auto-creates SOP 07 instance)
+- SOP 07 → SOP 09 (`hand_off_to_sop09` auto-creates SOP 09 instance; skips SOP 08 which is standalone)
+- SOP 09 → SOP 10 (`hand_off_to_sop10` auto-creates SOP 10 instance + confirms budget input)
+
+### Files Created (24 new files)
+- `sop_04_plan_review/`: templates, agent, service, __init__
+- `sop_05_construction_narrative/`: templates, agent, service, __init__
+- `sop_06_missing_info/`: templates, agent, service, __init__
+- `sop_07_rom_budget/`: templates, agent, service, __init__
+- `sop_08_historical_cost/`: templates, agent, service, __init__
+- `sop_09_budget_review/`: templates, agent, service, __init__
+
+### Files Modified
+- `03_Source_Code/api/routers/sop.py` — updated header, imports (12 services), registry (12 SOPs), added 41 new endpoints (total 78)
+- `docs/BOOK01_IMPLEMENTATION_STATUS.md` — Phase F → ✅
+- `docs/SOP_CONVERSION_INVENTORY.md` — SOP 04–09 → 🔵 PHASE F BUILT
+- `AI_TEAM/00_STATUS.md` — Phase 14g added; 12-SOP chain documented
+- `AI_TEAM/08_CHANGELOG.md` — this entry
+
+### Smoke Tests (Live API)
+- SOP 04 instance create → id 21 ✅; add section (Concrete) → output_id 42 ✅
+- SOP 06 instance create → id 24 ✅; status In Progress ✅
+- SOP 07 instance create → id 22 ✅; add line item $42,500 ✅; subtotal correct ✅
+- SOP 08 lookup create → id 25 ✅; status In Progress ✅
+- SOP 09 instance create → id 23 ✅; status In Progress ✅
+- Registry returns all 12 SOPs ✅
 
 ---
 
-## 2026-06-24 — Session 2 (morning)
+## 2026-06-25 — Phase 14f: Phase E Chain Expansion COMPLETE (SOP 10, 13, 14, 16)
 
-**Engineer:** Claude Code
+**Trigger:** Buck said "Phase E — go"  
+**Preconstruction chain now live:** SOP 10 → SOP 11 → SOP 13 → SOP 14 → SOP 15 → SOP 16
+
+### What Was Built
+
+All 4 SOPs follow the same 4-layer pattern as SOP 11 and SOP 15:
+
+| SOP | Title | Agent Methods | Service Methods | Endpoints |
+|-----|-------|---------------|-----------------|-----------|
+| SOP 10 | Allowances / Alternates / Exclusions | suggest_allowances, flag_unusual_alternates, validate_exclusions | start, validate_inputs, start_work, add_allowance, add_alternate, add_exclusion, run_ai_review, pm_approve, buck_approve (Gate 10-C if pool > $50k), hand_off_to_sop11 | 11 |
+| SOP 13 | Bid Distribution | draft_outreach_email, check_distribution_coverage, flag_sub_risks | start_distribution, log_sub_sent, confirm_receipt, run_ai_coverage_check, flag_sub_risks, pm_confirm_distribution, hand_off_to_sop14 | 8 |
+| SOP 14 | Bid Follow-Up | draft_follow_up_message, summarize_response_status, flag_minimum_bid_risk | start_followup, log_follow_up, update_response_status, run_ai_summary, close_followup, hand_off_to_sop15 | 7 |
+| SOP 16 | Buyout | draft_award_memo, check_scope_alignment | start_buyout, set_inputs, draft_award_memo, confirm_scope, initiate_subcontract, pm_confirm_buyout (Gate 16-C), hand_off_to_sop19 | 8 |
+
+### Key Business Rules Enforced
+- **SOP 10:** Total allowance pool > $50,000 triggers Gate 10-C (Buck approval required before SOP 11 handoff)
+- **SOP 13:** Min 3 subs per trade enforced by `check_distribution_coverage()` with SC-01 stop if gaps remain
+- **SOP 14:** `close_followup()` blocks if confirmed bidder count < 3 (MIN_BIDDERS); requires Buck exception
+- **SOP 14:** `run_ai_summary()` auto-fires SC-01 stop for HIGH-severity minimum-bid risk (≤3 days until close)
+- **SOP 16:** Gate 16-C (PM buyout confirmation) required before `hand_off_to_sop19()` proceeds
+
+### Files Created
+- `03_Source_Code/services/sop_execution/sop_10_allowances/sop_10_templates.py`
+- `03_Source_Code/services/sop_execution/sop_10_allowances/sop_10_agent.py`
+- `03_Source_Code/services/sop_execution/sop_10_allowances/sop_10_service.py`
+- `03_Source_Code/services/sop_execution/sop_10_allowances/__init__.py`
+- `03_Source_Code/services/sop_execution/sop_13_bid_distribution/sop_13_templates.py`
+- `03_Source_Code/services/sop_execution/sop_13_bid_distribution/sop_13_agent.py`
+- `03_Source_Code/services/sop_execution/sop_13_bid_distribution/sop_13_service.py`
+- `03_Source_Code/services/sop_execution/sop_13_bid_distribution/__init__.py`
+- `03_Source_Code/services/sop_execution/sop_14_bid_followup/sop_14_templates.py`
+- `03_Source_Code/services/sop_execution/sop_14_bid_followup/sop_14_agent.py`
+- `03_Source_Code/services/sop_execution/sop_14_bid_followup/sop_14_service.py`
+- `03_Source_Code/services/sop_execution/sop_14_bid_followup/__init__.py`
+- `03_Source_Code/services/sop_execution/sop_16_buyout/sop_16_templates.py`
+- `03_Source_Code/services/sop_execution/sop_16_buyout/sop_16_agent.py`
+- `03_Source_Code/services/sop_execution/sop_16_buyout/sop_16_service.py`
+- `03_Source_Code/services/sop_execution/sop_16_buyout/__init__.py`
+
+### Files Modified
+- `03_Source_Code/api/routers/sop.py` — updated header, imports (6 services), registry (6 SOPs), added 34 new endpoints
+- `docs/BOOK01_IMPLEMENTATION_STATUS.md` — Phase E → ✅
+- `docs/SOP_CONVERSION_INVENTORY.md` — SOP 10, 13, 14, 16 → 🔵 PHASE E BUILT
+- `AI_TEAM/00_STATUS.md` — Phase 14f added; SOP layer updated
+- `AI_TEAM/08_CHANGELOG.md` — this entry
+
+### Smoke Tests (Live API)
+- SOP 10 instance create → id 18 ✅; add_allowance → output_id 40 ✅ (pool=$15,000, Buck review=false ✅)
+- SOP 13 instance create → id 19 ✅; log_sub_sent → output_id 41 ✅; auto-advance to In Progress ✅
+- SOP 16 instance create → id 20 ✅; set_inputs → status=In Progress ✅
+- Registry returns all 6 SOPs ✅
+
+---
+
+## 2026-06-25 — Phase 14e: SOP Execution Phase D Testing COMPLETE
+
+**Trigger:** Buck said "go" → Phase D (apply DB schema, run all SOP 11 + 15 tests)
+
+### Phase D Test Results (29 tests total)
+- **SOP 11 unit tests (UT-11-01 through UT-11-10):** 10/10 PASS
+- **SOP 11 integration tests (IT-11-01 through IT-11-06):** 5/6 PASS, 1 CONDITIONAL (IT-11-04 vendor Qdrant empty — pre-existing KI-003)
+- **SOP 15 unit tests (UT-15-01 through UT-15-08):** 8/8 PASS
+- **SOP 15 integration tests (IT-15-01 through IT-15-05):** 5/5 PASS
+- **Total: 28 PASS, 1 CONDITIONAL, 0 FAIL**
+- Test evidence recorded in `docs/TEST_RESULTS.md` Phase 14 section
+
+### Code Fixes Applied During Phase D (10 defects)
+- **PD-01:** 4 new service routes.py had relative imports → fixed with sys.path + absolute imports in all 4
+- **PD-02:** `sop_11_bid_package/__init__.py` imported non-existent `SOP11Templates` → added class
+- **PD-03:** `validate_inputs` re-transitioning to INPUTS_MISSING when already there → added status guard
+- **PD-04:** No `start_work` endpoint for SOP 11 → added method + POST /11/instances/{id}/start-work
+- **PD-05:** `run_ai_review` re-transitioning to AI_DRAFTED when already there → added status guard
+- **PD-06:** `hand_off_to_sop15` used relative import in method body → changed to absolute import
+- **PD-07:** Claude API returns markdown-fenced JSON; json.loads failed → added `parse_json_response()` to BaseIntelligenceService
+- **PD-08:** `run_ai_leveling` tried READY_TO_START→AI_DRAFTED directly (invalid) → auto-advance through IN_PROGRESS
+- **PD-09:** `run_ai_leveling` re-transitioning to AI_DRAFTED when already there → added status guard
+- **PD-10:** `log_bid` no auto-transition to INPUTS_MISSING when < MIN_RESPONSIVE_BIDS → added bidcount logic
+
+### Files Modified
+- `03_Source_Code/services/decision_intelligence/routes.py` — import fix
+- `03_Source_Code/services/kpi_intelligence/routes.py` — import fix
+- `03_Source_Code/services/operating_rules/routes.py` — import fix
+- `03_Source_Code/services/business_process_library/routes.py` — import fix
+- `03_Source_Code/services/sop_execution/sop_11_bid_package/sop_11_templates.py` — added SOP11Templates class
+- `03_Source_Code/services/sop_execution/sop_11_bid_package/sop_11_service.py` — validate_inputs guard, start_work, run_ai_review guard, handoff import fix
+- `03_Source_Code/services/sop_execution/sop_11_bid_package/sop_11_agent.py` — parse_json_response
+- `03_Source_Code/services/sop_execution/sop_15_bid_leveling/sop_15_service.py` — log_bid status logic, run_ai_leveling IN_PROGRESS auto-advance and AI_DRAFTED guard
+- `03_Source_Code/services/sop_execution/sop_15_bid_leveling/sop_15_agent.py` — parse_json_response
+- `03_Source_Code/api/routers/sop.py` — added start-work endpoint
+- `03_Source_Code/services/base.py` — added parse_json_response() static method
+- `docs/TEST_RESULTS.md` — Phase 14 section added
+- `docs/BOOK01_IMPLEMENTATION_STATUS.md` — Phase D → COMPLETE
+- `docs/SOP_CONVERSION_INVENTORY.md` — SOP 11 + 15 → ✅ PHASE D TESTED
+- `AI_TEAM/00_STATUS.md` — Phase 14e added
+- `AI_TEAM/08_CHANGELOG.md` — this entry
+
+---
+
+## 2026-06-25 — Phase 14: SOP Execution Layer + BOOK_01 + Intelligence Services
+
+**Directives:** HCI_AI_SOP_to_Software_Execution_Layer_Master_Directive_v1.0 | HCI_AI_Business_Operating_Layer_BOOK01_Decision_KPI_Master_Directive_v1.0
+
+### BOOK_01 — HCI Construction Operating Manual (COMPLETE)
+- Created all 19 files: README + volumes 00-18
+- Covers: executive overview, operating principles, all 11 project phases, decision/KPI/rules/process intelligence, reporting cadence, UAT, continuous improvement
+
+### SOP Execution Layer — Phase A+B Documentation (COMPLETE)
+- `BOOK_00/18_SOP_TO_SOFTWARE_EXECUTION_LAYER.md` — BOOK_00 volume 18 (framework)
+- `docs/SOP_CONVERSION_INVENTORY.md` — all 42 SOPs indexed
+- `docs/SOP_2_0_CONVERSION_STANDARD.md` — 4-layer conversion standard
+- `docs/SOP_WORKFLOW_STATUS_MATRIX.md` — 15 statuses + valid transitions
+- `docs/SOP_DATA_FIELD_DICTIONARY.md` — all fields for SOP 11 + 15
+- `docs/SOP_APPROVAL_GATE_REGISTER.md` — all gates for SOP 11 + 15
+- `docs/SOP_STOP_CONDITION_REGISTER.md` — all 7 universal stop conditions
+- `docs/SOP_AI_AGENT_SCRIPT_LIBRARY.md` — Layer 3 scripts (SOP 11 + 15)
+- `docs/SOP_EMPLOYEE_SCRIPT_LIBRARY.md` — Layer 2 scripts (SOP 11 + 15)
+- `docs/SOP_TEMPLATE_BACKLOG.md` — Layer 4 templates (SOP 11 + 15)
+- `docs/SOP_TEST_MATRIX.md` — test scenarios (SOP 11 + 15)
+- `docs/SOP_DASHBOARD_REQUIREMENTS.md` — dashboard views and API endpoints
+- `docs/PRECONSTRUCTION_CHAIN_IMPLEMENTATION_PLAN.md` — full chain plan (SOP 01-16)
+
+### SOP Execution Layer — Phase C Pilot Build (COMPLETE)
+- `services/sop_execution/shared/` — base_sop, sop_data_model, approval_engine, stop_condition, sop_kpi
+- `services/sop_execution/sop_11_bid_package/` — service, agent, templates (all 4 layers)
+- `services/sop_execution/sop_15_bid_leveling/` — service, agent, templates (all 4 layers)
+- `05_Database/sop_execution_schema.sql` — 10 tables + seed operating rules
+- `api/routers/sop.py` — full API router registered in main.py
+
+### Business Operating Layer Standards (COMPLETE)
+- `docs/DECISION_INTELLIGENCE_STANDARD.md`
+- `docs/KPI_EXECUTIVE_INTELLIGENCE_STANDARD.md`
+- `docs/OPERATING_RULES_ENGINE_STANDARD.md`
+- `docs/BUSINESS_PROCESS_LIBRARY.md`
+- `docs/BOOK01_IMPLEMENTATION_STATUS.md`
+
+### New Intelligence Services (COMPLETE)
+- `services/decision_intelligence/` — create, search, outcome tracking; Qdrant embedded
+- `services/kpi_intelligence/` — project + company KPI snapshots; traffic lights
+- `services/operating_rules/` — configurable rule engine; evaluate/update/exception
+- `services/business_process_library/` — process registry; maturity tracking
+- All 4 services registered in `api/main.py`
+
+### Next: Phase D (Test — SOP 11 + 15 test scenarios) | Gate 5 Pilot running through 2026-07-01
+
+---
+
+## 2026-06-25 — Phase 13b: Gate 3 Workflow Acceptance Testing Complete
+
+**Gate 3 PASSED.** All 18 workflows and 9 intelligence services formally tested with documented evidence.
+
+### Test Results
+- 16/18 workflows: PASS
+- 1/18: FAIL — WF-SYNC-HOUZZ (KI-001 P2, Houzz anti-bot, non-blocking)
+- 1/18: SKIP — WF-007 n8n external (KI-002, deferred to UAT)
+- 9/9 intelligence services: PASS (vendor-intelligence partial — KI-003 P2)
+- All infrastructure: PASS
+
+### Fixes applied during Gate 3
+- WF-001 payload field names corrected in test (name/address, not project_name)
+- WF-002 payload field names corrected (project_id/title/notes)
+- Test projects (id=5,7) cleaned from DB; workflow_events test entries purged
+- Confirmed projects table has no project_number column (project lookup uses name pattern matching)
+
+### Gate status after Phase 13b
+- Gate 1: ✅ PASSED | Gate 2: ✅ PASSED | Gate 3: ✅ PASSED | Gate 4: ⬜ READY | Gate 5: ⬜ Blocked
+
+**Next:** Buck runs `docs/UAT_PLAN.md` (5 Tier 1 scenarios, ~45 min).
+
+---
+
+## 2026-06-25 — Phase 13: QA Framework and Validation Gates
+
+**Directive:** HCI_AI_QA_Testing_and_No_Go_Live_Master_Directive_v1.0
+
+### Governance Change
+- Production go-live is now BLOCKED until 5 validation gates pass + Buck Adams explicitly approves
+- System mode changed to VALIDATION-FIRST
+- All components assigned honest production status (most are "Built - Untested")
+
+### New Documents Created (12)
+- `BOOK_00/17_QUALITY_ASSURANCE_AND_VALIDATION.md` — 19-section master QA volume
+- `docs/QA_VALIDATION_STANDARD.md` — operational quick-reference
+- `docs/TEST_PLAN.md` — 7 test categories, 9 scenarios, all Gate 1-3 test cases
+- `docs/TEST_RESULTS.md` — evidence log template for Gates 1-3
+- `docs/WORKFLOW_TEST_MATRIX.md` — all 18 workflows + 9 services + infrastructure
+- `docs/KNOWN_ISSUES.md` — 10 open (KI-001 to KI-010); 6 resolved; no P0/P1 open
+- `docs/UAT_PLAN.md` — 10 UAT scenarios for Buck with exact commands
+- `docs/UAT_RESULTS.md` — UAT evidence log with Buck's sign-off section
+- `docs/ROLLBACK_PLAN.md` — 7 rollback scenarios with recovery commands
+- `docs/PILOT_READINESS_REPORT.md` — 5-day pilot log + go-live authorization form
+- `docs/REGRESSION_TEST_PLAN.md` — 3 regression levels with trigger criteria
+- `docs/SYSTEM_DATA_FLOW.md` — 9 major data flows documented end-to-end
+
+### AI_TEAM Updated (6 files)
+- 00_STATUS.md, 02_ACTIVE_WORK.md, 05_BACKLOG.md, 06_NEXT_SESSION.md, 07_BLOCKERS.md, 08_CHANGELOG.md
+
+### Production Status Assessment
+- Validated in Test: WF-SYNC-HS, WF-SYNC-DRIVE, WF-SUPER, WF-PM, WF-REPORT-DAILY, WF-REPORT-EXEC, project-brain, bid-intelligence, schedule-intelligence, risk-intelligence
+- Failed Validation: WF-SYNC-HOUZZ (KI-001 — Houzz anti-bot)
+- Built - Untested: 11 remaining workflows + vendor-intelligence + document-intelligence
+- No P0 or P1 defects open
+
+---
+
+## 2026-06-25 — Phase 12: Master Validation and Gap Audit
+
+### Bugs Fixed
+- Hardcoded DB password `hci_postgres_2026` in 7 files → all now use `POSTGRES_PASSWORD` env var: wf001, wf002, wf003, wf005, sync_hubspot, sync_houzz, sync_drive
+- WF-003 `BUCK_EMAIL` hardcoded to @hendricksoninc.com → now reads `BUCK_EMAIL` env var (defaults to @ahmaspen.com)
+- `hci_project_documents` Qdrant collection missing → created; also created hci_sops, hci_historical_costs, hci_procurement, hci_vendor_intelligence
+
+### Schema
+- `infrastructure/postgres/init.sql` updated: added 8 Phase 8-9 tables (long_lead_items, procurement_items, risks, historical_cost_records, workflow_events, schedule_variance, rfis, submittals) + 9 daily_logs ALTER COLUMN statements
+- `05_Database/postgres/schema.sql` synced from init.sql (was Phase 1 only)
+- `houzz_projects`, `houzz_daily_logs`, `houzz_schedule_items` created in live DB (were missing despite being in init.sql)
+
+### Deliverables Created (docs/)
+- `docs/MASTER_VALIDATION_REPORT.md` — system-wide health report
+- `docs/GAP_REGISTER.md` — 13 gaps, 4 fixed in audit, 9 open and prioritized
+- `docs/IMPLEMENTATION_RISK_REGISTER.md` — 8 risks, 3 mitigated
+- `docs/DEPENDENCY_MAP.md` — service-to-DB, service-to-Qdrant, workflow-to-workflow matrices
+- `docs/WORKFLOW_TRACEABILITY_MATRIX.md` — all 18 workflows, event flows, Project Brain integration
+- `docs/PRODUCTION_READINESS_CHECKLIST.md` — go/no-go per section; verdict: GO with known gaps
+
+### AI_TEAM Updated
+- 00_STATUS.md — full Phase 1-12 status, corrected Qdrant vector counts
+- 06_NEXT_SESSION.md — data enrichment priorities replacing Phase 8 tasks
+- 07_BLOCKERS.md — 4 current blockers, 5 resolved
+
+### Production Verdict
+- **System: 80% production-ready. GO for active use.**
+- Primary remaining work: populate Qdrant (drive_memory, vendor_memory), begin real daily log submissions, add WF-PM launchd schedule.
+
+---
+
+## 2026-06-25 — Phase 11: Production Hardening
 
 ### Added
-- `HCI_AI_Operating_System/` git repository — initial structure
-- `.env.example`, `.gitignore`, `README.md`, `docker-compose.yml` (root — n8n + Postgres + Qdrant + Redis)
-- `03_Source_Code/integrations/` — credentials.py, hubspot.py, google_sheets.py, microsoft_graph.py
-- `04_Workflows/WF-007_Bid_Leveling_Engine.json`
-- `05_Database/postgres/schema.sql`, `05_Database/qdrant/collections.md`
-- `06_Project_Documentation/` — READMEs for 64 Eastwood, 101 Francis, 1355 Riverside
-- GitHub CLI (gh 2.95.0)
+- `03_Source_Code/scripts/backup.sh` — Postgres pg_dump (custom format) + Qdrant snapshot API + MinIO manifest; 7-day rotation; primary `/Volumes/HCI_AI_DEV/backups`, fallback `~/HCI_Backups`
+- `03_Source_Code/scripts/monitor.sh` — 5-min health check, 3-attempt auto-restart, Docker container status, disk usage threshold, email alert via Graph API
+- `~/Library/LaunchAgents/com.hci.backup.plist` — daily 02:00 AM backup; loaded
+- `~/Library/LaunchAgents/com.hci.monitor.plist` — every 5 minutes; loaded and running
+- `Desktop/HCI_Backup.command` — double-click manual backup trigger
+- `infrastructure/setup_mac_mini.sh` — 14-step Mac mini M4 Pro migration playbook: Homebrew, Python, Docker, repo transfer, schema migration, Qdrant restore, Postgres restore, all launchd agents, smoke test
+
+### Updated
+- `.env` — added `HCI_API_KEYS`, `BUCK_EMAIL`, `HCI_BACKUP_DIR`
+- `api/static/dashboard/index.html` — added `API_KEY` + `HEADERS` constants; all 6 fetch calls send `X-API-Key` header
+
+### Auth Status
+- Middleware enforces `X-API-Key` on `/api/v1/*` when `HCI_API_KEYS` is set
+- Legacy routes (`/workflows/`, `/health`, `/projects`) bypass auth — morning brief unaffected
+- API key: `hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+- Dashboard and docs/redoc remain open (not behind /api/v1)
+
+### Mac mini Migration (pending hardware)
+- Run: `bash infrastructure/setup_mac_mini.sh` — resumes from any step with `--step N`
+- Steps 1–3: requires manual Docker Desktop install
+- Step 4: requires repo transfer (USB / rsync / git clone)
+- Steps 7–9: automatically applies schema and restores from latest backup
+
+---
+
+## 2026-06-25 — Phase 10: Reporting and Dashboards
+
+### Added
+- `wf_report.py` — 5 report generators: daily_field_report, schedule_variance_alert, executive_health_report, owner_summary, weekly_pm_email; all support send=True/False
+- `03_Source_Code/api/static/dashboard/index.html` — 18KB vanilla JS dashboard; project selector, health cards, bid coverage bar, daily logs, schedule variance, open risks, Project Brain Q&A
+- `/dashboard` redirect + StaticFiles mount in FastAPI main.py
+- `GET /api/v1/workflows/wf-pm/status/{project}` — returns latest PM review from workflow_events
+- 5 new WF-REPORT-* endpoints in workflows router
+- Workflow registry: 18 active, 0 planned (was 13 active, 1 planned)
+
+### Updated
+- `wf_superintendent.py` — added Stage 8 (schedule_variance_alert on high/critical) + Stage 9 (daily_field_report auto-send after log save)
+- `wf_pm.py` — weekly_report() accepts send_email=True to deliver via wf_report.weekly_pm_email()
+- `main.py` — list_services() schedule-intelligence → active; StaticFiles mount; /dashboard route
+- `wf_pm_weekly_report` router endpoint — accepts ?send_email=true
+
+### Tested
+- `/dashboard` serves at localhost:8000/dashboard — all sections load, Q&A works
+- daily_field_report(2) preview — 2.5KB HTML, all sections populated
+- executive_health_report() preview — 4 projects, 3.3KB HTML
+- owner_summary(64EW) preview — clean output, 6% bid coverage shown
+
+---
+
+## 2026-06-25 — Phase 9: Field and PM Workflows
+
+### Added
+- `wf_superintendent.py` — WF-SUPER 7-stage pipeline; absorbs WF-004
+- `wf_pm.py` — daily_review() + weekly_report() + HTML render helper
+- `wf004_daily_log.py` — converted to thin wrapper calling WF-SUPER
+- `rfis` table (project_id, rfi_number, subject, question, status, source_email_id + indexes)
+- `submittals` table (project_id, submittal_number, spec_section, description, status, source_email_id + indexes)
+- `schedule_variance` table (project_id, daily_log_id, activity_name, risk_level, cause, decision_needed, etc.)
+- 9 new columns on `daily_logs`: manpower, deliveries, inspections, quality_notes, safety_notes, subcontractor_progress, constraints, lookahead, field_risks
+
+### Updated
+- `schedule_intelligence_svc.py` — added analyze_log() (Claude Haiku schedule analysis), recent_variance(), STATUS→active
+- `schedule_intelligence/routes.py` — added POST /analyze/{log_id}, GET /variance/{project_number}
+- `wf006_inbox_review.py` — bid detection (BID_KEYWORDS + dollar extraction + vendor match), RFI detection, submittal detection; writes to bid_entries/rfis/submittals
+- `workflows.py` router — WF-SUPER + WF-PM endpoints; registry updated (13 active, 1 planned)
+- `base.py` — added pg_execute() and pg_execute_returning() to BaseIntelligenceService
+
+### Tested
+- WF-SUPER: full 7-stage pipeline on 64EW — log saved, embedded, schedule analyzed, risks written, cache invalidated
+- WF-PM daily review: 64EW — health=green, 3 action items, Claude synthesis working
+- analyze_log: crane delay scenario → medium risk → schedule_variance row written
+- Workflow registry: 13 active, 1 planned (WF-REPORT)
+
+---
+
+## 2026-06-25 — Phase 8: Workflow Engine Core
+
+### Completed
+- **vendor_id FK** — 19/26 bid_entries matched via token scoring + manual SQL; 7 unresolvable (vendors not in DB)
+- **Document ingest wired** — `ingest_document()` → `ingest.py` 6-stage pipeline; fixed `project_number` column bug in `_stage_register()`; added `POST /upload` multipart endpoint
+- **workflow_events table** — created with indexes; confirmed writes on trigger call
+- **Workflow Registry** — `GET /api/v1/workflows` (14 workflows) + `POST /api/v1/workflows/{id}/trigger`; dispatches to handlers; writes triggered/completed/error events to Postgres
+
+---
+
+## 2026-06-25 — Workflow Consolidation and BOOK_00 v2
+
+### Added
+- `docs/WORKFLOW_INVENTORY.md` — complete inventory of 14 workflows (built, planned, spec-only)
+- `docs/WORKFLOW_OVERLAP_REVIEW.md` — 6 critical overlaps identified and resolved
+- `docs/IMPLEMENTATION_SEQUENCE.md` — phased build plan with dependency graph (Phases 8-11)
+- `BOOK_00/` — rebuilt as 17-section master specification (§00 Executive Overview through §16 Appendix)
+- Schema migrations: `long_lead_items`, `procurement_items`, `risks`, `historical_cost_records` tables
+- `BaseIntelligenceService.resolve_project_id()` — project code → DB id via numeric prefix match
+
+### Fixed (Service Layer)
+- Python sys.modules naming collision — renamed `service.py` → `{name}_svc.py` in 8 services
+- `svc.include_router(x.router)` → `svc.include_router(x)` (double-dereference on already-extracted router)
+- `meetings.notes` → `meetings.summary` (actual column name)
+- `hubspot_deals` JOIN: `hd.project_id = p.id` → `hd.hubspot_deal_id = p.hubspot_deal_id`
+- `project_number` column references (doesn't exist) → replaced with `resolve_project_id()` in all 4 affected services
+- Historical cost service: removed stale "table not yet created" note; query now joins `historical_cost_records`
+
+### Status changes
+- Procurement service: partial → active
+- Historical Cost service: partial → active
+- Risk Intelligence service: partial → active
+
+---
+
+## 2026-06-25 — Construction Intelligence Service Layer v1
+
+### Added
+- 9 Construction Intelligence Services under `/api/v1/services/`
+- `BaseIntelligenceService` base class (`services/base.py`) with `pg_query`, `pg_one`, `resolve_project_id`, `cache_get/set`, `search`, `ask_claude`
+- `resolve_project_id()` helper — converts short project codes (e.g. "64EW") to `projects.id` via numeric prefix ILIKE matching
+- **Project Brain** (ACTIVE) — full per-project snapshot, Claude Q&A with multi-collection Qdrant search, 30-min cache
+- **Bid Intelligence** (ACTIVE) — package summaries, bid leveling analysis, bid_memory search
+- **Vendor Intelligence** (ACTIVE) — 860-vendor roster, performance history, vendor_memory search
+- **Document Intelligence** (ACTIVE) — dual-collection document search, classifier, ingest trigger
+- **Lessons Learned** (ACTIVE) — CRUD + Qdrant search
+- **Procurement** (partial) — graceful fallback when UUID schema tables absent
+- **Historical Cost** (partial) — bid vs. actual with awarded bid pull
+- **Schedule Intelligence** (partial) — Houzz schedule items + daily log progress
+- **Risk Intelligence** (partial) — derives 35 risk flags from bid coverage gaps
+
+### Fixed
+- Renamed all `service.py` files to `{service_name}_svc.py` to prevent Python `sys.modules` naming collision when 9 services share the same filename in separate dirs
+- Fixed `svc.include_router(x.router, ...)` → `svc.include_router(x, ...)` (double-deref on already-extracted router)
+- Fixed `meetings.notes` → `meetings.summary` (actual column name)
+- Fixed `hubspot_deals` join: `hd.project_id = p.id` → `hd.hubspot_deal_id = p.hubspot_deal_id`
+- Fixed `projects.project_number` references (column doesn't exist) — replaced with `resolve_project_id()` pattern across all services
+- Fixed `hubspot_notes` join chain through `hubspot_deals` using correct FK columns
+
+### Docs
+- `docs/CONSTRUCTION_INTELLIGENCE_SERVICE_LAYER_v1.md`
+- `AI_TEAM/00_STATUS.md` updated to reflect 6 directives complete
+

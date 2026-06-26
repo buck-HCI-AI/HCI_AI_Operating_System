@@ -1,6 +1,9 @@
 # 04_ARCHITECTURE.md
-**HCI AI Operating System — System Architecture**
-Version: 1.0 | Last updated: 2026-06-24
+**HCI AI Operating System — Current Architecture State**
+Version: 2.0 | Last updated: 2026-06-25
+
+> For the full specification, see BOOK_00/ (master engineering manual).
+> This file is the quick-reference for Claude Code session start.
 
 ---
 
@@ -15,43 +18,60 @@ The system's primary value is accumulating and making accessible the institution
 ## System Stack
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   DASHBOARDS                        │
-│        Executive · PM · Universal Search            │
-└────────────────────┬────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│                    AGENTS                           │
-│  Executive · PM · Bid · Procurement · Historian     │
-│  Relationship (via OpenClaw)                        │
-└────────────────────┬────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│             WORKFLOW AUTOMATION                     │
-│           n8n (Docker, localhost:5678)              │
-│  WF-007 ✅  WF-001-005 🔜                           │
-└──────────┬─────────────────────────┬────────────────┘
-           │                         │
-┌──────────▼──────┐       ┌──────────▼──────────────┐
-│   FastAPI       │       │   Integration Layer      │
-│   (API layer)   │       │   (Python, direct API)   │
-│   🔜 Planned    │       │   credentials.py ✅      │
-└──────────┬──────┘       │   hubspot.py ✅          │
-           │              │   google_sheets.py ✅    │
-           │              │   microsoft_graph.py ✅  │
-           │              └──────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                        DASHBOARDS (planned)                      │
+│               Executive · PM · Universal Search                  │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│                       AGENTS (planned)                           │
+│       Executive · PM · Bid · Procurement · Historian             │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│            PLATFORM INTEGRATION LAYER  ✅ LIVE                   │
+│  Identity & Permissions  │  Event Bus       │  Notification Center│
+│  Audit Trail             │  Unified Search Gateway               │
+│  /api/v1/platform/*  (33 endpoints)                              │
+└──────────┬───────────────────────────────────────────────────────┘
+           │ auto-emits events ↑
+┌──────────▼───────────────────────────────────────────────────────┐
+│              SOP EXECUTION LAYER  ✅ LIVE                        │
+│  27 SOPs (SOP 04–30) · BaseSOP · ApprovalEngine · StopCondition  │
+│  /api/v1/sop/*  (189 endpoints)                                  │
+└──────────┬───────────────────────────────────────────────────────┘
            │
-┌──────────▼────────────────────────────────────────┐
-│                  DATA LAYER                        │
-│                                                    │
-│  PostgreSQL 16        Qdrant             Redis 7   │
-│  (truth store)    (vector/memory)    (temp state)  │
-│  🔜 Ready to start  🔜 Ready to start  🔜 Ready   │
-└────────────────────────────────────────────────────┘
+┌──────────▼───────────────────────────────────────────────────────┐
+│           CONSTRUCTION INTELLIGENCE SERVICES  ✅ LIVE            │
+│  Project Brain · Bid Intelligence · Vendor Intelligence          │
+│  Document Intelligence · Lessons Learned · Procurement           │
+│  Historical Cost · Schedule Intelligence · Risk Intelligence     │
+│  Decision Intelligence · KPI Intelligence · Rules · BPL         │
+│  /api/v1/services/*                                              │
+└──────────┬───────────────────────────────────────────────────────┘
+           │
+┌──────────▼───────────────────────────────────────────────────────┐
+│              WORKFLOW ENGINE  ✅ LIVE (18 workflows)             │
+│         n8n (Docker, localhost:5678)                             │
+│  WF-001 through WF-SYNC-HOUZZ · WF-007 (Bid Leveling)           │
+└──────────┬───────────────────────────────────────────────────────┘
+           │
+┌──────────▼──────────────┐    ┌──────────────────────────────────┐
+│   FastAPI  ✅ LIVE      │    │  Integration Layer  ✅ LIVE       │
+│   Port 8000, launchd    │    │  credentials.py                  │
+│   X-API-Key enforced    │    │  hubspot.py                      │
+│   /api/v1/*             │    │  google_sheets.py                │
+└──────────┬──────────────┘    │  microsoft_graph.py              │
+           │                   └──────────────────────────────────┘
+┌──────────▼────────────────────────────────────────────────────────┐
+│                        DATA LAYER  ✅ LIVE                        │
+│                                                                    │
+│  PostgreSQL 16        Qdrant             Redis 7     MinIO        │
+│  (hci_os, 27+ tables) (7 collections)   (cache)     (objects)    │
+└────────────────────────────────────────────────────────────────────┘
 
 LIVE EXTERNAL SYSTEMS:
-  HubSpot CRM  ·  Google Sheets  ·  Google Drive
-  Microsoft 365 / Outlook / Graph API
+  HubSpot CRM  ·  Google Drive  ·  Microsoft 365 / Outlook / Graph API
 ```
 
 ---

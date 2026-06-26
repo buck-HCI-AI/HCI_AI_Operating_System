@@ -1,0 +1,309 @@
+{
+  "run_at": "2026-06-26T11:20:09.729934",
+  "total": 50,
+  "passed": 49,
+  "conditional": 1,
+  "failed": 0,
+  "results": [
+    {
+      "id": "UT-04-01",
+      "name": "Create SOP 04 instance",
+      "status": "PASS",
+      "note": "instance_id=201, status=In Progress"
+    },
+    {
+      "id": "UT-04-02",
+      "name": "GET instance with status",
+      "status": "PASS",
+      "note": "GET 200, sections=0"
+    },
+    {
+      "id": "UT-04-03",
+      "name": "Add plan section (Concrete)",
+      "status": "PASS",
+      "note": "output_id=278"
+    },
+    {
+      "id": "UT-04-04",
+      "name": "PM confirm review",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-05-01",
+      "name": "Create SOP 05 instance",
+      "status": "PASS",
+      "note": "instance_id=202"
+    },
+    {
+      "id": "UT-05-02",
+      "name": "Draft narrative section",
+      "status": "PASS",
+      "note": "output=279"
+    },
+    {
+      "id": "UT-05-03",
+      "name": "PM approve (may be blocked if sections unconfirmed)",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-06-01",
+      "name": "Create SOP 06 instance",
+      "status": "PASS",
+      "note": "id=203"
+    },
+    {
+      "id": "UT-06-02",
+      "name": "Add missing info item (HIGH)",
+      "status": "PASS",
+      "note": "output=280"
+    },
+    {
+      "id": "UT-06-03",
+      "name": "Add risk item (HIGH/HIGH)",
+      "status": "PASS",
+      "note": "output=281"
+    },
+    {
+      "id": "UT-06-04",
+      "name": "Resolve missing info item",
+      "status": "PASS",
+      "note": "resolved=True"
+    },
+    {
+      "id": "UT-07-01",
+      "name": "Create SOP 07 ROM Budget",
+      "status": "PASS",
+      "note": "id=204"
+    },
+    {
+      "id": "UT-07-02",
+      "name": "Add line item (Concrete SF)",
+      "status": "PASS",
+      "note": "output=282"
+    },
+    {
+      "id": "UT-07-03",
+      "name": "PM review (triggers >$500k gate check)",
+      "status": "PASS",
+      "note": "pm_review=Approval Required"
+    },
+    {
+      "id": "UT-07-04",
+      "name": "Gate 07-C: Buck approve ROM",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-08-01",
+      "name": "Create SOP 08 cost lookup",
+      "status": "PASS",
+      "note": "id=205"
+    },
+    {
+      "id": "UT-08-02",
+      "name": "Lookup historical cost for trade",
+      "status": "PASS",
+      "note": "min=None, max=None, count=None"
+    },
+    {
+      "id": "UT-08-03",
+      "name": "Add new cost record (from completed project)",
+      "status": "PASS",
+      "note": "added=None"
+    },
+    {
+      "id": "UT-09-01",
+      "name": "Create SOP 09 Budget Review",
+      "status": "PASS",
+      "note": "id=206"
+    },
+    {
+      "id": "UT-09-02",
+      "name": "Revise line item with basis",
+      "status": "PASS",
+      "note": "output=285"
+    },
+    {
+      "id": "UT-09-03",
+      "name": "PM approve budget",
+      "status": "PASS",
+      "note": "status=Approval Required"
+    },
+    {
+      "id": "UT-09-04",
+      "name": "Gate 09-C: Buck approve budget",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-10-01",
+      "name": "Create SOP 10 Allowances",
+      "status": "PASS",
+      "note": "id=207"
+    },
+    {
+      "id": "UT-10-02",
+      "name": "Confirm inputs + start work",
+      "status": "PASS",
+      "note": "status=In Progress"
+    },
+    {
+      "id": "UT-10-03",
+      "name": "Add allowance item ($25k)",
+      "status": "PASS",
+      "note": "output=287, pool_total=None"
+    },
+    {
+      "id": "UT-10-04",
+      "name": "Add alternate item (additive)",
+      "status": "PASS",
+      "note": "output=288"
+    },
+    {
+      "id": "UT-10-05",
+      "name": "Gate 10-C: Buck approve allowance pool >$50k",
+      "status": "PASS",
+      "note": "gate=Gate 10-C, status=Approved"
+    },
+    {
+      "id": "UT-12-01",
+      "name": "Create SOP 12 bid list",
+      "status": "PASS",
+      "note": "id=208"
+    },
+    {
+      "id": "UT-12-02",
+      "name": "Add 3 sub candidates",
+      "status": "PASS",
+      "note": "candidates=3"
+    },
+    {
+      "id": "UT-12-03",
+      "name": "PM approve 3 subs and finalize list",
+      "status": "PASS",
+      "note": "status=Approved, qualified=None"
+    },
+    {
+      "id": "UT-12-04",
+      "name": "MIN_BIDDERS=3 enforcement (1 sub \u2192 blocked)",
+      "status": "PASS",
+      "note": "MIN_BIDDERS enforced: [SC-01] Missing required inputs: Only 1/3 PM-approved subs \u2014 MIN_BIDDERS rule re"
+    },
+    {
+      "id": "UT-13-01",
+      "name": "Create SOP 13 distribution log",
+      "status": "PASS",
+      "note": "id=210"
+    },
+    {
+      "id": "UT-13-02",
+      "name": "Log bid package sent to sub",
+      "status": "PASS",
+      "note": "output=295"
+    },
+    {
+      "id": "UT-13-03",
+      "name": "Confirm receipt by sub",
+      "status": "PASS",
+      "note": "confirmed=None"
+    },
+    {
+      "id": "UT-14-01",
+      "name": "Create SOP 14 bid follow-up log",
+      "status": "PASS",
+      "note": "id=211"
+    },
+    {
+      "id": "UT-14-02",
+      "name": "Log follow-up contact attempt",
+      "status": "PASS",
+      "note": "output=296"
+    },
+    {
+      "id": "UT-14-03",
+      "name": "Update sub response status",
+      "status": "PASS",
+      "note": "updated=None"
+    },
+    {
+      "id": "UT-16-01",
+      "name": "Create SOP 16 Buyout",
+      "status": "PASS",
+      "note": "id=212"
+    },
+    {
+      "id": "UT-16-02",
+      "name": "Set buyout inputs (awarded sub + amount)",
+      "status": "PASS",
+      "note": "status=In Progress"
+    },
+    {
+      "id": "UT-16-03",
+      "name": "Confirm scope statement",
+      "status": "PASS",
+      "note": "scope_confirmed=None"
+    },
+    {
+      "id": "UT-16-04",
+      "name": "Gate 16-C: PM confirm buyout",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-19-01",
+      "name": "Create SOP 19 Subcontract Agreement",
+      "status": "PASS",
+      "note": "id=213"
+    },
+    {
+      "id": "UT-19-02",
+      "name": "Draft scope_of_work section",
+      "status": "PASS",
+      "note": "output=298"
+    },
+    {
+      "id": "UT-19-03",
+      "name": "Verify insurance \u2014 meets HCI minimums",
+      "status": "PASS",
+      "note": "meets_minimums=True"
+    },
+    {
+      "id": "UT-19-04",
+      "name": "Verify insurance \u2014 deficiency detection",
+      "status": "PASS",
+      "note": "deficiencies found: 4"
+    },
+    {
+      "id": "UT-19-05",
+      "name": "Execute subcontract (Gate 19-C path)",
+      "status": "PASS",
+      "note": "code=400, status=Invalid transition: In Progress \u2192 Approved"
+    },
+    {
+      "id": "IT-01",
+      "name": "SOP 04 \u2192 05 chain handoff",
+      "status": "CONDITIONAL",
+      "note": "handoff blocked: "
+    },
+    {
+      "id": "IT-02",
+      "name": "SOP 12 audit trail completeness",
+      "status": "PASS",
+      "note": "audit_trail has 10 events"
+    },
+    {
+      "id": "IT-03",
+      "name": "SOP 16 \u2192 19 handoff chain",
+      "status": "PASS",
+      "note": "SOP 16 id=216 \u2192 Handed Off; SOP 19 id={}"
+    },
+    {
+      "id": "IT-04",
+      "name": "SOP 19 HCI insurance boundary enforcement",
+      "status": "PASS",
+      "note": "at_minimum=PASS=True; below_minimum=FAIL=True"
+    }
+  ]
+}

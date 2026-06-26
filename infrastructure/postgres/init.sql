@@ -229,6 +229,161 @@ CREATE TABLE IF NOT EXISTS drive_sync_log (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 8: LONG LEAD ITEMS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS long_lead_items (
+    id                      SERIAL PRIMARY KEY,
+    project_id              INTEGER REFERENCES projects(id),
+    item_name               TEXT,
+    vendor                  TEXT,
+    lead_time_weeks         INTEGER,
+    order_date              DATE,
+    required_on_site_date   DATE,
+    status                  TEXT DEFAULT 'pending',
+    notes                   TEXT,
+    created_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 8: PROCUREMENT ITEMS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS procurement_items (
+    id              SERIAL PRIMARY KEY,
+    project_id      INTEGER REFERENCES projects(id),
+    item_name       TEXT,
+    vendor          TEXT,
+    po_number       TEXT,
+    amount          NUMERIC,
+    required_date   DATE,
+    status          TEXT DEFAULT 'pending',
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 8: RISKS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS risks (
+    id              SERIAL PRIMARY KEY,
+    project_id      INTEGER REFERENCES projects(id),
+    risk_type       TEXT,
+    severity        TEXT DEFAULT 'medium',
+    description     TEXT,
+    mitigation      TEXT,
+    status          TEXT DEFAULT 'open',
+    identified_date DATE DEFAULT CURRENT_DATE,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 8: HISTORICAL COST RECORDS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS historical_cost_records (
+    id              SERIAL PRIMARY KEY,
+    project_id      INTEGER REFERENCES projects(id),
+    bid_package_id  INTEGER REFERENCES bid_packages(id),
+    csi_division    TEXT,
+    awarded_amount  NUMERIC,
+    final_cost      NUMERIC,
+    variance_pct    NUMERIC,
+    completed_date  DATE,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 8: WORKFLOW EVENTS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS workflow_events (
+    id          SERIAL PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    project_id  INTEGER REFERENCES projects(id),
+    event_type  TEXT NOT NULL,
+    payload     JSONB,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_events_workflow_id ON workflow_events (workflow_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_events_project_id  ON workflow_events (project_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_events_created_at  ON workflow_events (created_at DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 9: DAILY LOGS — extended columns (added via ALTER in Phase 9)
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS manpower               JSONB;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS deliveries             JSONB;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS inspections            JSONB;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS quality_notes          TEXT;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS safety_notes           TEXT;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS subcontractor_progress TEXT;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS constraints            JSONB;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS lookahead              TEXT;
+ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS field_risks            JSONB;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 9: SCHEDULE VARIANCE
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS schedule_variance (
+    id                      SERIAL PRIMARY KEY,
+    project_id              INTEGER REFERENCES projects(id),
+    daily_log_id            INTEGER REFERENCES daily_logs(id),
+    activity_name           TEXT,
+    baseline_status         TEXT,
+    current_status          TEXT,
+    variance_days           INTEGER,
+    variance_pct            NUMERIC,
+    cause                   TEXT,
+    responsible_party       TEXT,
+    risk_level              TEXT,
+    recovery_action         TEXT,
+    decision_needed         TEXT,
+    recommended_notification TEXT,
+    detected_at             TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sched_var_project ON schedule_variance (project_id);
+CREATE INDEX IF NOT EXISTS idx_sched_var_log     ON schedule_variance (daily_log_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 9: RFIS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS rfis (
+    id                      SERIAL PRIMARY KEY,
+    project_id              INTEGER REFERENCES projects(id),
+    rfi_number              TEXT,
+    subject                 TEXT,
+    submitted_by            TEXT,
+    submitted_to            TEXT DEFAULT 'Buck Adams',
+    status                  TEXT DEFAULT 'open',
+    question                TEXT,
+    response                TEXT,
+    submitted_date          DATE,
+    required_response_date  DATE,
+    response_date           DATE,
+    source_email_id         TEXT,
+    created_at              TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_rfis_project ON rfis (project_id);
+CREATE INDEX IF NOT EXISTS idx_rfis_status  ON rfis (status);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PHASE 9: SUBMITTALS
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS submittals (
+    id                      SERIAL PRIMARY KEY,
+    project_id              INTEGER REFERENCES projects(id),
+    submittal_number        TEXT,
+    spec_section            TEXT,
+    description             TEXT,
+    submitted_by            TEXT,
+    status                  TEXT DEFAULT 'pending',
+    submitted_date          DATE,
+    required_approval_date  DATE,
+    approved_date           DATE,
+    source_email_id         TEXT,
+    created_at              TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_submittals_project ON submittals (project_id);
+CREATE INDEX IF NOT EXISTS idx_submittals_status  ON submittals (status);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- SEED DATA
 -- ─────────────────────────────────────────────────────────────────────────────
 INSERT INTO projects (name, address, city, state, status, scope, hubspot_deal_id, gsheet_bid_tracker)

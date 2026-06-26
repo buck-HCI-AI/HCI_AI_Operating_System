@@ -34,7 +34,13 @@ QDRANT_COLLECTION = "drive_memory"
 VECTOR_DIM = 384
 ID_OFFSET = 40000
 
-DB = dict(host="localhost", port=5432, dbname="hci_os", user="hci_admin", password="hci_postgres_2026")
+DB = dict(
+    host=os.environ.get("POSTGRES_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_PORT", 5432)),
+    dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+    user=os.environ.get("POSTGRES_USER", "hci_admin"),
+    password=os.environ.get("POSTGRES_PASSWORD", ""),
+)
 SKIP_DIRS = {"_archive", "__pycache__", ".git"}
 SKIP_EXTS = {".py", ".sh", ".json", ".yaml", ".yml", ".gitignore", ".env", ".log", ".sqlite", ".db"}
 

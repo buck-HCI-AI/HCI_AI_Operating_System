@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCI Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; color: #222; font-size: 14px; }
+
+  /* Header */
+  #header {
+    background: #1a3a5c; color: white; padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100;
+  }
+  #header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  #header .subtitle { font-size: 12px; opacity: 0.7; }
+  #project-select {
+    margin-left: auto; padding: 6px 12px; border-radius: 4px;
+    border: none; font-size: 14px; min-width: 200px;
+  }
+  #status-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: #27ae60;
+    flex-shrink: 0;
+  }
+
+  /* Layout */
+  #main { display: flex; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+  #left  { flex: 0 0 340px; display: flex; flex-direction: column; gap: 12px; }
+  #right { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+  /* Cards */
+  .card {
+    background: white; border-radius: 8px; padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #888; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px;
+  }
+
+  /* Health badge */
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 700; color: white; text-transform: uppercase;
+  }
+  .badge-green  { background: #27ae60; }
+  .badge-yellow { background: #e67e22; }
+  .badge-red    { background: #c0392b; }
+  .badge-gray   { background: #95a5a6; }
+
+  /* Health card */
+  #health-status { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  #health-reason { color: #555; font-size: 13px; }
+  .stat-row { display: flex; gap: 12px; margin-top: 12px; }
+  .stat-box {
+    flex: 1; background: #f8f9fa; border-radius: 6px; padding: 10px 12px; text-align: center;
+  }
+  .stat-num { font-size: 20px; font-weight: 700; color: #1a3a5c; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+  /* Progress bar */
+  .prog-bar-wrap { background: #eee; border-radius: 4px; height: 8px; overflow: hidden; margin: 6px 0; }
+  .prog-bar      { height: 100%; background: #1a3a5c; border-radius: 4px; transition: width 0.5s; }
+
+  /* Action list */
+  .action-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .action-item:last-child { border-bottom: none; }
+  .priority-high   { color: #c0392b; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .priority-medium { color: #e67e22; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .priority-low    { color: #27ae60; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .action-text { color: #333; line-height: 1.4; }
+  .action-meta { color: #888; font-size: 11px; }
+
+  /* Log table */
+  .log-table { width: 100%; border-collapse: collapse; }
+  .log-table th { text-align: left; padding: 6px 8px; background: #f0f2f5; font-size: 11px; color: #888; font-weight: 700; }
+  .log-table td { padding: 6px 8px; border-bottom: 1px solid #f5f5f5; vertical-align: top; }
+  .log-table tr:last-child td { border-bottom: none; }
+
+  /* Risk table */
+  .risk-sev-high     { color: #c0392b; font-weight: 700; }
+  .risk-sev-medium   { color: #e67e22; font-weight: 700; }
+  .risk-sev-critical { color: #7b241c; font-weight: 700; }
+
+  /* Q&A */
+  #qa-form { display: flex; gap: 8px; margin-bottom: 12px; }
+  #qa-input {
+    flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;
+    font-size: 14px; outline: none;
+  }
+  #qa-input:focus { border-color: #1a3a5c; }
+  #qa-btn {
+    padding: 8px 20px; background: #1a3a5c; color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  #qa-btn:hover { background: #2c5282; }
+  #qa-btn:disabled { background: #95a5a6; cursor: default; }
+  #qa-answer {
+    background: #f8f9fa; border-radius: 6px; padding: 12px; min-height: 60px;
+    color: #333; line-height: 1.6; white-space: pre-wrap; font-size: 13px;
+  }
+  #qa-sources { margin-top: 8px; font-size: 11px; color: #888; }
+
+  /* Spinner */
+  .spin {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid #ddd; border-top-color: #1a3a5c;
+    border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Variance */
+  .var-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .var-item:last-child { border-bottom: none; }
+  .var-risk-label { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+
+  /* Empty state */
+  .empty { color: #aaa; font-style: italic; padding: 8px 0; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    #main { flex-direction: column; }
+    #left { flex: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div id="status-dot"></div>
+  <div>
+    <h1>HCI Dashboard</h1>
+    <div class="subtitle">Hendrickson Construction Intelligence</div>
+  </div>
+  <div id="today-date" style="opacity:0.6;font-size:12px"></div>
+  <select id="project-select"><option value="">Loading projects...</option></select>
+</div>
+
+<!-- Main layout -->
+<div id="main">
+
+  <!-- Left column -->
+  <div id="left">
+
+    <!-- Project Health -->
+    <div class="card">
+      <div class="card-title">Project Health</div>
+      <div id="health-status"><span class="badge badge-gray">—</span></div>
+      <div id="health-reason" style="margin-top:6px">Select a project to begin.</div>
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="stat-num" id="stat-bids">—</div>
+          <div class="stat-label">Bids Received</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-pkgs">—</div>
+          <div class="stat-label">Bid Packages</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-risks">—</div>
+          <div class="stat-label">Open Risks</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px">
+          <span>Bid Coverage</span>
+          <span id="bid-pct">—</span>
+        </div>
+        <div class="prog-bar-wrap"><div class="prog-bar" id="bid-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- PM Schedule & Budget -->
+    <div class="card">
+      <div class="card-title">PM Status</div>
+      <table style="width:100%;font-size:13px">
+        <tr>
+          <td style="color:#888;padding:4px 0;width:100px">Schedule</td>
+          <td id="pm-schedule">—</td>
+        </tr>
+        <tr>
+          <td style="color:#888;padding:4px 0">Budget</td>
+          <td id="pm-budget">—</td>
+        </tr>
+        <tr>
+          <td style="color:#888;padding:4px 0">Last Review</td>
+          <td id="pm-last-review" style="font-size:11px">—</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Action Items -->
+    <div class="card">
+      <div class="card-title">Action Items</div>
+      <div id="action-items"><div class="empty">No project selected.</div></div>
+    </div>
+
+    <!-- Decisions Needed -->
+    <div class="card">
+      <div class="card-title">Decisions Needed</div>
+      <div id="decisions-needed"><div class="empty">—</div></div>
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- Right column -->
+  <div id="right">
+
+    <!-- Project Brain Q&A -->
+    <div class="card">
+      <div class="card-title">Ask Project Brain</div>
+      <div id="qa-form">
+        <input id="qa-input" type="text" placeholder="Ask anything about this project…" disabled>
+        <button id="qa-btn" onclick="askBrain()" disabled>Ask</button>
+      </div>
+      <div id="qa-answer" style="display:none"></div>
+      <div id="qa-sources"></div>
+    </div>
+
+    <!-- Recent Daily Logs -->
+    <div class="card">
+      <div class="card-title">Recent Field Activity</div>
+      <div id="daily-logs"><div class="empty">No project selected.</div></div>
+    </div>
+
+    <!-- Schedule Variance -->
+    <div class="card">
+      <div class="card-title">Schedule Variance</div>
+      <div id="variance"><div class="empty">No variance data yet.</div></div>
+    </div>
+
+    <!-- Open Risks -->
+    <div class="card">
+      <div class="card-title">Open Risks</div>
+      <div id="risks-list"><div class="empty">No project selected.</div></div>
+    </div>
+
+  </div><!-- /right -->
+</div><!-- /main -->
+
+<script>
+const API = '/api/v1';
+const API_KEY = 'hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c';
+const HEADERS = {'X-API-Key': API_KEY};
+let currentProject = null;
+
+// ── Init ────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('today-date').textContent =
+    new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+
+  const sel = document.getElementById('project-select');
+  sel.addEventListener('change', e => {
+    currentProject = e.target.value;
+    if (currentProject) loadProject(currentProject);
+  });
+
+  try {
+    const res  = await fetch(`${API}/projects`, {headers: HEADERS});
+    const data = await res.json();
+    const projects = data.projects || data;
+    sel.innerHTML = '<option value="">Select project…</option>' +
+      projects.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    if (projects.length === 1) {
+      sel.value     = projects[0].name;
+      currentProject = projects[0].name;
+      loadProject(currentProject);
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">Error loading projects</option>';
+  }
+});
+
+// ── Load project data ────────────────────────────────────────────────────────
+
+async function loadProject(project) {
+  // Reset
+  setHealth('—', 'Loading…', 'gray');
+  document.getElementById('daily-logs').innerHTML = '<span class="spin"></span>';
+  document.getElementById('risks-list').innerHTML  = '<span class="spin"></span>';
+  document.getElementById('variance').innerHTML     = '<span class="spin"></span>';
+  document.getElementById('action-items').innerHTML = '<span class="spin"></span>';
+  document.getElementById('qa-input').disabled  = true;
+  document.getElementById('qa-btn').disabled    = true;
+  document.getElementById('qa-answer').style.display = 'none';
+
+  const [snapRes, pmRes, schedRes, riskRes] = await Promise.allSettled([
+    fetch(`${API}/services/project-brain/${encodeURIComponent(project)}`,        {headers: HEADERS}),
+    fetch(`${API}/workflows/wf-pm/status/${encodeURIComponent(project)}`,        {headers: HEADERS}),
+    fetch(`${API}/services/schedule-intelligence/${encodeURIComponent(project)}`, {headers: HEADERS}),
+    fetch(`${API}/services/risk-intelligence/${encodeURIComponent(project)}`,     {headers: HEADERS}),
+  ]);
+
+  const snap  = snapRes.status  === 'fulfilled' ? await snapRes.value.json()  : {};
+  const pm    = pmRes.status    === 'fulfilled' ? await pmRes.value.json()    : {};
+  const sched = schedRes.status === 'fulfilled' ? await schedRes.value.json() : {};
+  const risks = riskRes.status  === 'fulfilled' ? await riskRes.value.json()  : {};
+
+  // Health
+  const pmData = pm.data || {};
+  const health = pmData.overall_health || '—';
+  setHealth(health, pmData.health_reason || 'No PM review on file.', health);
+
+  // PM status
+  document.getElementById('pm-schedule').textContent   = pmData.schedule_status || '—';
+  document.getElementById('pm-budget').textContent     = pmData.budget_status   || '—';
+  document.getElementById('pm-last-review').textContent = pm.last_review ? pm.last_review.substring(0,16) : 'Never';
+
+  // Bid stats
+  const bids = snap.bid_packages || [];
+  const totalPkgs = bids.length;
+  const totalBidsIn = bids.reduce((acc, bp) => acc + (bp.entry_count || 0), 0);
+  document.getElementById('stat-pkgs').textContent = totalPkgs;
+  document.getElementById('stat-bids').textContent = totalBidsIn;
+  const pct = totalPkgs > 0 ? Math.round(100 * totalBidsIn / totalPkgs) : 0;
+  document.getElementById('bid-pct').textContent   = `${pct}%`;
+  document.getElementById('bid-bar').style.width   = `${Math.min(pct,100)}%`;
+
+  // Risk count
+  const openRisks = (risks.open_risks || []).length;
+  document.getElementById('stat-risks').textContent = openRisks;
+
+  // Action items
+  const actions = pmData.action_items || [];
+  document.getElementById('action-items').innerHTML = actions.length ? actions.map(a => `
+    <div class="action-item">
+      <div class="priority-${a.priority || 'low'}">${(a.priority||'low').toUpperCase()} · ${a.due || ''}</div>
+      <div class="action-text">${a.item || ''}</div>
+      <div class="action-meta">${a.owner || ''}</div>
+    </div>`).join('') : '<div class="empty">No action items.</div>';
+
+  // Decisions needed
+  const decs = pmData.decisions_needed || [];
+  document.getElementById('decisions-needed').innerHTML = decs.length
+    ? decs.map(d => `<div style="padding:6px 0;border-bottom:1px solid #f0f0f0">⚡ ${d}</div>`).join('')
+    : '<div class="empty">No decisions pending.</div>';
+
+  // Recent daily logs
+  const logs = sched.recent_progress || snap.recent_daily_logs || [];
+  document.getElementById('daily-logs').innerHTML = logs.length ? `
+    <table class="log-table">
+      <tr>
+        <th>Date</th><th>Work Performed</th><th>Weather</th>
+      </tr>
+      ${logs.slice(0,7).map(l => `
+      <tr>
+        <td style="white-space:nowrap;font-size:12px">${l.log_date||''}</td>
+        <td>${(l.work_performed||'').substring(0,120)}${(l.work_performed||'').length>120?'…':''}</td>
+        <td style="font-size:12px;white-space:nowrap">${l.weather||'—'}</td>
+      </tr>`).join('')}
+    </table>` : '<div class="empty">No daily logs yet. Submit one via WF-SUPER.</div>';
+
+  // Schedule variance
+  const variance = sched.recent_variance || [];
+  document.getElementById('variance').innerHTML = variance.length ? variance.map(v => `
+    <div class="var-item">
+      <span class="var-risk-label" style="color:${riskColor(v.risk_level)}">${(v.risk_level||'').toUpperCase()}</span>
+      <b style="margin-left:8px">${v.activity_name || ''}</b>
+      <div style="color:#555;font-size:12px;margin-top:2px">${v.cause || ''}</div>
+      ${v.recovery_action ? `<div style="color:#27ae60;font-size:12px">↳ ${v.recovery_action}</div>` : ''}
+      <div style="color:#aaa;font-size:11px">${v.detected_at ? v.detected_at.substring(0,10) : ''}</div>
+    </div>`).join('') : '<div class="empty">No schedule variance detected.</div>';
+
+  // Risks
+  const riskList = risks.open_risks || [];
+  document.getElementById('risks-list').innerHTML = riskList.length ? `
+    <table class="log-table">
+      <tr><th>Severity</th><th>Description</th><th>Type</th><th>Date</th></tr>
+      ${riskList.slice(0,10).map(r => `
+      <tr>
+        <td><span class="risk-sev-${r.severity||'medium'}">${(r.severity||'').toUpperCase()}</span></td>
+        <td>${(r.description||'').substring(0,100)}</td>
+        <td style="font-size:11px;color:#888">${r.risk_type||''}</td>
+        <td style="font-size:11px;color:#aaa;white-space:nowrap">${r.identified_date||''}</td>
+      </tr>`).join('')}
+    </table>` : '<div class="empty">No open risks.</div>';
+
+  // Enable Q&A
+  document.getElementById('qa-input').disabled = false;
+  document.getElementById('qa-btn').disabled   = false;
+  document.getElementById('qa-input').onkeydown = e => { if (e.key === 'Enter') askBrain(); };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function setHealth(health, reason, variant) {
+  const colors = { green:'#27ae60', yellow:'#e67e22', red:'#c0392b', gray:'#95a5a6' };
+  const v = (variant||'').toLowerCase();
+  const color = colors[v] || colors.gray;
+  const label = health === '—' ? '—' : health.toUpperCase();
+  document.getElementById('health-status').innerHTML =
+    `<span class="badge" style="background:${color};font-size:16px;padding:4px 16px">${label}</span>`;
+  document.getElementById('health-reason').textContent = reason || '';
+}
+
+function riskColor(level) {
+  return {critical:'#7b241c', high:'#c0392b', medium:'#e67e22', low:'#27ae60'}[level] || '#888';
+}
+
+// ── Project Brain Q&A ────────────────────────────────────────────────────────
+
+async function askBrain() {
+  const input = document.getElementById('qa-input');
+  const btn   = document.getElementById('qa-btn');
+  const ansEl = document.getElementById('qa-answer');
+  const srcEl = document.getElementById('qa-sources');
+  const q = input.value.trim();
+  if (!q || !currentProject) return;
+
+  btn.disabled    = true;
+  btn.textContent = '…';
+  ansEl.style.display = 'block';
+  ansEl.textContent   = '';
+  ansEl.innerHTML     = '<span class="spin"></span> Thinking…';
+  srcEl.textContent   = '';
+
+  try {
+    const res  = await fetch(`${API}/services/project-brain/${encodeURIComponent(currentProject)}/query`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-API-Key': API_KEY},
+      body: JSON.stringify({question: q})
+    });
+    const data = await res.json();
+    ansEl.textContent = data.answer || data.error || JSON.stringify(data);
+    if (data.sources && data.sources.length) {
+      srcEl.textContent = `Sources: ${data.sources.slice(0,3).map(s => s.text?.substring(0,60)+'…').join(' · ')}`;
+    }
+  } catch(e) {
+    ansEl.textContent = `Error: ${e.message}`;
+  }
+  btn.disabled    = false;
+  btn.textContent = 'Ask';
+}
+</script>
+</body>
+</html>

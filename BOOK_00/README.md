@@ -1,6 +1,6 @@
-# BOOK_00 — HCI AI Operating System Canonical Engineering Manual
-**The permanent engineering record. Architecture evolves here; implementation follows it.**
-Version: 1.0 | Started: 2026-06-24
+# BOOK_00 — HCI AI Operating System Master Specification
+**Version:** 2.0 | **Last Updated:** 2026-06-25  
+**Status:** Active — single source of implementation truth. PDFs are release artifacts; this is the permanent record.
 
 ---
 
@@ -15,20 +15,27 @@ It is NOT a status document (that's `AI_TEAM/00_STATUS.md`). It is NOT a task li
 
 ---
 
-## Contents
+## Sections
 
-```
-BOOK_00/
-├── README.md                  ← this file (index + overview)
-├── architecture/              ← system architecture diagrams and specs
-│   └── (ChatGPT adds files here as architecture evolves)
-├── docs/                      ← standards, protocols, collaboration rules
-│   └── AI_COLLABORATION_STANDARD_v1.md
-├── workflows/                 ← workflow design specs (not n8n JSON — the intent)
-│   └── (ChatGPT adds workflow specs here)
-└── adr/                       ← Architecture Decision Records (numbered)
-    └── (ADR-001, ADR-002, etc.)
-```
+| # | File | Title | Status |
+|---|------|-------|--------|
+| 00 | [00_EXECUTIVE_OVERVIEW.md](00_EXECUTIVE_OVERVIEW.md) | Executive Overview | ✅ |
+| 01 | [01_REPOSITORY_GOVERNANCE.md](01_REPOSITORY_GOVERNANCE.md) | Repository Governance and AI Collaboration | ✅ |
+| 02 | [02_INFRASTRUCTURE.md](02_INFRASTRUCTURE.md) | Infrastructure Architecture | ✅ |
+| 03 | [03_DATA_ARCHITECTURE.md](03_DATA_ARCHITECTURE.md) | Data Architecture | ✅ |
+| 04 | [04_STORAGE.md](04_STORAGE.md) | Storage and Document Lifecycle | ✅ |
+| 05 | [05_KNOWLEDGE_INGESTION.md](05_KNOWLEDGE_INGESTION.md) | Knowledge Ingestion and Document Intelligence | ✅ |
+| 06 | [06_API_LAYER.md](06_API_LAYER.md) | API Layer | ✅ |
+| 07 | [07_INTELLIGENCE_SERVICES.md](07_INTELLIGENCE_SERVICES.md) | Construction Intelligence Services | ✅ |
+| 08 | [08_WORKFLOW_ENGINE.md](08_WORKFLOW_ENGINE.md) | Workflow Engine | ✅ Spec |
+| 09 | [09_STANDARD_WORKFLOWS.md](09_STANDARD_WORKFLOWS.md) | Standard Workflows | ✅ |
+| 10 | [10_PM_WORKFLOW.md](10_PM_WORKFLOW.md) | Project Manager Workflow | ✅ Spec |
+| 11 | [11_SUPERINTENDENT_WORKFLOW.md](11_SUPERINTENDENT_WORKFLOW.md) | Superintendent Workflow | ✅ Spec |
+| 12 | [12_DAILY_LOGS_SCHEDULE.md](12_DAILY_LOGS_SCHEDULE.md) | Daily Logs, Schedule Intelligence, Status Reporting | ✅ Spec |
+| 13 | [13_REPORTING.md](13_REPORTING.md) | Reporting and Dashboards | ✅ Spec |
+| 14 | [14_DEPLOYMENT.md](14_DEPLOYMENT.md) | Deployment, Backup, and Operations | ✅ |
+| 15 | [15_ROADMAP.md](15_ROADMAP.md) | Roadmap and Implementation Status | ✅ |
+| 16 | [16_APPENDIX.md](16_APPENDIX.md) | Directive History and Source Artifacts | ✅ |
 
 ---
 

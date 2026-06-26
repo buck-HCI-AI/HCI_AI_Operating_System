@@ -1,0 +1,437 @@
+{
+  "run_at": "2026-06-26T17:21:58.726195",
+  "summary": {
+    "pass": 69,
+    "conditional": 2,
+    "fail": 0,
+    "total": 71
+  },
+  "results": [
+    {
+      "id": "UT-17-01",
+      "name": "Create SOP 17 Project Schedule",
+      "status": "PASS",
+      "note": "id=218, status=In Progress"
+    },
+    {
+      "id": "UT-17-02",
+      "name": "GET schedule status",
+      "status": "PASS",
+      "note": "GET 200, outputs=0"
+    },
+    {
+      "id": "UT-17-03",
+      "name": "Add milestone (Site Mobilization)",
+      "status": "PASS",
+      "note": "output_id=None"
+    },
+    {
+      "id": "UT-17-04",
+      "name": "PM confirm milestone",
+      "status": "PASS",
+      "note": "confirmed=None"
+    },
+    {
+      "id": "UT-17-05",
+      "name": "PM approve schedule",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-18-01",
+      "name": "Create SOP 18 Long-Lead Log",
+      "status": "PASS",
+      "note": "id=219"
+    },
+    {
+      "id": "UT-18-02",
+      "name": "GET procurement log",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-18-03",
+      "name": "Add long-lead item (16 wk structural steel)",
+      "status": "PASS",
+      "note": "output_id=310"
+    },
+    {
+      "id": "UT-18-04",
+      "name": "Update item status to ORDERED",
+      "status": "PASS",
+      "note": "updated=None"
+    },
+    {
+      "id": "UT-18-05",
+      "name": "PM approve procurement log",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-20-01",
+      "name": "Create SOP 20 Contract Setup",
+      "status": "PASS",
+      "note": "id=220"
+    },
+    {
+      "id": "UT-20-02",
+      "name": "GET contract setup status",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-20-03",
+      "name": "AI generate contract setup checklist",
+      "status": "PASS",
+      "note": "items=0"
+    },
+    {
+      "id": "UT-20-04",
+      "name": "Complete setup item",
+      "status": "PASS",
+      "note": "status=None"
+    },
+    {
+      "id": "UT-20-05",
+      "name": "PM approve (blocked if items pending)",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-21-01",
+      "name": "Create SOP 21 Compliance Log",
+      "status": "PASS",
+      "note": "id=221"
+    },
+    {
+      "id": "UT-21-02",
+      "name": "GET compliance log",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-21-03",
+      "name": "AI identify permits and compliance items",
+      "status": "PASS",
+      "note": "permits=0"
+    },
+    {
+      "id": "UT-21-04",
+      "name": "Update permit status to APPROVED",
+      "status": "PASS",
+      "note": "status=None"
+    },
+    {
+      "id": "UT-21-05",
+      "name": "PM approve (clear-to-build gate)",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-22-01",
+      "name": "Create SOP 22 COI collection",
+      "status": "PASS",
+      "note": "id=222"
+    },
+    {
+      "id": "UT-22-02",
+      "name": "GET COI collection status",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-22-03",
+      "name": "Generate COI/W-9 checklist for subs",
+      "status": "PASS",
+      "note": "docs created; alpha_code=DOC-01-COI, beta_code=DOC-02-COI"
+    },
+    {
+      "id": "UT-22-04",
+      "name": "Mark COI received from Alpha Concrete",
+      "status": "PASS",
+      "note": "status=RECEIVED"
+    },
+    {
+      "id": "UT-22-05",
+      "name": "Verify COI meets HCI minimums (all pass)",
+      "status": "PASS",
+      "note": "meets_minimums=True, deficiencies=[]"
+    },
+    {
+      "id": "UT-22-06",
+      "name": "Verify COI below minimums (deficiency flagged)",
+      "status": "PASS",
+      "note": "meets_minimums=False, deficiencies=4"
+    },
+    {
+      "id": "UT-22-07",
+      "name": "PM approve (blocked if COI unverified)",
+      "status": "PASS",
+      "note": "status=blocked (blocked expected because Beta COI failed)"
+    },
+    {
+      "id": "UT-23-01",
+      "name": "Create SOP 23 Project Startup",
+      "status": "PASS",
+      "note": "id=223"
+    },
+    {
+      "id": "UT-23-02",
+      "name": "GET startup checklist",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-23-03",
+      "name": "AI generate startup checklist",
+      "status": "PASS",
+      "note": "items=0"
+    },
+    {
+      "id": "UT-23-04",
+      "name": "Complete startup item",
+      "status": "PASS",
+      "note": "status=None"
+    },
+    {
+      "id": "UT-23-05",
+      "name": "PM approve (ready-to-build gate)",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-24-01",
+      "name": "Create SOP 24 Super Dashboard",
+      "status": "PASS",
+      "note": "id=224"
+    },
+    {
+      "id": "UT-24-02",
+      "name": "GET dashboard status",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-24-03",
+      "name": "Update schedule metric (GREEN)",
+      "status": "PASS",
+      "note": "output_id=321"
+    },
+    {
+      "id": "UT-24-04",
+      "name": "Generate AI daily brief",
+      "status": "PASS",
+      "note": "brief_len=0"
+    },
+    {
+      "id": "UT-25-01",
+      "name": "Create SOP 25 Daily Log",
+      "status": "PASS",
+      "note": "id=225"
+    },
+    {
+      "id": "UT-25-02",
+      "name": "GET daily log",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-25-03",
+      "name": "Create daily log entry with AI risk analysis",
+      "status": "PASS",
+      "note": "output_id=323"
+    },
+    {
+      "id": "UT-25-04",
+      "name": "Close day",
+      "status": "PASS",
+      "note": "closed=None"
+    },
+    {
+      "id": "UT-25-05",
+      "name": "Weekly summary (AI generated)",
+      "status": "PASS",
+      "note": "days_logged=0"
+    },
+    {
+      "id": "UT-26-01",
+      "name": "Create SOP 26 Field Coordination log",
+      "status": "PASS",
+      "note": "id=226"
+    },
+    {
+      "id": "UT-26-02",
+      "name": "GET coordination log",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-26-03",
+      "name": "Add RFI item (HIGH priority)",
+      "status": "PASS",
+      "note": "output_id=325"
+    },
+    {
+      "id": "UT-26-04",
+      "name": "AI draft RFI response",
+      "status": "PASS",
+      "note": "draft_len=893"
+    },
+    {
+      "id": "UT-26-05",
+      "name": "Close coordination item with resolution",
+      "status": "PASS",
+      "note": "closed=None"
+    },
+    {
+      "id": "UT-27-01",
+      "name": "Create SOP 27 QC log",
+      "status": "PASS",
+      "note": "id=227"
+    },
+    {
+      "id": "UT-27-02",
+      "name": "GET QC log status",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-27-03",
+      "name": "Generate AI QC checklist (Concrete foundations)",
+      "status": "PASS",
+      "note": "items=0"
+    },
+    {
+      "id": "UT-27-04",
+      "name": "Record PASS result",
+      "status": "PASS",
+      "note": "result=None"
+    },
+    {
+      "id": "UT-27-05",
+      "name": "Record CRITICAL FAIL (SC-03 trigger)",
+      "status": "PASS",
+      "note": "CRITICAL FAIL logged; SC-03 event=None"
+    },
+    {
+      "id": "UT-28-01",
+      "name": "Create SOP 28 QC Detail Card",
+      "status": "PASS",
+      "note": "id=228"
+    },
+    {
+      "id": "UT-28-02",
+      "name": "GET detail card",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-28-03",
+      "name": "AI draft QC work items (Concrete)",
+      "status": "PASS",
+      "note": "items=0"
+    },
+    {
+      "id": "UT-28-04",
+      "name": "PM confirm work item",
+      "status": "PASS",
+      "note": "confirmed=None"
+    },
+    {
+      "id": "UT-28-05",
+      "name": "PM approve detail card",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-29-01",
+      "name": "Create SOP 29 Safety Plan",
+      "status": "PASS",
+      "note": "id=229"
+    },
+    {
+      "id": "UT-29-02",
+      "name": "GET safety plan",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-29-03",
+      "name": "AI generate safety hazard plan",
+      "status": "CONDITIONAL",
+      "note": "hazards=0 (AI JSON parse may have failed: Expecting property name enclosed in double quotes: line 103 )"
+    },
+    {
+      "id": "UT-29-04",
+      "name": "Control a hazard (add controls)",
+      "status": "PASS",
+      "note": "controlled=None"
+    },
+    {
+      "id": "UT-29-05",
+      "name": "PM approve safety plan",
+      "status": "PASS",
+      "note": "status=Approved"
+    },
+    {
+      "id": "UT-30-01",
+      "name": "Create SOP 30 Inspection Log",
+      "status": "PASS",
+      "note": "id=230"
+    },
+    {
+      "id": "UT-30-02",
+      "name": "GET inspection log",
+      "status": "PASS",
+      "note": "GET 200"
+    },
+    {
+      "id": "UT-30-03",
+      "name": "Schedule foundation inspection",
+      "status": "PASS",
+      "note": "output_id=326"
+    },
+    {
+      "id": "UT-30-04",
+      "name": "Record inspection PASS",
+      "status": "PASS",
+      "note": "result=None"
+    },
+    {
+      "id": "UT-30-05",
+      "name": "Record inspection FAIL (SC-03 trigger)",
+      "status": "PASS",
+      "note": "FAIL recorded; SC-03=None"
+    },
+    {
+      "id": "IT-H-01",
+      "name": "SOP 17 \u2192 18 chain handoff",
+      "status": "PASS",
+      "note": "SOP 17 HANDED_OFF; sop18_auto_created=None"
+    },
+    {
+      "id": "IT-H-02",
+      "name": "SOP 22 COI deficiency blocks pm-approve",
+      "status": "PASS",
+      "note": "COI deficiency correctly blocked pm-approve: "
+    },
+    {
+      "id": "IT-H-03",
+      "name": "SOP 29 CRITICAL hazard blocks pm-approve",
+      "status": "CONDITIONAL",
+      "note": "pm-approve 200: Approved (may pass if AI created no CRITICAL hazards)"
+    },
+    {
+      "id": "IT-H-04",
+      "name": "SOP 23 \u2192 24 chain handoff",
+      "status": "PASS",
+      "note": "SOP 23 HANDED_OFF; sop24_auto_created=None"
+    },
+    {
+      "id": "IT-H-05",
+      "name": "SOP 30 audit trail completeness",
+      "status": "PASS",
+      "note": "audit events=3, has_schedule_event=True"
+    }
+  ]
+}

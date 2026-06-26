@@ -1,0 +1,244 @@
+{
+  "suite": "platform_integration",
+  "run_at": "2026-06-26T17:38:30.761910",
+  "total": 39,
+  "passed": 39,
+  "failed": 0,
+  "conditional": 0,
+  "results": [
+    {
+      "id": "PT-00-01",
+      "name": "Platform overview lists all 5 capabilities",
+      "status": "PASS",
+      "detail": "All 5 capabilities registered"
+    },
+    {
+      "id": "PT-01-01",
+      "name": "List users returns 6 seeded actors with all roles",
+      "status": "PASS",
+      "detail": "13 users, roles: ['accounting', 'administrator', 'ai_agent', 'architect', 'client', 'contracts', 'engineer', 'estimator', 'owner', 'pm', 'superintendent', 'system']"
+    },
+    {
+      "id": "PT-01-02",
+      "name": "Buck Adams has owner role with approve_budget permission",
+      "status": "PASS",
+      "detail": "Buck=owner, 7 permissions"
+    },
+    {
+      "id": "PT-01-03",
+      "name": "PM does not have approve_budget permission",
+      "status": "PASS",
+      "detail": "PM correctly denied approve_budget"
+    },
+    {
+      "id": "PT-01-04",
+      "name": "Buck Adams has approve_budget permission",
+      "status": "PASS",
+      "detail": "Buck correctly allowed approve_budget"
+    },
+    {
+      "id": "PT-01-05",
+      "name": "Create new platform user and retrieve it",
+      "status": "PASS",
+      "detail": "New user created and retrievable"
+    },
+    {
+      "id": "PT-01-06",
+      "name": "List roles returns all defined roles",
+      "status": "PASS",
+      "detail": "12 roles with permission counts"
+    },
+    {
+      "id": "PT-01-07",
+      "name": "Buck authority level exceeds PM authority level",
+      "status": "PASS",
+      "detail": "Buck=5 > PM=3"
+    },
+    {
+      "id": "PT-02-01",
+      "name": "Publish domain event returns event_id",
+      "status": "PASS",
+      "detail": "Event published, id=133"
+    },
+    {
+      "id": "PT-02-02",
+      "name": "Publish multiple event types succeeds",
+      "status": "PASS",
+      "detail": "Published 3 more events, ids=[134, 135, 136]"
+    },
+    {
+      "id": "PT-02-03",
+      "name": "Query events by entity filters returns correct events",
+      "status": "PASS",
+      "detail": "10 events retrieved for entity 9999"
+    },
+    {
+      "id": "PT-02-04",
+      "name": "Query events by project_id works",
+      "status": "PASS",
+      "detail": "20 events for project_id=1"
+    },
+    {
+      "id": "PT-02-05",
+      "name": "SOP-specific event query endpoint works",
+      "status": "PASS",
+      "detail": "12 events for SOP instance 9999"
+    },
+    {
+      "id": "PT-03-01",
+      "name": "Create approval_required notification",
+      "status": "PASS",
+      "detail": "Approval notification created, id=14"
+    },
+    {
+      "id": "PT-03-02",
+      "name": "Create work_stopped, ai_draft_ready, handoff_ready notifications",
+      "status": "PASS",
+      "detail": "3 notification types created"
+    },
+    {
+      "id": "PT-03-03",
+      "name": "Get notifications for recipient returns correct count",
+      "status": "PASS",
+      "detail": "12 total, 4 unread"
+    },
+    {
+      "id": "PT-03-04",
+      "name": "Unread-only filter returns only unread notifications",
+      "status": "PASS",
+      "detail": "4 unread notifs, all_unread=True"
+    },
+    {
+      "id": "PT-03-05",
+      "name": "Mark single notification as read",
+      "status": "PASS",
+      "detail": "Notification 14 marked read; 3 still unread"
+    },
+    {
+      "id": "PT-03-06",
+      "name": "Mark all read leaves 0 unread for recipient",
+      "status": "PASS",
+      "detail": "Marked 3 read; 0 remaining"
+    },
+    {
+      "id": "PT-03-07",
+      "name": "All-unread summary shows recipients with unread notifications",
+      "status": "PASS",
+      "detail": "Summary: {'Buck Adams': 6}"
+    },
+    {
+      "id": "PT-04-01",
+      "name": "Write audit record returns audit_id",
+      "status": "PASS",
+      "detail": "Audit record written, id=12"
+    },
+    {
+      "id": "PT-04-02",
+      "name": "Write audit records from multiple sources",
+      "status": "PASS",
+      "detail": "3 sources (workflow, notification, identity) logged"
+    },
+    {
+      "id": "PT-04-03",
+      "name": "Query audit by source=sop returns only sop records",
+      "status": "PASS",
+      "detail": "3 sop records, all_sop=True"
+    },
+    {
+      "id": "PT-04-04",
+      "name": "Query audit by actor returns actor's records",
+      "status": "PASS",
+      "detail": "4 records attributed to Buck Adams"
+    },
+    {
+      "id": "PT-04-05",
+      "name": "SOP audit trail endpoint returns combined event view",
+      "status": "PASS",
+      "detail": "SOP 9999 trail: 3 total events, 3 platform"
+    },
+    {
+      "id": "PT-04-06",
+      "name": "Project timeline endpoint returns multi-source event view",
+      "status": "PASS",
+      "detail": "Project 1 timeline: 139 events in last 24h"
+    },
+    {
+      "id": "PT-04-07",
+      "name": "Audit summary returns event counts by source",
+      "status": "PASS",
+      "detail": "24h summary: {'sop': 6, 'identity': 3, 'notification': 3, 'workflow': 3}"
+    },
+    {
+      "id": "PT-04-08",
+      "name": "Audit query with since_hours filter works",
+      "status": "PASS",
+      "detail": "15 audit events in last hour"
+    },
+    {
+      "id": "PT-05-01",
+      "name": "Search 'concrete subcontractor' auto-routes to vendors",
+      "status": "PASS",
+      "detail": "10 results, sources=['vendors']"
+    },
+    {
+      "id": "PT-05-02",
+      "name": "Search 'Eastwood' with sources=['projects'] finds Eastwood project",
+      "status": "PASS",
+      "detail": "1 projects found; first='64 Eastwood \u2014 64 Eastwood Dr. (active)'"
+    },
+    {
+      "id": "PT-05-03",
+      "name": "Search SOPs by status returns results",
+      "status": "PASS",
+      "detail": "10 SOP instances found (may be 0 if none match filter)"
+    },
+    {
+      "id": "PT-05-04",
+      "name": "GET /search/vendors shortcut endpoint works",
+      "status": "PASS",
+      "detail": "10 vendors matching 'aspen'"
+    },
+    {
+      "id": "PT-05-05",
+      "name": "GET /search/sops shortcut endpoint works",
+      "status": "PASS",
+      "detail": "10 SOP instances for Francis"
+    },
+    {
+      "id": "PT-05-06",
+      "name": "Explicit sources override auto-detection",
+      "status": "PASS",
+      "detail": "Explicit sources respected: ['risks', 'sops']"
+    },
+    {
+      "id": "PT-05-07",
+      "name": "Multi-source search completes without Postgres errors",
+      "status": "PASS",
+      "detail": "20 results, errors=None"
+    },
+    {
+      "id": "PT-IT-01",
+      "name": "Full approval flow: permission check \u2192 event \u2192 notification \u2192 audit",
+      "status": "PASS",
+      "detail": "Full flow complete: event=137, notif=19, audit=16, Buck_unread=7"
+    },
+    {
+      "id": "PT-IT-02",
+      "name": "Search vendor then search related SOPs",
+      "status": "PASS",
+      "detail": "Vendor 'Architectural Concrete Finishes' found; SOP search returned 0 results"
+    },
+    {
+      "id": "PT-IT-03",
+      "name": "Event bus events persist and are queryable after publish",
+      "status": "PASS",
+      "detail": "10 persisted sop.status_changed events retrievable"
+    },
+    {
+      "id": "PT-IT-04",
+      "name": "Audit trail aggregates events from multiple sources",
+      "status": "PASS",
+      "detail": "12 records from sources: {'workflow', 'identity', 'sop', 'notification'}"
+    }
+  ]
+}

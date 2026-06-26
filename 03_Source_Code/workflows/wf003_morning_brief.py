@@ -19,8 +19,14 @@ from datetime import date
 from hubspot import get_overdue_tasks
 from microsoft_graph import list_inbox, send_email
 
-DB = dict(host="localhost", port=5432, dbname="hci_os", user="hci_admin", password="hci_postgres_2026")
-BUCK_EMAIL = ("Buck Adams", "buck@hendricksoninc.com")
+DB = dict(
+    host=os.environ.get("POSTGRES_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_PORT", 5432)),
+    dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+    user=os.environ.get("POSTGRES_USER", "hci_admin"),
+    password=os.environ.get("POSTGRES_PASSWORD", ""),
+)
+BUCK_EMAIL = ("Buck Adams", os.environ.get("BUCK_EMAIL", "buck@ahmaspen.com"))
 
 
 def _pg(sql, params=None):

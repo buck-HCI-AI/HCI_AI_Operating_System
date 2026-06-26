@@ -39,6 +39,34 @@ Most recent first.
 
 ---
 
+## DEC-007 — Workflow Consolidation: two automation stacks coexist (2026-06-25)
+**Decision:** Python/FastAPI workflows (WF-001 through WF-006) and n8n (WF-007) run in parallel. Do not merge them. n8n WF-007 migrates to Postgres in Phase 9.4; new workflows are Python only.
+**Rationale:** WF-007 is live and working. Rewriting it in Python before Postgres has bid data would break Buck's daily bid leveling with no benefit.
+**Impact:** New workflows = Python. WF-007 = n8n until Phase 9.4.
+
+---
+
+## DEC-006 — service.py renamed to {name}_svc.py (2026-06-25)
+**Decision:** Each service implementation file is named `{service_name}_svc.py`, not `service.py`.
+**Rationale:** Python's sys.modules caches the first module loaded as 'service'. All 9 services had the same filename, causing import collisions when loaded by FastAPI.
+**Impact:** All routes.py files import from `{name}_svc` not `service`.
+
+---
+
+## DEC-005 — resolve_project_id() instead of project_number column (2026-06-25)
+**Decision:** Added `resolve_project_id(project_number)` to BaseIntelligenceService. Extracts numeric prefix from short code ("64EW" → "64"), matches on projects.name ILIKE.
+**Rationale:** The projects table has no project_number column. Short codes like "64EW" are user-facing identifiers only.
+**Impact:** All intelligence services use resolve_project_id() for project lookup.
+
+---
+
+## DEC-004 — BOOK_00 as single source of truth (2026-06-25)
+**Decision:** BOOK_00 is the master specification. PDFs in 01_Engineering_Library/ are source artifacts. docs/ has inventory/sequence/overlap docs. AI_TEAM/ has live state. No architecture docs outside these locations.
+**Rationale:** Specs were scattered across architecture/, BOOK_00/architecture/, docs/, workflows/, AI_TEAM/ — creating confusion about what was authoritative.
+**Impact:** All future specs go in BOOK_00 sections. AI_TEAM/ is status, not spec.
+
+---
+
 ## DEC-003 — HubSpot auth: use value field directly (2026-06-24)
 **Decision:** HubSpot credential `value` field already contains the full `Bearer pat-na2-...` string. Do NOT prepend `"Bearer "`.
 **Rationale:** n8n stores it with prefix. Adding `f"Bearer {token}"` caused 401 errors.
