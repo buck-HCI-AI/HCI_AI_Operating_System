@@ -202,3 +202,65 @@ Houzz is Hendrickson Construction's field execution platform. The Houzz Browser 
 | HZ-011 | Houzz Photo Intelligence Extractor | Sprint 5 |
 | HZ-012 | Superintendent Daily Log Draft Assistant | Sprint 8 |
 | HZ-013 | Full Houzz Intelligence Pipeline — Production | Sprint 9 |
+
+
+---
+
+## Workstream: Program Repository Integration
+
+**Added:** 2026-06-26 | **Documents:** Root level
+
+### Overview
+
+The Program Repository has been formally designated as the HCI AI control layer. This workstream establishes the coordination architecture between the governance layer (this repository) and all implementation work (Claude Code, n8n, external systems).
+
+**Core Principle:** One repository. One governance layer. One sprint backlog. One truth.
+
+### Documents
+
+| File | Purpose |
+|---|---|
+| PROGRAM_REPOSITORY_STATUS.md | Current state, role, and health of this repository |
+| PROGRAM_REPOSITORY_INVENTORY.md | Complete inventory of all committed files |
+| REPOSITORY_RELATIONSHIP_MAP.md | Architecture: program layer vs. implementation layer |
+| IMPLEMENTATION_INTEGRATION_PLAN.md | Overlap analysis, merge strategy, integration roadmap |
+| LIVE_PROJECT_STATE_TEMPLATE.md | Shared state template — ChatGPT activates in Sprint 1 |
+
+### Integration Architecture
+
+```
+HCI AI Operating System (this repo)
+├── PROGRAM LAYER (governance, standards, sprint management)
+├── WORKSTREAM LAYER (houzz/, future workstreams)
+├── IMPLEMENTATION LAYER (03_Source_Code/, 04_Workflows/, 05_Database/)
+└── KNOWLEDGE LAYER (reference, assets, SOPs)
+```
+
+### Integration Activation Backlog
+
+| Task ID | Task | Owner | Sprint |
+|---|---|---|---|
+| INT-001 | Confirm: single repo or two repos? | @buck-HCI-AI | Sprint 0 close |
+| INT-002 | Identify any separate Claude Code repo | @buck-HCI-AI | Sprint 0 close |
+| INT-003 | Audit 04_Workflows/ for all active workflows | ChatGPT | Sprint 1 |
+| INT-004 | Confirm HubSpot + Drive API connection status | Claude Code | Sprint 1 |
+| INT-005 | Confirm Qdrant + Postgres live status | Claude Code | Sprint 1 |
+| INT-006 | List all active n8n workflow names | n8n | Sprint 1 |
+| INT-007 | Update TASKS.md with pre-existing work status | ChatGPT | Sprint 1 |
+| INT-008 | Approve LIVE_PROJECT_STATE.md as shared truth | @buck-HCI-AI | Sprint 1 |
+| INT-009 | Create LIVE_PROJECT_STATE.md from template | ChatGPT | Sprint 1 |
+| INT-010 | Register all workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT | Sprint 1 |
+| INT-011 | Register all APIs in Integration Registry | Claude Code | Sprint 1 |
+| INT-012 | Create CHANGELOG.md with all historical work | Claude Code | Sprint 1 |
+| INT-013 | Enable branch protection on main | @buck-HCI-AI | Sprint 1 |
+
+### Governance Layer Status Update
+
+| Document | Status | Sprint |
+|---|---|---|
+| PROGRAM_REPOSITORY_STATUS.md | ✅ Complete | Sprint 0 |
+| PROGRAM_REPOSITORY_INVENTORY.md | ✅ Complete | Sprint 0 |
+| REPOSITORY_RELATIONSHIP_MAP.md | ✅ Complete | Sprint 0 |
+| IMPLEMENTATION_INTEGRATION_PLAN.md | ✅ Complete — Awaiting Review | Sprint 0 |
+| LIVE_PROJECT_STATE_TEMPLATE.md | ✅ Complete — Template Ready | Sprint 0 |
+| LIVE_PROJECT_STATE.md | ⏳ ChatGPT activates in Sprint 1 | Sprint 1 |
