@@ -1,0 +1,249 @@
+{
+  "suite": "MVP Sprint 1",
+  "run_at": "2026-06-26T18:05:27.086480",
+  "passed": 48,
+  "failed": 0,
+  "total": 48,
+  "results": [
+    {
+      "id": "MS-01-01",
+      "desc": "64 Eastwood Project Brain init returns baseline",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-01-02",
+      "desc": "101 Francis Project Brain init returns baseline",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-01-03",
+      "desc": "1355 Riverside Project Brain init returns baseline",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-01-04",
+      "desc": "MVP overview lists all 6 workflows",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-02-01",
+      "desc": "Bid import dry_run returns proposed bid + validation",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-02-02",
+      "desc": "Dry run does NOT write to DB (mode confirmed)",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-02-03",
+      "desc": "Bid import returns ROI metrics",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-02-04",
+      "desc": "Bid import with dry_run=False queues for approval",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-03-01",
+      "desc": "Daily log dry_run returns intelligence analysis",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-03-02",
+      "desc": "Delay detected from log notes",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-03-03",
+      "desc": "Schedule risk detected from delay keywords",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-03-04",
+      "desc": "Daily log ROI metrics returned",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-03-05",
+      "desc": "Daily log with dry_run=False queues for approval",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-04-64EW",
+      "desc": "PM weekly review for 64EW returns health + metrics",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-04-101F",
+      "desc": "PM weekly review for 101F returns health + metrics",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-04-1355R",
+      "desc": "PM weekly review for 1355R returns health + metrics",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-05-64EW",
+      "desc": "Schedule/status for 64EW returns overall_status",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-05-101F",
+      "desc": "Schedule/status for 101F returns overall_status",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-05-1355R",
+      "desc": "Schedule/status for 1355R returns overall_status",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-06-01",
+      "desc": "Exec report returns all 3 pilot projects",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-06-02",
+      "desc": "Exec report has summary with risk totals",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-06-03",
+      "desc": "Exec report mode is read_only",
+      "status": "PASS"
+    },
+    {
+      "id": "MS-06-04",
+      "desc": "Exec report includes ROI",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-01",
+      "desc": "Background learning service info endpoint",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-02",
+      "desc": "Discover registers item with status=Discovered",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-03",
+      "desc": "Project inferred from filename (1355 Riverside)",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-04",
+      "desc": "Records query returns discovered items",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-05",
+      "desc": "Classify advances record through pipeline",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-06",
+      "desc": "HubSpot discovery runs in read_only mode",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-07",
+      "desc": "Drive discovery runs in read_only mode",
+      "status": "PASS"
+    },
+    {
+      "id": "BL-01-08",
+      "desc": "Background learning summary returns totals",
+      "status": "PASS"
+    },
+    {
+      "id": "AQ-01-01",
+      "desc": "Approval queue summary returns status breakdown",
+      "status": "PASS"
+    },
+    {
+      "id": "AQ-01-02",
+      "desc": "Pending queue has items from workflow tests",
+      "status": "PASS"
+    },
+    {
+      "id": "AQ-01-03",
+      "desc": "Approve action marks item approved",
+      "status": "PASS"
+    },
+    {
+      "id": "AQ-01-04",
+      "desc": "Reject on already-approved item returns error gracefully",
+      "status": "PASS"
+    },
+    {
+      "id": "AQ-01-05",
+      "desc": "Approval never auto-executes \u2014 requires explicit execute call",
+      "status": "PASS"
+    },
+    {
+      "id": "CR-01-01",
+      "desc": "Init-pilots registers all 9 source connections (3 projects \u00d7 3 sources)",
+      "status": "PASS"
+    },
+    {
+      "id": "CR-01-02",
+      "desc": "Connectors for 64 Eastwood returns registered sources",
+      "status": "PASS"
+    },
+    {
+      "id": "CR-01-03",
+      "desc": "Connector registry summary has totals",
+      "status": "PASS"
+    },
+    {
+      "id": "ROI-01-01",
+      "desc": "ROI log populated from workflow tests above",
+      "status": "PASS"
+    },
+    {
+      "id": "ROI-01-02",
+      "desc": "ROI log shows minutes saved across workflows",
+      "status": "PASS"
+    },
+    {
+      "id": "ROI-01-03",
+      "desc": "ROI log has individual workflow entries",
+      "status": "PASS"
+    },
+    {
+      "id": "SP-01-01",
+      "desc": "Sprint status endpoint returns all subsystem summaries",
+      "status": "PASS"
+    },
+    {
+      "id": "SP-01-02",
+      "desc": "Total minutes saved > 0 after workflow tests",
+      "status": "PASS"
+    },
+    {
+      "id": "SP-01-03",
+      "desc": "Sprint mode shows approval_controlled controls active",
+      "status": "PASS"
+    },
+    {
+      "id": "SC-01-01",
+      "desc": "All write actions are in approval queue (not silently written)",
+      "status": "PASS"
+    },
+    {
+      "id": "SC-01-02",
+      "desc": "All pending items have rollback_path specified",
+      "status": "PASS"
+    },
+    {
+      "id": "SC-01-03",
+      "desc": "No live DB write occurred without queue entry (by design)",
+      "status": "PASS"
+    }
+  ]
+}

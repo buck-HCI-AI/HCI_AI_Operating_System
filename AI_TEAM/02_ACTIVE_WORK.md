@@ -1,87 +1,74 @@
 # 02_ACTIVE_WORK.md
 **What is being implemented right now**
-Last updated: 2026-06-25 (Phase 13 — QA Framework)
+Last updated: 2026-06-26 (MVP Sprint 1 COMPLETE — Gate 5 pilot active)
 
 ---
 
-## CURRENT FOCUS: Phase 13 — QA Framework Installation
+## CURRENT FOCUS: Gate 5 — Pilot (2026-06-25 to 2026-07-01)
 
-**Directive:** HCI_AI_QA_Testing_and_No_Go_Live_Master_Directive_v1.0  
-**Status:** QA framework installed ✅ | Gate 1 execution pending
+**Directive:** HCI_AI_MVP_Sprint_1_Daily_Operations_and_Background_Learning_Directive_for_Claude_Code_v1.pdf  
+**Status:** MVP code COMPLETE ✅ | Pilot active on 3 projects | Go-live authorization pending  
 
-The system is now in VALIDATION-FIRST mode. All development work is secondary to completing the 5 validation gates. Production go-live is blocked until Buck explicitly approves.
-
----
-
-## Phase 13 Deliverables — Status
-
-### Completed ✅ (This session)
-
-| File | Description |
-|------|-------------|
-| `BOOK_00/17_QUALITY_ASSURANCE_AND_VALIDATION.md` | Master QA volume — 19 sections, full framework |
-| `docs/QA_VALIDATION_STANDARD.md` | Quick-reference operational standard |
-| `docs/TEST_PLAN.md` | Complete test plan — all 7 categories, 9 scenarios, Gate 1-3 test cases |
-| `docs/TEST_RESULTS.md` | Evidence log template — Gates 1-3 |
-| `docs/WORKFLOW_TEST_MATRIX.md` | All 18 workflows + 9 services + infrastructure with test cases, status, blockers |
-| `docs/KNOWN_ISSUES.md` | 10 open issues (KI-001 to KI-010); 6 resolved; no P0/P1 open |
-| `docs/UAT_PLAN.md` | 10 UAT scenarios (5 Tier 1, 5 Tier 2) with exact commands |
-| `docs/UAT_RESULTS.md` | UAT evidence log template with sign-off section |
-| `docs/ROLLBACK_PLAN.md` | 7 rollback scenarios with exact commands |
-| `docs/PILOT_READINESS_REPORT.md` | 5-day pilot log + go-live authorization form |
-| `docs/REGRESSION_TEST_PLAN.md` | 3 regression levels with trigger criteria |
-| `docs/SYSTEM_DATA_FLOW.md` | 9 major data flow paths fully documented |
-| `AI_TEAM/00_STATUS.md` | Updated — validation-first mode, gate status |
-| `AI_TEAM/02_ACTIVE_WORK.md` | This file |
-| `AI_TEAM/05_BACKLOG.md` | Updated — separated by validation status |
-| `AI_TEAM/06_NEXT_SESSION.md` | Updated — Gate 1 execution as priority 1 |
-| `AI_TEAM/07_BLOCKERS.md` | Updated — go-live blockers added |
-| `AI_TEAM/08_CHANGELOG.md` | Phase 13 entry added |
+Pilot projects: 64 Eastwood, 101 Francis, 1355 Riverside  
+All 6 daily operation workflows live and tested (48/48 PASS).
 
 ---
 
-## Next: Gate 1 Execution
+## MVP Sprint 1 — COMPLETE ✅ (2026-06-26)
 
-Gate 1 is the first executable task after this session. All commands are in `docs/TEST_PLAN.md` §Gate 1.
+### Built This Session
 
-**Estimated time:** 45-60 minutes for Claude Code to run all EV-01 through EV-12 checks and document results in `docs/TEST_RESULTS.md`.
+| Component | File | Status |
+|-----------|------|--------|
+| MVP Ops Router | `api/routers/mvp_ops.py` | ✅ 6 workflows + 3 utility endpoints |
+| Background Learning Service | `services/background_learning/` | ✅ 13-status pipeline, 3 source connectors |
+| Approval Queue Service | `services/approval_queue/` | ✅ Enqueue/approve/reject/execute/audit |
+| Connector Registry Service | `services/connector_registry/` | ✅ 9 pilot connectors, all read_only |
+| MVP Sprint 1 DB Schema | `database/mvp_sprint_1_schema.sql` | ✅ 4 tables, applied to live DB |
+| Test Suite | `tests/test_mvp_sprint_1.py` | ✅ 48/48 PASS |
+| 14 docs files | `docs/MVP_SPRINT_1_*.md` + workflow docs | ✅ Complete |
+| BOOK_00/19 | `BOOK_00/19_MVP_SPRINT_1_DAILY_OPERATIONS.md` | ✅ |
+| BOOK_01/19 | `BOOK_01/19_DAILY_OPERATIONS_USING_HCI_AI.md` | ✅ |
+| AI_TEAM updates | `00_STATUS, 02, 05, 06, 07, 08` | ✅ |
+
+### Test Coverage
+
+| Group | Tests | Result |
+|-------|-------|--------|
+| MS-01: Project Brain Init | 4 | ✅ PASS |
+| MS-02: Bid Management | 4 | ✅ PASS |
+| MS-03: Daily Log / Field Intel | 5 | ✅ PASS |
+| MS-04: PM Weekly Review | 3 | ✅ PASS |
+| MS-05: Schedule/Status Intel | 3 | ✅ PASS |
+| MS-06: Executive Reporting | 4 | ✅ PASS |
+| BL-01: Background Learning | 8 | ✅ PASS |
+| AQ-01: Approval Queue | 5 | ✅ PASS |
+| CR-01: Connector Registry | 3 | ✅ PASS |
+| ROI-01: ROI Log | 3 | ✅ PASS |
+| SP-01: Sprint Status | 3 | ✅ PASS |
+| SC-01: Safety Controls | 3 | ✅ PASS |
+| **Total** | **48** | **✅ 48 PASS / 0 FAIL** |
 
 ---
 
-## PHASES 1-12 COMPLETE (prior work)
+## Next: Gate 5 Completion (by 2026-07-01)
 
-See history below — all phases complete as of 2026-06-25.
+- Buck uses the 6 workflows on the 3 pilot projects daily
+- Review any approval queue items that need Buck's decision
+- At end of pilot: Buck provides explicit go-live authorization
+- After authorization: flip connectors from read_only to write mode (one at a time, per approval)
 
-### Phase 12 ✅ — Master Validation + Gap Audit (2026-06-25)
-- 7 credential fixes (hardcoded passwords → env vars)
-- 5 Qdrant collections created
-- init.sql updated (8 new tables + daily_logs columns)
-- 6 validation docs created in docs/
-- Houzz tables created in live DB
-- HubSpot deep mine: 5,801 new vectors
+---
 
-### Phase 11 ✅ — Production Hardening (2026-06-25)
-- backup.sh + monitor.sh
-- launchd agents (backup 2 AM, monitor 5 min)
-- API key auth (X-API-Key on /api/v1/*)
-- Mac mini migration playbook
+## Prior Phases Complete
 
-### Phase 10 ✅ — Reporting + Dashboard (2026-06-25)
-- 5 report types in wf_report.py
-- Dashboard at /dashboard (18KB single-file)
+### Phase 15 ✅ — Platform Integration Layer (2026-06-26)
+- 5 platform capabilities: Identity, Event Bus, Notifications, Audit Trail, Unified Search
+- 33 endpoints, 39/39 tests pass
 
-### Phase 9 ✅ — Field + PM Workflows (2026-06-25)
-- WF-SUPER (9-stage pipeline), WF-PM, WF-006 v2
-- rfis + submittals tables
-- schedule_variance, risks tables
+### Phase 14i ✅ — SOP Field Execution (SOP 17–30)
+- 14 SOPs for field execution (Schedule through Inspection)
+- 189 total SOP endpoints at `/api/v1/sop/`
 
-### Phase 8 ✅ — Workflow Engine Core (2026-06-25)
-- 18 workflows registered
-- workflow_events table
-- Document intelligence pipeline
-
-### Phases 1-7 ✅ — Infrastructure + Services (2026-06-24 to 2026-06-25)
-- Full Docker stack (Postgres, Redis, MinIO, Qdrant)
-- 9 intelligence services
-- FastAPI with auth
-- HubSpot, Drive, Outlook integrations
+### Phases 1-14h ✅ — Complete
+See `AI_TEAM/08_CHANGELOG.md` for full history.

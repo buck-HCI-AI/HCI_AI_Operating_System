@@ -1,5 +1,65 @@
 # Changelog
 
+## 2026-06-26 — Phase 16: MVP Sprint 1 COMPLETE (48/48 tests pass)
+
+**Trigger:** `HCI_AI_MVP_Sprint_1_Daily_Operations_and_Background_Learning_Directive_for_Claude_Code_v1.pdf`  
+**Buck authorization:** "BTW - can you complete without prompting me and run this till complete and we double check work & test in the morning?"
+
+### What Was Built
+
+6 daily operation workflows for 3 pilot projects (64EW, 101F, 1355R) + 3 new background services + 4 new DB tables:
+
+| Workflow | Endpoint | ROI Saved |
+|----------|----------|-----------|
+| Project Brain Init | `GET /mvp/projects/{code}/init` | 28 min/run |
+| Bid Management | `POST /mvp/projects/{code}/bids/import` | 42 min/bid |
+| Daily Log + Field Intelligence | `POST /mvp/projects/{code}/daily-log` | 27 min/log |
+| PM Weekly Review | `GET /mvp/projects/{code}/pm-weekly-review` | 87 min/week |
+| Schedule/Status Intelligence | `GET /mvp/projects/{code}/schedule-status` | 28 min/run |
+| Executive Reporting | `GET /mvp/executive-report` | 59 min/run |
+
+New services: Background Learning (13-status pipeline), Approval Queue (all writes gated), Connector Registry (9 pilot connectors, all read_only).
+
+New DB tables: `background_learning_records`, `connector_registry`, `approval_queue`, `roi_log`
+
+### Key Technical Decisions
+
+- **Dry-run default.** All write endpoints default to `dry_run=true`. Nothing is written without explicit `dry_run=false` + approval queue entry + Buck approval.
+- **Approval queue is non-executing.** `approve()` marks approved but does NOT execute. Caller must call `mark_executed()` after applying the change. System never auto-executes.
+- **ROI `minutes_saved` is a computed column.** PostgreSQL `GENERATED ALWAYS AS (baseline_minutes - ai_assisted_minutes) STORED`. Never set directly.
+- **`schedule_variance` uses `detected_at`, not `created_at`.** Table has no `created_at` column and no `date` column. Use `detected_at` for all ORDER BY.
+- **`daily_logs` uses `log_date` and `work_performed`**, not `date` and `notes`.
+- **Drive sync uses `file_path`/`file_name`**, not `file_hash` — `drive_sync_log` has no `file_hash` column.
+- **Test results file uses absolute path** via `os.path.dirname(os.path.abspath(__file__))` — relative path broke when run from project root.
+
+### Files Created
+
+**Code:** `api/routers/mvp_ops.py`, `services/background_learning/`, `services/approval_queue/`, `services/connector_registry/`, `database/mvp_sprint_1_schema.sql`, `tests/test_mvp_sprint_1.py`
+
+**Docs:** 14 docs files (`docs/MVP_SPRINT_1_*.md` + workflow docs), `BOOK_00/19_MVP_SPRINT_1_DAILY_OPERATIONS.md`, `BOOK_01/19_DAILY_OPERATIONS_USING_HCI_AI.md`
+
+**AI_TEAM:** `00_STATUS.md`, `02_ACTIVE_WORK.md`, `05_BACKLOG.md`, `06_NEXT_SESSION.md`, `07_BLOCKERS.md`, `08_CHANGELOG.md`
+
+### Test Results: 48/48 PASS
+
+```
+MS-01 Project Brain Init:       4/4 ✅
+MS-02 Bid Management:           4/4 ✅
+MS-03 Daily Log + Field Intel:  5/5 ✅
+MS-04 PM Weekly Review:         3/3 ✅
+MS-05 Schedule/Status Intel:    3/3 ✅
+MS-06 Executive Reporting:      4/4 ✅
+BL-01 Background Learning:      8/8 ✅
+AQ-01 Approval Queue:           5/5 ✅
+CR-01 Connector Registry:       3/3 ✅
+ROI-01 ROI Log:                 3/3 ✅
+SP-01 Sprint Status:            3/3 ✅
+SC-01 Safety / Approval Controls: 3/3 ✅
+TOTAL: 48/48 PASS
+```
+
+---
+
 ## 2026-06-26 — Phase 15: Platform Integration Layer COMPLETE
 
 **Trigger:** `HCI_AI_Platform_Integration_Sprint_Master_Directive_for_Claude_Code_v1.pdf` + Buck: "ok do it -"

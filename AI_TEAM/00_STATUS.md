@@ -1,7 +1,7 @@
 # HCI AI Operating System — Current Status
 
-**Last Updated:** 2026-06-26 (Platform Integration Layer COMPLETE — Identity/Event Bus/Notifications/Audit/Search live; 39/39 tests pass; 33 new API endpoints; 222 total at /api/v1/)  
-**Mode: VALIDATION-FIRST — Production go-live BLOCKED pending 5 validation gates + Buck's approval**  
+**Last Updated:** 2026-06-26 (MVP Sprint 1 COMPLETE — 6 daily operation workflows live; 48/48 tests pass; 3 new services; 4 new DB tables; Gate 5 pilot active)  
+**Mode: GATE 5 PILOT — Daily operations active on 3 pilot projects; all writes approval-controlled**  
 **API:** http://localhost:8000 (live, launchd-managed, API key enforced)  
 **Dashboard:** http://localhost:8000/dashboard  
 **Docs:** http://localhost:8000/docs  
@@ -17,7 +17,7 @@
 | Gate 2 | Integration Testing | ✅ PASSED 2026-06-25 |
 | Gate 3 | Workflow Acceptance Testing | ✅ PASSED 2026-06-25 |
 | Gate 4 | User Acceptance Testing (Buck) | ✅ PASSED 2026-06-25 |
-| Gate 5 | Pilot Approval + Buck Sign-Off | ⬜ Ready — 5-day pilot on one active project |
+| Gate 5 | Pilot Approval + Buck Sign-Off | 🔄 IN PROGRESS — 2026-06-25 to 2026-07-01; 3 pilot projects active |
 
 **Go-Live verdict: BLOCKED.** See `docs/QA_VALIDATION_STANDARD.md` and `BOOK_00/17_QUALITY_ASSURANCE_AND_VALIDATION.md`.
 
@@ -49,6 +49,23 @@
 | /ingest, /memory, /workflows | ✅ Active |
 | /sop/* (27 SOPs, 189 endpoints) | ✅ Active |
 | /platform/* (5 capabilities, 33 endpoints) | ✅ Active |
+| /mvp/* (6 workflows, 3 pilot projects) | ✅ Active — MVP Sprint 1 |
+
+---
+
+## MVP Operations — /api/v1/mvp (MVP Sprint 1)
+
+| Service | Status | Notes |
+|---------|--------|-------|
+| Project Brain Init | ✅ ACTIVE | All 3 pilot projects; 28 min/run saved |
+| Bid Management | ✅ ACTIVE | Dry-run + approval queue; 42 min/bid saved |
+| Daily Log + Field Intelligence | ✅ ACTIVE | Delay/safety/risk detection; 27 min/log saved |
+| PM Weekly Review | ✅ ACTIVE | Health: green/yellow/red synthesis; 87 min/week saved |
+| Schedule/Status Intelligence | ✅ ACTIVE | Variance detection, decision points; 28 min/run saved |
+| Executive Reporting | ✅ ACTIVE | Cross-project morning briefing; 59 min/run saved |
+| Background Learning | ✅ ACTIVE | Read-only discovery: Drive, HubSpot, Houzz |
+| Approval Queue | ✅ ACTIVE | All writes held pending Buck approval |
+| Connector Registry | ✅ ACTIVE | 9 connectors (3 projects × 3 sources), all read_only |
 
 ---
 
@@ -165,6 +182,7 @@ BOOK_01 is complete: `BOOK_01/README.md` + volumes `00` through `18`.
 | 14h | Phase G — SOP 12 + SOP 19 (close loop) | ✅ 2026-06-25 |
 | 14i | Phase H — SOP 17–18 + 20–30 (field execution) | ✅ 2026-06-26 |
 | 15 | Platform Integration Layer (Identity/Events/Notifs/Audit/Search) | ✅ 2026-06-26 |
+| 16 | MVP Sprint 1 — Daily Operations, Background Learning & Approval Controls | ✅ 2026-06-26 |
 
 ---
 

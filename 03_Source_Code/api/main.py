@@ -9,6 +9,10 @@ Docs:           http://localhost:8000/docs
 """
 import sys, os, logging
 
+# Pre-cache stdlib 'platform' before sys.path gains services/platform/ — prevents
+# onnxruntime's `import platform` from resolving to our services/platform package.
+import platform as _stdlib_platform  # noqa: F401 — side effect: caches in sys.modules
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "integrations"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "workflows"))
@@ -28,6 +32,7 @@ from routers import projects, vendors, bids, memory, health, workflows, ingest
 from routers import auth, documents, storage, search, system, ai
 from routers import sop
 from routers import platform as platform_router
+from routers import mvp_ops
 
 # Construction Intelligence Services — loaded via importlib to avoid service.py name collisions
 import importlib.util as _ilu
@@ -54,6 +59,9 @@ decision_routes      = _load_svc("decision_intelligence")
 kpi_routes           = _load_svc("kpi_intelligence")
 op_rules_routes      = _load_svc("operating_rules")
 bpl_routes           = _load_svc("business_process_library")
+bl_routes            = _load_svc("background_learning")
+aq_routes            = _load_svc("approval_queue")
+cr_routes            = _load_svc("connector_registry")
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
@@ -110,6 +118,7 @@ v1.include_router(workflows.router,  prefix="/workflows", tags=["workflows"])
 v1.include_router(memory.router,     prefix="/memory",    tags=["memory"])
 v1.include_router(sop.router,                           tags=["sop"])
 v1.include_router(platform_router.router,              tags=["platform"])
+v1.include_router(mvp_ops.router,                      tags=["mvp-operations"])
 
 # ── Construction Intelligence Service Layer ────────────────────────────────
 svc = APIRouter(prefix="/services")
@@ -126,6 +135,9 @@ svc.include_router(decision_routes,   prefix="/decision-intelligence", tags=["de
 svc.include_router(kpi_routes,        prefix="/kpi-intelligence",      tags=["kpi-intelligence"])
 svc.include_router(op_rules_routes,   prefix="/operating-rules",       tags=["operating-rules"])
 svc.include_router(bpl_routes,        prefix="/business-process-library", tags=["business-process-library"])
+svc.include_router(bl_routes,         prefix="/background-learning",      tags=["background-learning"])
+svc.include_router(aq_routes,         prefix="/approval-queue",           tags=["approval-queue"])
+svc.include_router(cr_routes,         prefix="/connector-registry",       tags=["connector-registry"])
 
 @svc.get("")
 def list_services():
@@ -143,6 +155,9 @@ def list_services():
         {"name": "kpi-intelligence",           "status": "active",   "path": "/api/v1/services/kpi-intelligence"},
         {"name": "operating-rules",            "status": "active",   "path": "/api/v1/services/operating-rules"},
         {"name": "business-process-library",   "status": "active",   "path": "/api/v1/services/business-process-library"},
+        {"name": "background-learning",        "status": "active",   "path": "/api/v1/services/background-learning"},
+        {"name": "approval-queue",             "status": "active",   "path": "/api/v1/services/approval-queue"},
+        {"name": "connector-registry",         "status": "active",   "path": "/api/v1/services/connector-registry"},
     ]}
 
 v1.include_router(svc)
