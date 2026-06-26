@@ -1,0 +1,30 @@
+# CODEOWNERS — HCI AI Operating System
+# Hendrickson Construction, Inc.
+# Format: <pattern> <owner(s)>
+# Owners are automatically requested for review on PRs that touch matching files.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global default — repo owner reviews everything
+* @buck-HCI-AI
+
+# Engineering Library & System Documentation
+/01_Engineering_Library/ @buck-HCI-AI
+/06_Project_Documentation/ @buck-HCI-AI
+
+# Source Code
+/03_Source_Code/ @buck-HCI-AI
+
+# Automation Workflows (n8n, integrations)
+/04_Workflows/ @buck-HCI-AI
+
+# Database & Registry
+/05_Database/ @buck-HCI-AI
+
+# GitHub configuration files
+/.github/ @buck-HCI-AI
+
+# AI Team definitions
+/AI_TEAM/ @buck-HCI-AI
+
+# Session startup scripts
+/SESSION_STARTUP/ @buck-HCI-AI
