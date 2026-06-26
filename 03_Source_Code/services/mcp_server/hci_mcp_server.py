@@ -512,7 +512,7 @@ def ProjectMining(project_id: int, source: str = "all") -> dict:
     if source in ("all", "hubspot"):
         results["hubspot_deals"] = _api("GET", f"/api/v1/services/bid-intelligence/deals?project_code={code}&limit=20")
     if source in ("all", "drive"):
-        results["background_learning"] = _api("GET", f"/api/v1/services/background-learning/candidates?project_id={project_id}&limit=20")
+        results["background_learning"] = _api("GET", f"/api/v1/services/background-learning/records?project_id={project_id}&limit=20")
 
     return {
         "project_id": project_id,
@@ -614,6 +614,130 @@ def ExecutiveReport() -> dict:
 def GetROISummary() -> dict:
     """Get total ROI summary — minutes saved, workflows run, and per-workflow breakdown."""
     return _api("GET", "/api/v1/mvp/roi")
+
+
+# ── ACR-001: Chief Architect Integration Tools ────────────────────────────────
+
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
+
+@mcp.tool()
+def ReadLiveProjectState() -> dict:
+    """
+    Read LIVE_PROJECT_STATE.md — the single operational source of truth for the HCI AI OS.
+    Created and maintained by Browser Claude in the Program Repository, synced to the
+    implementation repo root. Returns 'not_found' if Browser Claude has not yet synced it.
+    """
+    path = os.path.join(REPO_ROOT, "LIVE_PROJECT_STATE.md")
+    try:
+        with open(path) as f:
+            return {"content": f.read(), "source": path, "status": "found"}
+    except FileNotFoundError:
+        return {
+            "status": "not_found",
+            "message": "LIVE_PROJECT_STATE.md does not exist yet. Browser Claude must create and sync it.",
+            "expected_path": path,
+        }
+
+
+@mcp.tool()
+def ReadCurrentSprint() -> dict:
+    """
+    Read CURRENT_SPRINT.md — active sprint plan, task assignments, and status.
+    Created and maintained by Browser Claude / ChatGPT in the Program Repository.
+    Returns 'not_found' if not yet synced.
+    """
+    path = os.path.join(REPO_ROOT, "CURRENT_SPRINT.md")
+    try:
+        with open(path) as f:
+            return {"content": f.read(), "source": path, "status": "found"}
+    except FileNotFoundError:
+        return {
+            "status": "not_found",
+            "message": "CURRENT_SPRINT.md does not exist yet. Issue ACR-001 completion triggers this.",
+            "expected_path": path,
+        }
+
+
+@mcp.tool()
+def ReadAutomationRegistry() -> dict:
+    """
+    Read the full automation registry: all n8n workflows, Python workflow files, and MCP tools.
+    Provides ChatGPT visibility into every automation in the system to detect duplicates and gaps.
+    """
+    import subprocess
+    n8n_workflows = _api("GET", "/api/v1/workflows")
+    mcp_tools = sorted([t.name for t in mcp._tool_manager.list_tools()])
+    python_workflows = [
+        {"name": "wf001_new_project",          "trigger": "API / manual", "status": "active"},
+        {"name": "wf002_meeting_intelligence",  "trigger": "API / manual", "status": "active"},
+        {"name": "wf003_morning_brief",         "trigger": "API / schedule", "status": "active"},
+        {"name": "wf004_daily_log",             "trigger": "API / manual", "status": "active"},
+        {"name": "wf005_lessons_learned",       "trigger": "API / manual", "status": "active"},
+        {"name": "wf006_inbox_review",          "trigger": "API / manual", "status": "active"},
+        {"name": "wf_pm",                       "trigger": "API / schedule", "status": "active"},
+        {"name": "wf_report",                   "trigger": "API / schedule", "status": "active"},
+        {"name": "wf_superintendent",           "trigger": "API / manual", "status": "active"},
+        {"name": "sync_drive",                  "trigger": "scheduled / manual", "status": "active"},
+        {"name": "sync_hubspot",                "trigger": "scheduled / manual", "status": "active"},
+        {"name": "sync_houzz",                  "trigger": "scheduled / manual", "status": "hold — pending architecture review"},
+    ]
+    return {
+        "n8n_workflows": n8n_workflows,
+        "python_workflows": python_workflows,
+        "mcp_tools": mcp_tools,
+        "mcp_tool_count": len(mcp_tools),
+    }
+
+
+@mcp.tool()
+def ReadDecisionLog(limit: int = 20, status: str = None) -> dict:
+    """
+    Read the architecture and implementation decision log.
+    Returns logged decisions with outcomes — use to avoid revisiting closed decisions.
+    status: 'open' | 'resolved' | 'pending_outcome' — omit for all
+    limit: max records (default 20)
+    """
+    params = f"limit={limit}"
+    if status:
+        params += f"&status={status}"
+    return _api("GET", f"/api/v1/services/decision-intelligence/decisions?{params}")
+
+
+@mcp.tool()
+def ReadRepositoryStatus() -> dict:
+    """
+    Read current implementation repository status: git branch, last commit, service health,
+    and the IMPLEMENTATION_REPOSITORY_STATUS.md document.
+    Use this to verify what is built, what is running, and what is on hold.
+    """
+    import subprocess
+    repo = REPO_ROOT
+
+    branch = subprocess.run(
+        ["git", "-C", repo, "branch", "--show-current"],
+        capture_output=True, text=True
+    ).stdout.strip()
+
+    last_commit = subprocess.run(
+        ["git", "-C", repo, "log", "--oneline", "-3"],
+        capture_output=True, text=True
+    ).stdout.strip()
+
+    health = _api("GET", "/api/v1/health")
+
+    try:
+        with open(os.path.join(repo, "IMPLEMENTATION_REPOSITORY_STATUS.md")) as f:
+            status_doc = f.read()
+    except Exception:
+        status_doc = "IMPLEMENTATION_REPOSITORY_STATUS.md not found"
+
+    return {
+        "branch": branch,
+        "last_3_commits": last_commit,
+        "service_health": health,
+        "hold_status": "Holding on ACR-001 — awaiting Sprint 1 approval criteria",
+        "status_document": status_doc,
+    }
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
