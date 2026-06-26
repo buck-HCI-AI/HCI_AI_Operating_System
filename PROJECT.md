@@ -145,3 +145,60 @@ The following automation setup tasks are approved for Sprint 1 and Sprint 2:
 ---
 
 *Governed by HCI_AI_CONSTITUTION.md | Owner: @buck-HCI-AI | Hendrickson Construction, Inc.*
+
+
+---
+
+## Workstream: Houzz Browser Intelligence
+**Added:** 2026-06-26 | **Documents:** /houzz/
+
+### Overview
+Houzz is Hendrickson Construction's field execution platform. The Houzz Browser Intelligence Layer reads completed Houzz data and converts it into structured executive intelligence without changing superintendent behavior.
+
+**Core Principle:** Capture data once in Houzz. Reuse it everywhere in HCI AI.
+
+### Documents
+| File | Purpose |
+|---|---|
+| `houzz/HOUZZ_READ_ONLY_AUDIT.md` | Constitutional compliance, data inventory, read-only rules |
+| `houzz/HOUZZ_DAILY_LOG_WORKFLOW.md` | End-to-end 6-phase daily workflow |
+| `houzz/HOUZZ_BROWSER_AGENT_STRATEGY.md` | Technical architecture, extraction schema, roadmap |
+| `houzz/HOUZZ_APPROVAL_GATES.md` | 12 Houzz-specific gates (HZ-R through HZ-X3) |
+| `houzz/HOUZZ_AUTOMATION_BACKLOG.md` | 13 implementation tasks (HZ-001 to HZ-013) |
+| `houzz/HOUZZ_BROWSER_AGENT_COMPLETION_REPORT.md` | Workstream design completion report |
+
+### Target Workflow
+1. Superintendent uses Houzz normally
+2. Houzz captures photos, weather, daily logs, labor, deliveries, schedule activity
+3. Browser Agent reads completed Houzz data (read-only, Gate HZ-R)
+4. HCI AI extracts structured intelligence
+5. HCI AI generates: executive summary, PM action items, schedule impacts, procurement impacts, risk alerts, lessons learned candidates, tomorrow's priorities
+6. No write-back to Houzz without approval gate
+
+### Houzz Integration Registry Entry
+| Field | Value |
+|---|---|
+| System | Houzz Pro |
+| Access Method | Browser-based (no API assumed) |
+| Auth Model | Human-initiated session |
+| Read | ✅ Fully autonomous (Gate HZ-R) |
+| Write | ❌ Permanently prohibited (HZ-X1/X2/X3) |
+| Write-back to other systems | Requires applicable HZ gate |
+| Sprint Target (Production) | Sprint 9 |
+
+### Houzz Backlog Summary
+| Task ID | Task | Sprint |
+|---|---|---|
+| HZ-001 | Houzz Daily Log Reader | Sprint 1 |
+| HZ-002 | Reports Folder Structure | Sprint 1 |
+| HZ-003 | Houzz Project Registry Entry | Sprint 1 |
+| HZ-004 | n8n Daily Log Extraction Trigger | Sprint 2 |
+| HZ-005 | Houzz-to-HCI-AI Project Health Engine | Sprint 2 |
+| HZ-006 | HubSpot Project Status Write (Gate HZ-H1) | Sprint 3 |
+| HZ-007 | Drive Daily Intelligence Filing | Sprint 3 |
+| HZ-008 | Daily Executive Brief from Houzz | Sprint 4 |
+| HZ-009 | PM Action Item Extractor | Sprint 4 |
+| HZ-010 | Houzz Schedule Reader | Sprint 5 |
+| HZ-011 | Houzz Photo Intelligence Extractor | Sprint 5 |
+| HZ-012 | Superintendent Daily Log Draft Assistant | Sprint 8 |
+| HZ-013 | Full Houzz Intelligence Pipeline — Production | Sprint 9 |
