@@ -1,5 +1,83 @@
 # Changelog
 
+## 2026-06-26 — MCP Server Live + Full System Audit + HubSpot IDs Linked
+
+**Session:** MCP build, AI team connection, full audit, P0 fixes  
+
+### What Was Built / Fixed
+
+| Change | Detail |
+|--------|--------|
+| MCP Server — 26 tools | `services/mcp_server/hci_mcp_server.py` — full spec implementation; FastMCP on port 8080 |
+| MCP proxy in main.py | `/mcp` and `/mcp/{path}` routes forward to port 8080 via httpx |
+| Auth middleware update | `PROTECTED_PREFIXES` includes `/mcp` |
+| GBT connection file | `/Users/buckadams/Desktop/HCI_AI_GBT_Connect.txt` |
+| Claude.ai directive file | `/Users/buckadams/Desktop/HCI_AI_ClaudeAI_Directive.txt` |
+| Full System Audit | 6 deliverables in `HCI_AI_Audit_20260626/` — 27 tests, 30-item backlog, gap report |
+| HubSpot deal IDs | Linked all 3 pilot projects in projects table |
+| SOP MCP tool fix | `ReadConstructionOS` now calls `/api/v1/sop/registry` for category=sops/all |
+| HistCost MCP tool fix | `HistoricalCostLookup` now calls `/search?q=` not `/lookup` |
+| 4th project identified | id=4 = "83 Sagebrusch Ln." — no HubSpot deal found |
+| n8n workflows audited | 15 total (9 active, 6 inactive); TMP-cl-84994d and Chrome Bridge flagged for retirement |
+
+### Key Endpoint Paths (verified correct)
+- Executive report: `/api/v1/mvp/exec-report`
+- SOP registry: `/api/v1/sop/registry`
+- Historical cost search: `/api/v1/services/historical-cost/search?q=`
+- MCP: `https://speculate-armband-retinal.ngrok-free.dev/mcp`
+
+---
+
+## 2026-06-26 — Bid Leveling Service (22/22 tests pass)
+
+**Trigger:** "BTW This should be updated system wide" — Buck authorized system-wide bid leveling service  
+**Buck message:** "BTW - this should be in the bid level work flow - and i need gbt to have full bid-level capabilities when it connects as well - full read write etc all files and types - create folders if needed - create files if needed"
+
+### What Was Built
+
+`services/bid_leveling/` — full HCI AI service registered at `/api/v1/services/bid-leveling/`
+
+| Component | Detail |
+|-----------|--------|
+| `bid_leveling_service.py` | Core service: reads Sheets, parses bid data, generates Excel, manages Drive folders, queues uploads |
+| `routes.py` | 11 endpoints: run workflow, dry run, Drive create/upload/list, Sheets read/write, project data |
+| Registered in `main.py` | `_load_svc("bid_leveling")` → `/api/v1/services/bid-leveling/` |
+| `tests/test_bid_leveling.py` | 22/22 PASS across 6 test groups |
+| `docs/BID_LEVELING_SERVICE.md` | Full reference |
+
+### Key Decisions
+
+- **Tab name auto-detection**: 1355 Riverside uses `Sheet1`, 101F/64EW use `Bid Tracking`; service tries both
+- **Division number parsing**: regex `\b(\d{1,2})\b` handles both "Division 2 - Site Work" and "06 — Wood..." formats
+- **GBT write access**: `/drive/create-folder`, `/drive/upload-file`, `/sheets/write` exposed as direct write endpoints (no approval queue) — for AI agent use with full access
+- **Approval queue for HCI workflow**: live run queues via approval queue; Buck approves then executes
+- **101 Francis 00_Bids pre-wired**: `KNOWN_BIDS_FOLDERS[2]` = existing folder ID avoids duplicate creation
+- **HTTPError 400 = tab not found**: Sheets API returns 400 (not 404) when a tab name doesn't exist
+
+### Test Results
+
+| Group | Tests | Result |
+|-------|-------|--------|
+| BL-SVC: Service Registration | 3 | ✅ PASS |
+| BL-READ: Sheet Reading | 5 | ✅ PASS |
+| BL-DRY: Dry Run Workflow | 7 | ✅ PASS |
+| BL-EXCEL: Excel Generation | 2 | ✅ PASS |
+| BL-DRIVE: Drive Read/Write | 2 | ✅ PASS |
+| BL-QUEUE: Approval Queue | 3 | ✅ PASS |
+| **Total** | **22** | **✅ 22/22 PASS** |
+
+### Files Created / Modified
+
+- `services/bid_leveling/__init__.py` (NEW)
+- `services/bid_leveling/bid_leveling_service.py` (NEW)
+- `services/bid_leveling/routes.py` (NEW)
+- `api/main.py` (UPDATED — added bid_leveling service)
+- `tests/test_bid_leveling.py` (NEW)
+- `docs/BID_LEVELING_SERVICE.md` (NEW)
+- `AI_TEAM/00_STATUS.md`, `02_ACTIVE_WORK.md`, `05_BACKLOG.md`, `06_NEXT_SESSION.md`, `08_CHANGELOG.md` (UPDATED)
+
+---
+
 ## 2026-06-26 — Phase 16: MVP Sprint 1 COMPLETE (48/48 tests pass)
 
 **Trigger:** `HCI_AI_MVP_Sprint_1_Daily_Operations_and_Background_Learning_Directive_for_Claude_Code_v1.pdf`  

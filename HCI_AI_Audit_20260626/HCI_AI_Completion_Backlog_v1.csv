@@ -1,0 +1,31 @@
+Priority,Task,System,Owner,Dependency,Effort,Acceptance Criteria,Status
+P0,Identify source-of-truth Registry Workbook (2 copies exist),Google Drive,Buck,None,5 min,One workbook identified as canonical; other archived with reason,OPEN
+P0,Resolve duplicate Bid Receipt Processing v5 in n8n,n8n,Buck + Code,None,15 min,Only one active copy; duplicate deactivated/deleted,OPEN
+P0,Link HubSpot deal IDs to all 3 pilot projects in DB,HubSpot + DB,Buck,HubSpot access,30 min,hubspot_deal_id populated for 64EW / 101F / 1355R in projects table,OPEN
+P0,Identify 4th project in DB (id=4),DB,Code,None,10 min,Project name + code confirmed or cleaned up,OPEN
+P0,Fix SOP service endpoint (all paths return 404),API,Code,None,30 min,GET /api/v1/sop/ returns SOP list with 200,OPEN
+P0,Investigate TMP-cl-84994d active n8n workflow,n8n,Buck,n8n UI,10 min,Workflow identified; renamed or retired,OPEN
+P0,Investigate ChatGPT Chrome Bridge active workflow,n8n,Buck,n8n UI,10 min,Workflow confirmed still needed or retired,OPEN
+P1,Add 349 Draw Drive to project registry,DB + Drive,Buck + Code,Buck confirmation,20 min,Project record created with Drive folder ID and status,OPEN
+P1,Add 606 Starwood Olson to project registry,DB + Drive,Buck + Code,Buck confirmation,20 min,Project record created with Drive folder ID and status,OPEN
+P1,Add 843 Cemetery Lane to project registry,DB + Drive,Buck + Code,Buck confirmation,20 min,Project record created with Drive folder ID and status,OPEN
+P1,Read + verify row counts in Registry Workbook (Project + Vendor tabs),Google Sheets,Code,P0 workbook resolved,30 min,Row counts documented; missing required fields flagged,OPEN
+P1,Verify Vendor Registry CSI division coverage (392 vendors),HubSpot + Sheets,Code,None,45 min,% vendors with CSI division assigned reported; gap queue created,OPEN
+P1,Populate Lessons Learned registry (0 rows currently),DB + Sheets,Code,None,60 min,At least 10 lessons extracted from historical handoff PDFs,OPEN
+P1,Populate Business Process Library (0 rows currently),DB,Code,None,45 min,Core HCI processes documented from SOPs and workbook,OPEN
+P1,Fix historical-cost endpoint path (/lookup returns 404),API,Code,None,15 min,GET /api/v1/services/historical-cost/lookup works,OPEN
+P1,Fix background-learning /candidates path (404),API,Code,None,15 min,GET /api/v1/services/background-learning/candidates works,OPEN
+P1,Configure n8n API key in .env for remote workflow management,n8n,Buck + Code,n8n UI,20 min,N8N_API_KEY in .env; workflow list accessible via REST,OPEN
+P1,Test Bid Receipt Processing v5 end-to-end,n8n + Drive + Sheets,Code,P0 duplicate resolved,60 min,Controlled test bid routes to correct Drive folder + tracker row,OPEN
+P1,Resolve Qdrant unhealthy health check,Docker,Code,None,20 min,Qdrant reports healthy in docker ps,OPEN
+P2,Test WF-008 Bid Follow-Up Engine in staging,n8n,Code,P1 registry,90 min,Drafts reminders only; no auto-send; test log entry created,OPEN
+P2,Test WF-009 New Job Setup in staging,n8n,Code,P1 registry,90 min,Creates expected folder structure; no production writes,OPEN
+P2,Test WF-010 Outlook Email Router in staging,n8n,Code,P1 registry,60 min,Classifies sample emails correctly with confidence score,OPEN
+P2,Retire ARCHIVED — Bid Leveling n8n workflow,n8n,Code,None,5 min,Workflow deleted or moved to archive folder in n8n,OPEN
+P2,Retire Inbox Cleanup workflow,n8n,Buck approval,Buck,5 min,Workflow deactivated + renamed RETIRED — do not activate,OPEN
+P2,Resolve duplicate Projects / Projects Folder in Drive,Drive,Buck,None,10 min,One folder confirmed canonical; other archived,OPEN
+P2,Start historical project mining queue (Buck AI > Handoffs folder has source docs),Drive + DB,Code,P1 data,120 min,First historical project mined into lessons learned review sheet,OPEN
+P3,Set up ChatGPT Business workspace GPT with HCI AI actions,ChatGPT,Buck,None,30 min,Workspace GPT published with MCP/Actions connection,OPEN
+P3,Configure MCP as permanent ChatGPT workspace connector,ChatGPT Business,Buck,Mac Mini,After Mac Mini,MCP accessible in ChatGPT without ngrok dependency,OPEN
+P3,Populate HCI_Historical_Cost_Database tab in workbook,Sheets,Code,P1 mining,180 min,50+ cost records from historical projects with CSI codes,OPEN
+P3,Build Bid Receipt Processing v6 with registry lookup (no hardcoded IDs),n8n,Code,P2 tests,240 min,Project matched via Project Registry; no hardcoded IDs in nodes,OPEN

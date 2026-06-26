@@ -35,7 +35,7 @@ These items require Buck's explicit go-live approval before proceeding:
 
 ### Phase 7 — Agents
 - [ ] Project Brain agent (autonomous intelligence synthesis)
-- [ ] Bid leveling agent (auto-ranking + recommendation)
+- [ ] Bid leveling agent enhancement (auto-award recommendation + HubSpot attachment sync after /mcp auth)
 - [ ] RFI agent (auto-draft + routing)
 - [ ] Schedule agent (variance monitoring + alerts)
 

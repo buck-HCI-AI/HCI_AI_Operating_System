@@ -1,0 +1,28 @@
+Test ID,Workflow / System,Method,Test Data,Expected Result,Actual Result,Pass/Fail,Fix Required
+T-001,API Health Check,GET /api/v1/health,None,status=healthy all services,healthy: postgres/redis/qdrant GO,PASS,None
+T-002,Executive Report,GET /api/v1/mvp/exec-report,None,3 projects health + ROI,3 active projects 6 risks 42 min saved,PASS,None
+T-003,Bid Leveling — 1355 Riverside,GET /api/v1/services/bid-leveling/projects/3/data,None,Returns bid_tracking with divisions,12 divisions 86 bids returned,PASS,None
+T-004,Bid Leveling — 101 Francis,GET /api/v1/services/bid-leveling/projects/2/data,None,Returns bid_tracking with divisions,11 divisions 5 bids returned,PASS,None
+T-005,Bid Leveling — 64 Eastwood,GET /api/v1/services/bid-leveling/projects/1/data,None,Returns bid_tracking with divisions,14 divisions 23 bids returned,PASS,None
+T-006,Bid Leveling dry run — all projects,POST /api/v1/services/bid-leveling/run-all,{dry_run:true},Analysis returned no Drive writes,Correct — dry run analysis only,PASS,None
+T-007,Google Sheets read — Bid Tracking tab,GET /api/v1/services/bid-leveling/sheets/read,sheet_id=1355R range=Bid Tracking!A1:Z100,Returns rows,Returns rows,PASS,None
+T-008,Google Sheets read — HCI 16 Div Summary,GET /api/v1/services/bid-leveling/sheets/read,sheet_id=1355R range=HCI 16 Div Summary!A1:H20,Returns summary rows,Returns summary rows,PASS,None
+T-009,Google Drive — list HCI Master folder,GET /api/v1/services/bid-leveling/drive/list/{id},HCI Master folder ID,13 items returned,13 items confirmed,PASS,None
+T-010,Google Drive — list Registries folder,Drive API direct,03 Registries folder ID,8 items,8 items confirmed,PASS,None
+T-011,HubSpot — vendor search,GET /api/v1/services/vendor-intelligence/vendors?limit=5,None,Returns vendor records,392 vendors accessible,PASS,None
+T-012,MCP Initialize,POST /mcp/ via ngrok,MCP initialize payload,Server handshake response,HCI AI OS v1.28.1 confirmed,PASS,None
+T-013,MCP tools/list,POST /mcp/ via ngrok,tools/list with session ID,26 tools returned,26 tools confirmed,PASS,None
+T-014,MCP ExecutiveReport tool call,POST /mcp/ via ngrok,tools/call ExecutiveReport,Project health data,3 projects health returned correctly,PASS,None
+T-015,MCP ReadBidTracker tool call,POST /mcp/ via ngrok,tools/call ReadBidTracker project_id=3,1355R bid data,12 divisions returned,PASS,None
+T-016,Approval Queue — pending items,GET /api/v1/services/approval-queue/items?status=pending,None,Returns queued items,9 pending items confirmed,PASS,None
+T-017,n8n container status,docker ps,None,n8n container up,Up 7 days,PASS,None
+T-018,n8n workflow inventory,docker cp + sqlite3,n8n database.sqlite,Workflow list,15 workflows (9 active 6 inactive) confirmed,PASS,None
+T-019,Bid Receipt Processing v5 duplicate,n8n sqlite,None,1 workflow expected,2 workflows with same name found (1 ON 1 OFF),FAIL,Investigate + remove duplicate
+T-020,Registry Workbook — unique copy,Drive search,name=HCI_Construction_Operating_System_v2,1 result,2 results with different IDs,FAIL,Buck identifies source of truth; archive other
+T-021,SOP endpoint,GET /api/v1/sop/list,None,SOP list returned,404 Not Found on all paths tried,FAIL,Fix route in main.py or SOP router
+T-022,Historical cost lookup,GET /api/v1/services/historical-cost/lookup?trade=framing,None,Cost data returned,404 — path is /search not /lookup,FAIL,Update MCP tool + docs to use /search
+T-023,Project HubSpot deal IDs,DB query projects table,None,hubspot_deal_id populated for 64EW/101F/1355R,All 3 MISSING,FAIL,Buck provides HubSpot deal IDs to link
+T-024,4th project in DB,DB health check,None,4 projects = 4 known records,Project id=4 unknown,FAIL,Identify or clean up 4th record
+T-025,Qdrant health,docker ps,None,healthy,UNHEALTHY (but functionally serving 13 collections),WARN,Investigate Qdrant health check config
+T-026,Lessons Learned data,GET /api/v1/services/lessons-learned/lessons?limit=5,None,Lessons returned,0 rows — empty,WARN,Populate from historical handoff PDFs (P1)
+T-027,Business Process Library data,GET /api/v1/services/business-process-library/processes,None,Processes returned,0 rows — empty,WARN,Populate from SOPs and workbook (P1)

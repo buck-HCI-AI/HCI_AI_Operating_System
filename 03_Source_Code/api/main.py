@@ -62,6 +62,7 @@ bpl_routes           = _load_svc("business_process_library")
 bl_routes            = _load_svc("background_learning")
 aq_routes            = _load_svc("approval_queue")
 cr_routes            = _load_svc("connector_registry")
+bid_lev_routes       = _load_svc("bid_leveling")
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +139,7 @@ svc.include_router(bpl_routes,        prefix="/business-process-library", tags=[
 svc.include_router(bl_routes,         prefix="/background-learning",      tags=["background-learning"])
 svc.include_router(aq_routes,         prefix="/approval-queue",           tags=["approval-queue"])
 svc.include_router(cr_routes,         prefix="/connector-registry",       tags=["connector-registry"])
+svc.include_router(bid_lev_routes,    prefix="/bid-leveling",             tags=["bid-leveling"])
 
 @svc.get("")
 def list_services():
@@ -158,6 +160,7 @@ def list_services():
         {"name": "background-learning",        "status": "active",   "path": "/api/v1/services/background-learning"},
         {"name": "approval-queue",             "status": "active",   "path": "/api/v1/services/approval-queue"},
         {"name": "connector-registry",         "status": "active",   "path": "/api/v1/services/connector-registry"},
+        {"name": "bid-leveling",               "status": "active",   "path": "/api/v1/services/bid-leveling"},
     ]}
 
 v1.include_router(svc)
@@ -182,5 +185,49 @@ app.include_router(memory.router,    prefix="/memory",    tags=["_legacy"])
 app.include_router(workflows.router, prefix="/workflows", tags=["_legacy"])
 app.include_router(ingest.router,    prefix="/ingest",    tags=["_legacy"])
 
-logger.info("HCI AI API v%s started — %d route groups + 13 intelligence services + platform integration layer",
+# ── MCP Proxy (forwards /mcp/* to standalone MCP server on port 8080) ────────
+# Standalone FastMCP server runs via launchd on 8080 with its own lifecycle.
+# This proxy makes it reachable at /mcp via the existing ngrok tunnel on 8000.
+import httpx as _httpx
+from fastapi import Request as _Req
+from fastapi.responses import StreamingResponse as _StreamResp, Response as _Resp
+
+_MCP_BACKEND = "http://127.0.0.1:8080"
+
+@app.api_route("/mcp", methods=["GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"],
+               include_in_schema=False)
+@app.api_route("/mcp/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"],
+               include_in_schema=False)
+async def _mcp_proxy(request: _Req, path: str = ""):
+    """Transparent proxy — forwards all /mcp/* traffic to MCP server on :8080."""
+    target_url = f"{_MCP_BACKEND}/mcp/{path}" if path else f"{_MCP_BACKEND}/mcp"
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+    fwd_headers = {k: v for k, v in request.headers.items()
+                   if k.lower() not in ("host", "content-length")}
+    body = await request.body()
+    try:
+        async with _httpx.AsyncClient(timeout=60) as client:
+            rsp = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=fwd_headers,
+                content=body,
+            )
+            rsp_headers = {k: v for k, v in rsp.headers.items()
+                           if k.lower() not in ("transfer-encoding", "content-encoding")}
+            if "text/event-stream" in rsp.headers.get("content-type", ""):
+                async def _stream():
+                    async for chunk in rsp.aiter_bytes():
+                        yield chunk
+                return _StreamResp(_stream(), status_code=rsp.status_code,
+                                   headers=rsp_headers, media_type="text/event-stream")
+            return _Resp(content=rsp.content, status_code=rsp.status_code, headers=rsp_headers)
+    except _httpx.ConnectError:
+        return _Resp(content=b'{"error":"MCP server offline","hint":"Check launchd com.hci.mcp-server"}',
+                     status_code=503, media_type="application/json")
+
+logger.info("MCP proxy mounted at /mcp → port 8080")
+
+logger.info("HCI AI API v%s started — %d route groups + 17 intelligence services + MCP + platform integration layer",
             settings.app_version, 14)

@@ -4,7 +4,28 @@ Last updated: 2026-06-26 (MVP Sprint 1 COMPLETE — Gate 5 pilot active)
 
 ---
 
-## CURRENT FOCUS: Gate 5 — Pilot (2026-06-25 to 2026-07-01)
+## CURRENT FOCUS: Gate 5 Pilot — System Live, AI Team Connected
+
+**MCP Server:** LIVE ✅ — 26 tools at port 8080 / ngrok `/mcp` endpoint  
+**AI Team connected:** GBT via MCP Connector + Claude.ai via Settings → Integrations  
+**Full System Audit:** COMPLETE — 6 deliverables in `HCI_AI_Audit_20260626/`  
+**HubSpot deal IDs:** Linked ✅ (64EW / 101F / 1355R — see 00_STATUS.md)
+
+---
+
+## PRIOR FOCUS: Bid Leveling Service + Gate 5 Pilot
+
+**Bid Leveling Service:** COMPLETE ✅ (22/22 tests PASS)
+- `services/bid_leveling/` registered at `/api/v1/services/bid-leveling/`
+- Reads bid tracking sheets from all 3 projects: 86 bids / 17 divisions (1355R), 23 bids / 14 divs (64EW), 5 bids / 11 divs (101F)
+- Generates per-division bid leveling Excel (.xlsx) files matching 101 Francis format
+- Manages `{Project} 00_Bids/##_Division/` folder structure in Drive
+- GBT/AI agent endpoints: Drive create-folder, upload-file, list; Sheets read, write
+- All Drive writes go through approval queue (dry_run=True default)
+
+---
+
+## Gate 5 — Pilot (2026-06-25 to 2026-07-01)
 
 **Directive:** HCI_AI_MVP_Sprint_1_Daily_Operations_and_Background_Learning_Directive_for_Claude_Code_v1.pdf  
 **Status:** MVP code COMPLETE ✅ | Pilot active on 3 projects | Go-live authorization pending  

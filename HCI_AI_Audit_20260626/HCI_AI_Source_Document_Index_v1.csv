@@ -1,0 +1,22 @@
+Document Name,Location,System,Area,Version,Status,Recommendation
+HCI_Construction_Operating_System_v2 (COPY 1),Drive > 03 Registries (1oCjzoab9-5kqprxiig22k_LU7YCWTPkKmcUaQwRdtqA),Google Sheets,Registry,v2,DUPLICATE — verify which is current,Keep one; archive other — BUCK MUST DECIDE
+HCI_Construction_Operating_System_v2 (COPY 2),Drive > Buck AI (1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA),Google Sheets,Registry,v2,DUPLICATE — verify which is current,Keep one; archive other — BUCK MUST DECIDE
+HCI_Project_Registry,Drive > 03 Registries,Google Sheets,Registry,Current,Active,Verify vs DB — consolidate IDs
+HCI_Vendor_Registry,Drive > 03 Registries,Google Sheets,Registry,Current,Active,Verify CSI coverage and HubSpot ID links
+HCI Historical Cost Intake Log,Drive > 03 Registries,Google Sheets,Registry,Current,Active,Populate from historical projects
+HCI_AI_Construction_OS_Registry_Build_v2_Garmisch_Mined,Drive > 03 Registries,Google Sheets,Registry,v2,Active — mined data,Review and merge into canonical workbook
+HCI_AI_Construction_OS_Registry_Build_v1,Drive > 03 Registries,Google Sheets,Registry,v1,Likely superseded by v2,Archive after confirming v2 is complete
+HCI_HubSpot_Outlook_Reconciliation_Summary.pdf,Drive > 03 Registries,PDF,CRM,Current,Reference,Keep — reconciliation record
+HCI_Master_Contact_List_v3_HubSpot_Outlook_Reconciled.xlsx,Drive > 03 Registries,XLSX,CRM,v3,Active,Keep as backup contact list
+HCI_AI_Master_Claude_Handoff_Development_Spec_v1.pdf,Drive > Buck AI > Handoffs,PDF,Architecture,v1,Historical,Archive — superseded by current builds
+Claude_Handoff_Bid_Leveling_Workflow_Summary.pdf,Drive > Buck AI > Handoffs,PDF,Bid Leveling,Current,Historical,Archive — bid leveling now built
+Claude_Handoff_Package_HCI_AI.pdf,Drive > Buck AI > Handoffs,PDF,Architecture,Current,Historical,Keep as baseline reference
+HCI_AI_Operating_Instructions_for_ChatGPT_v1.0.docx,Drive > Buck AI,DOCX,Directives,v1.0,Active,Verify vs Claude.ai directive — update if needed
+HCI_Cost_Code_Structure_v1.xlsx,Drive > Buck AI,XLSX,Cost,v1,Active,Use as source for historical cost mining
+HCI_Scope_Package_Registry_v1.xlsx,Drive > Buck AI,XLSX,Procurement,v1,Active,Verify vs API procurement service
+HCI_Master_Tracker_Workbook_v1.xlsx,Drive > Buck AI,XLSX,Projects,v1,Active,Verify if superseded by Sheets bid trackers
+HCI_AI_MCP_Master_Engineering_Specification_v1.pdf,Downloads,PDF,MCP,v1,SUPERSEDED — MCP is now LIVE,Archive — spec was implemented 2026-06-26
+HCI_AI_MCP_Always_On_Implementation_Plan.pdf,Downloads,PDF,MCP,v1,Active — roadmap,Use for Phase 3 ChatGPT Business setup
+HCI_AI_Master_Audit_and_Completion_Directive_v1.pdf,Downloads,PDF,Audit,v1,THIS DOCUMENT — active,Save to Drive > Buck AI > Handoffs
+AI_TEAM/00_STATUS.md,Local repo > AI_TEAM,Markdown,Handoff,Current,Needs update,Update after this audit
+AI_TEAM/06_NEXT_SESSION.md,Local repo > AI_TEAM,Markdown,Handoff,Current,Partially stale,Update with MCP live status + audit results

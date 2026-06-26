@@ -1,0 +1,15 @@
+Registry,Tab / Field,Issue,Missing Data,Duplicate,Recommended Fix
+Project Registry (DB),hubspot_deal_id,Missing on all 3 pilot projects,64EW / 101F / 1355R deal IDs,No,Buck looks up HubSpot deal IDs; Code inserts into projects table
+Project Registry (DB),Projects 349DD / 606SO / 843CL,3 projects in audit scope not in DB,Drive folder IDs / sheet IDs / status,No,Buck confirms project list; Code creates DB records
+Project Registry (DB),Project id=4,4th project exists in DB with no bid tracking data,name / code / sheet / drive / hs IDs,No,Identify project; populate or remove
+Project Registry (Drive Sheets),All,Duplicate workbook — 2 copies of HCI_Construction_Operating_System_v2,N/A,YES — 2 files same name,Buck identifies canonical copy; archive other
+Vendor Registry (API),CSI division,392 vendors in system — CSI coverage unknown,CSI division code on unknown % of vendors,No,Run classification pass on HubSpot companies; flag missing
+Vendor Registry (API),preferred_status / active_status,Not verified in API response fields,Unknown,No,Pull sample; verify fields exist in vendor records
+Historical Cost Database,All fields,0 records in API; intake log exists in Drive,Project / division / budget / actual / cost per SF,No,Mine historical projects from Drive > Buck AI > handoffs
+Lessons Learned Registry,All fields,0 rows in DB despite lessons learned service being active,Issue / root cause / recommendation / project,No,Extract from handoff PDFs and daily logs (P1 task)
+Business Process Library,All fields,0 rows in DB,Process name / SOP link / owner / steps,No,Populate from SOP Registry tab in workbook
+SOP Registry,API endpoint,SOP service path broken (all paths 404),N/A,No,Fix route — SOP data exists in workbook SOP Registry tab
+Bid Tracker — 64 Eastwood,All,Accessible via Sheets; 23 bids / 14 divisions — readable,N/A — data exists,No,No action needed — read-only verified
+Bid Tracker — 101 Francis,All,Accessible via Sheets; 5 bids / 11 divisions — readable,N/A — data exists,No,No action needed — read-only verified
+Bid Tracker — 1355 Riverside,All,Accessible via Sheets; 86 bids / 12 divisions — readable,N/A — data exists,No,No action needed — read-only verified
+n8n Workflow Map (workbook tab),n8n_Workflow_Map,Workbook tab exists but API key not in .env — cannot sync automatically,n8n API key,No,Set N8N_API_KEY in .env; configure in n8n Settings > API

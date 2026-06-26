@@ -1,6 +1,6 @@
 # HCI AI Operating System — Current Status
 
-**Last Updated:** 2026-06-26 (MVP Sprint 1 COMPLETE — 6 daily operation workflows live; 48/48 tests pass; 3 new services; 4 new DB tables; Gate 5 pilot active)  
+**Last Updated:** 2026-06-26 (MCP Server LIVE — 26 tools, ngrok endpoint, GBT+Claude.ai connected; Full System Audit complete; HubSpot deal IDs linked; SOP+HistCost MCP paths fixed)  
 **Mode: GATE 5 PILOT — Daily operations active on 3 pilot projects; all writes approval-controlled**  
 **API:** http://localhost:8000 (live, launchd-managed, API key enforced)  
 **Dashboard:** http://localhost:8000/dashboard  
@@ -32,7 +32,8 @@
 | Qdrant | ⚠️ Running | API healthy; docker ps shows "unhealthy" label (cosmetic) |
 | MinIO | ✅ Running | hci-raw-documents bucket; 4 app buckets |
 | FastAPI | ✅ Running | Port 8000, launchd, X-API-Key enforced |
-| ngrok tunnel | ✅ Running | Webhook relay |
+| ngrok tunnel | ✅ Running | Webhook relay + MCP external access |
+| MCP Server (26 tools) | ✅ Running | Port 8080, proxied at :8000/mcp, ngrok at speculate-armband-retinal.ngrok-free.dev/mcp |
 | Backup | ✅ Active | Daily 2 AM, 7-day rotation |
 | Monitor | ✅ Active | 5-min health check, auto-restart, alert email |
 | Mac mini | ⏳ Pending | M4 Pro arriving ~2026-09-17; playbook at infrastructure/setup_mac_mini.sh |
@@ -66,6 +67,7 @@
 | Background Learning | ✅ ACTIVE | Read-only discovery: Drive, HubSpot, Houzz |
 | Approval Queue | ✅ ACTIVE | All writes held pending Buck approval |
 | Connector Registry | ✅ ACTIVE | 9 connectors (3 projects × 3 sources), all read_only |
+| **Bid Leveling Service** | ✅ ACTIVE | Reads bid sheets, generates per-division Excel, Drive folder management, GBT/AI read-write endpoints; 22/22 tests |
 
 ---
 
@@ -86,6 +88,7 @@
 | kpi-intelligence | ✅ ACTIVE | Project + company KPI snapshots; traffic light alerts |
 | operating-rules | ✅ ACTIVE | Configurable policy engine; 11 seed rules loaded |
 | business-process-library | ✅ ACTIVE | Process registry with maturity tracking |
+| **bid-leveling** | ✅ ACTIVE | Bid leveling workflow + Drive/Sheets read-write for GBT/AI agents |
 
 **SOP Execution Layer:** 27 SOPs active — full preconstruction + contract execution + field execution chain. Phase D tested (SOP 11+15; 29 tests: 28 PASS, 1 CONDITIONAL). Phase E–G (SOP 04–16, 19) + Phase H (SOP 17–18, 20–30) COMPLETE. 189 total endpoints at `/api/v1/sop/`. Full chain: Plan Review → Narrative → Risk Log → ROM → Historical Cost → Budget Review → Allowances → Bid Package → Sub CRM → Distribution → Follow-Up → Leveling → Buyout → Subcontract Agreement → Schedule → Long-Lead → Contract Setup → Compliance → COI/W-9 → Startup → [Dashboard / Daily Log / Field Coord / QC / QC Detail / Safety / Inspection].
 
@@ -186,15 +189,27 @@ BOOK_01 is complete: `BOOK_01/README.md` + volumes `00` through `18`.
 
 ---
 
-## Open Gaps (from Master Validation Audit)
+## Open Gaps (from Full System Audit 2026-06-26)
 
-| Priority | Gap | Action |
+See `HCI_AI_Audit_20260626/` for full audit deliverables (6 files).
+
+| Priority | Gap | Status |
 |----------|-----|--------|
-| HIGH | Houzz tables missing from live DB | ✅ Fixed 2026-06-25 |
-| HIGH | vendor_memory + drive_memory Qdrant empty | Re-run Drive sync; build vendor embed |
-| HIGH | 05_Database/schema.sql out of date | ✅ Fixed (synced from init.sql this audit) |
-| MEDIUM | WF-001/002/005/006 don't log workflow_events | Add event writes |
-| MEDIUM | No launchd for WF-PM daily / exec health report | Add 2 plists |
-| LOW | No test suite (15_Tests/ empty) | Phase 12+ |
+| P0 | Duplicate Bid Receipt Processing v5 in n8n | OPEN — Buck deactivate duplicate in n8n UI |
+| P0 | 83 Sagebrusch (project id=4) — no HubSpot deal found | OPEN — confirm project details |
+| P0 | TMP-cl-84994d n8n workflow — unfinished webhook | OPEN — Buck deactivate in n8n UI |
+| P0 | ChatGPT Chrome Bridge n8n workflow — old OpenAI webhook | OPEN — Buck retire in n8n UI |
+| P0 | HubSpot deal IDs for pilot projects | ✅ Fixed 2026-06-26 (64EW: 331240861419, 101F: 321401932527, 1355R: 321351275210) |
+| P0 | SOP MCP tool path wrong | ✅ Fixed 2026-06-26 → /api/v1/sop/registry |
+| P0 | HistoricalCost MCP tool path wrong | ✅ Fixed 2026-06-26 → /search not /lookup |
+| P1 | Registry Workbook duplicate (2 copies) | OPEN — keep 03 Registries copy, archive Buck AI copy |
+| P1 | Lessons Learned — 0 rows in DB | P1 backlog — mine from handoff PDFs |
+| P1 | Business Process Library — 0 rows | P1 backlog — populate from SOPs |
+| P1 | Historical Cost Database — 0 rows | P1 backlog — mine from Drive |
+| P1 | N8N_API_KEY not in .env | OPEN — Buck set in n8n Settings > API |
+| P1 | Qdrant docker ps "unhealthy" label | OPEN — cosmetic, functionally serving |
+| P1 | vendor_memory + drive_memory Qdrant empty | Re-run Drive sync; build vendor embed |
+| P2 | WF-001/002/005/006 don't log workflow_events | Add event writes |
+| P2 | No launchd for WF-PM daily / exec health report | Add 2 plists |
 
-See `docs/GAP_REGISTER.md` for full detail.
+See `HCI_AI_Audit_20260626/HCI_AI_Completion_Backlog_v1.csv` for full 30-item backlog.
