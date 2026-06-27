@@ -323,19 +323,23 @@ def driving_brief():
     return {"text": text, "inbox_count": len(inbox)}
 
 
-# ── One-tap approvals ──────────────────────────────────────────────────────────
+# ── One-tap approvals ─────────────────────────────────────────────────────────
+# Accept both POST (API) and GET (ntfy view action → opens browser with confirmation)
 
 @router.post("/approve/{exec_id}")
+@router.get("/approve/{exec_id}", response_class=HTMLResponse)
 def approve_item(exec_id: str, token: str = ""):
     return _resolve_inbox_item(exec_id, token, "approved")
 
 
 @router.post("/reject/{exec_id}")
+@router.get("/reject/{exec_id}", response_class=HTMLResponse)
 def reject_item(exec_id: str, token: str = ""):
     return _resolve_inbox_item(exec_id, token, "rejected")
 
 
 @router.post("/defer/{exec_id}")
+@router.get("/defer/{exec_id}", response_class=HTMLResponse)
 def defer_item(exec_id: str, token: str = ""):
     return _resolve_inbox_item(exec_id, token, "deferred")
 
@@ -346,7 +350,7 @@ def _resolve_inbox_item(exec_id: str, token: str, resolution: str) -> dict:
         (exec_id,)
     )
     if not item:
-        raise HTTPException(status_code=404, detail=f"{exec_id} not found or already resolved")
+        return _confirmation_html(exec_id, resolution, already_resolved=True)
 
     # Token validation (skip if empty — allows direct API calls from Claude Code)
     if token:
@@ -362,18 +366,34 @@ def _resolve_inbox_item(exec_id: str, token: str, resolution: str) -> dict:
         WHERE exec_id = %s
     """, (resolution, exec_id))
 
-    # If approved, execute the action
     execution_note = None
     if resolution == "approved":
         execution_note = _execute_approved_action(item)
 
-    return {
-        "exec_id": exec_id,
-        "resolution": resolution,
-        "resolved_at": datetime.now(timezone.utc).isoformat(),
-        "execution": execution_note,
-        "message": f"{exec_id} {resolution}. {execution_note or 'Queued for Claude Code execution.'}",
-    }
+    return _confirmation_html(exec_id, resolution, title=item.get("title",""), note=execution_note)
+
+
+def _confirmation_html(exec_id: str, resolution: str, title: str = "", note: str = None, already_resolved: bool = False) -> HTMLResponse:
+    icons = {"approved": "✅", "rejected": "❌", "deferred": "⏸️"}
+    colors = {"approved": "#22c55e", "rejected": "#ef4444", "deferred": "#eab308"}
+    icon  = icons.get(resolution, "✓")
+    color = colors.get(resolution, "#3b82f6")
+
+    if already_resolved:
+        body = f"<h1 style='color:#9ca3af;font-size:28px;'>{icon}</h1><h2 style='color:#9ca3af;'>{exec_id}</h2><p style='color:#6b7280;'>Already resolved — no action needed.</p>"
+    else:
+        body = f"<h1 style='color:{color};font-size:48px;margin:0;'>{icon}</h1><h2 style='color:{color};margin:8px 0;'>{resolution.capitalize()}</h2><p style='color:#9ca3af;font-size:14px;margin:4px 0;'>{exec_id}</p>{f'<p style=\"color:#d1d5db;font-size:13px;margin:8px 0;\">{title}</p>' if title else ''}{f'<p style=\"color:#6b7280;font-size:12px;margin-top:12px;\">{note}</p>' if note else ''}"
+
+    base = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000")
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HCI AI — {resolution.capitalize()}</title>
+<style>*{{box-sizing:border-box;margin:0;padding:0;}}body{{background:#111827;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:20px;}}.card{{background:#1f2937;border-radius:16px;padding:40px 32px;max-width:320px;width:100%;}}</style>
+</head><body><div class="card">
+{body}
+<a href="{base}/executive" style="display:inline-block;margin-top:24px;background:#3b82f6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:600;">Back to Dashboard</a>
+</div></body></html>"""
+    return HTMLResponse(content=html)
 
 
 def _execute_approved_action(item: dict) -> str:

@@ -82,10 +82,11 @@ class NotificationService:
         deadline_str = f" · Due {deadline}" if deadline else ""
         message = f"{title}{deadline_str}\nConfidence: {confidence}"
 
-        # ntfy supports max 3 actions: Approve (POST), Defer (POST), Dashboard (view)
+        # view actions open Safari → GET request → server returns confirmation page
+        # This gives visible feedback vs. silent http POST with no response shown
         actions = [
-            {"action": "http", "label": "Approve",   "url": approve_url, "method": "POST", "clear": True},
-            {"action": "http", "label": "Defer",     "url": defer_url,   "method": "POST", "clear": True},
+            {"action": "view", "label": "Approve",   "url": approve_url},
+            {"action": "view", "label": "Defer",     "url": defer_url},
             {"action": "view", "label": "Dashboard", "url": dash_url},
         ]
 
@@ -140,8 +141,8 @@ class NotificationService:
         actions = []
         if top_exec_id and approve_token:
             actions = [
-                {"action": "http", "label": "Approve",   "url": f"{base}/api/v1/executive/approve/{top_exec_id}?token={approve_token}", "method": "POST", "clear": True},
-                {"action": "http", "label": "Defer",     "url": f"{base}/api/v1/executive/defer/{top_exec_id}?token={defer_token}",   "method": "POST", "clear": True},
+                {"action": "view", "label": "Approve",   "url": f"{base}/api/v1/executive/approve/{top_exec_id}?token={approve_token}"},
+                {"action": "view", "label": "Defer",     "url": f"{base}/api/v1/executive/defer/{top_exec_id}?token={defer_token}"},
                 {"action": "view", "label": "Dashboard", "url": f"{base}/executive"},
             ]
         else:
