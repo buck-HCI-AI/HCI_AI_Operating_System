@@ -780,6 +780,62 @@ def GetProjectState() -> dict:
     }
 
 
+# ── ACR-004: Mining Engine Tools ─────────────────────────────────────────────
+
+@mcp.tool()
+def RunMiner(miner_name: str = "all", dry_run: bool = True) -> dict:
+    """
+    ACR-004: Run one or all background mining agents.
+    dry_run=True (default): scan and report what would be extracted — no writes to any registry.
+    dry_run=False: only valid after go-live ACR is issued and _GO_LIVE_AUTHORIZED=True in the engine.
+
+    miner_name: 'all' to run all 8 agents in sequence, or one of:
+      'hubspot_miner'            — HubSpot deals, contacts, tasks
+      'drive_miner'              — Google Drive sync log documents
+      'houzz_miner'              — Houzz daily logs, schedule items
+      'outlook_miner'            — Outlook inbox (read-only; all emails queued for approval)
+      'historical_cost_miner'    — Bid variance analysis → Historical Cost DB
+      'vendor_intelligence_miner'— Bid win rates, bid counts → Vendor Registry
+      'lessons_learned_miner'    — Meetings + BL records → Lessons Learned candidates
+      'executive_aggregator'     — KPI snapshots + LIVE_PROJECT_STATE.md update
+
+    ALL writes require human approval. This tool never auto-commits to HubSpot,
+    never sends emails, never awards contracts.
+    """
+    if miner_name == "all":
+        return _api("POST", f"/api/v1/services/mining/run/all?dry_run={str(dry_run).lower()}")
+    return _api("POST", f"/api/v1/services/mining/run/{miner_name}?dry_run={str(dry_run).lower()}")
+
+
+@mcp.tool()
+def GetMiningStatus() -> dict:
+    """
+    ACR-004: Get current status of the mining engine.
+    Returns: registered miners (8 total), dry_run mode, go-live authorization status,
+    lifetime extraction counts, per-miner run summaries, and recent run history.
+    Use this to check whether the engine has run today and what it found.
+    """
+    status = _api("GET", "/api/v1/services/mining/status")
+    summary = _api("GET", "/api/v1/services/mining/summary")
+    miners = _api("GET", "/api/v1/services/mining/miners")
+    return {
+        "engine_status": status,
+        "intelligence_summary": summary,
+        "registered_miners": miners,
+    }
+
+
+@mcp.tool()
+def GetMiningLog(limit: int = 20) -> dict:
+    """
+    ACR-004: Get recent mining run log from the mining_runs table.
+    Shows per-run results: miner name, records scanned, intelligence extracted,
+    items queued for review, items auto-written, dry_run flag, errors.
+    limit: number of recent runs to return (default 20, max 100)
+    """
+    return _api("GET", f"/api/v1/services/mining/log?limit={limit}")
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def get_asgi_app():
