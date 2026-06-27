@@ -7,6 +7,25 @@
 
 ---
 
+## Phase II Objectives (Chief Architect Directive 2026-06-27)
+
+| Obj | Title | Status | Sprint |
+|---|---|---|---|
+| 1 | Autonomous Coordination | 🟢 Foundation built | Sprint 2 → ongoing |
+| 2 | Executive Control Center | 🟡 Sprint 3 | Sprint 3 |
+| 3 | Executive Inbox (structured) | 🟢 Built — Phase II format live | Sprint 2 |
+| 4 | Agent Communication (no Buck relay) | 🟢 Event bus built | Sprint 2 |
+| 5 | Universal Connector Framework | 🟢 Framework built, Houzz = ref impl | Sprint 2 |
+| 6 | Continuous Operations | 🟡 Daily loop built — expanding | Sprint 3 |
+| 7 | Mobile Executive Experience | ⚪ Sprint 6 | Sprint 6 |
+| 8 | Architecture Self-Maintenance | ⚪ Sprint 4 | Sprint 4 |
+| 9 | Approval Policy Registry | 🟢 Built | Sprint 2 |
+| 10 | Self-Improvement Engine | ⚪ Sprint 7+ | Sprint 7+ |
+
+See `HCI_AI_OS_V2_ROADMAP.md` for full sprint plan.
+
+---
+
 ## What the AI Program Manager Does
 
 The AI Program Manager (AI-PM) is not a separate agent — it is the coordination protocol that allows Claude Code, Browser Claude, ChatGPT, and n8n to work together without Buck acting as the message bus.
