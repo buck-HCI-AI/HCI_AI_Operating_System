@@ -19,28 +19,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Generate status file
+      - name: Update status timestamp
         run: |
-          # In CI, skip live service checks — just update timestamps
-          python -c "
-import os
-from datetime import datetime, timezone
-now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
-path = 'AI_TEAM/00_STATUS.md'
-with open(path) as f:
-    content = f.read()
-# Update the 'Last updated' line
-import re
-content = re.sub(r'Last updated:.*', f'Last updated: {now} (CI)', content)
-with open(path, 'w') as f:
-    f.write(content)
-print(f'Updated timestamp in {path}')
-"
+          NOW=$(date -u '+%Y-%m-%d %H:%M UTC')
+          sed -i "s|\*\*Last Updated:\*\*.*|**Last Updated:** ${NOW} (CI)|" AI_TEAM/00_STATUS.md
+          echo "Updated AI_TEAM/00_STATUS.md to ${NOW}"
 
       - name: Commit status update
         run: |

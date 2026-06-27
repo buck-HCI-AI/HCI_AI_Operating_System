@@ -102,6 +102,12 @@ def get_unread_messages(top: int = 50) -> list[dict]:
     return r.get("value", []) if r else []
 
 
+def delete_message(msg_id: str) -> tuple:
+    """Permanently delete a message (moves to Deleted Items first, then hard deletes)."""
+    eid = urllib.parse.quote(msg_id, safe="")
+    return _request("DELETE", f"/me/messages/{eid}")
+
+
 def move_message(msg_id: str, folder_id: str) -> tuple:
     """Move a message to a folder by folder ID."""
     eid = urllib.parse.quote(msg_id, safe="")
