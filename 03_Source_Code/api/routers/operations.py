@@ -1054,3 +1054,507 @@ def _build_company_recommendations(dashboard: dict, job_reports: dict) -> list:
         recs.append("Run Houzz Browser extraction for all 3 pilot projects to activate full intelligence")
     recs.append("Import 13 n8n workflow JSONs from 03_Source_Code/workflows/n8n/ to activate automation suite")
     return recs[:3]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BTW-5 — Role Intelligence: 5 New Role Consoles
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Owner Console ─────────────────────────────────────────────────────────────
+
+@router.get("/owner/dashboard")
+def owner_dashboard():
+    """Owner (Buck) company-wide command view — portfolio, approvals, AI ROI, bids."""
+    today = date.today().isoformat()
+
+    projects = _q("SELECT id, name, address, pm_name, super_name FROM projects ORDER BY id")
+    for p in projects:
+        p["code"] = _project_code(p.get("name", ""))
+
+    pending_approvals = _q("""
+        SELECT exec_id, title, action_type, deadline,
+               EXTRACT(EPOCH FROM (NOW() - created_at))/86400 AS days_waiting
+        FROM executive_inbox
+        WHERE status = 'pending'
+        ORDER BY deadline NULLS LAST, created_at
+        LIMIT 10
+    """)
+
+    missions_blocked = _q("""
+        SELECT mission_id, title, blocker, priority
+        FROM missions
+        WHERE status = 'BLOCKED'
+        ORDER BY priority DESC
+        LIMIT 5
+    """)
+
+    open_bids_all = _q("""
+        SELECT bp.project_id, p.name AS project_name,
+               bp.package_name AS scope_name, bp.status,
+               COUNT(be.id) AS bid_count
+        FROM bid_packages bp
+        JOIN projects p ON p.id = bp.project_id
+        LEFT JOIN bid_entries be ON be.bid_package_id = bp.id
+        WHERE bp.status NOT IN ('awarded', 'cancelled')
+        GROUP BY bp.project_id, p.name, bp.package_name, bp.status
+        ORDER BY p.name, bp.package_name
+    """)
+
+    open_rfis_all = _q("""
+        SELECT r.project_id, p.name AS project_name,
+               r.rfi_number, r.subject, r.status,
+               EXTRACT(EPOCH FROM (NOW() - r.submitted_date::timestamptz))/86400 AS age_days
+        FROM rfis r
+        JOIN projects p ON p.id = r.project_id
+        WHERE r.status = 'open'
+        ORDER BY r.submitted_date NULLS LAST
+        LIMIT 10
+    """)
+
+    open_change_orders = _q("""
+        SELECT hco.houzz_project_id, hp.name AS project_name,
+               hco.co_number, hco.title, hco.status, hco.amount, hco.submitted_date
+        FROM houzz_change_orders hco
+        LEFT JOIN houzz_projects hp ON hp.houzz_project_id = hco.houzz_project_id
+        WHERE hco.approved_date IS NULL
+        ORDER BY hco.submitted_date NULLS LAST
+        LIMIT 10
+    """)
+
+    roi_row = _q1("""
+        SELECT COALESCE(SUM(minutes_saved), 0) / 60.0 AS hours_saved_week
+        FROM roi_log
+        WHERE created_at > NOW() - INTERVAL '7 days'
+    """) if _table_exists("roi_log") else {}
+
+    company_health = "RED" if any([len(missions_blocked) > 2, len(pending_approvals) > 5]) else (
+        "YELLOW" if (missions_blocked or pending_approvals) else "GREEN"
+    )
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "company_health": company_health,
+        "portfolio": {
+            "active_projects": len(projects),
+            "projects": _serialize(projects),
+        },
+        "executive_inbox": {
+            "pending_count": len(pending_approvals),
+            "items": _serialize(pending_approvals[:5]),
+        },
+        "missions": {
+            "blocked_count": len(missions_blocked),
+            "blocked": _serialize(missions_blocked),
+        },
+        "bids": {
+            "open_count": len(open_bids_all),
+            "items": _serialize(open_bids_all[:8]),
+        },
+        "rfis": {
+            "open_count": len(open_rfis_all),
+            "items": _serialize(open_rfis_all[:5]),
+        },
+        "change_orders": {
+            "unsigned_count": len(open_change_orders),
+            "items": _serialize(open_change_orders[:5]),
+        },
+        "ai_roi": {
+            "hours_saved_this_week": float(roi_row.get("hours_saved_week", 0) or 0),
+            "data_status": "live" if roi_row else "pending_data",
+        },
+        "owner_actions": [
+            *([ f"Review {len(pending_approvals)} pending approval(s) in Executive Inbox" ] if pending_approvals else []),
+            *([ f"{len(missions_blocked)} AI mission(s) blocked — needs Buck action" ] if missions_blocked else []),
+            *([ f"{len(open_change_orders)} unsigned change order(s)" ] if open_change_orders else []),
+            *([ f"{len(open_bids_all)} open bid package(s) awaiting award" ] if open_bids_all else []),
+        ] or ["All tracked items on track"],
+    }
+
+
+# ── Office Console ────────────────────────────────────────────────────────────
+
+@router.get("/office/queue")
+def office_queue():
+    """Office admin queue — pending items, open RFIs, submittals, open bids across all projects."""
+    today = date.today().isoformat()
+
+    pending_approvals = _q("""
+        SELECT exec_id, title, action_type, deadline, status,
+               EXTRACT(EPOCH FROM (NOW() - created_at))/86400 AS days_waiting
+        FROM executive_inbox
+        WHERE status = 'pending'
+        ORDER BY deadline NULLS LAST
+        LIMIT 15
+    """)
+
+    open_rfis = _q("""
+        SELECT r.project_id, p.name AS project_name, r.rfi_number,
+               r.subject, r.submitted_by, r.status,
+               r.required_response_date,
+               CASE WHEN r.required_response_date IS NOT NULL
+                    THEN EXTRACT(EPOCH FROM (r.required_response_date::timestamptz - NOW()))/86400
+                    ELSE NULL END AS days_until_due
+        FROM rfis r
+        JOIN projects p ON p.id = r.project_id
+        WHERE r.status = 'open'
+        ORDER BY r.required_response_date NULLS LAST
+        LIMIT 20
+    """)
+    overdue_rfis = [r for r in open_rfis if (r.get("days_until_due") or 1) < 0]
+
+    open_bids = _q("""
+        SELECT bp.project_id, p.name AS project_name,
+               bp.package_name AS scope_name, bp.status,
+               COUNT(be.id) AS bid_count
+        FROM bid_packages bp
+        JOIN projects p ON p.id = bp.project_id
+        LEFT JOIN bid_entries be ON be.bid_package_id = bp.id
+        WHERE bp.status NOT IN ('awarded', 'cancelled')
+        GROUP BY bp.project_id, p.name, bp.package_name, bp.status
+        ORDER BY p.name
+        LIMIT 15
+    """)
+
+    pending_submittals = _q("""
+        SELECT s.project_id, p.name AS project_name, s.description, s.status,
+               s.required_approval_date, s.submitted_date
+        FROM submittals s
+        JOIN projects p ON p.id = s.project_id
+        WHERE s.status NOT IN ('approved', 'rejected', 'voided')
+        ORDER BY s.required_approval_date NULLS LAST
+        LIMIT 10
+    """) if _table_exists("submittals") else []
+
+    upcoming_meetings = _q("""
+        SELECT project_id, title, meeting_date, attendees
+        FROM meetings
+        WHERE meeting_date::date >= CURRENT_DATE
+          AND meeting_date::date <= CURRENT_DATE + INTERVAL '7 days'
+        ORDER BY meeting_date
+        LIMIT 5
+    """) if _table_exists("meetings") else []
+
+    queue_depth = len(pending_approvals) + len(overdue_rfis) + len(pending_submittals)
+    urgency = "HIGH" if queue_depth > 10 else ("MEDIUM" if queue_depth > 3 else "LOW")
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "queue_urgency": urgency,
+        "queue_depth": queue_depth,
+        "pending_approvals": {
+            "count": len(pending_approvals),
+            "items": _serialize(pending_approvals),
+        },
+        "rfis": {
+            "open_count": len(open_rfis),
+            "overdue_count": len(overdue_rfis),
+            "items": _serialize(open_rfis[:10]),
+        },
+        "bid_packages": {
+            "open_count": len(open_bids),
+            "items": _serialize(open_bids),
+        },
+        "submittals": {
+            "pending_count": len(pending_submittals),
+            "items": _serialize(pending_submittals),
+        },
+        "upcoming_meetings": _serialize(upcoming_meetings),
+        "priority_actions": [
+            *([ f"URGENT: {len(overdue_rfis)} RFI(s) past due response date" ] if overdue_rfis else []),
+            *([ f"{len(pending_approvals)} approval(s) waiting in Executive Inbox" ] if pending_approvals else []),
+            *([ f"{len(pending_submittals)} submittal(s) pending review" ] if pending_submittals else []),
+            *([ f"{len(open_bids)} bid package(s) need follow-up" ] if open_bids else []),
+        ] or ["Queue clear — no urgent items"],
+    }
+
+
+# ── Accounting Console ────────────────────────────────────────────────────────
+
+@router.get("/accounting/{project_id}/financials")
+def accounting_financials(project_id: int):
+    """Accounting financial health for a project — budget vs actual, COs, POs."""
+    project = _get_project(project_id)
+
+    houzz_proj = _q1("""
+        SELECT houzz_project_id FROM houzz_projects
+        WHERE name ILIKE %s LIMIT 1
+    """, (f"%{project.get('name','').split()[0]}%",))
+    houzz_pid = houzz_proj.get("houzz_project_id")
+
+    budget_rows = _q("""
+        SELECT category, budgeted_amount, actual_amount, committed_amount, variance, as_of_date
+        FROM houzz_budget
+        WHERE houzz_project_id = %s
+        ORDER BY ABS(COALESCE(variance, 0)) DESC
+    """, (houzz_pid,)) if houzz_pid else []
+
+    total_budget = sum(float(r.get("budgeted_amount") or 0) for r in budget_rows)
+    total_actual = sum(float(r.get("actual_amount") or 0) for r in budget_rows)
+    total_committed = sum(float(r.get("committed_amount") or 0) for r in budget_rows)
+    total_variance = total_actual - total_budget
+    budget_used_pct = round((total_actual / total_budget * 100), 1) if total_budget > 0 else 0
+
+    change_orders = _q("""
+        SELECT co_number, title, status, amount, submitted_date, approved_date
+        FROM houzz_change_orders
+        WHERE houzz_project_id = %s
+        ORDER BY submitted_date DESC
+    """, (houzz_pid,)) if houzz_pid else []
+
+    co_pending = [c for c in change_orders if not c.get("approved_date")]
+    co_total = sum(float(c.get("amount") or 0) for c in change_orders if c.get("approved_date"))
+
+    purchase_orders = _q("""
+        SELECT po_number, vendor_name, description, status, po_amount, issued_date, expected_date
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s AND status NOT IN ('received', 'cancelled')
+        ORDER BY expected_date NULLS LAST
+        LIMIT 15
+    """, (houzz_pid,)) if houzz_pid else []
+
+    po_total_open = sum(float(p.get("po_amount") or 0) for p in purchase_orders)
+
+    financial_health = "RED" if (total_variance > total_budget * 0.15) else (
+        "YELLOW" if (total_variance > 0 or co_pending) else "GREEN"
+    )
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "financial_health": financial_health,
+        "budget_summary": {
+            "total_budget": total_budget,
+            "total_actual": total_actual,
+            "total_committed": total_committed,
+            "total_variance": total_variance,
+            "budget_used_pct": budget_used_pct,
+            "status": "OVER_BUDGET" if total_variance > 0 else ("ON_BUDGET" if budget_rows else "NO_DATA"),
+            "data_status": "live" if budget_rows else "pending_houzz_sync",
+        },
+        "budget_by_category": _serialize(budget_rows[:10]),
+        "change_orders": {
+            "total_count": len(change_orders),
+            "pending_count": len(co_pending),
+            "approved_total": co_total,
+            "pending_items": _serialize(co_pending[:5]),
+        },
+        "purchase_orders": {
+            "open_count": len(purchase_orders),
+            "open_total": po_total_open,
+            "items": _serialize(purchase_orders[:10]),
+        },
+        "accounting_actions": [
+            *([ f"Review {len(co_pending)} unsigned change order(s) totaling ${sum(float(c.get('amount') or 0) for c in co_pending):,.0f}" ] if co_pending else []),
+            *([ f"Budget over by ${total_variance:,.0f} ({round(total_variance / total_budget * 100, 1) if total_budget else 0}%)" ] if total_variance > 0 else []),
+            *([ f"{len(purchase_orders)} open PO(s) — ${po_total_open:,.0f} outstanding" ] if purchase_orders else []),
+        ] or ["Financials on track — no action needed"],
+    }
+
+
+# ── Client Console ────────────────────────────────────────────────────────────
+
+@router.get("/client/{project_id}/status")
+def client_project_status(project_id: int):
+    """Client-facing project status — health, schedule, change orders, open decisions."""
+    project = _get_project(project_id)
+    today = date.today().isoformat()
+
+    houzz_proj = _q1("""
+        SELECT houzz_project_id FROM houzz_projects
+        WHERE name ILIKE %s LIMIT 1
+    """, (f"%{project.get('name','').split()[0]}%",))
+    houzz_pid = houzz_proj.get("houzz_project_id")
+
+    schedule_items = _q("""
+        SELECT title, status, start_date, end_date, task_type
+        FROM houzz_schedule_items
+        WHERE project_id = %s
+        ORDER BY start_date
+        LIMIT 20
+    """, (houzz_pid,)) if houzz_pid else []
+
+    upcoming = [s for s in schedule_items
+                if s.get("end_date") and str(s["end_date"]) >= today
+                and s.get("status") not in ("complete", "completed")][:5]
+
+    completed_milestones = [s for s in schedule_items
+                            if s.get("status") in ("complete", "completed")]
+
+    change_orders = _q("""
+        SELECT co_number, title, status, amount, reason, submitted_date, approved_date
+        FROM houzz_change_orders
+        WHERE houzz_project_id = %s
+        ORDER BY submitted_date DESC
+        LIMIT 10
+    """, (houzz_pid,)) if houzz_pid else []
+
+    co_pending = [c for c in change_orders if not c.get("approved_date")]
+    co_approved_total = sum(float(c.get("amount") or 0) for c in change_orders if c.get("approved_date"))
+
+    open_decisions = _q("""
+        SELECT exec_id, title, deadline
+        FROM executive_inbox
+        WHERE status = 'pending' AND action_payload::text ILIKE %s
+        ORDER BY deadline NULLS LAST
+        LIMIT 5
+    """, (f"%{project_id}%",))
+
+    open_rfis = _q("""
+        SELECT rfi_number, subject, status, submitted_date, required_response_date
+        FROM rfis
+        WHERE project_id = %s AND status = 'open'
+        ORDER BY required_response_date NULLS LAST
+        LIMIT 5
+    """, (project_id,))
+
+    health = "GREEN"
+    if co_pending or open_rfis:
+        health = "YELLOW"
+    if len(co_pending) > 2 or len(open_rfis) > 3:
+        health = "RED"
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "address": project.get("address"),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "project_health": health,
+        "schedule": {
+            "upcoming_milestones": _serialize(upcoming),
+            "completed_milestones": len(completed_milestones),
+            "total_tracked": len(schedule_items),
+            "data_status": "live" if schedule_items else "pending_houzz_sync",
+        },
+        "change_orders": {
+            "total_count": len(change_orders),
+            "pending_client_action": len(co_pending),
+            "approved_total": co_approved_total,
+            "pending_items": _serialize(co_pending),
+        },
+        "open_rfis": {
+            "count": len(open_rfis),
+            "items": _serialize(open_rfis),
+        },
+        "open_decisions": {
+            "count": len(open_decisions),
+            "items": _serialize(open_decisions),
+        },
+        "client_summary": (
+            f"Project on track — {len(completed_milestones)} milestone(s) complete, {len(upcoming)} upcoming"
+            if health == "GREEN"
+            else f"Your attention needed: {len(co_pending)} change order(s) pending your signature"
+        ),
+    }
+
+
+# ── Trade Partner Console ─────────────────────────────────────────────────────
+
+@router.get("/trade/{project_id}/my-work")
+def trade_my_work(project_id: int, trade: str = ""):
+    """Trade partner work queue for a project — tasks, RFIs, upcoming schedule, POs."""
+    project = _get_project(project_id)
+    today = date.today().isoformat()
+
+    houzz_proj = _q1("""
+        SELECT houzz_project_id FROM houzz_projects
+        WHERE name ILIKE %s LIMIT 1
+    """, (f"%{project.get('name','').split()[0]}%",))
+    houzz_pid = houzz_proj.get("houzz_project_id")
+
+    trade_filter = f"%{trade}%" if trade else "%"
+
+    open_tasks = _q("""
+        SELECT title, assigned_to, due_date, status, priority
+        FROM houzz_tasks
+        WHERE houzz_project_id = %s
+          AND status NOT IN ('complete', 'completed')
+          AND (assigned_to ILIKE %s OR %s = '%%')
+        ORDER BY due_date NULLS LAST, priority DESC
+        LIMIT 20
+    """, (houzz_pid, trade_filter, trade_filter)) if houzz_pid else []
+
+    overdue_tasks = [t for t in open_tasks
+                     if t.get("due_date") and str(t["due_date"])[:10] < today]
+
+    upcoming_schedule = _q("""
+        SELECT title, assignee, start_date, end_date, status
+        FROM houzz_schedule_items
+        WHERE project_id = %s
+          AND end_date::date >= CURRENT_DATE
+          AND end_date::date <= CURRENT_DATE + INTERVAL '14 days'
+          AND status NOT IN ('complete', 'completed')
+          AND (assignee ILIKE %s OR %s = '%%')
+        ORDER BY start_date
+        LIMIT 10
+    """, (houzz_pid, trade_filter, trade_filter)) if houzz_pid else []
+
+    open_pos = _q("""
+        SELECT po_number, vendor_name, description, po_amount, status, expected_date
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s
+          AND status NOT IN ('received', 'cancelled')
+          AND (vendor_name ILIKE %s OR %s = '%%')
+        ORDER BY expected_date NULLS LAST
+        LIMIT 10
+    """, (houzz_pid, trade_filter, trade_filter)) if houzz_pid else []
+
+    my_rfis = _q("""
+        SELECT rfi_number, subject, status, submitted_by, required_response_date
+        FROM rfis
+        WHERE project_id = %s AND status = 'open'
+          AND (submitted_by ILIKE %s OR %s = '%%')
+        ORDER BY required_response_date NULLS LAST
+        LIMIT 5
+    """, (project_id, trade_filter, trade_filter))
+
+    subcontractor_info = _q("""
+        SELECT company_name, contact_name, trade, status, insurance_expiry
+        FROM houzz_subcontractors
+        WHERE houzz_project_id = %s
+          AND (company_name ILIKE %s OR trade ILIKE %s OR %s = '%%')
+        LIMIT 5
+    """, (houzz_pid, trade_filter, trade_filter, trade_filter)) if houzz_pid else []
+
+    work_health = "RED" if len(overdue_tasks) > 2 else ("YELLOW" if overdue_tasks else "GREEN")
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "address": project.get("address"),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "trade_filter": trade or "all",
+        "work_health": work_health,
+        "tasks": {
+            "open_count": len(open_tasks),
+            "overdue_count": len(overdue_tasks),
+            "items": _serialize(open_tasks[:10]),
+            "data_status": "live" if open_tasks else "pending_houzz_sync",
+        },
+        "upcoming_schedule": {
+            "count": len(upcoming_schedule),
+            "next_14_days": _serialize(upcoming_schedule),
+            "data_status": "live" if upcoming_schedule else "pending_houzz_sync",
+        },
+        "purchase_orders": {
+            "open_count": len(open_pos),
+            "items": _serialize(open_pos),
+        },
+        "rfis": {
+            "open_count": len(my_rfis),
+            "items": _serialize(my_rfis),
+        },
+        "subcontractor_info": _serialize(subcontractor_info),
+        "trade_actions": [
+            *([ f"OVERDUE: {len(overdue_tasks)} task(s) past due date" ] if overdue_tasks else []),
+            *([ f"{len(my_rfis)} open RFI(s) need your response" ] if my_rfis else []),
+            *([ f"{len(open_pos)} open PO(s) — confirm receipt when materials arrive" ] if open_pos else []),
+        ] or ["No open items — check back after next Houzz sync"],
+    }

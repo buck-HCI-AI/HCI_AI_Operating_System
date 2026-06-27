@@ -5,6 +5,23 @@
 
 ---
 
+## v1.9 — 2026-06-27 | BTW-5 — Role Intelligence: 5 New Role Consoles
+
+**Trigger:** BTW-5 — Role Intelligence (Strategic Backlog)
+
+**Changes:**
+- `api/routers/operations.py`: 5 new role console endpoints added:
+  - `GET /owner/dashboard` — Company-wide command: portfolio health, executive inbox, missions blocked, open bids/RFIs/COs, AI ROI
+  - `GET /office/queue` — Admin work queue: pending approvals, overdue RFIs, open bids, pending submittals, upcoming meetings
+  - `GET /accounting/{project_id}/financials` — Per-project financial health: budget vs actual (houzz_budget), change order status + amounts, open POs
+  - `GET /client/{project_id}/status` — Client-facing project status: schedule milestones, change orders pending signature, open RFIs, open decisions
+  - `GET /trade/{project_id}/my-work` — Trade partner work queue (filtered by `?trade=` param): open tasks, 14-day schedule, open POs, RFIs
+- All 5 endpoints return structured JSON with health signal (GREEN/YELLOW/RED) + prioritized action list
+- `tests/test_btw5_role_consoles.py`: 115/115 tests across 3 projects and multiple trade filters
+- Health maintained: **95/100** | 18/18 API endpoints healthy
+
+---
+
 ## v1.8 — 2026-06-27 | BTW-6 — Executive Command Center: Weekly + Monthly Reports
 
 **Trigger:** BTW-6 — Executive Command Center (Strategic Backlog)
