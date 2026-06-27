@@ -5,6 +5,28 @@
 
 ---
 
+## v2.1 — 2026-06-27 | BTW-9 — Company Knowledge Graph
+
+**Trigger:** BTW-9 — Company Knowledge Graph (Strategic Backlog)
+
+**Changes:**
+- `services/knowledge_graph/` — new service directory:
+  - `graph.py` — entity loaders (projects, vendors, subcontractors, contacts, POs, RFIs, change orders, bids); `build_graph()` returns all nodes + edges; traversal queries: `find_by_vendor()`, `find_similar_issues()`, `find_product_history()`, `cross_project_summary()`
+  - `routes.py` — 5 endpoints:
+    - `GET /services/knowledge-graph` — service info
+    - `GET /services/knowledge-graph/graph` — full graph (?node_type= filter)
+    - `GET /services/knowledge-graph/summary` — cross-project relationship summary
+    - `GET /services/knowledge-graph/vendor?name=` — all projects vendor worked on (as sub/supplier/bidder)
+    - `GET /services/knowledge-graph/issues?q=` — similar RFIs + COs + daily logs matching keywords
+    - `GET /services/knowledge-graph/product?q=` — product history across projects (who installed, which POs, tasks)
+- `api/main.py` — knowledge-graph service registered in service layer + list_services()
+- `tests/test_btw9_knowledge_graph.py` — 60/60 tests
+- Health maintained: **95/100**
+
+**Note:** Semantic vector search (Qdrant cosine similarity) deferred to BTW-10 — depends on natural language embeddings and data flowing through connectors.
+
+---
+
 ## v2.0 — 2026-06-27 | BTW-7 — Superintendent Field Enhancements (Unblocked Subset)
 
 **Trigger:** BTW-7 — Superintendent Workspace (Strategic Backlog)

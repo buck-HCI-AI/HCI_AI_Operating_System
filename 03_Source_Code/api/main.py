@@ -73,6 +73,7 @@ cross_project_routes    = _load_svc("cross_project")
 predictive_routes       = _load_svc("predictive_engine")
 auditor_routes          = _load_svc("system_auditor")
 arch_sync_routes        = _load_svc("architecture_sync")
+kg_routes               = _load_svc("knowledge_graph")
 
 from routers.mining import router as mining_router
 
@@ -163,6 +164,7 @@ svc.include_router(cross_project_routes, prefix="/cross-project",              t
 svc.include_router(predictive_routes,   prefix="/predictive-engine",           tags=["predictive-engine"])
 svc.include_router(auditor_routes,      prefix="/system-auditor",              tags=["system-auditor"])
 svc.include_router(arch_sync_routes,    prefix="/architecture-sync",           tags=["architecture-sync"])
+svc.include_router(kg_routes,           prefix="/knowledge-graph",             tags=["knowledge-graph"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
@@ -188,6 +190,7 @@ def list_services():
         {"name": "houzz-intelligence",         "status": "active",   "path": "/api/v1/services/houzz"},
         {"name": "connectors",                  "status": "active",   "path": "/api/v1/services/connectors"},
         {"name": "notifications",               "status": "active",   "path": "/api/v1/services/notifications"},
+        {"name": "knowledge-graph",             "status": "active",   "path": "/api/v1/services/knowledge-graph"},
     ]}
 
 v1.include_router(svc)
