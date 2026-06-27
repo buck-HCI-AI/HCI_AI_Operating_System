@@ -31,7 +31,7 @@
 | Microsoft 365 | 🟢 LIVE | 2026-06-26 | Claude Code | Graph API — email read/send |
 | Mining Engine | 🟢 LIVE | 2026-06-27 | Claude Code | 8 agents, 03:00 daily, authorized by Buck 2026-06-27 |
 | Integration Registry | 🟢 LIVE | 2026-06-27 | Claude Code | 8 integrations seeded (05_Database/integration_registry.sql) |
-| Houzz (Browser) | 🟡 PENDING | 2026-06-27 | Browser Claude | Browser extracting data — tables pending DB inserts |
+| Houzz (Browser) | ⏸ PAUSED | 2026-06-27 | Chief Architect | Browser paused per directive — full extraction scope approved for future sprint |
 
 ---
 
@@ -203,7 +203,7 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 | Item | Owner | Priority | Status |
 |---|---|---|---|
 | Approve mining approval_queue items (vendor candidates) | Buck | P1 | 987+ items queued from HubSpot full sweep |
-| Houzz DB tables — Browser completing inserts | Browser Claude | P1 | houzz_daily_logs, houzz_projects, houzz_schedule_items empty |
+| Houzz full extraction | Future Sprint | P3 | Browser paused per Chief Architect Directive — full 15-table scope designed in HOUZZ_EXTRACTION_BACKLOG.md |
 | Sprint 2 n8n gate workflows | n8n / Claude Code | P1 | AUTO-005, AUTO-006, AUTO-017, AUTO-018 |
 | Branch protection on main | Buck | P2 | GitHub Settings → Branches → Require PR review |
 | HubSpot connected inbox | Buck | P2 | HubSpot Settings → Email → Connect personal email |
@@ -224,7 +224,7 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 | HistoricalCostMiner | 🟢 LIVE | 21 Garmisch records, bid variance tracking |
 | VendorIntelligenceMiner | 🟢 LIVE | 392 vendors, bid stats updating |
 | LessonsLearnedMiner | 🟢 LIVE | Dedup via source_reference |
-| HouzzMiner | 🟡 PENDING | Framework active — awaiting Browser DB inserts |
+| HouzzMiner | ⏸ PAUSED | Framework active — full extraction scope approved for future sprint (Chief Architect Directive 2026-06-27) |
 | ExecutiveAggregator | 🟢 LIVE | KPI snapshots + LIVE_PROJECT_STATE.md header update |
 
 ---

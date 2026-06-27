@@ -105,7 +105,7 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 
 | Status | Task ID | Task | Label | Assigned To |
 |---|---|---|---|---|
-| [ ] | HZ-001 | Houzz Daily Log Reader (Manual extraction test) | workflow n8n | Browser Claude |
+| [!] | HZ-001 | Houzz Daily Log Reader (Manual extraction test) | workflow n8n | Browser Claude | DEFERRED — superseded by full extraction scope (Chief Architect Directive 2026-06-27) |
 | [x] | HZ-002 | Create reports/houzz/ folder structure | workflow documentation | Claude Code |
 | [x] | HZ-003 | Register Houzz in Integration Registry (05_Database/) | registry workflow | Claude Code | Done 2026-06-27 — status: pending_data |
 
@@ -138,10 +138,19 @@ Acceptance Criteria — HZ-001:
 
 | Status | Task ID | Task | Label | Assigned To |
 |---|---|---|---|---|
-| [x] | HZ-004 | n8n daily log extraction trigger (5:30 PM, all active projects) | n8n workflow | n8n | Done 2026-06-27 — 17:30 daily, KUw5KCchqRiWTOvS |
+| [!] | HZ-004 | n8n daily log extraction trigger (5:30 PM, all active projects) | n8n workflow | n8n | PAUSED — deactivated per Chief Architect Directive 2026-06-27 |
 | [ ] | HZ-005 | Houzz-to-HCI-AI Project Health Engine (7 intelligence artifacts) | workflow registry | ChatGPT + n8n |
 
 ---
+
+
+### Future Backlog — Houzz Full-Project Extraction (Chief Architect Directive 2026-06-27)
+
+| Status | Task ID | Task | Label | Assigned To |
+|---|---|---|---|---|
+| [ ] | HZ-FULL-001 | Full Houzz schema design (15+ tables) | registry | Claude Code |
+| [ ] | HZ-FULL-002 | Browser Claude full extraction run (all projects, all data) | browser | Browser Claude |
+| [ ] | HZ-FULL-003 | HouzzMiner full intelligence sweep (post-extraction) | mining | Claude Code |
 
 ## Backlog: Sprint 3 — HubSpot & Drive Integration
 
