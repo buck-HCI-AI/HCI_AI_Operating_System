@@ -240,26 +240,32 @@ class HouzzIngestionService:
 
     @staticmethod
     def status() -> dict:
+        tables = [
+            "houzz_projects", "houzz_daily_logs", "houzz_schedule_items",
+            "houzz_files", "houzz_time_entries", "houzz_tasks", "houzz_messages",
+            "houzz_budget", "houzz_estimates", "houzz_contracts",
+            "houzz_purchase_orders", "houzz_change_orders", "houzz_selections",
+            "houzz_project_vendors", "houzz_contacts", "houzz_team_members",
+            "houzz_subcontractors",
+        ]
+        counts = {}
+        last_syncs = {}
         with _pg() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT
-                        (SELECT COUNT(*) FROM houzz_projects)       AS projects,
-                        (SELECT COUNT(*) FROM houzz_daily_logs)     AS daily_logs,
-                        (SELECT COUNT(*) FROM houzz_schedule_items) AS schedule_items,
-                        (SELECT MAX(synced_at) FROM houzz_daily_logs)     AS last_log_sync,
-                        (SELECT MAX(synced_at) FROM houzz_schedule_items) AS last_sched_sync
-                """)
-                row = dict(cur.fetchone())
+                for table in tables:
+                    try:
+                        cur.execute(f"SELECT COUNT(*), MAX(synced_at) FROM {table}")
+                        row = cur.fetchone()
+                        counts[table] = row[0]
+                        last_syncs[table] = str(row[1]) if row[1] else None
+                    except Exception:
+                        counts[table] = None
+                        last_syncs[table] = None
+
+        total = sum(v for v in counts.values() if v is not None)
         return {
             "status": "ok",
-            "table_counts": {
-                "houzz_projects": row["projects"],
-                "houzz_daily_logs": row["daily_logs"],
-                "houzz_schedule_items": row["schedule_items"],
-            },
-            "last_sync": {
-                "daily_logs": str(row["last_log_sync"]) if row["last_log_sync"] else None,
-                "schedule_items": str(row["last_sched_sync"]) if row["last_sched_sync"] else None,
-            },
+            "total_records": total,
+            "table_counts": counts,
+            "last_sync": last_syncs,
         }

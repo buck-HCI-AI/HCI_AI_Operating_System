@@ -1,16 +1,26 @@
-"""Houzz Intelligence routes — /api/v1/services/houzz"""
+"""Houzz Intelligence routes — /api/v1/services/houzz
+
+Two ingest paths:
+  POST /ingest      — legacy path (projects, daily_logs, schedule_items only)
+  POST /ingest/full — full Houzz Connector Framework (all 17 entity types)
+  GET  /status      — row counts across all Houzz tables
+"""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "connectors"))
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any
 from houzz_svc import HouzzIngestionService
+from houzz_connector import HouzzConnector
 
 router = APIRouter()
 
+
+# ── Legacy models (backwards compat) ─────────────────────────────────────────
 
 class HouzzProject(BaseModel):
     houzz_project_id: str
@@ -58,35 +68,81 @@ class HouzzIngestPayload(BaseModel):
     extraction_notes: Optional[str] = None
 
 
+# ── Full connector payload ─────────────────────────────────────────────────────
+
+class FullIngestPayload(BaseModel):
+    """All 17 Houzz entity types. All fields optional — send only what was extracted."""
+    projects: List[Any] = Field(default_factory=list)
+    daily_logs: List[Any] = Field(default_factory=list)
+    schedule_items: List[Any] = Field(default_factory=list)
+    files: List[Any] = Field(default_factory=list)
+    time_entries: List[Any] = Field(default_factory=list)
+    tasks: List[Any] = Field(default_factory=list)
+    messages: List[Any] = Field(default_factory=list)
+    budget: List[Any] = Field(default_factory=list)
+    estimates: List[Any] = Field(default_factory=list)
+    contracts: List[Any] = Field(default_factory=list)
+    purchase_orders: List[Any] = Field(default_factory=list)
+    change_orders: List[Any] = Field(default_factory=list)
+    selections: List[Any] = Field(default_factory=list)
+    vendors: List[Any] = Field(default_factory=list)
+    contacts: List[Any] = Field(default_factory=list)
+    team_members: List[Any] = Field(default_factory=list)
+    subcontractors: List[Any] = Field(default_factory=list)
+    source: Optional[str] = "browser_claude"
+    extraction_notes: Optional[str] = None
+    dry_run: Optional[bool] = True
+
+
 @router.get("")
 def service_info():
     return {
         "service": "houzz_intelligence",
+        "version": "2.0",
         "description": "Persistence bridge for Houzz data extracted by Browser Claude",
         "endpoints": {
-            "POST /ingest": "Upsert projects, daily logs, and schedule items",
-            "GET /status": "Row counts and last sync timestamps",
+            "POST /ingest":      "Legacy: upsert projects, daily logs, schedule items",
+            "POST /ingest/full": "Full: all 17 Houzz entity types via Connector Framework",
+            "GET  /status":      "Row counts and last sync timestamps for all tables",
         },
     }
 
 
 @router.post("/ingest")
 def ingest_houzz_data(payload: HouzzIngestPayload):
-    """
-    Accepts structured Houzz data from Browser Claude and writes to houzz_* tables.
-    All writes are idempotent via ON CONFLICT DO UPDATE.
-    """
+    """Legacy ingest — projects, daily_logs, schedule_items only."""
     raw = payload.dict()
-    # Convert pydantic models to plain dicts for service layer
-    raw["projects"] = [p for p in raw.get("projects", [])]
-    raw["daily_logs"] = [l for l in raw.get("daily_logs", [])]
-    raw["schedule_items"] = [s for s in raw.get("schedule_items", [])]
-
     result = HouzzIngestionService.ingest(raw)
-
     if result["total_imported"] == 0 and result["status"] == "ok":
         result["message"] = "All records already exist (duplicates) — no new rows inserted"
+    return result
 
+
+@router.post("/ingest/full")
+def ingest_full(payload: FullIngestPayload):
+    """
+    Full Houzz Connector — accepts all 17 entity types.
+    Default dry_run=true — set dry_run=false to write to DB.
+    """
+    connector = HouzzConnector(dry_run=payload.dry_run)
+
+    data = {
+        k: v for k, v in payload.dict().items()
+        if k in HouzzConnector.supported_entities and v
+    }
+
+    if not data:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No recognized entity types found. Supported: {HouzzConnector.supported_entities}"
+        )
+
+    total_records = sum(len(v) for v in data.values())
+    result = connector.ingest(data)
+    result["source"] = payload.source
+    result["extraction_notes"] = payload.extraction_notes
+    result["entity_types_received"] = list(data.keys())
+    result["total_records_received"] = total_records
     return result
 
 

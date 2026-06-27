@@ -1,0 +1,314 @@
+"""
+Universal Connector Base Class — HCI AI Operating System
+
+Every connector (Houzz, HubSpot, Outlook, QuickBooks, Google Drive, Procore, Autodesk)
+extends BaseConnector and implements the 7-stage pipeline.
+
+Architecture:
+  Browser/API Agent (Discovery)
+    ↓ canonical JSON
+  BaseConnector.ingest()
+    ├── Stage 1: Validate      — schema + required fields
+    ├── Stage 2: Normalize     — canonical field names, types, dates
+    ├── Stage 3: Persist       — upsert to houzz_*/hubspot_* tables
+    ├── Stage 4: Mine          — trigger downstream miners
+    ├── Stage 5: Knowledge Graph — update relationship graph
+    ├── Stage 6: Executive     — surface insights to executive inbox
+    └── Stage 7: Sync State    — record last_synced_at, cursor
+
+Division of labor (immutable rule):
+  Browser Agent  = Discovery only (extracts data, produces canonical JSON)
+  Connector      = Validates, normalizes, persists, mines (never Browser)
+  DB             = Written through connector only (never direct from Browser)
+"""
+
+import os, sys, json, logging, time
+from abc import ABC, abstractmethod
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
+
+import psycopg2, psycopg2.extras
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
+
+logger = logging.getLogger("hci.connector")
+
+_DB = dict(
+    host=os.environ.get("POSTGRES_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_PORT", 5432)),
+    dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+    user=os.environ.get("POSTGRES_USER", "hci_admin"),
+    password=os.environ.get("POSTGRES_PASSWORD", ""),
+)
+
+MAX_RETRIES = 3
+RETRY_BACKOFF = [2, 5, 15]  # seconds between retries
+
+
+class ConnectorResult:
+    def __init__(self, connector: str, entity_type: str):
+        self.connector = connector
+        self.entity_type = entity_type
+        self.attempted = 0
+        self.inserted = 0
+        self.updated = 0
+        self.skipped = 0
+        self.errors: list[dict] = []
+        self.started_at = datetime.now(timezone.utc)
+        self.finished_at: Optional[datetime] = None
+
+    def finish(self):
+        self.finished_at = datetime.now(timezone.utc)
+        return self
+
+    def to_dict(self) -> dict:
+        return {
+            "connector": self.connector,
+            "entity_type": self.entity_type,
+            "attempted": self.attempted,
+            "inserted": self.inserted,
+            "updated": self.updated,
+            "skipped": self.skipped,
+            "errors": self.errors,
+            "duration_ms": int((self.finished_at - self.started_at).total_seconds() * 1000) if self.finished_at else None,
+        }
+
+
+class BaseConnector(ABC):
+    """Abstract base for all HCI AI connectors."""
+
+    name: str = "base"          # Override in subclass: "houzz", "hubspot", etc.
+    version: str = "1.0"
+    supported_entities: list[str] = []  # Override in subclass
+
+    def __init__(self, dry_run: bool = True):
+        self.dry_run = dry_run
+        self._conn = None
+
+    # ── Public API ─────────────────────────────────────────────────────────────
+
+    def ingest(self, payload: dict) -> dict:
+        """
+        Entry point for all connector data.
+        Runs the 7-stage pipeline per entity type found in payload.
+        """
+        results = {}
+        total_inserted = 0
+        all_errors = []
+
+        with self._db() as conn:
+            self._conn = conn
+            for entity_type in self.supported_entities:
+                records = payload.get(entity_type, [])
+                if not records:
+                    continue
+                result = self._run_with_recovery(entity_type, records)
+                results[entity_type] = result.to_dict()
+                total_inserted += result.inserted
+                all_errors.extend(result.errors)
+
+            if not self.dry_run:
+                conn.commit()
+                self._update_sync_states(payload)
+            else:
+                conn.rollback()
+            self._conn = None
+
+        return {
+            "connector": self.name,
+            "dry_run": self.dry_run,
+            "total_inserted": total_inserted,
+            "results": results,
+            "errors": all_errors,
+            "synced_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def get_sync_state(self, entity_type: str, external_id: Optional[str] = None) -> Optional[dict]:
+        with self._db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT * FROM connector_sync_state
+                    WHERE connector_name=%s AND entity_type=%s
+                      AND COALESCE(external_id,'') = COALESCE(%s,'')
+                """, (self.name, entity_type, external_id))
+                row = cur.fetchone()
+                return dict(row) if row else None
+
+    def list_sync_states(self) -> list[dict]:
+        with self._db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT * FROM connector_sync_state
+                    WHERE connector_name=%s
+                    ORDER BY entity_type, external_id
+                """, (self.name,))
+                return [dict(r) for r in cur.fetchall()]
+
+    # ── Abstract methods — implement in each connector ─────────────────────────
+
+    @abstractmethod
+    def validate(self, entity_type: str, record: dict) -> tuple[bool, list[str]]:
+        """
+        Return (is_valid, list_of_errors).
+        Validate required fields, types, and business rules.
+        """
+
+    @abstractmethod
+    def normalize(self, entity_type: str, record: dict) -> dict:
+        """
+        Return a normalized record with canonical field names and types.
+        Dates → YYYY-MM-DD strings, amounts → floats, IDs → stripped strings.
+        """
+
+    @abstractmethod
+    def persist(self, entity_type: str, record: dict, cur) -> bool:
+        """
+        Upsert one normalized record to the database.
+        Return True if inserted (new), False if updated (existing).
+        """
+
+    # ── Optional hooks — override as needed ───────────────────────────────────
+
+    def post_persist(self, entity_type: str, results: ConnectorResult) -> None:
+        """Called after all records of an entity type are persisted. Override to trigger miners."""
+
+    def publish_event(self, event_type: str, entity_type: str, count: int) -> None:
+        """Override to publish events to n8n or internal event bus."""
+        logger.info("[%s] event:%s entity:%s count:%d", self.name, event_type, entity_type, count)
+
+    # ── 7-Stage Pipeline ───────────────────────────────────────────────────────
+
+    def _run_with_recovery(self, entity_type: str, records: list[dict]) -> ConnectorResult:
+        """Wraps _run_pipeline with autonomous retry and recovery."""
+        result = ConnectorResult(self.name, entity_type)
+        attempt = 0
+        last_error = None
+
+        while attempt < MAX_RETRIES:
+            try:
+                result = self._run_pipeline(entity_type, records)
+                if attempt > 0:
+                    logger.info("[%s] recovered %s after %d retries", self.name, entity_type, attempt)
+                return result.finish()
+            except Exception as e:
+                last_error = e
+                attempt += 1
+                if attempt < MAX_RETRIES:
+                    wait = RETRY_BACKOFF[attempt - 1]
+                    logger.warning("[%s] %s failed (attempt %d/%d), retrying in %ds: %s",
+                                   self.name, entity_type, attempt, MAX_RETRIES, wait, e)
+                    time.sleep(wait)
+                else:
+                    logger.error("[%s] %s failed after %d attempts: %s", self.name, entity_type, MAX_RETRIES, e)
+                    self._log_escalation(entity_type, str(last_error))
+
+        result.errors.append({"entity_type": entity_type, "error": str(last_error), "retries": MAX_RETRIES})
+        return result.finish()
+
+    def _run_pipeline(self, entity_type: str, records: list[dict]) -> ConnectorResult:
+        result = ConnectorResult(self.name, entity_type)
+
+        with self._conn.cursor() as cur:
+            for record in records:
+                result.attempted += 1
+
+                # Stage 1: Validate
+                is_valid, errors = self.validate(entity_type, record)
+                if not is_valid:
+                    result.skipped += 1
+                    result.errors.append({"entity_type": entity_type, "errors": errors, "record_keys": list(record.keys())})
+                    continue
+
+                # Stage 2: Normalize
+                try:
+                    normalized = self.normalize(entity_type, record)
+                except Exception as e:
+                    result.skipped += 1
+                    result.errors.append({"entity_type": entity_type, "stage": "normalize", "error": str(e)})
+                    continue
+
+                # Stage 3: Persist (skip write in dry_run but still count)
+                if self.dry_run:
+                    result.inserted += 1
+                    continue
+
+                try:
+                    is_new = self.persist(entity_type, normalized, cur)
+                    if is_new:
+                        result.inserted += 1
+                    else:
+                        result.updated += 1
+                except Exception as e:
+                    result.skipped += 1
+                    result.errors.append({"entity_type": entity_type, "stage": "persist", "error": str(e)})
+                    self._conn.rollback()
+                    continue
+
+        # Stage 4: Mine (post-persist hook)
+        if not self.dry_run and (result.inserted + result.updated) > 0:
+            self.post_persist(entity_type, result)
+
+        # Stage 5-7: Events + sync state (handled by caller for batching)
+        if result.inserted + result.updated > 0:
+            self.publish_event("synced", entity_type, result.inserted + result.updated)
+
+        return result
+
+    # ── Sync State Management ──────────────────────────────────────────────────
+
+    def _update_sync_states(self, payload: dict) -> None:
+        """Update connector_sync_state for every entity type that had data."""
+        try:
+            with self._db() as conn:
+                with conn.cursor() as cur:
+                    for entity_type in self.supported_entities:
+                        records = payload.get(entity_type, [])
+                        if not records:
+                            continue
+                        project_ids = list({
+                            r.get("houzz_project_id") or r.get("project_id") or r.get("external_id", "")
+                            for r in records
+                        })
+                        for ext_id in project_ids:
+                            cur.execute("""
+                                INSERT INTO connector_sync_state
+                                    (connector_name, entity_type, external_id, last_synced_at,
+                                     records_synced, status, updated_at)
+                                VALUES (%s, %s, %s, NOW(), %s, 'idle', NOW())
+                                ON CONFLICT DO UPDATE SET
+                                    last_synced_at = NOW(),
+                                    records_synced = connector_sync_state.records_synced + EXCLUDED.records_synced,
+                                    status         = 'idle',
+                                    error_message  = NULL,
+                                    retry_count    = 0,
+                                    updated_at     = NOW()
+                            """, (self.name, entity_type, ext_id or None, len(records)))
+                conn.commit()
+        except Exception as e:
+            logger.error("[%s] Failed to update sync states: %s", self.name, e)
+
+    def _log_escalation(self, entity_type: str, error: str) -> None:
+        """Log persistent failure to notification_log for executive escalation."""
+        try:
+            with self._db() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO notification_log
+                            (event_type, entity_type, entity_id, severity, message, success)
+                        VALUES ('connector_failure', %s, %s, 'CRITICAL', %s, false)
+                    """, (entity_type, self.name, f"Connector {self.name} failed on {entity_type}: {error}"))
+                    cur.execute("""
+                        UPDATE connector_sync_state
+                        SET status='error', error_message=%s, retry_count=retry_count+1, updated_at=NOW()
+                        WHERE connector_name=%s AND entity_type=%s
+                    """, (error[:1000], self.name, entity_type))
+                conn.commit()
+        except Exception as log_err:
+            logger.error("[%s] Failed to log escalation: %s", self.name, log_err)
+
+    # ── DB Helper ─────────────────────────────────────────────────────────────
+
+    def _db(self):
+        return psycopg2.connect(**_DB, cursor_factory=psycopg2.extras.RealDictCursor)

@@ -66,6 +66,7 @@ cr_routes            = _load_svc("connector_registry")
 bid_lev_routes       = _load_svc("bid_leveling")
 houzz_routes         = _load_svc("houzz_intelligence")
 notify_routes        = _load_svc("notification_engine")
+connector_routes     = _load_svc("connectors")
 
 from routers.mining import router as mining_router
 
@@ -149,6 +150,7 @@ svc.include_router(cr_routes,         prefix="/connector-registry",       tags=[
 svc.include_router(bid_lev_routes,    prefix="/bid-leveling",             tags=["bid-leveling"])
 svc.include_router(houzz_routes,      prefix="/houzz",                    tags=["houzz-intelligence"])
 svc.include_router(notify_routes,     prefix="/notifications",             tags=["notifications"])
+svc.include_router(connector_routes,  prefix="/connectors",                tags=["connectors"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
@@ -172,6 +174,8 @@ def list_services():
         {"name": "connector-registry",         "status": "active",   "path": "/api/v1/services/connector-registry"},
         {"name": "bid-leveling",               "status": "active",   "path": "/api/v1/services/bid-leveling"},
         {"name": "houzz-intelligence",         "status": "active",   "path": "/api/v1/services/houzz"},
+        {"name": "connectors",                  "status": "active",   "path": "/api/v1/services/connectors"},
+        {"name": "notifications",               "status": "active",   "path": "/api/v1/services/notifications"},
     ]}
 
 v1.include_router(svc)
@@ -272,5 +276,5 @@ async def _mcp_proxy(request: _Req, path: str = ""):
 
 logger.info("MCP proxy mounted at /mcp → port 8080")
 
-logger.info("HCI AI API v%s started — %d route groups + 17 intelligence services + MCP + platform integration layer",
+logger.info("HCI AI API v%s started — %d route groups + 19 intelligence services + MCP + Connector Framework",
             settings.app_version, 14)
