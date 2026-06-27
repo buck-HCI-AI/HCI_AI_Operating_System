@@ -33,6 +33,7 @@ from routers import auth, documents, storage, search, system, ai
 from routers import sop
 from routers import platform as platform_router
 from routers import mvp_ops
+from routers import executive as exec_router
 
 # Construction Intelligence Services — loaded via importlib to avoid service.py name collisions
 import importlib.util as _ilu
@@ -122,8 +123,9 @@ v1.include_router(workflows.router,  prefix="/workflows", tags=["workflows"])
 v1.include_router(memory.router,     prefix="/memory",    tags=["memory"])
 v1.include_router(sop.router,                           tags=["sop"])
 v1.include_router(platform_router.router,              tags=["platform"])
-v1.include_router(houzz_routes,  prefix="/imports/houzz",  tags=["houzz-imports"])
-v1.include_router(mvp_ops.router,                      tags=["mvp-operations"])
+v1.include_router(houzz_routes,       prefix="/imports/houzz",  tags=["houzz-imports"])
+v1.include_router(mvp_ops.router,                           tags=["mvp-operations"])
+v1.include_router(exec_router.router, prefix="/executive",   tags=["executive"])
 
 # ── Construction Intelligence Service Layer ────────────────────────────────
 svc = APIRouter(prefix="/services")
@@ -210,6 +212,9 @@ if os.path.isdir(_static_dir):
 @app.get("/dashboard", include_in_schema=False)
 def dashboard_redirect():
     return RedirectResponse(url="/static/dashboard/index.html")
+
+# Executive dashboard HTML at /executive (mobile-first, no auth — internal only)
+app.include_router(exec_router.router, prefix="/executive", include_in_schema=False)
 
 # ── Legacy routes (backward compat — launchd scripts + existing integrations) ─
 
