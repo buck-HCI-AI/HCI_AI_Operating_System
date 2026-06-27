@@ -1,0 +1,127 @@
+{
+  "name": "AUTO-NIGHTLY-AUDIT",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 2,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "trigger-nightly",
+      "name": "Nightly 2:00 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8000/api/v1/services/system-auditor/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "run-audit",
+      "name": "Run System Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const audit = $input.first().json;\nconst score = audit.overall_health_score || 0;\nconst label = audit.overall_health_label || 'UNKNOWN';\nconst recs = audit.recommendations || [];\nconst high_recs = recs.filter(r => r.priority === 'HIGH');\n\n// Build ntfy message\nconst status_emoji = score >= 80 ? 'GREEN' : score >= 60 ? 'YELLOW' : 'RED';\nconst api_health = audit.api_health || {};\nconst test_cov = audit.test_coverage || {};\n\nlet msg = `Score: ${score}/100 (${label})\\n`;\nmsg += `API: ${api_health.endpoints_healthy}/${api_health.endpoints_checked} healthy, ${api_health.avg_latency_ms}ms avg\\n`;\nmsg += `Tests: ${test_cov.score}% coverage\\n`;\nif (high_recs.length > 0) {\n  msg += `\\nHigh priority issues (${high_recs.length}):\\n`;\n  high_recs.slice(0, 3).forEach(r => {\n    msg += `• ${r.title}\\n`;\n  });\n}\n\nreturn [{\n  json: {\n    title: `Nightly Audit: ${score}/100 — ${label}`,\n    message: msg,\n    priority: score >= 80 ? 'default' : score >= 60 ? 'high' : 'urgent',\n    score: score,\n    label: label,\n    high_issues: high_recs.length\n  }\n}];"
+      },
+      "id": "format-report",
+      "name": "Format Audit Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "Tags",
+              "value": "mag,robot"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "ntfy-audit",
+      "name": "Send Audit Report via ntfy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Nightly 2:00 AM": {
+      "main": [
+        [
+          {
+            "node": "Run System Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run System Audit": {
+      "main": [
+        [
+          {
+            "node": "Format Audit Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Audit Report": {
+      "main": [
+        [
+          {
+            "node": "Send Audit Report via ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

@@ -166,7 +166,7 @@ class SystemAuditor(BaseIntelligenceService):
             if r.get("status") == "error":
                 errored.append({"connector": name, "error": r.get("error_message","")[:100]})
 
-        healthy = len(rows) - len(stale) - len(errored) - len(never_synced)
+        healthy = max(0, len(rows) - len(stale) - len(errored) - len(never_synced))
         score = round(healthy / max(len(rows), 1) * 100) if rows else 50
 
         return {
