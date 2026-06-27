@@ -95,9 +95,11 @@ def _send_ntfy(title: str, message: str, tags: list, action_url: str | None, top
     ntfy_topic = topic or os.environ.get("NTFY_TOPIC", "hci-executive")
     ntfy_token = os.environ.get("NTFY_TOKEN", "")
 
+    # Strip non-latin characters from header values (ntfy header encoding limit)
+    safe_title = title.encode("ascii", "replace").decode("ascii")
     headers = {
-        "Title": title,
-        "Content-Type": "text/plain",
+        "Title": safe_title,
+        "Content-Type": "text/plain; charset=utf-8",
     }
     if tags:
         headers["Tags"] = ",".join(tags)
@@ -106,13 +108,16 @@ def _send_ntfy(title: str, message: str, tags: list, action_url: str | None, top
     if ntfy_token:
         headers["Authorization"] = f"Bearer {ntfy_token}"
 
+    import ssl, certifi
+    ctx = ssl.create_default_context(cafile=certifi.where())
+
     req = urllib.request.Request(
         f"{ntfy_url}/{ntfy_topic}",
-        data=message.encode(),
+        data=message.encode("utf-8"),
         headers=headers,
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=5) as r:
+    with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
         return {"status": "sent", "http_status": r.status, "topic": ntfy_topic}
 
 
