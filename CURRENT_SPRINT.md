@@ -1,128 +1,159 @@
 # CURRENT_SPRINT.md
-## HCI AI Operating System — Sprint 1: System Verification
+## HCI AI Operating System — Sprint 2: Registry Consolidation
 
-**Sprint Number:** 1
-**Sprint Name:** System Verification
-**Status:** 🟢 Active — Repositories unified. Merge complete. Awaiting Sprint 1 ACR + branch protection.
+**Sprint Number:** 2
+**Sprint Name:** Registry Consolidation
+**Status:** 🟢 Active
 **Authority:** SPRINT_OPERATING_MODEL.md
 **Parent Document:** PROJECT.md
 **Task Register:** TASKS.md
 
-**Opened:** 2026-06-26
-**Target Close:** TBD (set by human owner at sprint kickoff)
-**Milestone:** Sprint 1 — System Verification (GitHub Milestone)
-**Created By:** Browser Claude (GitHub Administrator)
-
-> ✅ **Repositories are now unified on main.** Merge complete 2026-06-26.
-> Implementation code (Claude Code) + governance docs (Browser Claude) — single source of truth.
-> ⏳ Sprint 1 ACR pending from @buck-HCI-AI. Branch protection pending (GitHub Settings → Branches).
+**Opened:** 2026-06-27
+**Target Close:** 2026-07-07
+**Authorized By:** Buck Adams (Owner) + ChatGPT (ACR) — 2026-06-27
+**Sprint 1 Archived:** reports/sprint/sprint-1-tasks.md
 
 ---
 
-## Sprint Goal
+## Sprint 1 Close Summary
 
-> **Verify all live systems are registered and operating under governance, activate Sprint 1 automation workflows, integrate the ACR-001 MCP branch, and complete the state synchronization so every AI agent knows what exists and what it owns.**
+**Status:** CLOSED — 2026-06-27
+**Authorized by:** Buck Adams + ChatGPT ACR (GBT Reconnect Directive, 2026-06-27)
 
----
+### What Shipped in Sprint 1
+- ✅ Repositories unified on main (feature/data-architecture-document-storage → main, 2026-06-26)
+- ✅ 35 MCP tools live (32 original + RunMiner + GetMiningStatus + GetMiningLog)
+- ✅ Mining Engine (ACR-004) — 8 agents live, go-live authorized by Buck 2026-06-27
+- ✅ All 17 ACR-004 tasks complete — HubSpot, Drive, Outlook, Houzz, HistoricalCost, VendorIntelligence, LessonsLearned, ExecutiveAggregator
+- ✅ AUTO-004 daily mining workflow (n8n, 03:00 daily) — live
+- ✅ HubSpot full sweep: 2,849 records scanned, 987 intelligence items extracted
+- ✅ 3 n8n daily automations active (AUTO-001/002/003)
+- ✅ GitHub CI workflow fixed (no more inbox spam)
+- ✅ ACR-004 Architecture Review Report submitted
 
-## Sprint Context
+### Sprint 1 Carry-Over to Sprint 2
 
-### What Claude Code Completed (ACR-001 + ACR-002 — Merged to main)
+| Task ID | Task | Owner | Reason |
+|---|---|---|---|
+| INT-003 | Audit 04_Workflows/ for workflow count and status | ChatGPT | Needs architect review |
+| INT-006 | List all active n8n workflow names and schedules | n8n | Needs n8n access |
+| INT-008 | Human owner approves LIVE_PROJECT_STATE.md | @buck-HCI-AI | Buck action |
+| INT-010 | Register all workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT | Needs full inventory first |
+| INT-013 | Enable branch protection on main | @buck-HCI-AI | GitHub Settings → Branches |
+| AUTO-005 | Implement Gate H: HubSpot write approval workflow | n8n | Sprint 2 priority 1 |
+| AUTO-006 | Implement Gate G: PR merge notification | n8n | Sprint 2 priority 1 |
+| HZ-001 | Houzz Daily Log Reader — manual extraction test | Browser Claude | Browser data pending |
 
-- ✅ MCP server live at https://speculate-armband-retinal.ngrok-free.dev/mcp
-- ✅ 32 total MCP tools (26 existing + 5 ACR-001 + 1 ACR-002 GetProjectState)
-- ✅ Public /project-state endpoint (no auth — ChatGPT access)
-- ✅ Historical Cost, Lessons Learned, Vendor Registry, SOP Registry
-- ✅ WF-001 through WF-007 (incl. AI Bid Leveling Engine in n8n)
-- ✅ HubSpot, Drive, Sheets, Graph API all live
-- ✅ Qdrant fixes + ProjectMining bug fixed
-- ✅ feature/data-architecture-document-storage merged to main 2026-06-26
-- ✅ All hardcoded credentials removed — .env only
-- ✅ CHANGELOG.md created
-- ✅ reports/ directory structure created
-- ✅ LIVE_PROJECT_STATE.md fully populated + on Drive
+### Sprint 1 Retrospective
 
-### What Browser Claude Completed (Sprint 0)
-- ✅ Full governance layer (15 documents)
-- ✅ Houzz Browser Intelligence workstream (6 documents)
-- ✅ Integration planning layer (5 documents)
-- ✅ LIVE_PROJECT_STATE.md activated
-- ✅ CURRENT_SPRINT.md (this document)
+**What worked:**
+- Mining engine went from concept → live 8-agent production system in a single session
+- GBT reconnect directive streamlined architecture review — ACR in minutes not days
+- sys.path module cache fix unblocked the 500 error chain; all 3 schema errors resolved same session
+- HubSpot limit removal uncovered 10× more records than expected
 
-### What Remains for Sprint 1
-Per TASKS.md — see full task list below.
+**What didn't work:**
+- GitHub Actions workflow invalid YAML went undetected — need YAML linting pre-commit
+- Houzz tables still empty; Browser timing required a separate session
+- Sprint 1 carried too many @buck-HCI-AI-gated items with no way to unblock them without Buck
 
----
-
-## Sprint 1 Task Board
-
-### Priority 1 — Unblock & Integrate (Human + Claude Code)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [ ] | SPRINT1-001 | Human owner issues Sprint 1 ACR | @buck-HCI-AI | ACR issued in chat or GitHub issue |
-| [x] | SPRINT1-002 | Merge ACR-001 branch → main (Gate G) | Claude Code | feature/data-architecture-document-storage merged 2026-06-26 |
-| [x] | SPRINT1-003 | Claude Code pulls repo (local sync) | Claude Code | ReadLiveProjectState + ReadCurrentSprint return live data |
-| [ ] | SPRINT1-004 | Enable branch protection on main | @buck-HCI-AI | Settings → Branches → Rule active |
-
-### Priority 2 — State Sync (ChatGPT + Claude Code)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [ ] | INT-003 | Audit 04_Workflows/ — list ALL active workflows | ChatGPT | Full workflow inventory in LIVE_PROJECT_STATE.md |
-| [x] | INT-004 | Confirm HubSpot + Drive API connection status | Claude Code | Both live — HubSpot deals/contacts, Drive files confirmed |
-| [x] | INT-005 | Confirm Qdrant + Postgres live status | Claude Code | Both live — 190 vectors, 4 projects, all tables healthy |
-| [ ] | INT-006 | List all active n8n workflows beyond WF-007 | n8n | All workflows registered in AUTOMATION_GOVERNANCE.md |
-| [x] | INT-007 | Update TASKS.md with pre-existing Claude Code work | Claude Code | Done 2026-06-26 |
-| [x] | INT-011 | Register all APIs in Integration Registry (PROJECT.md) | Claude Code | All 6 integrations confirmed live |
-| [x] | INT-012 | Create CHANGELOG.md with all historical work | Claude Code | CHANGELOG.md created 2026-06-26 |
-
-### Priority 3 — Automation Activation (n8n)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [x] | AUTO-001 | Set up n8n daily repository status report (07:00) | Claude Code | Active — fires 07:00, commits to reports/daily/ |
-| [x] | AUTO-002 | Set up n8n workflow health check (06:00) | Claude Code | Active — fires 06:00, commits to reports/health/ |
-| [x] | AUTO-003 | Set up n8n self-status report (08:00) | Claude Code | Active — fires 08:00, commits to reports/sprint/ |
-| [x] | AUTO-004 | Create reports/ directory structure | Claude Code | reports/sprint/, reports/daily/, reports/health/, reports/houzz/ created |
-| [ ] | AUTO-005 | Implement Gate H: HubSpot write approval in n8n | n8n | Gate H workflow active and tested |
-| [ ] | AUTO-006 | Implement Gate G: PR merge notification | n8n | Notification fires on PR open |
-
-### Priority 4 — Houzz Sprint 1 (Browser Claude)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [ ] | HZ-001 | Houzz Daily Log Reader — manual extraction test | Browser Claude | One complete daily log extracted; output in reports/houzz/daily/ |
-| [x] | HZ-002 | Create reports/houzz/ folder structure | Claude Code | reports/houzz/daily/ exists |
-| [ ] | HZ-003 | Register Houzz in Integration Registry | Claude Code | Houzz entry in 05_Database/ registry |
+**Changes for Sprint 2:**
+- Claude Code executes all registry and schema tasks immediately on sprint open
+- n8n workflows built as JSON and imported programmatically — no manual n8n UI required
+- Houzz data pipeline dependency tracked explicitly; HZ-004 doesn't start until Browser confirms inserts
+- Add Sprint 2 mid-point check at 2026-07-01 (Gate 5 Pilot close date)
 
 ---
 
-## Sprint 1 Acceptance Criteria (Sprint Close Gates)
+## Sprint 2 Goal
 
-Sprint 1 is complete when ALL of the following are true:
+> **Consolidate the integration registry, activate weekly oversight automations, implement the remaining approval gate workflows, and register all active systems so every agent operates from a single verified integration map.**
 
-- [x] ACR-001 branch merged to main (Gate G — human approval)
-- [x] LIVE_PROJECT_STATE.md reflects actual system state (not template placeholders)
-- [x] All existing Claude Code work inventoried and marked in TASKS.md
-- [x] Integration Registry complete in PROJECT.md and LIVE_PROJECT_STATE.md
-- [x] At least 1 automated daily report running in n8n
-- [ ] Gate H (HubSpot write approval) implemented and tested
-- [x] CHANGELOG.md committed
-- [ ] Branch protection enabled on main
+---
+
+## Sprint 2 Task Board
+
+### Priority 1 — Registry Consolidation (Claude Code — Execute Immediately)
+
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|---|---|---|---|---|
+| [x] | AUTO-016 | Build Integration Registry schema in 05_Database/ | Claude Code | integration_registry.sql created; schema applied |
+| [x] | HZ-003 | Register Houzz in Integration Registry | Claude Code | Houzz entry in registry; status = pending_data |
+| [x] | AUTO-025 | Gate audit log file structure setup | Claude Code | logs/gates/ directory with README created |
+
+### Priority 2 — Carry-Over Gate Workflows (n8n)
+
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|---|---|---|---|---|
+| [ ] | AUTO-005 | Gate H: HubSpot write approval workflow | n8n | Webhook receives write request; routes to approval_queue |
+| [ ] | AUTO-006 | Gate G: PR merge notification to Buck | n8n | Fires on PR open; notifies Buck via email |
+| [ ] | AUTO-017 | Gate E: Client comms approval workflow | n8n | Draft routed to approval_queue with preview |
+| [ ] | AUTO-018 | Gate F: Financial action approval workflow | n8n | Budget/bid actions queued before execution |
+
+### Priority 3 — Weekly Automation Suite (n8n)
+
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|---|---|---|---|---|
+| [ ] | AUTO-010 | Weekly sprint review summary workflow | n8n | Fires Monday 07:00; writes reports/sprint/weekly-YYYY-MM-DD.md |
+| [ ] | AUTO-011 | Weekly registry duplicate check | n8n | Fires Monday 07:30; flags duplicates in registry |
+| [ ] | AUTO-012 | Weekly broken link check | n8n | Fires Monday 08:00; checks Drive/HubSpot links |
+| [ ] | AUTO-013 | HubSpot/Drive reconciliation report | n8n | Fires Monday 08:30; compares project records |
+
+### Priority 4 — API Connections to n8n
+
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|---|---|---|---|---|
+| [ ] | AUTO-014 | Connect HubSpot API to n8n | n8n | HubSpot credential active in n8n |
+| [ ] | AUTO-015 | Connect Google Drive API to n8n | n8n | Drive credential active in n8n |
+
+### Priority 5 — Houzz Data Pipeline (Browser Claude)
+
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|---|---|---|---|---|
+| [!] | HZ-001 | Houzz Daily Log Reader — manual extraction test | Browser Claude | Blocked: Browser DB insert in progress |
+| [ ] | HZ-004 | n8n daily log extraction trigger (5:30 PM, all projects) | n8n | Starts after Browser confirms houzz_daily_logs populated |
+| [ ] | HZ-005 | Houzz-to-HCI-AI Project Health Engine | ChatGPT + n8n | 7 intelligence artifacts per project per day |
+
+### Priority 6 — Carry-Over State Sync
+
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|---|---|---|---|---|
+| [ ] | INT-003 | Audit 04_Workflows/ for workflow count and status | ChatGPT | Full inventory in LIVE_PROJECT_STATE.md |
+| [ ] | INT-006 | List all active n8n workflow names and schedules | n8n | Registered in AUTOMATION_GOVERNANCE.md |
+| [ ] | INT-008 | Human owner approves LIVE_PROJECT_STATE.md | @buck-HCI-AI | Buck: read LIVE_PROJECT_STATE.md, confirm accurate |
+| [ ] | INT-010 | Register all workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT | All workflows listed with owner + schedule |
+| [ ] | INT-013 | Enable branch protection on main | @buck-HCI-AI | GitHub Settings → Branches → Require PR review |
+
+---
+
+## Sprint 2 Acceptance Criteria (Sprint Close Gates)
+
+Sprint 2 is complete when ALL of the following are true:
+
+- [x] Integration Registry schema created (AUTO-016)
+- [x] Houzz registered in Integration Registry (HZ-003)
+- [ ] Gate H (HubSpot write approval) implemented and tested (AUTO-005)
+- [ ] Gate E (client comms) implemented and tested (AUTO-017)
+- [ ] Gate F (financial action) implemented and tested (AUTO-018)
+- [ ] At least 2 weekly automation workflows active (AUTO-010, AUTO-011, or AUTO-012)
+- [ ] n8n API connections for HubSpot + Drive active (AUTO-014, AUTO-015)
+- [ ] Houzz DB tables populated (Browser Claude) or HZ-001 explicitly deferred to Sprint 3
+- [ ] LIVE_PROJECT_STATE.md approved by Buck (INT-008)
 - [ ] Sprint retrospective documented
 
 ---
 
 ## Velocity Target
 
-| Metric | Target |
-|---|---|
-| Priority 1 tasks complete | 4/4 |
-| Priority 2 tasks complete | 7/7 |
-| Priority 3 tasks complete | 6/6 — or minimum 3 automations live |
-| Priority 4 tasks complete | 2/3 — HZ-001 optional if Houzz access unavailable |
-| **Total tasks targeted** | **~19 tasks** |
+| Category | Tasks | Target Done |
+|---|---|---|
+| Registry (Claude Code — immediate) | 3 | 3/3 ✅ |
+| Gate workflows (n8n) | 4 | 3/4 |
+| Weekly automations (n8n) | 4 | 2/4 |
+| API connections | 2 | 2/2 |
+| Houzz pipeline | 3 | 1/3 (data-gated) |
+| Carry-over state sync | 5 | 2/5 (Buck-gated) |
+| **Total** | **21** | **13** |
 
 ---
 
@@ -131,57 +162,38 @@ Sprint 1 is complete when ALL of the following are true:
 | Blocker ID | Description | Raised | Resolved |
 |---|---|---|---|
 | BLOCK-001 | Branch protection not enabled | 2026-06-26 | ⏳ @buck-HCI-AI: GitHub Settings → Branches |
-| BLOCK-002 | ReadLiveProjectState / ReadCurrentSprint: local file not present | 2026-06-26 | ✅ 2026-06-26 — Merge complete, files present |
-| BLOCK-003 | ACR-001 branch not merged to main | 2026-06-26 | ✅ 2026-06-26 — feature/data-architecture-document-storage merged |
-| BLOCK-004 | Sprint 1 ACR not yet issued | 2026-06-26 | ⏳ @buck-HCI-AI |
+| BLOCK-005 | Houzz tables empty — Browser DB insert incomplete | 2026-06-27 | ⏳ Browser Claude confirming row counts |
+| BLOCK-006 | Gate workflows need n8n credentials for HubSpot + Drive | 2026-06-27 | ⏳ AUTO-014/015 first |
 
 ---
 
-## Pending Human Approvals
+## Gate 5 Pilot Checkpoint — 2026-07-01
 
-| Approval | Type | Gate | Status |
-|---|---|---|---|
-| Issue Sprint 1 ACR | Sprint kickoff | Sprint gate | ⏳ Requested by Claude Code |
-| Merge ACR-001 branch | PR merge | Gate G | ⏳ Awaiting ACR first |
-| Enable branch protection | Settings change | Advisory | ⏳ Settings → Branches |
+| Item | Status |
+|---|---|
+| 64 Eastwood | 🟡 2 open risks |
+| 101 Francis | 🟡 4 open risks, schedule +2 days |
+| 1355 Riverside | 🟢 On track |
+| Mining engine live | ✅ 03:00 daily runs |
+| Houzz data populated | ⏳ Browser completing inserts |
+| Go-live authorization | ✅ Buck + ChatGPT ACR 2026-06-27 |
 
 ---
 
 ## Daily Status
 
-*Populated by AUTO-001 (n8n daily report) once automation is activated.*
-
 | Date | Status | Key Events | Blockers |
 |---|---|---|---|
-| 2026-06-26 | Pre-launch | Sprint 0 complete. ACR-001 confirmed. LIVE_PROJECT_STATE.md + CURRENT_SPRINT.md created. | Sprint 1 ACR pending. |
-| 2026-06-26 | Active | Repositories unified. ACR-001 + ACR-002 built. 32 MCP tools. Credentials cleaned. Repo public. CHANGELOG.md + TASKS.md updated. Reports/ created. 41/80 tasks done. | BLOCK-001 (branch protection), BLOCK-004 (Sprint 1 ACR) |
+| 2026-06-27 | Sprint 2 Open | Sprint 1 closed. Mining engine live. 35 MCP tools. AUTO-016, HZ-003, AUTO-025 completed (registry foundation). | BLOCK-005 (Houzz), BLOCK-001 (branch protection) |
 
 ---
 
 ## Sprint Retrospective
 
-*Completed at sprint close by ChatGPT.*
-
-**What worked:**
-*[To be completed at close]*
-
-**What didn't work:**
-*[To be completed at close]*
-
-**Changes for Sprint 2:**
-*[To be completed at close]*
-
----
-
-## Notes
-
-- This is the first CURRENT_SPRINT.md in the repository
-- Sprint 0 had no CURRENT_SPRINT.md (governance-only sprint)
-- Claude Code's ACR-001 request is the first formal ACR in the system — a milestone
-- The MCP ReadLiveProjectState and ReadCurrentSprint tools will go live once Claude Code pulls the repo to the local path
+*Completed at sprint close.*
 
 ---
 
 *CURRENT_SPRINT.md | HCI AI Operating System | Hendrickson Construction, Inc.*
-*Sprint 1 — System Verification | Authorized by: @buck-HCI-AI*
-*Created by: Browser Claude | Authority: SPRINT_OPERATING_MODEL.md*
+*Sprint 2 — Registry Consolidation | Authorized by: Buck Adams + ChatGPT ACR 2026-06-27*
+*Created by: Claude Code | Authority: SPRINT_OPERATING_MODEL.md*

@@ -20,9 +20,11 @@ venv/
 # n8n
 .n8n/
 
-# Logs
+# Logs — runtime files excluded; directory structure docs committed
 *.log
-logs/
+logs/**/*.jsonl
+logs/**/*.log
+!logs/gates/README.md
 
 # Temp
 tmp/

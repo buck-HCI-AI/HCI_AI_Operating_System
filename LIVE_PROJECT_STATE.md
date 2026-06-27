@@ -3,9 +3,9 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-27T01:15 MST
-**Updated By:** Claude Code (Lead Implementation Engineer)
-**Sprint:** Sprint 1 — System Verification (ACTIVE — Team operating model complete)
+**Last Updated:** 2026-06-27T09:00 MST
+**Updated By:** Claude Code — Sprint 1 CLOSED. Sprint 2 open. Mining engine LIVE. Integration Registry built.
+**Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
 > **Update Protocol:** Any agent may commit factual, observable updates to this file.
@@ -23,13 +23,15 @@
 | Qdrant | 🟢 OK | 2026-06-26 | Claude Code | 13 collections indexed |
 | Redis | 🟢 OK | 2026-06-26 | Claude Code | Running |
 | n8n | 🟢 RUNNING | 2026-06-27 | Claude Code | 18 workflows, 10 active (incl. AUTO-001/002/003) |
-| MCP Server | 🟢 RUNNING | 2026-06-26 | Claude Code | 32 tools (ACR-001 + ACR-002) |
+| MCP Server | 🟢 RUNNING | 2026-06-27 | Claude Code | 35 tools (ACR-001 + ACR-002 + ACR-004 mining tools) |
 | GitHub Repo | 🟢 LIVE | 2026-06-26 | Browser Claude | main branch + merged feature branch |
 | HubSpot CRM | 🟢 LIVE | 2026-06-26 | Claude Code | 3 active deals connected |
 | Google Drive | 🟢 LIVE | 2026-06-26 | Claude Code | API + OAuth active |
 | Google Sheets | 🟢 LIVE | 2026-06-26 | Claude Code | Bid trackers active |
 | Microsoft 365 | 🟢 LIVE | 2026-06-26 | Claude Code | Graph API — email read/send |
-| Houzz (Browser) | 🔴 BLOCKED | — | — | Strategy complete; awaiting architecture ACR |
+| Mining Engine | 🟢 LIVE | 2026-06-27 | Claude Code | 8 agents, 03:00 daily, authorized by Buck 2026-06-27 |
+| Integration Registry | 🟢 LIVE | 2026-06-27 | Claude Code | 8 integrations seeded (05_Database/integration_registry.sql) |
+| Houzz (Browser) | 🟡 PENDING | 2026-06-27 | Browser Claude | Browser extracting data — tables pending DB inserts |
 
 ---
 
@@ -37,7 +39,7 @@
 | AI | Role | Status |
 |---|---|---|
 | ChatGPT | Chief Architect, Integration Director, Architecture Review Board | Active — needs Sprint 1 ACR |
-| Claude Code | Lead Implementation Engineer | Active — 44/80 tasks done |
+| Claude Code | Lead Implementation Engineer | Active — 65/97 tasks done |
 | Browser Claude | Program Repository & Governance Manager, GitHub Admin | Active — governs main |
 | n8n | Automation Orchestrator | 10 workflows active (AUTO-001/002/003 live) |
 | Future Codex | QA / Test Engineering | Not yet assigned |
@@ -109,9 +111,9 @@ Key pending:
 
 ---
 
-## 🧠 MCP Server Status (ACR-001 + ACR-002 Complete)
+## 🧠 MCP Server Status (ACR-001 + ACR-002 + ACR-004 Complete)
 
-**32 total tools** (Claude Code only — not reachable from ChatGPT cloud)
+**35 total tools** (Claude Code only — not reachable from ChatGPT cloud)
 
 ACR-001 tools (Chief Architect integration):
 - `ReadLiveProjectState` — reads this file from repo
@@ -122,6 +124,11 @@ ACR-001 tools (Chief Architect integration):
 
 ACR-002 tools:
 - `GetProjectState` — live dynamic snapshot from all services
+
+ACR-004 tools (mining engine):
+- `RunMiner` — trigger any miner or all 8 (dry_run safe default)
+- `GetMiningStatus` — engine status + intelligence summary + registered miners
+- `GetMiningLog` — last N mining run records
 
 Existing 26 tools: ReadProjectRegistry, ReadVendorRegistry, ReadConstructionOS,
 SearchDrive, ReadDriveFile, SearchHubSpotDeals, SearchCompanies, SearchContacts,
@@ -161,8 +168,16 @@ projects, vendors (392), bid_entries, historical_cost_records (21),
 lessons_learned (10), business_processes (27), sop_library (27),
 approval_queue (11), background_learning (190), roi_log (60), + 37 more
 
-### n8n Workflows (7 active of 15 total)
+### n8n Workflows (11 active of 18 total)
 All workflows have approval gates — no auto-write to production.
+
+| ID | Workflow | Schedule | Status |
+|---|---|---|---|
+| AUTO-001 | Daily Repository Status Report | 07:00 daily | 🟢 Active |
+| AUTO-002 | Workflow Health Check | 06:00 daily | 🟢 Active |
+| AUTO-003 | Sprint Self-Status Report | 08:00 daily | 🟢 Active |
+| AUTO-004 | Mining Engine Orchestration | 03:00 daily | 🟢 Active |
+| WF-001 through WF-007 | Core construction workflows | Various | 🟢 Active |
 
 ### Governance Layer (Browser Claude — Program Repository)
 AI_TEAM_CHARTER.md, AI_WORKFLOW_ROLES.md, APPROVAL_GATES.md,
@@ -179,19 +194,38 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 |---|---|---|---|
 | ACR-001 | MCP Chief Architect Integration Tools | COMPLETE | 2026-06-26 |
 | ACR-002 | Universal Project State Access | COMPLETE | 2026-06-26 |
-| Sprint 1 ACR | Sprint 1 scope authorization | PENDING — ChatGPT to issue | — |
+| ACR-004 | Continuous Mining & Learning Engine | COMPLETE — LIVE | 2026-06-27 |
+| Sprint 1 ACR | Sprint 1 scope + Sprint 2 scope authorization | COMPLETE — via GBT Reconnect Directive | 2026-06-27 |
 
 ---
 
 ## Open Items
 | Item | Owner | Priority | Status |
 |---|---|---|---|
-| Sprint 1 ACR | ChatGPT | P0 | BLOCKING Sprint 1 kickoff |
-| Approve pending queue items | Buck | P1 | 9 items pending |
-| 83 Sagebrusch HubSpot deal | Buck | P1 | Deal ID unknown |
-| HubSpot connected inbox | Buck | P1 | Settings → Email → Connect |
-| Houzz reconciliation | Architecture Review | P1 | BLOCKED — no ACR yet |
-| WF-008/009/010 staging tests | Claude Code | P1 | On hold — Sprint 1 ACR needed |
+| Approve mining approval_queue items (vendor candidates) | Buck | P1 | 987+ items queued from HubSpot full sweep |
+| Houzz DB tables — Browser completing inserts | Browser Claude | P1 | houzz_daily_logs, houzz_projects, houzz_schedule_items empty |
+| Sprint 2 n8n gate workflows | n8n / Claude Code | P1 | AUTO-005, AUTO-006, AUTO-017, AUTO-018 |
+| Branch protection on main | Buck | P2 | GitHub Settings → Branches → Require PR review |
+| HubSpot connected inbox | Buck | P2 | HubSpot Settings → Email → Connect personal email |
+| INT-008: Buck approves LIVE_PROJECT_STATE.md | Buck | P2 | Read this file, confirm accurate |
+| 83 Sagebrusch HubSpot deal | Buck | P3 | Deal ID unknown — confirm in HubSpot |
+
+## 🔨 Mining Engine Status (ACR-004 — LIVE 2026-06-27)
+
+**Authorization:** Buck Adams (Owner) — 2026-06-27 | ACR: ChatGPT via GBT Reconnect Directive
+**Schedule:** 03:00 daily (n8n AUTO-004)
+**Dry-run default:** True (explicit `dry_run=False` required for writes)
+
+| Miner | Status | Last Result |
+|---|---|---|
+| HubSpotMiner | 🟢 LIVE | 2,849 scanned, 987 extracted, full companies sweep |
+| DriveMiner | 🟢 LIVE | Reading drive_sync_log |
+| OutlookMiner | 🟢 LIVE | Emails queued for approval only — never auto-reply |
+| HistoricalCostMiner | 🟢 LIVE | 21 Garmisch records, bid variance tracking |
+| VendorIntelligenceMiner | 🟢 LIVE | 392 vendors, bid stats updating |
+| LessonsLearnedMiner | 🟢 LIVE | Dedup via source_reference |
+| HouzzMiner | 🟡 PENDING | Framework active — awaiting Browser DB inserts |
+| ExecutiveAggregator | 🟢 LIVE | KPI snapshots + LIVE_PROJECT_STATE.md header update |
 
 ---
 

@@ -3,7 +3,7 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI
-**Last Updated:** 2026-06-26 (Updated by Claude Code — ACR-004 mining engine added, 14/17 tasks done)
+**Last Updated:** 2026-06-27 (Sprint 1 CLOSED. Sprint 2 open — AUTO-016, HZ-003, AUTO-025 done by Claude Code)
 **Authority:** SPRINT_OPERATING_MODEL.md
 **Parent Document:** PROJECT.md
 
@@ -17,7 +17,7 @@
 
 ---
 
-## Active Sprint: Sprint 1 — System Verification
+## Active Sprint: Sprint 2 — Registry Consolidation
 
 ### Governance Layer (✅ Complete)
 
@@ -107,7 +107,7 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 |---|---|---|---|---|
 | [ ] | HZ-001 | Houzz Daily Log Reader (Manual extraction test) | workflow n8n | Browser Claude |
 | [x] | HZ-002 | Create reports/houzz/ folder structure | workflow documentation | Claude Code |
-| [ ] | HZ-003 | Register Houzz in Integration Registry (05_Database/) | registry workflow | Claude Code |
+| [x] | HZ-003 | Register Houzz in Integration Registry (05_Database/) | registry workflow | Claude Code | Done 2026-06-27 — status: pending_data |
 
 Acceptance Criteria — HZ-001:
 - Browser Claude reads one complete Houzz daily log (all 10 data categories)
@@ -130,7 +130,7 @@ Acceptance Criteria — HZ-001:
 | [ ] | AUTO-013 | Set up HubSpot/Drive reconciliation report | n8n hubspot drive | n8n |
 | [ ] | AUTO-014 | Connect HubSpot API to n8n | hubspot registry | n8n |
 | [ ] | AUTO-015 | Connect Google Drive API to n8n | drive registry | n8n |
-| [ ] | AUTO-016 | Build Integration Registry schema in 05_Database/ | registry | Claude Code |
+| [x] | AUTO-016 | Build Integration Registry schema in 05_Database/ | registry | Claude Code | Done 2026-06-27 — 8 integrations seeded |
 | [ ] | AUTO-017 | Implement Gate E: client comms approval workflow | n8n workflow | n8n |
 | [ ] | AUTO-018 | Implement Gate F: financial action approval workflow | n8n workflow | n8n |
 
@@ -214,7 +214,7 @@ Acceptance Criteria — HZ-001:
 | [x] | ACR-004-12 | Dry-run validation — all 8 miners pass | Claude Code | 376 records scanned, 39 intelligence extracted, 0 writes |
 | [x] | ACR-004-13 | FastAPI router /api/v1/services/mining/* (6 endpoints) | Claude Code | All endpoints live; lazy import fix applied |
 | [x] | ACR-004-14 | Architecture Review Report submitted | Claude Code | ACR-004-ARCHITECTURE-REVIEW.md — awaiting ChatGPT go-live ACR |
-| [ ] | ACR-004-15 | Add MCP tools: RunMiner, GetMiningStatus, GetMiningLog | Claude Code | Pending go-live authorization |
+| [x] | ACR-004-15 | Add MCP tools: RunMiner, GetMiningStatus, GetMiningLog | Claude Code | Done 2026-06-27 — 35 total MCP tools |
 | [x] | ACR-004-16 | Create n8n mining orchestration workflow — AUTO-004 active 03:00 daily | Claude Code | Pending go-live authorization |
 | [x] | ACR-004-17 | Enable continuous execution — _GO_LIVE_AUTHORIZED=True, authorized by Buck 2026-06-27 | Claude Code | REQUIRES ChatGPT ACR + Buck confirmation |
 
@@ -230,7 +230,7 @@ Acceptance Criteria — HZ-001:
 | [ ] | AUTO-022 | Configure branch protection rules on main | workflow | Human Owner |
 | [ ] | AUTO-023 | Implement MCP connectors | mcp | Claude Code |
 | [ ] | AUTO-024 | Set up n8n workflow status dashboard | n8n workflow | n8n |
-| [ ] | AUTO-025 | Gate audit log file structure setup | workflow documentation | Claude Code |
+| [x] | AUTO-025 | Gate audit log file structure setup | workflow documentation | Claude Code | Done 2026-06-27 — logs/gates/ created |
 
 ---
 
@@ -241,11 +241,11 @@ Acceptance Criteria — HZ-001:
 | Governance (GOV) | 15 | 15 | 0 | 0 | 0 |
 | Houzz Design (HZ-DESIGN) | 8 | 8 | 0 | 0 | 0 |
 | Integration Planning (INT-DESIGN) | 6 | 6 | 0 | 0 | 0 |
-| Core Automation (AUTO) | 25 | 6 | 0 | 19 | 0 |
-| Houzz Implementation (HZ) | 13 | 1 | 0 | 12 | 0 |
+| Core Automation (AUTO) | 25 | 9 | 0 | 16 | 0 |
+| Houzz Implementation (HZ) | 13 | 2 | 0 | 10 | 1 |
 | Integration Activation (INT) | 13 | 8 | 0 | 5 | 0 |
 | Mining Engine (ACR-004) | 17 | 17 | 0 | 0 | 0 |
-| **Total** | **97** | **61** | **0** | **36** | **0** |
+| **Total** | **97** | **65** | **0** | **31** | **1** |
 
 ---
 
