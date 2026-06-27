@@ -931,6 +931,208 @@ def travel_mode_status():
     }
 
 
+# ── Mission Control (Priority 4) ───────────────────────────────────────────────
+
+@router.get("/mission-control")
+def mission_control():
+    """
+    Executive Mission Control — Phase 2, Priority 4.
+    Portfolio health, AI missions, pending approvals, critical alerts,
+    top risks, top opportunities, weekly trends, KPI dashboard.
+    """
+    from datetime import date, timedelta
+
+    # 1. Portfolio health (from project_brain_snapshots or predictions_computed)
+    portfolio = _q("""
+        SELECT p.id, p.name,
+               COALESCE(pbs.health, 'UNKNOWN') as health,
+               COALESCE(pbs.risk_count, 0) as risk_count,
+               COALESCE(pbs.data_completeness_pct, 0) as data_completeness
+        FROM projects p
+        LEFT JOIN project_brain_snapshots pbs
+            ON pbs.project_id = p.id AND pbs.snapshot_date = CURRENT_DATE
+        WHERE p.status = 'active'
+        ORDER BY p.id
+    """)
+
+    company_health = "GREEN"
+    if any(r.get("health") == "RED" for r in portfolio):
+        company_health = "RED"
+    elif any(r.get("health") in ("YELLOW", "UNKNOWN") for r in portfolio):
+        company_health = "YELLOW"
+
+    # 2. Active AI missions
+    missions_active = _q("""
+        SELECT mission_id, title, status, priority, assigned_to, sprint,
+               started_at, last_activity, blocker
+        FROM missions
+        WHERE status IN ('IN_PROGRESS','BLOCKED','OPEN')
+        ORDER BY CASE status WHEN 'BLOCKED' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END,
+                 created_at DESC
+        LIMIT 10
+    """)
+    missions_counts = _q1("""
+        SELECT
+            COUNT(*) FILTER (WHERE status='IN_PROGRESS') as in_progress,
+            COUNT(*) FILTER (WHERE status='BLOCKED') as blocked,
+            COUNT(*) FILTER (WHERE status='OPEN') as open_q,
+            COUNT(*) FILTER (WHERE status='COMPLETE') as completed
+        FROM missions
+    """)
+
+    # 3. AI productivity from roi_log
+    roi_summary = _q1("""
+        SELECT
+            COALESCE(SUM(minutes_saved), 0) as total_minutes_saved,
+            COALESCE(SUM(documents_processed), 0) as docs_processed,
+            COALESCE(SUM(errors_caught), 0) as errors_caught,
+            COALESCE(SUM(missing_scope_found), 0) as missing_scope,
+            COALESCE(SUM(schedule_risks_detected), 0) as risks_detected,
+            COUNT(*) as workflow_runs
+        FROM roi_log
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+    """)
+
+    # 4. Pending approvals
+    approval_summary = _q1("""
+        SELECT
+            COUNT(*) as total_pending,
+            COUNT(*) FILTER (WHERE priority='critical') as critical,
+            COUNT(*) FILTER (WHERE priority='high') as high_p,
+            COUNT(*) FILTER (WHERE expires_at IS NOT NULL AND expires_at < NOW() + INTERVAL '24h') as expiring_soon
+        FROM approval_queue
+        WHERE status='pending'
+    """)
+    pending_items = _q("""
+        SELECT aq.id, aq.workflow, aq.target_description, aq.priority,
+               aq.project_id, p.name as project_name, aq.created_at
+        FROM approval_queue aq
+        LEFT JOIN projects p ON p.id = aq.project_id
+        WHERE aq.status='pending'
+        ORDER BY CASE aq.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 ELSE 2 END,
+                 aq.created_at ASC
+        LIMIT 5
+    """)
+
+    # 5. Critical alerts from predictions_computed
+    critical_predictions = _q("""
+        SELECT pc.project_id, p.name as project_name,
+               pc.prediction_type, pc.title, pc.risk_level, pc.confidence,
+               pc.predicted_impact, pc.generated_at
+        FROM predictions_computed pc
+        JOIN projects p ON p.id = pc.project_id
+        WHERE pc.risk_level = 'HIGH'
+        ORDER BY pc.confidence DESC, pc.generated_at DESC
+        LIMIT 10
+    """)
+
+    # 6. Top risks from project_risks_computed
+    top_risks = _q("""
+        SELECT prc.project_id, p.name as project_name,
+               prc.risk_code, prc.risk_type, prc.severity, prc.title,
+               prc.confidence, prc.detected_at
+        FROM project_risks_computed prc
+        JOIN projects p ON p.id = prc.project_id
+        WHERE prc.status = 'open' AND prc.severity IN ('critical','high')
+        ORDER BY CASE prc.severity WHEN 'critical' THEN 0 ELSE 1 END, prc.detected_at DESC
+        LIMIT 10
+    """)
+
+    # 7. Top opportunities from autonomy_opportunities
+    opportunities = _q("""
+        SELECT title, description, category, estimated_minutes_per_week,
+               roi_score, feasibility, status
+        FROM autonomy_opportunities
+        WHERE status IN ('backlog','approved')
+        ORDER BY roi_score DESC NULLS LAST
+        LIMIT 5
+    """)
+
+    # 8. Weekly trends from project_brain_snapshots (last 4 weeks)
+    weekly_trends = _q("""
+        SELECT snapshot_date,
+               COUNT(*) as projects_snapshotted,
+               SUM(CASE WHEN health='RED' THEN 1 ELSE 0 END) as red_count,
+               SUM(CASE WHEN health='YELLOW' THEN 1 ELSE 0 END) as yellow_count,
+               SUM(CASE WHEN health='GREEN' THEN 1 ELSE 0 END) as green_count,
+               AVG(risk_count) as avg_risk_count,
+               AVG(data_completeness_pct) as avg_data_completeness
+        FROM project_brain_snapshots
+        WHERE snapshot_date >= CURRENT_DATE - 28
+        GROUP BY snapshot_date
+        ORDER BY snapshot_date DESC
+        LIMIT 7
+    """)
+
+    # 9. KPI dashboard — latest values
+    kpis = _q("""
+        SELECT DISTINCT ON (kpi_code, project_id)
+               kpi_code, scope, project_id, value, unit, status,
+               period_end, source_service
+        FROM kpi_snapshots
+        WHERE period_end >= CURRENT_DATE - 30
+        ORDER BY kpi_code, project_id, period_end DESC
+        LIMIT 20
+    """)
+
+    # 10. Procurement overview (cross-project)
+    procurement_pulse = _q1("""
+        SELECT
+            COUNT(*) FILTER (WHERE bp.status NOT IN ('awarded','cancelled')) as open_packages,
+            COUNT(*) FILTER (WHERE bp.status='awarded') as awarded_packages,
+            COUNT(*) as total_packages,
+            COALESCE(SUM(bp.awarded_amount) FILTER (WHERE bp.status='awarded'), 0) as total_awarded_value
+        FROM bid_packages bp
+        JOIN projects p ON p.id = bp.project_id
+        WHERE p.status='active'
+    """)
+
+    # 11. Connector health
+    connectors = _q("""
+        SELECT connector_name, entity_type, last_synced_at, status,
+               CURRENT_DATE - last_synced_at::date AS days_stale
+        FROM connector_sync_state
+        ORDER BY last_synced_at DESC NULLS LAST
+        LIMIT 8
+    """)
+    stale_connectors = [c for c in connectors
+                        if not c.get("last_synced_at") or int(c.get("days_stale") or 9) > 1]
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "company_health": company_health,
+        "portfolio": {
+            "projects": [dict(r) for r in portfolio],
+            "projects_at_risk": len([r for r in portfolio if r.get("health") in ("RED","YELLOW")]),
+        },
+        "ai_missions": {
+            "counts": dict(missions_counts),
+            "active_missions": [dict(m) for m in missions_active],
+        },
+        "ai_productivity": {
+            "last_30_days": dict(roi_summary),
+            "hours_saved": round(float(roi_summary.get("total_minutes_saved") or 0) / 60, 1),
+        },
+        "pending_approvals": {
+            "summary": dict(approval_summary),
+            "top_items": [dict(i) for i in pending_items],
+        },
+        "critical_alerts": {
+            "count": len(critical_predictions),
+            "alerts": [dict(p) for p in critical_predictions],
+        },
+        "top_risks": [dict(r) for r in top_risks],
+        "top_opportunities": [dict(o) for o in opportunities],
+        "weekly_trends": [dict(t) for t in weekly_trends],
+        "kpi_dashboard": [dict(k) for k in kpis],
+        "procurement_pulse": dict(procurement_pulse),
+        "connector_health": {
+            "connectors": [dict(c) for c in connectors],
+            "stale_count": len(stale_connectors),
+        },
+    }
+
+
 # ── Dashboard HTML ─────────────────────────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
