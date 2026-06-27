@@ -77,8 +77,8 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 | [x] | AUTO-002 | Set up n8n workflow health check (daily 06:00) | n8n workflow | Claude Code | Active — fires 06:00, writes reports/health/ |
 | [x] | AUTO-003 | Set up n8n self-status report workflow (daily 08:00) | n8n workflow | Claude Code | Active — fires 08:00, writes reports/sprint/ |
 | [x] | AUTO-004 | Create reports/ directory structure in repository | workflow | Claude Code | |
-| [ ] | AUTO-005 | Implement Gate H: HubSpot write approval workflow in n8n | n8n hubspot | n8n | |
-| [ ] | AUTO-006 | Implement Gate G: PR merge notification to human owner | workflow | n8n | |
+| [x] | AUTO-005 | Implement Gate H: HubSpot write approval workflow in n8n | n8n hubspot | n8n | Done 2026-06-27 — webhook /gate-h-hubspot-write, FkiYQVre39L9ElCO |
+| [x] | AUTO-006 | Implement Gate G: PR merge notification to human owner | workflow | n8n | Done 2026-06-27 — webhook /gate-g-pr-merge, nMjAbRJ3thgKQq2O |
 | [x] | AUTO-007 | Create CURRENT_SPRINT.md for Sprint 1 | documentation | ChatGPT | |
 | [x] | AUTO-008 | Create initial CHANGELOG.md | documentation | Claude Code | |
 
@@ -124,21 +124,21 @@ Acceptance Criteria — HZ-001:
 
 | Status | Task ID | Task | Label | Assigned To |
 |---|---|---|---|---|
-| [ ] | AUTO-010 | Set up weekly sprint review summary workflow | n8n workflow | n8n |
-| [ ] | AUTO-011 | Set up weekly registry duplicate check | n8n registry | n8n |
-| [ ] | AUTO-012 | Set up weekly broken link check | n8n workflow | n8n |
-| [ ] | AUTO-013 | Set up HubSpot/Drive reconciliation report | n8n hubspot drive | n8n |
-| [ ] | AUTO-014 | Connect HubSpot API to n8n | hubspot registry | n8n |
-| [ ] | AUTO-015 | Connect Google Drive API to n8n | drive registry | n8n |
+| [x] | AUTO-010 | Set up weekly sprint review summary workflow | n8n workflow | n8n | Done 2026-06-27 — Mon 07:00 |
+| [x] | AUTO-011 | Set up weekly registry duplicate check | n8n registry | n8n | Done 2026-06-27 — Mon 07:30 |
+| [x] | AUTO-012 | Set up weekly broken link check | n8n workflow | n8n | Done 2026-06-27 — Mon 08:00 |
+| [x] | AUTO-013 | Set up HubSpot/Drive reconciliation report | n8n hubspot drive | n8n | Done 2026-06-27 — Mon 08:30 |
+| [x] | AUTO-014 | Connect HubSpot API to n8n | hubspot registry | n8n | Done — cred H44xFkyJ22zQfjOQ active |
+| [x] | AUTO-015 | Connect Google Drive API to n8n | drive registry | n8n | Done — cred UDJZyRl4iZXIr4qI active |
 | [x] | AUTO-016 | Build Integration Registry schema in 05_Database/ | registry | Claude Code | Done 2026-06-27 — 8 integrations seeded |
-| [ ] | AUTO-017 | Implement Gate E: client comms approval workflow | n8n workflow | n8n |
-| [ ] | AUTO-018 | Implement Gate F: financial action approval workflow | n8n workflow | n8n |
+| [x] | AUTO-017 | Implement Gate E: client comms approval workflow | n8n workflow | n8n | Done 2026-06-27 — webhook /gate-e-client-comms, WWv3euSPYehmjkoi |
+| [x] | AUTO-018 | Implement Gate F: financial action approval workflow | n8n workflow | n8n | Done 2026-06-27 — webhook /gate-f-financial, 6bDcqZX2ZGUiaKnx |
 
 ### Houzz Workstream — Sprint 2
 
 | Status | Task ID | Task | Label | Assigned To |
 |---|---|---|---|---|
-| [ ] | HZ-004 | n8n daily log extraction trigger (5:30 PM, all active projects) | n8n workflow | n8n |
+| [x] | HZ-004 | n8n daily log extraction trigger (5:30 PM, all active projects) | n8n workflow | n8n | Done 2026-06-27 — 17:30 daily, KUw5KCchqRiWTOvS |
 | [ ] | HZ-005 | Houzz-to-HCI-AI Project Health Engine (7 intelligence artifacts) | workflow registry | ChatGPT + n8n |
 
 ---
@@ -241,11 +241,11 @@ Acceptance Criteria — HZ-001:
 | Governance (GOV) | 15 | 15 | 0 | 0 | 0 |
 | Houzz Design (HZ-DESIGN) | 8 | 8 | 0 | 0 | 0 |
 | Integration Planning (INT-DESIGN) | 6 | 6 | 0 | 0 | 0 |
-| Core Automation (AUTO) | 25 | 9 | 0 | 16 | 0 |
-| Houzz Implementation (HZ) | 13 | 2 | 0 | 10 | 1 |
+| Core Automation (AUTO) | 25 | 20 | 0 | 5 | 0 |
+| Houzz Implementation (HZ) | 13 | 3 | 0 | 9 | 1 |
 | Integration Activation (INT) | 13 | 8 | 0 | 5 | 0 |
 | Mining Engine (ACR-004) | 17 | 17 | 0 | 0 | 0 |
-| **Total** | **97** | **65** | **0** | **31** | **1** |
+| **Total** | **97** | **76** | **0** | **20** | **1** |
 
 ---
 
