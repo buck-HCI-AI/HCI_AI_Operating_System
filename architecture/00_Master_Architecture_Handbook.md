@@ -75,21 +75,33 @@ See [ADRs/](ADRs/) for all recorded architectural decisions.
 
 ---
 
+## Handbook Governance
+
+| Document | Purpose | Owner |
+|---|---|---|
+| [CHANGELOG.md](CHANGELOG.md) | Version history of all handbook changes | Claude Code (maintained) |
+| [CHIEF_ARCHITECT_REVIEW_QUEUE.md](CHIEF_ARCHITECT_REVIEW_QUEUE.md) | Items requiring Chief Architect authorship or decision | Claude Code (flags) / Chief Architect (resolves) |
+| [ADRs/](ADRs/) | Architecture Decision Records | Claude Code (documents) / Chief Architect (decides) |
+| [Decisions/](Decisions/) | Formal architectural decisions by Chief Architect | Chief Architect |
+| [Diagrams/](Diagrams/) | Architecture diagrams (generated from implementation) | Claude Code |
+| [Reviews/](Reviews/) | Architecture Review Records | Chief Architect |
+
+---
+
 ## Conflict Log
 
 *Claude Code flags any conflict between implementation and architecture here for Chief Architect review.*
 
 | Date | Conflict | Status |
 |------|----------|--------|
-| — | No conflicts detected | — |
+| 2026-06-27 | Dual HubSpot activity tables: `hubspot_engagements` (legacy) + `hubspot_activities` (connector framework). Recommend deprecating engagements. | Pending Chief Architect |
 
 ---
 
 ## Synchronization Log
 
-| Date | Change | Author |
-|------|--------|--------|
-| 2026-06-27 | Initial workspace created, all volumes stubbed, 5 ADRs generated | Claude Code |
-| 2026-06-27 | Sprint 3+4 implementation cross-referenced | Claude Code |
-| 2026-06-27 | Phase 2 Priority 3-4 (Predictive Engine, Mission Control) cross-referenced | Claude Code |
-| 2026-06-27 | Phase 3 (System Auditor) cross-referenced | Claude Code |
+| Date | Version | Change | Author |
+|------|---------|--------|--------|
+| 2026-06-27 | v1.0 | Initial workspace: all volumes stubbed, 5 ADRs, CHANGELOG + Review Queue | Claude Code |
+| 2026-06-27 | v1.0 | Phase 2-3 implementation (Predictive Engine, Mission Control, Auditor) cross-referenced | Claude Code |
+| 2026-06-27 | v1.1 | Browser discovery gap analysis: 3 connector/auditor bugs fixed, health 85→95/100 | Claude Code |
