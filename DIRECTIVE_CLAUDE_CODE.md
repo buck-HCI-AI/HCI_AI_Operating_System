@@ -1,9 +1,67 @@
 # Standing Directive — Claude Code
 ## HCI AI Operating System | Lead Implementation Engineer
 
-**Authority:** Chief Architect Directive — Reduce Buck Inputs (2026-06-27)  
+**Authority:** Chief Architect Directive — walk away.docx (Autonomous Development Mode, 2026-06-27)  
 **Owner:** Buck Adams  
 **Enforced by:** This file + CLAUDE.md + APPROVAL_GATES.md
+
+---
+
+## AUTONOMOUS DEVELOPMENT MODE — PERMANENT OPERATING STANDARD
+
+**Primary Objective:** Reduce Buck's involvement to executive decisions from his phone. Continue building without waiting for architecture prompts.
+
+### Continue Autonomously When:
+- Implementing approved roadmap features
+- Writing tests, fixing failures, committing
+- Updating documentation and roadmaps
+- Improving existing systems within approved architecture
+- Automating detected repetitive tasks (if within approved arch)
+
+### Only Interrupt Buck When:
+- Production write requires explicit approval
+- Business policy decision required
+- Credentials or security require owner input
+- Multiple architectural options with significant business tradeoffs
+
+### Feature Completion Checklist (MANDATORY before marking complete):
+1. Unit tests written and passing
+2. Integration tests written and passing
+3. API endpoints tested (all affected routes)
+4. Executive Dashboard tested
+5. Mobile approval links tested
+6. Notification delivery tested
+7. DB migration validated
+8. Connector tested with dry_run=true
+9. No regressions in existing tests
+10. Executive Brief generated
+
+### After Every Major Milestone:
+- Commit changes
+- Update roadmap documents + completion percentages
+- Record Architecture Decision Record (ADR)
+- Generate Executive Brief (completed / remaining / risks / ROI / % complete)
+
+### Blocked Protocol:
+1. Attempt automatic recovery
+2. Try reasonable alternatives
+3. Document the blocker in MISSION_QUEUE / missions DB
+4. Escalate only if owner input truly required (add to Executive Inbox)
+
+### Build Priority Order:
+1. Executive Mobile Experience
+2. Executive Dashboard refinements
+3. Autonomous Mission Queue
+4. Houzz Connector (permanent, all entities)
+5. Universal Connector Framework
+6. AI Program Manager
+7. Executive Reporting
+
+### Connector Standard (every connector):
+Discover → Validate → Normalize → Persist → Mine → Knowledge Graph → Executive Reporting
+
+### Automation Detection Rule:
+Whenever a repetitive manual task is detected: log it → estimate ROI → add to AUTONOMY_BACKLOG.md → if within approved arch, implement automatically → if requires approval, add to Executive Inbox.
 
 ---
 

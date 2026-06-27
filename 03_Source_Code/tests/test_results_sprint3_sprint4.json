@@ -1,0 +1,187 @@
+{
+  "suite": "Sprint 3 & 4",
+  "run_at": "2026-06-27T19:18:25.928097+00:00",
+  "summary": {
+    "total": 35,
+    "passed": 35,
+    "failed": 0,
+    "pass_rate": "100%"
+  },
+  "results": [
+    {
+      "test": "API health check",
+      "status": "PASS",
+      "detail": "status=healthy"
+    },
+    {
+      "test": "Auth required on /projects",
+      "status": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "test": "Token auth bypass (no API key)",
+      "status": "PASS",
+      "detail": "HTTP 200 (not 401)"
+    },
+    {
+      "test": "Dashboard system_health present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Dashboard projects list",
+      "status": "PASS",
+      "detail": "count=4"
+    },
+    {
+      "test": "Dashboard ROI present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Dashboard HTML page",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "test": "Dashboard JSON structure",
+      "status": "PASS",
+      "detail": "keys=['generated_at', 'system_health', 'projects', 'ai_activity', 'inbox', 'risks']"
+    },
+    {
+      "test": "Driving brief text",
+      "status": "PASS",
+      "detail": "chars=396"
+    },
+    {
+      "test": "Driving brief is markdown-free",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "EOD brief structure",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "EOD brief missions sections",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Morning brief structure",
+      "status": "PASS",
+      "detail": "inbox_count=1"
+    },
+    {
+      "test": "Blocked missions endpoint",
+      "status": "PASS",
+      "detail": "blocked=2"
+    },
+    {
+      "test": "Create/update mission",
+      "status": "PASS",
+      "detail": "updated"
+    },
+    {
+      "test": "List missions",
+      "status": "PASS",
+      "detail": "count=6"
+    },
+    {
+      "test": "Mission status filter",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Update mission status",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Already-resolved returns friendly page",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "test": "Approve via GET (mobile ntfy)",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "test": "Defer via POST (no token, internal)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Escalation returns integer count",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Escalation check runs",
+      "status": "PASS",
+      "detail": "fired=0"
+    },
+    {
+      "test": "approval_required endpoint works",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "approval notification has 3 action buttons",
+      "status": "PASS",
+      "detail": "{'status': 'sent', 'http_status': 200, 'topic': 'hci-executive', 'actions': 3}"
+    },
+    {
+      "test": "HIGH severity \u2192 ntfy attempted",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "ntfy delivery success",
+      "status": "PASS",
+      "detail": "{'status': 'sent', 'http_status': 200, 'topic': 'hci-executive', 'actions': 0}"
+    },
+    {
+      "test": "LOW severity \u2192 no providers (digest only)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "MEDIUM severity \u2192 email provider attempted",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "test": "Houzz ingest (idempotent upsert)",
+      "status": "PASS",
+      "detail": "imported=0"
+    },
+    {
+      "test": "Houzz ingest is idempotent (no duplicate insert)",
+      "status": "PASS",
+      "detail": "inserted=0"
+    },
+    {
+      "test": "Houzz status endpoint",
+      "status": "PASS",
+      "detail": "keys=['status', 'table_counts', 'last_sync']"
+    },
+    {
+      "test": "Migration 007: executive_inbox table",
+      "status": "PASS",
+      "detail": "missing=set()"
+    },
+    {
+      "test": "Migration 008: missions table",
+      "status": "PASS",
+      "detail": "missing=set()"
+    },
+    {
+      "test": "Migration 008: notification_log table",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}
