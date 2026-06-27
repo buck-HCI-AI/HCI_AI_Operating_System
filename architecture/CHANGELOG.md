@@ -5,6 +5,18 @@
 
 ---
 
+## v1.8 — 2026-06-27 | BTW-6 — Executive Command Center: Weekly + Monthly Reports
+
+**Trigger:** BTW-6 — Executive Command Center (Strategic Backlog)
+
+**Changes:**
+- `workflows/n8n/AUTO-WEEKLY-EXEC.json` — Friday 16:00 weekly executive report; pulls company report + missions + inbox in parallel; builds health/mission/approvals summary; writes `reports/weekly/exec-YYYY-MM-DD.md`; ntfy with elevated priority when projects at risk or missions blocked
+- `workflows/n8n/AUTO-MONTHLY-REVIEW.json` — 1st of month 09:00 business review; pulls mission-control + autonomy ROI + portfolio in parallel; builds AI ROI table, mission summary, top automation opportunities, next-month priorities; writes `reports/monthly/exec-review-YYYY-MM.md`
+- `tests/test_btw6_exec_reports.py` — 40/40 tests: schedule crons, API endpoints, code node content, write + ntfy output, connections, metadata
+- Health maintained: **95/100** | Test coverage: 90%
+
+---
+
 ## v1.7 — 2026-06-27 | Agent Handoff Bus
 
 **Trigger:** Build Agent Handoff Bus.docx — eliminate manual document relay between agents
