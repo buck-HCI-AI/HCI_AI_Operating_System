@@ -1,0 +1,93 @@
+{
+  "name": "AUTO-WEEKLY-JOB — Friday 16:00 Job Reports",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 16 * * 5" }]
+        }
+      },
+      "name": "Cron Friday 16:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/reports/weekly/jobs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get All Job Reports",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst reports = d.reports || [];\nconst healthy = reports.filter(r => r.health === 'GREEN').length;\nconst warning = reports.filter(r => r.health === 'YELLOW').length;\nconst critical = reports.filter(r => r.health === 'RED').length;\n\nconst title = `📋 Weekly Job Reports — ${d.week_of || ''} (${reports.length} projects)`;\nconst body = [\n  `${critical > 0 ? '🔴' : warning > 0 ? '🟡' : '🟢'} Status: ${critical} critical, ${warning} watch, ${healthy} on track`,\n  `---`,\n  ...reports.map(r => `${r.health === 'RED' ? '🔴' : r.health === 'YELLOW' ? '🟡' : '🟢'} ${r.project_code}: ${(r.executive_summary || ['No data'])[0]}`),\n  `---`,\n  `Full reports: http://localhost:8000/leadership`\n].join('\\n');\n\nconst priority = critical > 0 ? 'high' : warning > 0 ? 'default' : 'low';\nreturn [{ json: { title, body, priority, reports } }];"
+      },
+      "name": "Format Weekly Push",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "message", "value": "={{ $json.body }}" }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Push Weekly Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/write-report",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "path", "value": "=reports/weekly/jobs-{{ $now.format('yyyy-MM-dd') }}.json" },
+            { "name": "content", "value": "={{ JSON.stringify($json.reports, null, 2) }}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Write Reports to Disk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+    }
+  ],
+  "connections": {
+    "Cron Friday 16:00": { "main": [[{ "node": "Get All Job Reports", "type": "main", "index": 0 }]] },
+    "Get All Job Reports": { "main": [[{ "node": "Format Weekly Push", "type": "main", "index": 0 }]] },
+    "Format Weekly Push": { "main": [[{ "node": "Push Weekly Summary", "type": "main", "index": 0 }]] },
+    "Push Weekly Summary": { "main": [[{ "node": "Write Reports to Disk", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "sprint-3-ops" }],
+  "_hci_notes": "Fires Friday 16:00. Pulls all job reports, pushes ntfy summary, writes JSON to disk."
+}

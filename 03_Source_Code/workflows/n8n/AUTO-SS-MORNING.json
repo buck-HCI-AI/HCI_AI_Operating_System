@@ -1,0 +1,81 @@
+{
+  "name": "AUTO-SS-MORNING — Daily 06:00 SS Console Push",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1-5" }]
+        }
+      },
+      "name": "Cron 06:00 Mon-Fri",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Project IDs for active pilot projects\nreturn [\n  { json: { project_id: 1, name: '64 Eastwood', code: '64EW' } },\n  { json: { project_id: 2, name: '101 Francis', code: '101F' } },\n  { json: { project_id: 3, name: '1355 Riverside', code: '1355R' } }\n];"
+      },
+      "name": "Active Projects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:8000/api/v1/superintendent/{{ $json.project_id }}/today",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get SS Console",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '🔴' : h === 'YELLOW' ? '🟡' : '🟢';\nconst tasks = d.tasks || {};\nconst blockers = d.blockers || {};\nconst procurement = d.procurement || {};\nconst safety = d.safety || {};\n\nconst title = `${emoji} ${d.project_code || ''} SS Brief — ${d.date || ''}`;\nconst body = [\n  `${h} — ${d.project_name}`,\n  `Tasks open: ${tasks.open_count || 0} (${tasks.overdue_count || 0} overdue)`,\n  `Blockers: ${blockers.count || 0}`,\n  `Open bids: ${procurement.open_bids || 0}`,\n  `Safety: ${(safety.toolbox_topic || '').split('—')[0].trim()}`,\n  `View: http://localhost:8000/superintendent/${d.project_id}`\n].join('\\n');\n\nconst priority = (blockers.count || 0) > 0 || h === 'RED' ? 'high' : 'default';\n\nreturn [{ json: { title, body, priority } }];"
+      },
+      "name": "Format SS Push",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "message", "value": "={{ $json.body }}" }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Push SS Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Cron 06:00 Mon-Fri": { "main": [[{ "node": "Active Projects", "type": "main", "index": 0 }]] },
+    "Active Projects": { "main": [[{ "node": "Get SS Console", "type": "main", "index": 0 }]] },
+    "Get SS Console": { "main": [[{ "node": "Format SS Push", "type": "main", "index": 0 }]] },
+    "Format SS Push": { "main": [[{ "node": "Push SS Notification", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "sprint-3-ops" }],
+  "_hci_notes": "Fires Mon-Fri 06:00 for each pilot project. Pushes SS morning brief to ntfy. No credentials needed beyond HCI API Key."
+}

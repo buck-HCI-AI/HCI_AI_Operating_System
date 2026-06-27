@@ -1,0 +1,711 @@
+{
+  "run_at": "2026-06-27T14:58:56.634146",
+  "passed": 38,
+  "failed": 0,
+  "total": 38,
+  "pass_rate": 100.0,
+  "tests": [
+    {
+      "test": "SS daily console \u2014 project 1",
+      "path": "/api/v1/superintendent/1/today",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has health",
+          "pass": true
+        },
+        {
+          "check": "has project_name",
+          "pass": true
+        },
+        {
+          "check": "has tasks section",
+          "pass": true
+        },
+        {
+          "check": "has safety",
+          "pass": "Hand & Power Tool Safety \u2014 guards and PPE"
+        },
+        {
+          "check": "has procurement",
+          "pass": true
+        },
+        {
+          "check": "has 10+ keys",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "SS daily console \u2014 project 2",
+      "path": "/api/v1/superintendent/2/today",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "project 101 Francis",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "SS daily console \u2014 project 3",
+      "path": "/api/v1/superintendent/3/today",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "project 1355 Riverside",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "SS daily console \u2014 invalid project \u2192 404",
+      "path": "/api/v1/superintendent/999/today",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 404",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "PM weekly console \u2014 project 1",
+      "path": "/api/v1/pm/1/weekly",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has health",
+          "pass": true
+        },
+        {
+          "check": "has budget section",
+          "pass": true
+        },
+        {
+          "check": "has rfis section",
+          "pass": true
+        },
+        {
+          "check": "has procurement",
+          "pass": true
+        },
+        {
+          "check": "has priorities",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "PM weekly console \u2014 project 2",
+      "path": "/api/v1/pm/2/weekly",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has bid_packages count",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Leadership dashboard",
+      "path": "/api/v1/leadership/dashboard",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has company_health",
+          "pass": true
+        },
+        {
+          "check": "has 4 projects",
+          "pass": true
+        },
+        {
+          "check": "has what_needs_me",
+          "pass": true
+        },
+        {
+          "check": "has bids_in_flight",
+          "pass": true
+        },
+        {
+          "check": "has ai_productivity",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Weekly job reports \u2014 all projects",
+      "path": "/api/v1/reports/weekly/jobs",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has reports list",
+          "pass": true
+        },
+        {
+          "check": "4 reports",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Weekly job reports \u2014 single project",
+      "path": "/api/v1/reports/weekly/jobs?project_id=1",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "1 report",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Weekly company report",
+      "path": "/api/v1/reports/weekly/company",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has company_health",
+          "pass": true
+        },
+        {
+          "check": "has projects",
+          "pass": true
+        },
+        {
+          "check": "has what_needs_me",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "SS HTML /superintendent/1",
+      "path": "/superintendent/1",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "PM HTML /pm/1",
+      "path": "/pm/1",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "SS HTML /superintendent/2",
+      "path": "/superintendent/2",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "PM HTML /pm/2",
+      "path": "/pm/2",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "SS HTML /superintendent/3",
+      "path": "/superintendent/3",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "PM HTML /pm/3",
+      "path": "/pm/3",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Leadership HTML /leadership",
+      "path": "/leadership",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "is HTML",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project intelligence \u2014 project 1 (no AI)",
+      "path": "/api/v1/services/project-brain/1/intelligence?ai_summary=false",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has health",
+          "pass": true
+        },
+        {
+          "check": "has risks",
+          "pass": true
+        },
+        {
+          "check": "has risk_summary",
+          "pass": true
+        },
+        {
+          "check": "has decisions",
+          "pass": true
+        },
+        {
+          "check": "has timeline",
+          "pass": true
+        },
+        {
+          "check": "has procurement",
+          "pass": true
+        },
+        {
+          "check": "has missing_information",
+          "pass": true
+        },
+        {
+          "check": "has open_questions",
+          "pass": true
+        },
+        {
+          "check": "has data_completeness_pct",
+          "pass": true
+        },
+        {
+          "check": "has data_sources",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project intelligence \u2014 project 2",
+      "path": "/api/v1/services/project-brain/2/intelligence?ai_summary=false",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "correct project",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project intelligence \u2014 invalid \u2192 404",
+      "path": "/api/v1/services/project-brain/999/intelligence",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 404",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project brain health \u2014 project 1",
+      "path": "/api/v1/services/project-brain/1/health",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has health",
+          "pass": true
+        },
+        {
+          "check": "has risk_count",
+          "pass": true
+        },
+        {
+          "check": "has critical_risks",
+          "pass": true
+        },
+        {
+          "check": "has as_of timestamp",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project brain health \u2014 all 4 projects",
+      "path": "/api/v1/services/project-brain/2/health",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project brain health \u2014 project 3",
+      "path": "/api/v1/services/project-brain/3/health",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project brain health \u2014 project 4",
+      "path": "/api/v1/services/project-brain/4/health",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project risks \u2014 project 1",
+      "path": "/api/v1/services/project-brain/1/risks",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has risk_count",
+          "pass": true
+        },
+        {
+          "check": "has risks list",
+          "pass": true
+        },
+        {
+          "check": "risks have required fields",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Project health history \u2014 project 1",
+      "path": "/api/v1/services/project-brain/1/health-history?days=30",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has history list",
+          "pass": true
+        },
+        {
+          "check": "has project_id",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Health matrix \u2014 all projects",
+      "path": "/api/v1/services/cross-project/health-matrix",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has company_health",
+          "pass": true
+        },
+        {
+          "check": "has projects list",
+          "pass": true
+        },
+        {
+          "check": "4 projects",
+          "pass": true
+        },
+        {
+          "check": "each has health",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Cross-project alerts",
+      "path": "/api/v1/services/cross-project/alerts",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has company_health",
+          "pass": true
+        },
+        {
+          "check": "has alerts list",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Vendor performance cross-project",
+      "path": "/api/v1/services/cross-project/vendor-performance",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has top_vendors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Procurement summary cross-project",
+      "path": "/api/v1/services/cross-project/procurement-summary",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has by_project",
+          "pass": true
+        },
+        {
+          "check": "has total_open_packages",
+          "pass": true
+        },
+        {
+          "check": "119 total packages",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Schedule trends cross-project",
+      "path": "/api/v1/services/cross-project/schedule-trends",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has avg_variance_days",
+          "pass": true
+        },
+        {
+          "check": "has total_variance_items",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Company snapshot (full)",
+      "path": "/api/v1/services/cross-project/company-snapshot",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        },
+        {
+          "check": "has company_health",
+          "pass": true
+        },
+        {
+          "check": "has projects",
+          "pass": true
+        },
+        {
+          "check": "has cross_project_alerts",
+          "pass": true
+        },
+        {
+          "check": "has schedule_trends",
+          "pass": true
+        },
+        {
+          "check": "has budget_exposure",
+          "pass": true
+        },
+        {
+          "check": "has vendor_performance",
+          "pass": true
+        },
+        {
+          "check": "has procurement_summary",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Health check",
+      "path": "/api/v1/health",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Connectors health",
+      "path": "/api/v1/services/connectors/health",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Executive morning brief",
+      "path": "/api/v1/executive/morning-brief",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Executive missions",
+      "path": "/api/v1/executive/missions",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Bid leveling service",
+      "path": "/api/v1/services/bid-leveling",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "test": "Approval queue service",
+      "path": "/api/v1/services/approval-queue",
+      "pass": true,
+      "checks": [
+        {
+          "check": "HTTP 200",
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "name": "AUTO-WEEKLY-COMPANY — Friday 16:30 Company Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "30 16 * * 5" }]
+        }
+      },
+      "name": "Cron Friday 16:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/reports/weekly/company",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Company Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst h = d.company_health || 'GREEN';\nconst emoji = h === 'RED' ? '🔴' : h === 'YELLOW' ? '🟡' : '🟢';\nconst exposure = d.budget_exposure || {};\nconst decisions = d.open_owner_decisions || 0;\nconst atRisk = d.projects_at_risk || 0;\nconst recs = (d.recommendations || []);\n\nconst title = `${emoji} HCI Weekly Executive Report — ${d.week_of || ''}`;\nconst body = [\n  `${h} — ${d.active_projects} active jobs, ${atRisk} need attention`,\n  `Budget exposure: $${Math.round((exposure.total || 0) / 1000)}k across all projects`,\n  `Open decisions: ${decisions}`,\n  `---`,\n  ...(d.top_5_decisions || []).slice(0, 3).map((dec, i) => `${i+1}. ${dec.title || ''} (${dec.days_waiting || 0}d)`),\n  `---`,\n  `AI Recommendations:`,\n  ...recs.map((r, i) => `• ${r}`),\n  `Dashboard: http://localhost:8000/leadership`\n].join('\\n');\n\nconst priority = h === 'RED' ? 'urgent' : decisions > 3 ? 'high' : 'default';\nreturn [{ json: { title, body, priority, report: d } }];"
+      },
+      "name": "Format Executive Push",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "message", "value": "={{ $json.body }}" }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Click", "value": "http://localhost:8000/leadership" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Push Executive Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/write-report",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "path", "value": "=reports/weekly/company/executive-{{ $now.format('yyyy-MM-dd') }}.json" },
+            { "name": "content", "value": "={{ JSON.stringify($json.report, null, 2) }}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Write Company Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+    }
+  ],
+  "connections": {
+    "Cron Friday 16:30": { "main": [[{ "node": "Get Company Report", "type": "main", "index": 0 }]] },
+    "Get Company Report": { "main": [[{ "node": "Format Executive Push", "type": "main", "index": 0 }]] },
+    "Format Executive Push": { "main": [[{ "node": "Push Executive Summary", "type": "main", "index": 0 }]] },
+    "Push Executive Summary": { "main": [[{ "node": "Write Company Report", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "sprint-3-ops" }],
+  "_hci_notes": "Fires Friday 16:30. Company executive summary. Pushes ntfy + writes to disk."
+}

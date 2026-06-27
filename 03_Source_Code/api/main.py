@@ -34,6 +34,7 @@ from routers import sop
 from routers import platform as platform_router
 from routers import mvp_ops
 from routers import executive as exec_router
+from routers import operations as ops_router
 
 # Construction Intelligence Services — loaded via importlib to avoid service.py name collisions
 import importlib.util as _ilu
@@ -68,6 +69,7 @@ houzz_routes         = _load_svc("houzz_intelligence")
 notify_routes        = _load_svc("notification_engine")
 connector_routes     = _load_svc("connectors")
 autonomy_routes      = _load_svc("autonomy")
+cross_project_routes = _load_svc("cross_project")
 
 from routers.mining import router as mining_router
 
@@ -129,6 +131,7 @@ v1.include_router(platform_router.router,              tags=["platform"])
 v1.include_router(houzz_routes,       prefix="/imports/houzz",  tags=["houzz-imports"])
 v1.include_router(mvp_ops.router,                           tags=["mvp-operations"])
 v1.include_router(exec_router.router, prefix="/executive",   tags=["executive"])
+v1.include_router(ops_router.router,                          tags=["operations"])
 
 # ── Construction Intelligence Service Layer ────────────────────────────────
 svc = APIRouter(prefix="/services")
@@ -152,7 +155,8 @@ svc.include_router(bid_lev_routes,    prefix="/bid-leveling",             tags=[
 svc.include_router(houzz_routes,      prefix="/houzz",                    tags=["houzz-intelligence"])
 svc.include_router(notify_routes,     prefix="/notifications",             tags=["notifications"])
 svc.include_router(connector_routes,  prefix="/connectors",                tags=["connectors"])
-svc.include_router(autonomy_routes,   prefix="/autonomy",                  tags=["autonomy"])
+svc.include_router(autonomy_routes,      prefix="/autonomy",                  tags=["autonomy"])
+svc.include_router(cross_project_routes, prefix="/cross-project",              tags=["cross-project-intelligence"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
@@ -224,6 +228,9 @@ def dashboard_redirect():
 # Executive dashboard HTML at /executive (mobile-first, no auth — internal only)
 app.include_router(exec_router.router, prefix="/executive", include_in_schema=False)
 
+# Operations console HTML at /superintendent, /pm, /leadership (mobile-first, no auth)
+app.include_router(ops_router.router, include_in_schema=False)
+
 # ── Legacy routes (backward compat — launchd scripts + existing integrations) ─
 
 app.include_router(health.router,    tags=["_legacy"])
@@ -278,5 +285,5 @@ async def _mcp_proxy(request: _Req, path: str = ""):
 
 logger.info("MCP proxy mounted at /mcp → port 8080")
 
-logger.info("HCI AI API v%s started — %d route groups + 19 intelligence services + MCP + Connector Framework",
-            settings.app_version, 14)
+logger.info("HCI AI API v%s started — %d route groups + 21 intelligence services + MCP + Phase 2 Intelligence Layer",
+            settings.app_version, 15)

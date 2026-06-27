@@ -1,0 +1,81 @@
+{
+  "name": "AUTO-PM-WEEKLY — Monday 07:00 PM Console Push",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1" }]
+        }
+      },
+      "name": "Cron Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { project_id: 1, name: '64 Eastwood', code: '64EW' } },\n  { json: { project_id: 2, name: '101 Francis', code: '101F' } },\n  { json: { project_id: 3, name: '1355 Riverside', code: '1355R' } }\n];"
+      },
+      "name": "Active Projects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:8000/api/v1/pm/{{ $json.project_id }}/weekly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get PM Console",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '🔴' : h === 'YELLOW' ? '🟡' : '🟢';\nconst budget = d.budget || {};\nconst rfis = d.rfis || {};\nconst approvals = d.approvals || {};\nconst priorities = (d.next_week_priorities || []).slice(0, 3);\n\nconst title = `${emoji} ${d.project_code || ''} PM Week — ${d.week_of || ''}`;\nconst body = [\n  `${h} — ${d.project_name}`,\n  `Budget exposure: $${Math.round((budget.exposure || 0) / 1000)}k`,\n  `Open RFIs: ${rfis.open_count || 0} (${rfis.overdue_count || 0} overdue)`,\n  `Decisions pending: ${approvals.pending_count || 0}`,\n  `---`,\n  ...priorities.map((p, i) => `${i+1}. ${p}`),\n  `View: http://localhost:8000/pm/${d.project_id}`\n].join('\\n');\n\nconst priority = h === 'RED' ? 'high' : (approvals.pending_count || 0) > 0 ? 'default' : 'low';\n\nreturn [{ json: { title, body, priority } }];"
+      },
+      "name": "Format PM Push",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "message", "value": "={{ $json.body }}" }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Push PM Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Cron Monday 07:00": { "main": [[{ "node": "Active Projects", "type": "main", "index": 0 }]] },
+    "Active Projects": { "main": [[{ "node": "Get PM Console", "type": "main", "index": 0 }]] },
+    "Get PM Console": { "main": [[{ "node": "Format PM Push", "type": "main", "index": 0 }]] },
+    "Format PM Push": { "main": [[{ "node": "Push PM Notification", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "sprint-3-ops" }],
+  "_hci_notes": "Fires Monday 07:00. Pushes PM weekly brief for each pilot project to ntfy."
+}

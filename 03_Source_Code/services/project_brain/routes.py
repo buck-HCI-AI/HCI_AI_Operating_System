@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from fastapi import APIRouter, HTTPException
 from models import ProjectQuery
 from service import ProjectBrainService
+from intelligence import ProjectIntelligenceEngine
 
 router = APIRouter()
 
@@ -127,3 +128,63 @@ def project_vendors(project_number: str):
         ORDER BY bids_submitted DESC
     """, (project["id"],))
     return {"project_number": project_number, "vendors": rows}
+
+
+# ── Phase 2: Intelligence Endpoints ───────────────────────────────────────────
+
+@router.get("/{project_id}/intelligence")
+def project_intelligence(project_id: int, ai_summary: bool = True):
+    """
+    Full Phase 2 intelligence snapshot — health, risks, decisions, open questions,
+    missing information, AI summary, and recommended next actions.
+    """
+    engine = ProjectIntelligenceEngine(project_id)
+    result = engine.intelligence(include_ai_summary=ai_summary)
+    if "error" in result:
+        raise HTTPException(404, detail=result["error"])
+    return result
+
+
+@router.get("/{project_id}/health")
+def project_health(project_id: int):
+    """Lightweight health check — RED/YELLOW/GREEN with factors. No AI call."""
+    engine = ProjectIntelligenceEngine(project_id)
+    return engine.health()
+
+
+@router.get("/{project_id}/risks")
+def project_risks(project_id: int):
+    """Auto-detected risks from all available data sources."""
+    engine = ProjectIntelligenceEngine(project_id)
+    risks = engine.detect_risks()
+    return {
+        "project_id": project_id,
+        "risk_count": len(risks),
+        "critical": len([r for r in risks if r["severity"] == "critical"]),
+        "high": len([r for r in risks if r["severity"] == "high"]),
+        "medium": len([r for r in risks if r["severity"] == "medium"]),
+        "low": len([r for r in risks if r["severity"] == "low"]),
+        "risks": risks,
+    }
+
+
+@router.get("/{project_id}/summary")
+def project_summary(project_id: int):
+    """AI-generated narrative summary of project current state + recommended actions."""
+    engine = ProjectIntelligenceEngine(project_id)
+    return engine.summary()
+
+
+@router.get("/{project_id}/health-history")
+def project_health_history(project_id: int, days: int = 30):
+    """Health score history for trending (last N days)."""
+    from service import ProjectBrainService
+    svc = ProjectBrainService(str(project_id))
+    rows = svc.pg_query("""
+        SELECT snapshot_date, health, risk_count, open_decisions, open_bids,
+               data_completeness_pct, health_factors
+        FROM project_brain_snapshots
+        WHERE project_id = %s AND snapshot_date >= CURRENT_DATE - %s::interval
+        ORDER BY snapshot_date DESC
+    """, (project_id, f"{days} days"))
+    return {"project_id": project_id, "days": days, "history": [dict(r) for r in rows]}

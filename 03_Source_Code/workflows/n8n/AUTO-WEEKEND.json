@@ -36,15 +36,16 @@
     },
     {
       "parameters": {
-        "sendTo": "buck@ahmaspen.com",
+        "toRecipients": "buck@ahmaspen.com",
         "subject": "={{ $json.subject }}",
-        "message": "={{ $json.body }}",
+        "bodyContent": "={{ $json.body }}",
         "options": {}
       },
       "name": "Send Weekend Email",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [700, 300]
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [700, 300],
+      "credentials": { "microsoftOutlookOAuth2Api": { "name": "Microsoft Outlook account" } }
     }
   ],
   "connections": {
