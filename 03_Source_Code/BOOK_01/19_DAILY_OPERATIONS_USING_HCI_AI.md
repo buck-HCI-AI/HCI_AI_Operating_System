@@ -162,4 +162,4 @@ Full system health: connector status, background learning pipeline, approval que
 ## API Base URL
 
 All endpoints: `http://localhost:8000/api/v1/`  
-Header required: `X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+Header required: `X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`

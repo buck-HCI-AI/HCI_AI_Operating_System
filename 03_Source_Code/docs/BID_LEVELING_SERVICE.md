@@ -200,7 +200,7 @@ POST /api/v1/services/bid-leveling/drive/upload-file
   {"folder_id": "...", "filename": "file.xlsx", "content_b64": "...", "mime_type": "..."}
 ```
 
-API key: `hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+API key: `hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`
 Base URL: `http://localhost:8000` (or via ngrok for external access)
 
 ---

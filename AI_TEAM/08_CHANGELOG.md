@@ -613,7 +613,7 @@ All 4 SOPs follow the same 4-layer pattern as SOP 11 and SOP 15:
 ### Auth Status
 - Middleware enforces `X-API-Key` on `/api/v1/*` when `HCI_API_KEYS` is set
 - Legacy routes (`/workflows/`, `/health`, `/projects`) bypass auth — morning brief unaffected
-- API key: `hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+- API key: `hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`
 - Dashboard and docs/redoc remain open (not behind /api/v1)
 
 ### Mac mini Migration (pending hardware)

@@ -21,7 +21,7 @@
 
 ## API Key Authentication
 
-**Key:** `hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`  
+**Key:** `hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`  
 **Header:** `X-API-Key: <key>`  
 **Enforced on:** All `/api/v1/*` routes  
 **Open paths:** `/health`, `/docs`, `/redoc`, `/openapi.json`, `/api/v1/health`, `/static/*`, `/dashboard`  
@@ -31,7 +31,7 @@ To add more keys: add comma-separated values to `HCI_API_KEYS` in `.env` and res
 
 ```bash
 # Test auth
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   http://localhost:8000/api/v1/projects
 ```
 

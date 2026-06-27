@@ -5,7 +5,7 @@
 **API:** http://localhost:8000 (live, launchd-managed, API key enforced)  
 **Dashboard:** http://localhost:8000/dashboard  
 **Docs:** http://localhost:8000/docs  
-**API Key:** hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c
+**API Key:** hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 
 ---
 

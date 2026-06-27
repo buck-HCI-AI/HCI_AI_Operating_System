@@ -17,7 +17,7 @@ Last updated: 2026-06-26 (MVP Sprint 1 COMPLETE)
 ### AI Team Connection Quick Reference
 ```
 MCP endpoint: https://speculate-armband-retinal.ngrok-free.dev/mcp
-API Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c (header: X-API-Key)
+API Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6 (header: X-API-Key)
 GBT connect file: /Users/buckadams/Desktop/HCI_AI_GBT_Connect.txt
 Claude.ai directive: /Users/buckadams/Desktop/HCI_AI_ClaudeAI_Directive.txt
 ```
@@ -33,17 +33,17 @@ Claude.ai directive: /Users/buckadams/Desktop/HCI_AI_ClaudeAI_Directive.txt
 ### Bid Leveling Quick Commands
 ```bash
 # Dry run — all projects
-curl -X POST -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -X POST -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" -d '{"dry_run": true}' \
   http://localhost:8000/api/v1/services/bid-leveling/run-all
 
 # Live run — 1355 Riverside divisions 15+16 only
-curl -X POST -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -X POST -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" -d '{"dry_run": false, "divisions": ["15","16"]}' \
   http://localhost:8000/api/v1/services/bid-leveling/projects/3/run
 
 # GBT: read 1355 Riverside bid data
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   http://localhost:8000/api/v1/services/bid-leveling/projects/3/data
 ```
 
@@ -58,7 +58,7 @@ curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
 - 27 SOPs + 6 MVP workflows live and tested
 - **MVP Sprint 1: 48/48 tests PASS**
 - **Gate 5 pilot: active 2026-06-25 → 2026-07-01**
-- Auth: X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c
+- Auth: X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 
 ---
 
@@ -68,15 +68,15 @@ The system is live. Buck should be using these daily during the pilot period:
 
 ```bash
 # Morning briefing — all 3 projects
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
      http://localhost:8000/api/v1/mvp/exec-report
 
 # Check approval queue
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
      "http://localhost:8000/api/v1/services/approval-queue/queue?status=pending"
 
 # Sprint dashboard
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
      http://localhost:8000/api/v1/mvp/sprint-status
 ```
 

@@ -49,7 +49,7 @@ For each scenario, Buck rates the output:
 2. Submit a real daily log for actual work happening today or yesterday:
 ```bash
 curl -X POST http://localhost:8000/api/v1/workflows/wf-super/daily-log \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{
     "project_number": "101-FRANCIS",
@@ -78,7 +78,7 @@ curl -X POST http://localhost:8000/api/v1/workflows/wf-super/daily-log \
 **What to do:** Ask a real question you would actually want answered:
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/services/project-brain/1355-RIVERSIDE/query \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{"question": "[your real question about the project]"}'
 ```
@@ -104,7 +104,7 @@ Example questions:
 **What to do:** Trigger the morning brief (preview or live):
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf003/morning-brief \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{"preview": false}'
 ```
@@ -127,7 +127,7 @@ Or wait for it to run automatically at 7 AM and check email.
 **What to do:**
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf-report/exec-health \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{}' > /tmp/exec_health.html && open /tmp/exec_health.html
 ```
@@ -149,7 +149,7 @@ curl -s -X POST http://localhost:8000/api/v1/workflows/wf-report/exec-health \
 **What to do:**
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf002/meeting \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{
     "project_id": 2,
@@ -178,7 +178,7 @@ Note: `project_id` values — 64 Eastwood=1, 101 Francis=2, 1355 Riverside=3, 83
 After a real bid email arrives in your Outlook inbox, trigger WF-006:
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf006/inbox-review \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" -d '{}'
 ```
 **Evaluate:** Was the bid detected? Is the amount correct in bid_entries?
@@ -191,7 +191,7 @@ curl -s -X POST http://localhost:8000/api/v1/workflows/wf006/inbox-review \
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf-pm/daily-review/101-FRANCIS \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" -d '{}'
 ```
 **Evaluate:** Is the 5-minute daily check summary useful? Would it replace your current process?
@@ -213,7 +213,7 @@ After drive sync, ask Project Brain about a specific document that exists in Dri
 
 ```bash
 curl -s http://localhost:8000/api/v1/services/risk-intelligence/flags/64-EASTWOOD \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 ```
 **Evaluate:** Are the risk flags real? Are there false positives? Are real risks missing?
 
@@ -225,7 +225,7 @@ curl -s http://localhost:8000/api/v1/services/risk-intelligence/flags/64-EASTWOO
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf-report/weekly-pm \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" -d '{}'
 ```
 **Evaluate:** Is this comprehensive enough to replace a manual status meeting?

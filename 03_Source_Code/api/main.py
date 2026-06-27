@@ -63,6 +63,7 @@ bl_routes            = _load_svc("background_learning")
 aq_routes            = _load_svc("approval_queue")
 cr_routes            = _load_svc("connector_registry")
 bid_lev_routes       = _load_svc("bid_leveling")
+houzz_routes         = _load_svc("houzz_intelligence")
 
 from routers.mining import router as mining_router
 
@@ -121,6 +122,7 @@ v1.include_router(workflows.router,  prefix="/workflows", tags=["workflows"])
 v1.include_router(memory.router,     prefix="/memory",    tags=["memory"])
 v1.include_router(sop.router,                           tags=["sop"])
 v1.include_router(platform_router.router,              tags=["platform"])
+v1.include_router(houzz_routes,  prefix="/imports/houzz",  tags=["houzz-imports"])
 v1.include_router(mvp_ops.router,                      tags=["mvp-operations"])
 
 # ── Construction Intelligence Service Layer ────────────────────────────────
@@ -142,6 +144,7 @@ svc.include_router(bl_routes,         prefix="/background-learning",      tags=[
 svc.include_router(aq_routes,         prefix="/approval-queue",           tags=["approval-queue"])
 svc.include_router(cr_routes,         prefix="/connector-registry",       tags=["connector-registry"])
 svc.include_router(bid_lev_routes,    prefix="/bid-leveling",             tags=["bid-leveling"])
+svc.include_router(houzz_routes,      prefix="/houzz",                    tags=["houzz-intelligence"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
@@ -164,6 +167,7 @@ def list_services():
         {"name": "approval-queue",             "status": "active",   "path": "/api/v1/services/approval-queue"},
         {"name": "connector-registry",         "status": "active",   "path": "/api/v1/services/connector-registry"},
         {"name": "bid-leveling",               "status": "active",   "path": "/api/v1/services/bid-leveling"},
+        {"name": "houzz-intelligence",         "status": "active",   "path": "/api/v1/services/houzz"},
     ]}
 
 v1.include_router(svc)

@@ -15,7 +15,7 @@ This test plan covers all 9 intelligence services, 18 active workflows, 3 sync p
 ## Test Environment
 
 - **Host:** MacBook Air (current dev/prod machine)
-- **API:** `http://localhost:8000` | Auth: `X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+- **API:** `http://localhost:8000` | Auth: `X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`
 - **DB:** PostgreSQL hci_os (22 tables, 4 projects, 392 vendors)
 - **Qdrant:** `http://localhost:6333` (13 collections)
 - **ngrok:** `https://speculate-armband-retinal.ngrok-free.dev` (external access)
@@ -48,7 +48,7 @@ curl http://localhost:8000/health
 # Expected: {"status": "healthy"} HTTP 200
 
 curl http://localhost:8000/api/v1/system/health \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 # Expected: HTTP 200, all components healthy
 ```
 
@@ -59,14 +59,14 @@ curl http://localhost:8000/api/v1/projects
 # Expected: HTTP 401
 
 # With key — must return 200
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   http://localhost:8000/api/v1/projects
 # Expected: HTTP 200, array of 4 projects
 ```
 
 **Test EV-03 — Core CRUD endpoints**
 ```bash
-API_KEY="X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+API_KEY="X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 
 # Projects
 curl -H "$API_KEY" http://localhost:8000/api/v1/projects          # 200, 4 results
@@ -78,7 +78,7 @@ curl -H "$API_KEY" http://localhost:8000/api/v1/system/status     # 200
 
 **Test EV-06 — All 9 intelligence services return 200**
 ```bash
-API_KEY="X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+API_KEY="X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 BASE="http://localhost:8000/api/v1/services"
 
 curl -H "$API_KEY" "$BASE/project-brain/101-FRANCIS/snapshot"
@@ -95,7 +95,7 @@ curl -H "$API_KEY" -X POST "$BASE/document-intelligence/upload" \
 
 **Test EV-09 — Workflow trigger (all 18)**
 ```bash
-API_KEY="X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+API_KEY="X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 for wf in WF-001 WF-002 WF-003 WF-004 WF-005 WF-006 WF-007 WF-SYNC-HS WF-SYNC-DRIVE WF-SYNC-HOUZZ WF-SUPER WF-PM WF-PM-W WF-REPORT-DAILY WF-REPORT-EXEC WF-REPORT-OWNER WF-REPORT-ALERT WF-REPORT-WEEKLY; do
   result=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
     "http://localhost:8000/api/v1/workflows/$wf/trigger" \
@@ -153,7 +153,7 @@ done
 ### TS-01: Daily Field Log — Field to Email
 
 ```bash
-API_KEY="X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+API_KEY="X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 
 # Step 1: Submit daily log
 RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/workflows/wf-super/daily-log \
@@ -201,7 +201,7 @@ psql $DATABASE_URL -c \
 ```bash
 # Trigger morning brief (preview mode — no email send)
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf003/morning-brief \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{"preview": true}'
 # Expected: JSON with "subject" and "html_body" fields; mentions all 4 projects
@@ -211,7 +211,7 @@ curl -s -X POST http://localhost:8000/api/v1/workflows/wf003/morning-brief \
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/services/project-brain/101-FRANCIS/query \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{"question": "What is the current bid coverage status for 101 Francis?"}'
 # Expected: Answer mentioning bid packages, coverage %, or specific trade info
@@ -225,7 +225,7 @@ BEFORE=$(curl -s http://localhost:6333/collections/drive_memory | \
   python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result']['vectors_count'])")
 
 curl -s -X POST http://localhost:8000/api/v1/workflows/sync/drive \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 
 AFTER=$(curl -s http://localhost:6333/collections/drive_memory | \
   python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result']['vectors_count'])")

@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-27T09:00 MST
-**Updated By:** Claude Code — Sprint 1 CLOSED. Sprint 2 open. Mining engine LIVE. Integration Registry built.
+**Last Updated:** 2026-06-27T12:00 MST
+**Updated By:** Claude Code — API key rotated (SEC-001). Houzz ingestion endpoint LIVE. Command Center built (CMD-001–006).
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -31,7 +31,8 @@
 | Microsoft 365 | 🟢 LIVE | 2026-06-26 | Claude Code | Graph API — email read/send |
 | Mining Engine | 🟢 LIVE | 2026-06-27 | Claude Code | 8 agents, 03:00 daily, authorized by Buck 2026-06-27 |
 | Integration Registry | 🟢 LIVE | 2026-06-27 | Claude Code | 8 integrations seeded (05_Database/integration_registry.sql) |
-| Houzz (Browser) | ⏸ PAUSED | 2026-06-27 | Chief Architect | Browser paused per directive — full extraction scope approved for future sprint |
+| Houzz Ingestion | 🟢 LIVE | 2026-06-27 | Claude Code | POST /api/v1/services/houzz/ingest — awaiting Browser Claude data load |
+| Houzz (Browser) | 🔄 ACTIVE | 2026-06-27 | Browser Claude | Directive on Desktop — extract 101 Francis + POST to endpoint |
 
 ---
 
@@ -158,7 +159,7 @@ ListDriveFolder, ReadSheet, WriteSheet, ExecutiveReport, GetROISummary
 | executive_reporting | ~10 | Active |
 | project_brain | ~20 | Active |
 | bid_leveling | ~30 | Active |
-| houzz_intelligence | ~15 | BLOCKED — awaiting architecture ACR |
+| houzz_intelligence | ~3 | 🟢 LIVE — GET /status, POST /ingest, GET / info |
 | hubspot_integration | ~40 | Active |
 | google_drive_integration | ~30 | Active |
 | google_sheets_integration | ~20 | Active |
@@ -224,7 +225,7 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 | HistoricalCostMiner | 🟢 LIVE | 21 Garmisch records, bid variance tracking |
 | VendorIntelligenceMiner | 🟢 LIVE | 392 vendors, bid stats updating |
 | LessonsLearnedMiner | 🟢 LIVE | Dedup via source_reference |
-| HouzzMiner | ⏸ PAUSED | Framework active — full extraction scope approved for future sprint (Chief Architect Directive 2026-06-27) |
+| HouzzMiner | ⏸ PAUSED | Awaiting data load — Browser Claude directive issued 2026-06-27; will activate after first ingest |
 | ExecutiveAggregator | 🟢 LIVE | KPI snapshots + LIVE_PROJECT_STATE.md header update |
 
 ---

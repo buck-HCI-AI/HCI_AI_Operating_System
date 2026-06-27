@@ -28,7 +28,7 @@ The owner is **Buck Adams**, owner/operator of **Hendrickson Construction Inc (H
 | Redis | Cache / temporary state | localhost:6379 |
 
 **Auth:**
-- FastAPI: `X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+- FastAPI: `X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`
 - n8n: key stored in `.env` as `N8N_API_KEY`
 - All credentials stored in `/Users/buckadams/HCI_AI_Operating_System/.env` (gitignored)
 
@@ -420,7 +420,7 @@ This gives ChatGPT access to all 6 MCP tools listed in Section 5.
 
 **Option B — Direct API calls**
 Base URL: `http://localhost:8000` (local only — not accessible externally without tunnel)
-Header: `X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c`
+Header: `X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6`
 
 **Option C — Read this document**
 This document alone gives ChatGPT full context to conduct the architecture review without a live connection.

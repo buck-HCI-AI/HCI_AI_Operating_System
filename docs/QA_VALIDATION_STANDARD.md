@@ -73,12 +73,12 @@ All defects → `docs/KNOWN_ISSUES.md` with ID `KI-NNN`.
 curl http://localhost:8000/health
 
 # 2. Auth
-curl -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+curl -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   http://localhost:8000/api/v1/projects
 
 # 3. WF-SUPER smoke
 curl -X POST http://localhost:8000/api/v1/workflows/wf-super/daily-log \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{"project_number":"TEST-001","work_performed":"[TEST] regression smoke","manpower":0}'
 

@@ -104,7 +104,7 @@ curl http://localhost:6333/collections/project_memory
 # Step 4: If snapshot restore fails, re-run data pipelines:
 python3 /Users/buckadams/HCI_AI_Operating_System/03_Source_Code/workflows/mine_hubspot.py
 curl -X POST http://localhost:8000/api/v1/workflows/sync/drive \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 ```
 
 ---
@@ -152,7 +152,7 @@ launchctl stop com.hci.api && launchctl start com.hci.api
 
 # Step 4: Re-test the workflow
 curl -X POST http://localhost:8000/api/v1/workflows/wf-super/daily-log \
-  -H "X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c" \
+  -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" \
   -H "Content-Type: application/json" \
   -d '{"project_number":"TEST-001","work_performed":"[TEST] regression check","manpower":0}'
 ```

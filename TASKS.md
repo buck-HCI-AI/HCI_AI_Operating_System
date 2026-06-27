@@ -3,7 +3,7 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI
-**Last Updated:** 2026-06-27 (Sprint 1 CLOSED. Sprint 2 open — AUTO-016, HZ-003, AUTO-025 done by Claude Code)
+**Last Updated:** 2026-06-27 (Sprint 2 active — SEC-001 key rotated, HZ-BRIDGE-001 ingestion endpoint LIVE)
 **Authority:** SPRINT_OPERATING_MODEL.md
 **Parent Document:** PROJECT.md
 
@@ -133,6 +133,26 @@ Acceptance Criteria — HZ-001:
 | [x] | AUTO-016 | Build Integration Registry schema in 05_Database/ | registry | Claude Code | Done 2026-06-27 — 8 integrations seeded |
 | [x] | AUTO-017 | Implement Gate E: client comms approval workflow | n8n workflow | n8n | Done 2026-06-27 — webhook /gate-e-client-comms, WWv3euSPYehmjkoi |
 | [x] | AUTO-018 | Implement Gate F: financial action approval workflow | n8n workflow | n8n | Done 2026-06-27 — webhook /gate-f-financial, 6bDcqZX2ZGUiaKnx |
+
+### Security & Command Center (Chief Architect Directive 2026-06-27)
+
+| Status | Task ID | Task | Label | Assigned To |
+|---|---|---|---|---|
+| [x] | SEC-001 | Rotate exposed API key + scrub 14 committed docs | security | Claude Code | Done 2026-06-27 — old key revoked, new key in .env |
+| [x] | CMD-001 | Create HCI_COMMAND_CENTER.md | command-center | Claude Code | Done 2026-06-27 |
+| [x] | CMD-002 | Create DIRECTIVE_CLAUDE_CODE.md | command-center | Claude Code | Done 2026-06-27 |
+| [x] | CMD-003 | Create DIRECTIVE_BROWSER_CLAUDE.md | command-center | Claude Code | Done 2026-06-27 |
+| [x] | CMD-004 | Create ACR_TEMPLATE.md | command-center | Claude Code | Done 2026-06-27 |
+| [x] | CMD-005 | Create BUCK_APPROVAL_TEMPLATE.md | command-center | Claude Code | Done 2026-06-27 |
+| [x] | CMD-006 | Build scripts/generate_command_center.py daily loop | command-center | Claude Code | Done 2026-06-27 |
+
+### Houzz Persistence Bridge — Sprint 2
+
+| Status | Task ID | Task | Label | Assigned To |
+|---|---|---|---|---|
+| [x] | HZ-BRIDGE-001 | Build POST /api/v1/services/houzz/ingest endpoint | houzz backend | Claude Code | Done 2026-06-27 — idempotent upsert, validation, metrics |
+| [x] | HZ-BRIDGE-002 | Create Browser Claude persistence directive | houzz browser | Claude Code | Done 2026-06-27 — on Desktop |
+| [ ] | HZ-BRIDGE-003 | Browser Claude: extract 101 Francis + POST to endpoint | houzz browser | Browser Claude | Next: read directive on Desktop |
 
 ### Houzz Workstream — Sprint 2
 

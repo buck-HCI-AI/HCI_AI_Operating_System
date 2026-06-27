@@ -15,7 +15,7 @@
 
 ## Project Context
 - Primary working directory: /Users/buckadams/HCI_AI_Operating_System/03_Source_Code
-- API: http://localhost:8000 (X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c)
+- API: http://localhost:8000 (X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6)
 - MCP: http://localhost:8080 / https://speculate-armband-retinal.ngrok-free.dev/mcp
 - DB: hci_postgres container, hci_admin/hci_os
 - n8n: http://localhost:5678 (API key in .env as N8N_API_KEY)

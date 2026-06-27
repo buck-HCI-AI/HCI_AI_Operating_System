@@ -17,7 +17,7 @@ Purpose: Seed data for LIVE_PROJECT_STATE.md to be created in Program Repository
 
 | Service | URL | Auth |
 |---|---|---|
-| FastAPI | http://localhost:8000 | X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c |
+| FastAPI | http://localhost:8000 | X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6 |
 | MCP Server | http://localhost:8080 | — |
 | MCP (public) | https://speculate-armband-retinal.ngrok-free.dev/mcp | — |
 | n8n | http://localhost:5678 | N8N_API_KEY in .env |

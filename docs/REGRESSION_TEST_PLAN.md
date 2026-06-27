@@ -23,7 +23,7 @@
 #!/bin/bash
 set -a; source /Users/buckadams/HCI_AI_Operating_System/.env; set +a
 API="http://localhost:8000"
-KEY="hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+KEY="hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 
 echo "=== HCI AI Smoke Test ==="
 
@@ -65,7 +65,7 @@ Run the specific workflow's test case from `docs/WORKFLOW_TEST_MATRIX.md`.
 For example, if `wf_superintendent.py` changed:
 
 ```bash
-KEY="hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+KEY="hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 
 # Full WF-SUPER test
 curl -s -X POST http://localhost:8000/api/v1/workflows/wf-super/daily-log \
