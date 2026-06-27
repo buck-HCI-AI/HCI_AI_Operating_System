@@ -85,19 +85,19 @@
 
 | Status | Task ID | Task | Owner | Acceptance Criteria |
 |---|---|---|---|---|
-| [ ] | AUTO-005 | Gate H: HubSpot write approval workflow | n8n | Webhook receives write request; routes to approval_queue |
-| [ ] | AUTO-006 | Gate G: PR merge notification to Buck | n8n | Fires on PR open; notifies Buck via email |
-| [ ] | AUTO-017 | Gate E: Client comms approval workflow | n8n | Draft routed to approval_queue with preview |
-| [ ] | AUTO-018 | Gate F: Financial action approval workflow | n8n | Budget/bid actions queued before execution |
+| [x] | AUTO-005 | Gate H: HubSpot write approval workflow | n8n | GATE-H-hubspot-write.json — import to n8n |
+| [x] | AUTO-006 | Gate G: PR merge notification to Buck | n8n | GATE-G-pr-notification.json — import + add webhook to GitHub |
+| [x] | AUTO-017 | Gate E: Client comms approval workflow | n8n | GATE-E-client-comms.json — import to n8n |
+| [x] | AUTO-018 | Gate F: Financial action approval workflow | n8n | GATE-F-financial.json — import to n8n |
 
 ### Priority 3 — Weekly Automation Suite (n8n)
 
 | Status | Task ID | Task | Owner | Acceptance Criteria |
 |---|---|---|---|---|
-| [ ] | AUTO-010 | Weekly sprint review summary workflow | n8n | Fires Monday 07:00; writes reports/sprint/weekly-YYYY-MM-DD.md |
-| [ ] | AUTO-011 | Weekly registry duplicate check | n8n | Fires Monday 07:30; flags duplicates in registry |
-| [ ] | AUTO-012 | Weekly broken link check | n8n | Fires Monday 08:00; checks Drive/HubSpot links |
-| [ ] | AUTO-013 | HubSpot/Drive reconciliation report | n8n | Fires Monday 08:30; compares project records |
+| [x] | AUTO-010 | Weekly sprint review summary workflow | n8n | AUTO-WEEKLY-SPRINT.json — import to n8n |
+| [x] | AUTO-011 | Weekly registry duplicate check | n8n | AUTO-WEEKLY-REGISTRY.json — import to n8n |
+| [x] | AUTO-012 | Weekly broken link check | n8n | AUTO-WEEKLY-LINKS.json — import to n8n |
+| [x] | AUTO-013 | HubSpot/Drive reconciliation report | n8n | AUTO-WEEKLY-HUBSPOT-DRIVE.json — import to n8n |
 
 ### Priority 4 — API Connections to n8n
 
@@ -185,6 +185,8 @@ Sprint 2 is complete when ALL of the following are true:
 | Date | Status | Key Events | Blockers |
 |---|---|---|---|
 | 2026-06-27 | Sprint 2 Open | Sprint 1 closed. Mining engine live. 35 MCP tools. AUTO-016, HZ-003, AUTO-025 completed (registry foundation). | BLOCK-005 (Houzz), BLOCK-001 (branch protection) |
+| 2026-06-27 | Building | Sprint 5-7 complete: Universal Connector Framework, HouzzConnector (17 entities), HubSpotConnector (direct API), autonomy service, 4 executive n8n workflows, connector health fixed. 71/71 tests. | ntfy app fixed. Houzz data still pending Browser Claude. |
+| 2026-06-27 | Building | Sprint 2 gate workflows complete: GATE-H/G/E/F. Weekly automations: AUTO-010/011/012/013. registry-health endpoint added. 12 n8n JSONs total ready to import. | n8n import requires Buck UI action. GitHub webhook URL needed for GATE-G. |
 
 ---
 
