@@ -5,6 +5,21 @@
 
 ---
 
+## v2.3 — 2026-06-27 | Browser Handoff Ingestion — Houzz + HubSpot Platform Intelligence
+
+**Trigger:** BTW directive — two Browser Claude handoff files (HCI-BH-HP-001, HCI-BH-HS-001)
+
+**Changes:**
+- `Architecture/Agent_Handoff/Inbox/` → both files processed through handoff_processor.py ✅
+- `Architecture/Platform_Intelligence/Houzz/HOUZZ_PLATFORM_INTELLIGENCE_V1.md` — structured intelligence: 24 projects, 18 team seats, module status table, 14 automation opportunities, critical gaps
+- `Architecture/Platform_Intelligence/HubSpot/HUBSPOT_PLATFORM_INTELLIGENCE_V1.md` — structured intelligence: portal 244757054, 1311 contacts, 1183 companies, 309 deals, 2 pipelines, custom properties, 10 connected apps, 10 automation opportunities
+- `Architecture/Platform_Intelligence/AUTOMATION_OPPORTUNITY_CATALOG.md` — unified 24-item catalog with prioritized build sequence; 7-step recommended build order
+- **n8n import completed:** 5 new workflows live — AUTO-CONTINUOUS-DISCOVERY, AUTO-DAILY-PROJECT-SUMMARY, AUTO-HANDOFF-PROCESSOR, AUTO-MONTHLY-REVIEW, AUTO-WEEKLY-EXEC
+- **P0 findings:** No Houzz↔HubSpot integration; 303 unconverted area leads; COI not automated; zero schedules built; zero dashboards
+- **Next immediate build:** AO-HS-001 (COI auto-update) + AO-HS-008 (4 dashboards) — no blockers
+
+---
+
 ## v2.2 — 2026-06-27 | BTW-10 — Continuous Discovery Engine (Infrastructure)
 
 **Trigger:** BTW-10 — Continuous Discovery Engine (Strategic Backlog)
