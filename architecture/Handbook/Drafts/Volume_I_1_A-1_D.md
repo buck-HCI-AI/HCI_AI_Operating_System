@@ -1,11 +1,10 @@
-# Volume I — Executive Vision
-*HCI AI Construction Operating System Architecture Handbook*
-**Status: PARTIALLY AUTHORED — Sections 1.A–1.D published by Buck Adams 2026-06-27**
+# Volume I — HCI AI Organization
+*Authored by: Buck Adams + ChatGPT (Chief Architect)*
+*Date: 2026-06-27*
 
 ---
 
 ## 1.A HCI AI Organization
-*Authored by: Buck Adams (Chief Architect) — 2026-06-27*
 
 ```
 Buck Adams
@@ -62,12 +61,13 @@ Buck Adams holds final authority on all decisions. No AI agent, workflow, or aut
 ---
 
 ## 1.B Design Principles
-*Authored by: Buck Adams (Chief Architect) — 2026-06-27*
 
 These principles are the filter for every future feature decision.
 
 > **"Does this help someone build a better project?"**
 > If yes — it belongs. If the answer is "it's technically impressive" — it probably waits.
+
+---
 
 **1. One source of truth.**
 Data lives in one place. The platform reads from that source — it does not copy, duplicate, or maintain parallel records.
@@ -99,79 +99,29 @@ Lessons, costs, vendor performance, and risk patterns from completed projects au
 ---
 
 ## 1.C HCI AI Maturity Model
-*Authored by: Buck Adams (Chief Architect) — 2026-06-27*
 
 Every feature maps against this model. Features should pull the company up the maturity ladder — not sideways.
 
 | Level | Name | Description | HCI Status |
 |-------|------|-------------|-----------|
-| 1 | **Connected** | All systems linked; data flows in | ✅ Achieved |
-| 2 | **Integrated** | Data is unified; single source of truth | 🟡 In progress — Houzz data pending |
-| 3 | **Intelligent** | AI surfaces risks, insights, recommendations | ✅ Achieved — 95/100 health |
-| 4 | **Predictive** | AI forecasts outcomes before they happen | 🟡 In progress — pending Houzz data |
-| 5 | **Autonomous** | AI acts within defined authority; humans approve exceptions | 🔵 Designed — pending Pilot approval |
+| 1 | **Connected** | All systems linked; data flows in | ✅ Achieved — HubSpot, Drive, Houzz framework live |
+| 2 | **Integrated** | Data is unified; single source of truth | 🟡 In progress — connectors built; Houzz data pending |
+| 3 | **Intelligent** | AI surfaces risks, insights, recommendations | ✅ Achieved — Project Brain, Predictive Engine, 95/100 health |
+| 4 | **Predictive** | AI forecasts outcomes before they happen | 🟡 In progress — 7 prediction types live, low confidence pending Houzz data |
+| 5 | **Autonomous** | AI acts within defined authority; humans approve exceptions | 🔵 Designed — approval gates + autonomy service built; go-live pending Pilot |
 
-**Mapping rule:** Before building any new feature, identify which maturity level it supports. The Operational Readiness Review (ORR-001) gates the move to production.
+**Mapping rule:** Before building any new feature, identify which maturity level it supports. Features at Level 5 cannot be deployed until Level 2 integration is complete. The Operational Readiness Review gates the move from Level 3 → Level 4 production use.
 
 ---
 
-## 1.D The North Star
-*Authored by: Buck Adams — 2026-06-27*
+## 1.D The Question That Changed Everything
+
+*From Buck Adams, 2026-06-27:*
 
 > "When do we stop building this and it becomes a field tool?"
 
-From this point forward, every new capability answers one question:
+This question is the platform's North Star. From this point forward, every new capability answers one question:
 
 **"Does this help someone build a better project?"**
 
 This is the philosophy that will keep the HCI AI Operating System focused on what matters most: making Hendrickson Construction more effective every single day.
-
----
-
-## 1.1 Platform Purpose (⚠️ Chief Architect — ChatGPT authorship pending)
-
-*[Chief Architect: What is the fundamental purpose of the HCI AI Operating System?
-What problem does it solve that no other tool solves for Hendrickson Construction?]*
-
----
-
-## 1.2 Operating Philosophy (⚠️ Chief Architect — ChatGPT authorship pending)
-
-*[Chief Architect: Expand on the Design Principles in 1.B — the philosophy behind how the platform operates.]*
-
----
-
-## 1.3 Intelligence Model Philosophy (⚠️ Chief Architect — ChatGPT authorship pending)
-
-*[Chief Architect: What does "intelligence" mean in a construction context?
-How is construction intelligence different from generic business intelligence?]*
-
----
-
-## 1.5 Value Proposition (⚠️ Chief Architect — ChatGPT authorship pending)
-
-*[Chief Architect: What measurable value does the platform deliver to HCI?
-Time saved? Risk reduced? Revenue protected? Quality improved?]*
-
----
-
-## 1.6 Implementation Reference (Claude Code — DO NOT OVERWRITE)
-
-**Current Platform Value (Gate 5 Pilot — 2026-06-25 → 2026-07-01):**
-- 1,784 minutes (29.7 hours) saved in first 2 days
-- 62 documents processed autonomously
-- 31 risks detected and surfaced
-- 3 active projects monitored continuously
-- 95/100 system health
-
-**Active intelligence layers:**
-1. Project Brain — per-project health, risks, opportunities
-2. Cross-Project — portfolio health matrix, company snapshot
-3. Predictive Engine — 7 forward-looking risk categories
-4. Executive Mission Control — 11-section leadership dashboard
-
-**AI team operating model (current):**
-- Claude Code: Lead Implementation Engineer + Handbook Maintainer
-- ChatGPT: Chief Architect + Integration Director
-- Browser Claude: Discovery Agent (Houzz/HubSpot data extraction)
-- n8n: Automation Orchestrator (15 workflows, 7 active)
