@@ -21,29 +21,43 @@ API_BASE    = "http://localhost:8000/api/v1"
 API_KEY     = "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
 NTFY_TOPIC  = "https://ntfy.sh/hci-executive"
 
+# Fields that must exist; created_at and summary are auto-injected if absent
 REQUIRED_FIELDS = [
-    "source_agent", "destination_agent", "document_type", "priority",
-    "status", "created_at", "summary"
+    "source_agent", "destination_agent", "document_type", "priority", "status",
 ]
 
+# System-specific routing for browser_discovery documents
+SYSTEM_CURRENT_DIRS = {
+    "houzz":           REPO_ROOT / "Architecture/Platform_Intelligence/Houzz/Current",
+    "houzz pro":       REPO_ROOT / "Architecture/Platform_Intelligence/Houzz/Current",
+    "hubspot":         REPO_ROOT / "Architecture/Platform_Intelligence/HubSpot/Current",
+    "quickbooks":      REPO_ROOT / "Architecture/Platform_Intelligence/QuickBooks/Current",
+    "google drive":    REPO_ROOT / "Architecture/Platform_Intelligence/GoogleDrive/Current",
+    "microsoft365":    REPO_ROOT / "Architecture/Platform_Intelligence/Microsoft365/Current",
+    "outlook":         REPO_ROOT / "Architecture/Platform_Intelligence/Microsoft365/Current",
+    "n8n":             REPO_ROOT / "Architecture/Platform_Intelligence/n8n/Current",
+    "postgresql":      REPO_ROOT / "Architecture/Platform_Intelligence/PostgreSQL/Current",
+    "buildingconnected": REPO_ROOT / "Architecture/Platform_Intelligence/BuildingConnected/Current",
+    "procore":         REPO_ROOT / "Architecture/Platform_Intelligence/Procore/Current",
+}
+
 ROUTING = {
-    "browser_discovery":           REPO_ROOT / "Architecture/Platform_Intelligence",
-    "houzz_export":                REPO_ROOT / "Architecture/Platform_Intelligence/Houzz",
-    "hubspot_export":              REPO_ROOT / "Architecture/Platform_Intelligence/HubSpot",
-    "platform_opportunity_report": REPO_ROOT / "Architecture/Platform_Intelligence",
-    "business_process_architecture":REPO_ROOT / "Architecture/Platform_Intelligence",
-    "chief_architect_directive":   REPO_ROOT / "Architecture/Handbook/Drafts",
-    "architecture_chapter":        REPO_ROOT / "Architecture/Handbook/Drafts",
-    "implementation_request":      None,  # append to STRATEGIC_BACKLOG
-    "approval_request":            None,  # POST to executive inbox API
-    "executive_brief":             REPO_ROOT / "Architecture/Handbook/Published",
+    "browser_discovery":            None,   # resolved dynamically by related_system
+    "houzz_export":                 REPO_ROOT / "Architecture/Platform_Intelligence/Houzz/Current",
+    "hubspot_export":               REPO_ROOT / "Architecture/Platform_Intelligence/HubSpot/Current",
+    "platform_opportunity_report":  REPO_ROOT / "Architecture/Platform_Intelligence",
+    "business_process_architecture": REPO_ROOT / "Architecture/Platform_Intelligence",
+    "chief_architect_directive":    REPO_ROOT / "Architecture/Handbook/Drafts",
+    "architecture_chapter":         REPO_ROOT / "Architecture/Handbook/Drafts",
+    "implementation_request":       None,   # append to STRATEGIC_BACKLOG
+    "approval_request":             None,   # POST to executive inbox API
+    "executive_brief":              REPO_ROOT / "Architecture/Handbook/Published",
 }
 
 VALID_TYPES = list(ROUTING.keys())
 
 
 def _parse_frontmatter(content: str) -> tuple[dict, str]:
-    """Parse YAML-style frontmatter (--- delimited)."""
     if not content.strip().startswith("---"):
         return {}, content
     parts = content.split("---", 2)
@@ -52,7 +66,7 @@ def _parse_frontmatter(content: str) -> tuple[dict, str]:
     import re
     header = {}
     for line in parts[1].strip().splitlines():
-        m = re.match(r'^(\w+)\s*:\s*(.+)$', line.strip())
+        m = re.match(r'^(\w[\w_]*)\s*:\s*(.+)$', line.strip())
         if m:
             k, v = m.group(1).strip(), m.group(2).strip()
             if v.lower() in ("true", "false"):
@@ -72,6 +86,26 @@ def parse_handoff(file_path: Path) -> tuple[dict, str]:
     return _parse_frontmatter(content)
 
 
+def _auto_inject(header: dict, file_path: Path) -> dict:
+    """Inject created_at and summary if absent — Browser Claude files often omit these."""
+    if "created_at" not in header:
+        header["created_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if "summary" not in header:
+        system = header.get("related_system", header.get("document_type", "unknown"))
+        header["summary"] = f"Browser discovery — {system} — auto-ingested {header['created_at']}"
+    return header
+
+
+def _system_dest(header: dict) -> Path:
+    """Resolve destination directory for browser_discovery by related_system."""
+    system = header.get("related_system", "").lower().strip()
+    for key, path in SYSTEM_CURRENT_DIRS.items():
+        if key in system:
+            return path
+    # Fallback: parse from filename BROWSER_HANDOFF_{SYSTEM}_*
+    return REPO_ROOT / "Architecture/Platform_Intelligence"
+
+
 def validate_handoff(header: dict) -> tuple[bool, str]:
     if not header:
         return False, "Empty header — cannot parse handoff"
@@ -86,15 +120,32 @@ def validate_handoff(header: dict) -> tuple[bool, str]:
 
 def route_handoff(file_path: Path, header: dict, payload: str, dry_run: bool) -> str:
     doc_type = header["document_type"]
-    dest_dir  = ROUTING.get(doc_type)
-    source    = header.get("source_agent", "unknown")
-    summary   = header.get("summary", "")
+    source   = header.get("source_agent", "unknown")
+    summary  = header.get("summary", "")
+
+    # Dynamic routing for browser_discovery
+    if doc_type == "browser_discovery":
+        dest_dir = _system_dest(header)
+        if not dry_run:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest_file = dest_dir / file_path.name
+            # Archive any existing file with same name before overwriting
+            if dest_file.exists():
+                system_key = header.get("related_system", "unknown").replace(" ", "")
+                archive_dir = dest_dir.parent / "Archive"
+                archive_dir.mkdir(exist_ok=True)
+                ts_tag = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+                shutil.copy2(dest_file, archive_dir / f"{dest_file.stem}_{ts_tag}{dest_file.suffix}")
+            shutil.copy2(file_path, dest_file)
+        rel = dest_dir.relative_to(REPO_ROOT)
+        return f"→ {rel}/{file_path.name}"
+
+    dest_dir = ROUTING.get(doc_type)
 
     if dest_dir:
         if not dry_run:
             dest_dir.mkdir(parents=True, exist_ok=True)
-            dest_file = dest_dir / file_path.name
-            shutil.copy2(file_path, dest_file)
+            shutil.copy2(file_path, dest_dir / file_path.name)
         return f"→ {dest_dir.relative_to(REPO_ROOT)}/{file_path.name}"
 
     if doc_type == "implementation_request":
@@ -106,7 +157,7 @@ def route_handoff(file_path: Path, header: dict, payload: str, dry_run: bool) ->
         if not dry_run:
             with open(backlog, "a", encoding="utf-8") as f:
                 f.write(entry)
-        return f"→ Appended to STRATEGIC_BACKLOG.md"
+        return "→ Appended to STRATEGIC_BACKLOG.md"
 
     if doc_type == "approval_request":
         if not dry_run:
@@ -115,13 +166,13 @@ def route_handoff(file_path: Path, header: dict, payload: str, dry_run: bool) ->
                     f"{API_BASE}/executive-inbox",
                     headers={"X-API-Key": API_KEY},
                     json={"title": header.get("title", summary), "summary": summary, "source": source},
-                    timeout=5
+                    timeout=5,
                 )
                 if r.status_code not in (200, 201):
                     return f"→ API failed ({r.status_code}) — flagged for manual review"
             except Exception as e:
                 return f"→ API unreachable ({e}) — flagged for manual review"
-        return f"→ Posted to Executive Inbox"
+        return "→ Posted to Executive Inbox"
 
     return f"→ No routing configured for {doc_type}"
 
@@ -137,9 +188,9 @@ def update_index(entry: dict, dry_run: bool):
     if not dry_run:
         if not INDEX.exists():
             INDEX.write_text(
-                "# Agent Handoff Bus Index\n\n"
-                "| Timestamp | File | Type | Source | Status | Destination |\n"
-                "|-----------|------|------|--------|--------|-------------|\n"
+                "# Agent Handoff Bus Index\n*Updated automatically by handoff_processor.py*\n\n"
+                "| Timestamp | File | Type | Source Agent | Status | Destination |\n"
+                "|-----------|------|------|-------------|--------|-------------|\n"
             )
         with open(INDEX, "a") as f:
             f.write(line)
@@ -157,13 +208,17 @@ def process_file(file_path: Path, dry_run: bool) -> dict:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     print(f"\nProcessing: {file_path.name}")
 
-    # Move to Processing/
     if not dry_run:
         shutil.move(str(file_path), PROCESSING / file_path.name)
         file_path = PROCESSING / file_path.name
 
     header, payload = parse_handoff(file_path)
-    valid, reason   = validate_handoff(header)
+
+    # Auto-inject optional fields before validation
+    if header:
+        header = _auto_inject(header, file_path)
+
+    valid, reason = validate_handoff(header)
 
     if not valid:
         print(f"  ❌ INVALID: {reason}")
@@ -192,7 +247,7 @@ def process_file(file_path: Path, dry_run: bool) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="HCI Agent Handoff Bus Processor")
-    parser.add_argument("--dry-run", action="store_true", help="Validate without moving files")
+    parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--file", help="Process a specific file instead of scanning Inbox/")
     args = parser.parse_args()
 
@@ -209,15 +264,13 @@ def main():
         return
 
     print(f"{'[DRY RUN] ' if args.dry_run else ''}Processing {len(files)} file(s)...")
-    results = []
-    for f in files:
-        results.append(process_file(f, args.dry_run))
+    results = [process_file(f, args.dry_run) for f in files]
 
     processed = [r for r in results if r["status"] == "PROCESSED"]
     failed    = [r for r in results if r["status"] == "FAILED"]
 
-    summary = (f"Handoff Bus: {len(processed)}/{len(results)} processed. "
-               f"Types: {', '.join(set(r['document_type'] for r in processed))}.")
+    types = ", ".join(sorted(set(r["document_type"] for r in processed))) or "—"
+    summary = f"Handoff Bus: {len(processed)}/{len(results)} processed. Types: {types}."
     if failed:
         summary += f" Failed: {len(failed)} (see Failed/)."
 

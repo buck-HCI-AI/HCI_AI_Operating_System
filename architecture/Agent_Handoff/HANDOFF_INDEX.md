@@ -9,3 +9,11 @@
 | 2026-06-27 23:19 | BROWSER_HANDOFF_HUBSPOT_2026-06-27_BUSINESS_PROCESS.md | browser_discovery | Browser Claude | FAILED | Missing required fields: created_at, summary |
 | 2026-06-27 23:20 | BROWSER_HANDOFF_HOUZZ_2026-06-27_PLATFORM_INTELLIGENCE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/BROWSER_HANDOFF_HOUZZ_2026-06-27_PLATFORM_INTELLIGENCE.md |
 | 2026-06-27 23:20 | BROWSER_HANDOFF_HUBSPOT_2026-06-27_BUSINESS_PROCESS.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/BROWSER_HANDOFF_HUBSPOT_2026-06-27_BUSINESS_PROCESS.md |
+| 2026-06-27 23:31 | BROWSER_HANDOFF_HUBSPOT_2026-06-27_TEST_INTAKE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/HubSpot/Current/BROWSER_HANDOFF_HUBSPOT_2026-06-27_TEST_INTAKE.md |
+| 2026-06-27 23:32 | BROWSER_HANDOFF_HOUZZ_2026-06-27_TEST_INTAKE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/Houzz/Current/BROWSER_HANDOFF_HOUZZ_2026-06-27_TEST_INTAKE.md |
+| 2026-06-27 23:35 | _TEST_AUTO_INJECT.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/HubSpot/Current/_TEST_AUTO_INJECT.md |
+| 2026-06-27 23:35 | _TEST_HOUZZ_ROUTE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/Houzz/Current/_TEST_HOUZZ_ROUTE.md |
+| 2026-06-27 23:35 | _TEST_AUTO_INJECT.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/HubSpot/Current/_TEST_AUTO_INJECT.md |
+| 2026-06-27 23:35 | _TEST_HOUZZ_ROUTE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/Houzz/Current/_TEST_HOUZZ_ROUTE.md |
+| 2026-06-27 23:36 | _TEST_AUTO_INJECT.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/HubSpot/Current/_TEST_AUTO_INJECT.md |
+| 2026-06-27 23:36 | _TEST_HOUZZ_ROUTE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/Houzz/Current/_TEST_HOUZZ_ROUTE.md |
