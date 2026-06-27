@@ -582,6 +582,16 @@ def executive_report():
     }
 
 
+# Aliases matching GBT Bid Leveling Directive URL spec
+@router.get("/executive-report")
+def executive_report_alias():
+    return executive_report()
+
+@router.get("/projects/{code}/pm-weekly-review")
+def pm_weekly_review_alias(code: str):
+    return pm_weekly_review(code)
+
+
 # ── ROI Summary ───────────────────────────────────────────────────────────────
 
 @router.get("/roi")
