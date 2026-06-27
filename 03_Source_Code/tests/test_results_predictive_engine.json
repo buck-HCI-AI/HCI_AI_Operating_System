@@ -1,0 +1,93 @@
+{
+  "run_at": "2026-06-27T15:09:52.311803",
+  "passed": 21,
+  "failed": 0,
+  "total": 21,
+  "pass_rate": 100.0,
+  "tests": [
+    {
+      "test": "Service info",
+      "pass": true
+    },
+    {
+      "test": "All predictions \u2014 project 1",
+      "pass": true
+    },
+    {
+      "test": "All predictions \u2014 project 2",
+      "pass": true
+    },
+    {
+      "test": "All predictions \u2014 project 3",
+      "pass": true
+    },
+    {
+      "test": "All predictions \u2014 project 4",
+      "pass": true
+    },
+    {
+      "test": "Invalid project \u2192 404",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 schedule",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 budget",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 permit",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 procurement",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 trade_conflict",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 cash_flow",
+      "pass": true
+    },
+    {
+      "test": "Single prediction \u2014 inspection",
+      "pass": true
+    },
+    {
+      "test": "Invalid prediction type \u2192 400",
+      "pass": true
+    },
+    {
+      "test": "Company predictions",
+      "pass": true
+    },
+    {
+      "test": "Procurement HIGH risk (19 packages, 119 open bid entries)",
+      "pass": true
+    },
+    {
+      "test": "DB persistence \u2014 predictions_computed table",
+      "pass": true
+    },
+    {
+      "test": "Health check",
+      "pass": true
+    },
+    {
+      "test": "Leadership dashboard (Sprint 3)",
+      "pass": true
+    },
+    {
+      "test": "Cross-project health matrix (Sprint 4)",
+      "pass": true
+    },
+    {
+      "test": "Project brain intelligence (Sprint 4)",
+      "pass": true
+    }
+  ]
+}
