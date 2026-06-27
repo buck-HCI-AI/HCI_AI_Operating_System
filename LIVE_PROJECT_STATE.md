@@ -3,9 +3,9 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-26T23:55 MST
+**Last Updated:** 2026-06-27T01:15 MST
 **Updated By:** Claude Code (Lead Implementation Engineer)
-**Sprint:** Sprint 1 — System Verification (ACTIVE — ACR-001 + ACR-002 complete)
+**Sprint:** Sprint 1 — System Verification (ACTIVE — Team operating model complete)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
 > **Update Protocol:** Any agent may commit factual, observable updates to this file.
@@ -22,7 +22,7 @@
 | PostgreSQL | 🟢 OK | 2026-06-26 | Claude Code | 4 projects, 47 tables, all seeded |
 | Qdrant | 🟢 OK | 2026-06-26 | Claude Code | 13 collections indexed |
 | Redis | 🟢 OK | 2026-06-26 | Claude Code | Running |
-| n8n | 🟢 RUNNING | 2026-06-26 | Claude Code | 15 workflows, 7 active |
+| n8n | 🟢 RUNNING | 2026-06-27 | Claude Code | 18 workflows, 10 active (incl. AUTO-001/002/003) |
 | MCP Server | 🟢 RUNNING | 2026-06-26 | Claude Code | 32 tools (ACR-001 + ACR-002) |
 | GitHub Repo | 🟢 LIVE | 2026-06-26 | Browser Claude | main branch + merged feature branch |
 | HubSpot CRM | 🟢 LIVE | 2026-06-26 | Claude Code | 3 active deals connected |
@@ -36,11 +36,21 @@
 ## AI Team
 | AI | Role | Status |
 |---|---|---|
-| ChatGPT | Chief Architect, Integration Director, Architecture Review Board | Active |
-| Claude Code | Lead Implementation Engineer | Active — running on main |
-| Browser Claude | Program Repository & Governance Manager, GitHub Admin | Active |
-| n8n | Automation Orchestrator | 7 workflows running |
+| ChatGPT | Chief Architect, Integration Director, Architecture Review Board | Active — needs Sprint 1 ACR |
+| Claude Code | Lead Implementation Engineer | Active — 44/80 tasks done |
+| Browser Claude | Program Repository & Governance Manager, GitHub Admin | Active — governs main |
+| n8n | Automation Orchestrator | 10 workflows active (AUTO-001/002/003 live) |
 | Future Codex | QA / Test Engineering | Not yet assigned |
+
+### Daily Team Rhythm (Automated)
+| Time | Workflow | Output | Who Reads It |
+|---|---|---|---|
+| 06:00 | AUTO-002 Workflow Health Check | reports/health/YYYY-MM-DD-health-check.md | All agents |
+| 07:00 | AUTO-001 Daily Status Report | reports/daily/YYYY-MM-DD-daily-status.md | All agents |
+| 08:00 | AUTO-003 Sprint Self-Status | reports/sprint/YYYY-MM-DD-sprint-status.md | AI Team morning brief |
+
+**Each morning:** Every agent starts by reading reports/daily/ and LIVE_PROJECT_STATE.md.
+No one asks "what's the status?" — it's committed to GitHub every day automatically.
 
 ---
 

@@ -73,9 +73,9 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 
 | Status | Task ID | Task | Label | Assigned To |
 |---|---|---|---|---|
-| [ ] | AUTO-001 | Set up n8n daily repository status report workflow | n8n workflow | n8n |
-| [ ] | AUTO-002 | Set up n8n workflow health check (daily 06:00) | n8n workflow | n8n |
-| [ ] | AUTO-003 | Set up n8n self-status report workflow (daily 08:00) | n8n workflow | n8n |
+| [x] | AUTO-001 | Set up n8n daily repository status report workflow | n8n workflow | Claude Code | Active — fires 07:00, writes reports/daily/ |
+| [x] | AUTO-002 | Set up n8n workflow health check (daily 06:00) | n8n workflow | Claude Code | Active — fires 06:00, writes reports/health/ |
+| [x] | AUTO-003 | Set up n8n self-status report workflow (daily 08:00) | n8n workflow | Claude Code | Active — fires 08:00, writes reports/sprint/ |
 | [x] | AUTO-004 | Create reports/ directory structure in repository | workflow | Claude Code |
 | [ ] | AUTO-005 | Implement Gate H: HubSpot write approval workflow in n8n | n8n hubspot | n8n |
 | [ ] | AUTO-006 | Implement Gate G: PR merge notification to human owner | workflow | n8n |
@@ -217,10 +217,10 @@ Acceptance Criteria — HZ-001:
 | Governance (GOV) | 15 | 15 | 0 | 0 | 0 |
 | Houzz Design (HZ-DESIGN) | 8 | 8 | 0 | 0 | 0 |
 | Integration Planning (INT-DESIGN) | 6 | 6 | 0 | 0 | 0 |
-| Core Automation (AUTO) | 25 | 3 | 0 | 22 | 0 |
+| Core Automation (AUTO) | 25 | 6 | 0 | 19 | 0 |
 | Houzz Implementation (HZ) | 13 | 1 | 0 | 12 | 0 |
 | Integration Activation (INT) | 13 | 8 | 0 | 5 | 0 |
-| **Total** | **80** | **41** | **0** | **39** | **0** |
+| **Total** | **80** | **44** | **0** | **36** | **0** |
 
 ---
 

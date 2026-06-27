@@ -81,9 +81,9 @@ Per TASKS.md — see full task list below.
 
 | Status | Task ID | Task | Owner | Acceptance Criteria |
 |---|---|---|---|---|
-| [ ] | AUTO-001 | Set up n8n daily repository status report (07:00) | n8n | Report running and committing to reports/ |
-| [ ] | AUTO-002 | Set up n8n workflow health check (06:00) | n8n | Health check running and reporting |
-| [ ] | AUTO-003 | Set up n8n self-status report (08:00) | n8n | Self-status running and reporting |
+| [x] | AUTO-001 | Set up n8n daily repository status report (07:00) | Claude Code | Active — fires 07:00, commits to reports/daily/ |
+| [x] | AUTO-002 | Set up n8n workflow health check (06:00) | Claude Code | Active — fires 06:00, commits to reports/health/ |
+| [x] | AUTO-003 | Set up n8n self-status report (08:00) | Claude Code | Active — fires 08:00, commits to reports/sprint/ |
 | [x] | AUTO-004 | Create reports/ directory structure | Claude Code | reports/sprint/, reports/daily/, reports/health/, reports/houzz/ created |
 | [ ] | AUTO-005 | Implement Gate H: HubSpot write approval in n8n | n8n | Gate H workflow active and tested |
 | [ ] | AUTO-006 | Implement Gate G: PR merge notification | n8n | Notification fires on PR open |
@@ -106,7 +106,7 @@ Sprint 1 is complete when ALL of the following are true:
 - [x] LIVE_PROJECT_STATE.md reflects actual system state (not template placeholders)
 - [x] All existing Claude Code work inventoried and marked in TASKS.md
 - [x] Integration Registry complete in PROJECT.md and LIVE_PROJECT_STATE.md
-- [ ] At least 1 automated daily report running in n8n
+- [x] At least 1 automated daily report running in n8n
 - [ ] Gate H (HubSpot write approval) implemented and tested
 - [x] CHANGELOG.md committed
 - [ ] Branch protection enabled on main
