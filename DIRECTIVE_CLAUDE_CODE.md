@@ -82,11 +82,24 @@ Claude Code can execute the following without asking:
 
 ## Active Constraints (as of 2026-06-27)
 
-- API key rotated to `hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6` — update any references found
+- API key: `hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6` — update any references found
 - Houzz ingestion endpoint live at `POST /api/v1/services/houzz/ingest`
-- HouzzMiner is PAUSED pending Browser Claude data load
-- Gate 5 Pilot active through 2026-07-01 — no disruption to 64EW, 101F, 1355R services
+- HouzzMiner is PAUSED pending Browser Claude data load (MISSION-001)
+- Gate 5 Pilot active through 2026-07-01 — no disruption to 64EW, 101F, 1355R
+- **Executive Dashboard live** at `http://localhost:8000/executive` (mobile-first HTML, 60s refresh)
+- Executive API endpoints: `/api/v1/executive/dashboard`, `/morning-brief`, `/driving-brief`, `/approve|reject|defer/{exec_id}`
+- **Sprint 3 COMPLETE** — commit `3c9d2de`
+- **v2.2 active** — V2_2_ROADMAP.md, NOTIFICATION_POLICY.md, notification_engine service scaffolded
+- Notification engine at `POST /api/v1/services/notifications/send` — configure .env vars to activate
+
+## v2.2 Sprint 4 Priorities (next session)
+
+1. EOD brief endpoint + n8n AUTO-EOD email workflow (19:00)
+2. ntfy.sh push notification — configure NTFY_TOPIC, test on Buck's phone
+3. Executive Inbox batch-approve endpoint
+4. Auto-escalation: OWNER items unresolved >72h → ntfy alert
+5. AI Program Manager: MISSION db table (migration 008) + missions API
 
 ---
 
-*Directive version: 2026-06-27 | HCI AI Operating System*
+*Directive version: 2026-06-27 v2.2 | HCI AI Operating System*

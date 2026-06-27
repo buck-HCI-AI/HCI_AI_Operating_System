@@ -65,6 +65,7 @@ aq_routes            = _load_svc("approval_queue")
 cr_routes            = _load_svc("connector_registry")
 bid_lev_routes       = _load_svc("bid_leveling")
 houzz_routes         = _load_svc("houzz_intelligence")
+notify_routes        = _load_svc("notification_engine")
 
 from routers.mining import router as mining_router
 
@@ -147,6 +148,7 @@ svc.include_router(aq_routes,         prefix="/approval-queue",           tags=[
 svc.include_router(cr_routes,         prefix="/connector-registry",       tags=["connector-registry"])
 svc.include_router(bid_lev_routes,    prefix="/bid-leveling",             tags=["bid-leveling"])
 svc.include_router(houzz_routes,      prefix="/houzz",                    tags=["houzz-intelligence"])
+svc.include_router(notify_routes,     prefix="/notifications",             tags=["notifications"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
