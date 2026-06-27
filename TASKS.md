@@ -3,7 +3,7 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI
-**Last Updated:** 2026-06-26 (Updated by Claude Code — marking completed Sprint 1 items)
+**Last Updated:** 2026-06-26 (Updated by Claude Code — ACR-004 mining engine added, 14/17 tasks done)
 **Authority:** SPRINT_OPERATING_MODEL.md
 **Parent Document:** PROJECT.md
 
@@ -71,35 +71,35 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 
 ### Core Automation Setup
 
-| Status | Task ID | Task | Label | Assigned To |
-|---|---|---|---|---|
+| Status | Task ID | Task | Label | Assigned To | Notes |
+|---|---|---|---|---|---|
 | [x] | AUTO-001 | Set up n8n daily repository status report workflow | n8n workflow | Claude Code | Active — fires 07:00, writes reports/daily/ |
 | [x] | AUTO-002 | Set up n8n workflow health check (daily 06:00) | n8n workflow | Claude Code | Active — fires 06:00, writes reports/health/ |
 | [x] | AUTO-003 | Set up n8n self-status report workflow (daily 08:00) | n8n workflow | Claude Code | Active — fires 08:00, writes reports/sprint/ |
-| [x] | AUTO-004 | Create reports/ directory structure in repository | workflow | Claude Code |
-| [ ] | AUTO-005 | Implement Gate H: HubSpot write approval workflow in n8n | n8n hubspot | n8n |
-| [ ] | AUTO-006 | Implement Gate G: PR merge notification to human owner | workflow | n8n |
-| [x] | AUTO-007 | Create CURRENT_SPRINT.md for Sprint 1 | documentation | ChatGPT |
-| [x] | AUTO-008 | Create initial CHANGELOG.md | documentation | Claude Code |
+| [x] | AUTO-004 | Create reports/ directory structure in repository | workflow | Claude Code | |
+| [ ] | AUTO-005 | Implement Gate H: HubSpot write approval workflow in n8n | n8n hubspot | n8n | |
+| [ ] | AUTO-006 | Implement Gate G: PR merge notification to human owner | workflow | n8n | |
+| [x] | AUTO-007 | Create CURRENT_SPRINT.md for Sprint 1 | documentation | ChatGPT | |
+| [x] | AUTO-008 | Create initial CHANGELOG.md | documentation | Claude Code | |
 
 ### Integration Activation — Sprint 1
 > Requires @buck-HCI-AI architecture review before executing.
 
-| Status | Task ID | Task | Owner |
-|---|---|---|---|
+| Status | Task ID | Task | Owner | Notes |
+|---|---|---|---|---|
 | [x] | INT-001 | Confirm: single repo or two repos? | @buck-HCI-AI | Single unified repo — decision made 2026-06-26 |
 | [x] | INT-002 | Identify any separate Claude Code implementation repository | @buck-HCI-AI | No separate repo — all merged to main |
-| [ ] | INT-003 | Audit 04_Workflows/ for actual workflow count and status | ChatGPT |
-| [x] | INT-004 | Confirm HubSpot and Google Drive API connection status | Claude Code | Both live — HubSpot deals/contacts, Drive files confirmed |
+| [ ] | INT-003 | Audit 04_Workflows/ for actual workflow count and status | ChatGPT | |
+| [x] | INT-004 | Confirm HubSpot and Google Drive API connection status | Claude Code | Both live — HubSpot deals/contacts, Drive confirmed |
 | [x] | INT-005 | Confirm Qdrant and Postgres live status | Claude Code | Both live — 190 vectors, 4 projects, all tables healthy |
-| [ ] | INT-006 | List all active n8n workflow names and schedules | n8n |
+| [ ] | INT-006 | List all active n8n workflow names and schedules | n8n | |
 | [x] | INT-007 | Update TASKS.md with all pre-existing work marked complete | Claude Code | Done 2026-06-26 |
-| [ ] | INT-008 | Human owner approves LIVE_PROJECT_STATE.md as shared truth | @buck-HCI-AI |
-| [x] | INT-009 | Create LIVE_PROJECT_STATE.md from template | Claude Code | Created with live data — Drive ID: 1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP |
-| [ ] | INT-010 | Register all existing workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT |
-| [x] | INT-011 | Register all API connections in PROJECT.md Integration Registry | Claude Code | HubSpot, Drive, Sheets, Graph API, Qdrant, Postgres all live |
+| [ ] | INT-008 | Human owner approves LIVE_PROJECT_STATE.md as shared truth | @buck-HCI-AI | |
+| [x] | INT-009 | Create LIVE_PROJECT_STATE.md from template | Claude Code | Drive ID: 1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP |
+| [ ] | INT-010 | Register all existing workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT | |
+| [x] | INT-011 | Register all API connections in PROJECT.md Integration Registry | Claude Code | HubSpot, Drive, Sheets, Graph API, Qdrant, Postgres live |
 | [x] | INT-012 | Create CHANGELOG.md with all historical work documented | Claude Code | Done 2026-06-26 |
-| [ ] | INT-013 | Enable branch protection on main | @buck-HCI-AI |
+| [ ] | INT-013 | Enable branch protection on main | @buck-HCI-AI | |
 
 ### Houzz Workstream — Sprint 1
 
@@ -196,6 +196,30 @@ Acceptance Criteria — HZ-001:
 
 ---
 
+## ACR-004: Continuous Mining & Learning Engine
+
+| Status | Task ID | Task | Assigned To | Notes |
+|---|---|---|---|---|
+| [x] | ACR-004-01 | Build BaseMiner abstract class + approval gate routing | Claude Code | base_miner.py — queue_for_approval uses correct approval_queue columns |
+| [x] | ACR-004-02 | Build HubSpotMiner (READ-ONLY from DB mirror) | Claude Code | Mines deals, contacts, tasks; never writes to HubSpot |
+| [x] | ACR-004-03 | Build DriveMiner (drive_sync_log) | Claude Code | Classifies by doc type, infers project |
+| [x] | ACR-004-04 | Build HouzzMiner (houzz_daily_logs, schedule_items) | Claude Code | Framework active; awaiting Browser Agent data |
+| [x] | ACR-004-05 | Build OutlookMiner (Graph API read-only) | Claude Code | ALL emails queued for approval — never auto-replies |
+| [x] | ACR-004-06 | Build HistoricalCostMiner (bid variance analysis) | Claude Code | Alerts if avg variance > 15% per CSI division |
+| [x] | ACR-004-07 | Build VendorIntelligenceMiner (bid stats) | Claude Code | Updates vendors.bid_count, win_rate_pct, etc. |
+| [x] | ACR-004-08 | Build LessonsLearnedMiner (meetings + BL records) | Claude Code | Dedup via source_reference; queue-only |
+| [x] | ACR-004-09 | Build ExecutiveAggregator (KPIs + LIVE_PROJECT_STATE.md) | Claude Code | Uses correct kpi_snapshots schema (kpi_code, scope, value) |
+| [x] | ACR-004-10 | Build MiningOrchestrator + dry_run safety default | Claude Code | dry_run=True; _GO_LIVE_AUTHORIZED=False |
+| [x] | ACR-004-11 | Apply schema migration 005 (vendors, hist_cost, lessons, mining_runs) | Claude Code | All additive — no existing columns changed |
+| [x] | ACR-004-12 | Dry-run validation — all 8 miners pass | Claude Code | 376 records scanned, 39 intelligence extracted, 0 writes |
+| [x] | ACR-004-13 | FastAPI router /api/v1/services/mining/* (6 endpoints) | Claude Code | All endpoints live; lazy import fix applied |
+| [x] | ACR-004-14 | Architecture Review Report submitted | Claude Code | ACR-004-ARCHITECTURE-REVIEW.md — awaiting ChatGPT go-live ACR |
+| [ ] | ACR-004-15 | Add MCP tools: RunMiner, GetMiningStatus, GetMiningLog | Claude Code | Pending go-live authorization |
+| [ ] | ACR-004-16 | Create n8n mining orchestration workflow (INACTIVE) | Claude Code | Pending go-live authorization |
+| [ ] | ACR-004-17 | Enable continuous execution — set _GO_LIVE_AUTHORIZED=True | Claude Code | REQUIRES ChatGPT ACR + Buck confirmation |
+
+---
+
 ## Backlog: Sprint 3–4 (Core)
 
 | Status | Task ID | Task | Label | Assigned To |
@@ -220,7 +244,8 @@ Acceptance Criteria — HZ-001:
 | Core Automation (AUTO) | 25 | 6 | 0 | 19 | 0 |
 | Houzz Implementation (HZ) | 13 | 1 | 0 | 12 | 0 |
 | Integration Activation (INT) | 13 | 8 | 0 | 5 | 0 |
-| **Total** | **80** | **44** | **0** | **36** | **0** |
+| Mining Engine (ACR-004) | 17 | 14 | 0 | 3 | 0 |
+| **Total** | **97** | **58** | **0** | **39** | **0** |
 
 ---
 
