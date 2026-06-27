@@ -7,6 +7,7 @@ Endpoints:
   GET  /connectors/{name}        — connector detail + per-entity sync state
   GET  /connectors/{name}/sync-state — sync watermarks per entity
   POST /connectors/{name}/ingest — receive canonical JSON from Browser Agent
+  POST /connectors/{name}/sync   — trigger live API pull (HubSpot etc.)
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,11 +19,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Any
 from houzz_connector import HouzzConnector
+from hubspot_connector import HubSpotConnector
 
 router = APIRouter()
 
 CONNECTORS: dict[str, type] = {
-    "houzz": HouzzConnector,
+    "houzz":    HouzzConnector,
+    "hubspot":  HubSpotConnector,
 }
 
 
@@ -142,4 +145,28 @@ def ingest(name: str, payload: IngestPayload):
     result["extraction_notes"] = payload.extraction_notes
     result["entity_types_received"] = list(payload.data.keys())
     result["total_records_received"] = total_records
+    return result
+
+
+class SyncRequest(BaseModel):
+    entity_types: Optional[list[str]] = None
+    dry_run: Optional[bool] = False
+
+
+@router.post("/{name}/sync")
+def sync(name: str, payload: SyncRequest = SyncRequest()):
+    """
+    Trigger a live API pull for connectors that self-fetch (HubSpot, etc.).
+    Connectors without a sync() method return 405.
+    Default dry_run=false — data is live once the API key is confirmed valid.
+    """
+    c = _get_connector(name, dry_run=payload.dry_run)
+    if not hasattr(c, "sync"):
+        raise HTTPException(status_code=405, detail=f"Connector '{name}' does not support /sync — use /ingest with Browser Agent payload instead.")
+    try:
+        result = c.sync(entity_types=payload.entity_types, dry_run=payload.dry_run)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Sync error: {e}")
     return result

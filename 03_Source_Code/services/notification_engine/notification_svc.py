@@ -180,6 +180,11 @@ def _send_ntfy(
     headers = {
         "Title":        safe_title,
         "Content-Type": "text/plain; charset=utf-8",
+        # Explicit retention: ensures messages appear in app history even if the
+        # app's WebSocket was disconnected when delivery occurred. Without this,
+        # re-subscribed topics with in-app caching toggled off show empty history.
+        "Cache":        "yes",
+        "Expires":      "24h",
     }
     if tags:
         headers["Tags"] = ",".join(tags)
