@@ -3,9 +3,9 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI
-**Last Updated:** 2026-06-26 (Sprint 0 close / Sprint 1 pre-launch)
+**Last Updated:** 2026-06-26 (Sprint 1 — Active)
 **Updated By:** Browser Claude (GitHub Administrator)
-**Sprint:** Sprint 1 — System Verification (Pre-launch)
+**Sprint:** Sprint 1 — System Verification (ACTIVE — ACR-002 issued)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
 > **Update Protocol:** Any agent may commit factual, observable updates to this file.
@@ -22,16 +22,18 @@
 | HubSpot CRM | 🟢 Live | 2026-06-26 | Claude Code | API connected |
 | Google Drive | 🟢 Live | 2026-06-26 | Claude Code | Connected |
 | Microsoft 365 | 🟢 Live | 2026-06-26 | Claude Code | Graph API active |
-| MCP Server | 🟢 Live | 2026-06-26 | Claude Code | 31 tools — ngrok public URL active |
-| GitHub Repo | 🟢 Live | 2026-06-26 | Browser Claude | main branch — no protection yet |
+| MCP Server | 🟢 Live | 2026-06-26 | Claude Code | 31 tools — ngrok URL active |
+| GitHub Repo | 🟢 Live | 2026-06-26 | Browser Claude | main branch |
 | Google Sheets | 🟢 Live | 2026-06-26 | Claude Code | Bid tracker active |
 | Houzz (Browser) | 🔴 Not yet connected | — | — | Browser agent design complete; Sprint 1 |
-| PostgreSQL | 🔴 Not yet deployed | — | — | Planned: next after MCP |
-| Qdrant | 🔴 Not yet deployed | — | — | Planned: next after Postgres |
-| Redis | 🔴 Not yet deployed | — | — | Planned: next after Qdrant |
-| FastAPI | 🔴 Not yet deployed | — | — | Planned: Sprint TBD |
+| PostgreSQL | 🟡 Confirm needed | — | Claude Code | docker-compose shows data stack commit |
+| Qdrant | 🟡 Confirm needed | — | Claude Code | docker-compose shows data stack commit |
+| Redis | 🟡 Confirm needed | — | Claude Code | docker-compose shows data stack commit |
+| FastAPI | 🔴 Not yet deployed | — | — | Planned |
 
-*Legend: 🟢 Live and healthy | 🟡 Live with issues | 🔴 Down or not yet deployed*
+*Legend: 🟢 Live and healthy | 🟡 Status unconfirmed — needs verification | 🔴 Down or not yet deployed*
+
+> **Note to Claude Code:** docker-compose.yml commit message says "feat: data stack live — Postgr..." — please confirm if Postgres/Qdrant/Redis are actually live and update this table.
 
 ---
 
@@ -45,65 +47,50 @@
 | Total Tools | **31** |
 | Branch | feature/data-architecture-document-storage |
 | Last Commit | ACR-001 complete — 31 tools |
-| Push Status | NOT pushed — holding for Sprint 1 approval |
-| Merge Status | NOT merged — holding for Gate G |
+| Push Status | NOT pushed to GitHub — local only |
+| Merge Status | NOT merged — awaiting Gate G |
 
 ### New Tools Added (ACR-001 — 5 tools)
 
-| Tool | Status | Dependency |
+| Tool | Status | Notes |
 |---|---|---|
-| ReadRepositoryStatus | ✅ Working | None |
-| ReadDecisionLog | ✅ Working | None |
-| ReadAutomationRegistry | ✅ Working | None |
-| ReadLiveProjectState | ⚠️ Waiting | Requires LIVE_PROJECT_STATE.md at local path |
-| ReadCurrentSprint | ⚠️ Waiting | Requires CURRENT_SPRINT.md at local path |
-
-> **Browser Claude Note:** LIVE_PROJECT_STATE.md and CURRENT_SPRINT.md are now committed to this GitHub repository. Claude Code must pull the repo to populate the local files at `/Users/buckadams/HCI_AI_Operating_System/` before ReadLiveProjectState and ReadCurrentSprint will return live data.
+| ReadRepositoryStatus | ✅ Working | — |
+| ReadDecisionLog | ✅ Working | — |
+| ReadAutomationRegistry | ✅ Working | — |
+| ReadLiveProjectState | ✅ File exists on GitHub | Claude Code must pull to activate locally |
+| ReadCurrentSprint | ✅ File exists on GitHub | Claude Code must pull to activate locally |
 
 ### Bug Fixed
 - ProjectMining tool: broken internal path (404) — **fixed**
-
-### All 26 Existing Tools (Confirmed Working)
-ReadProjectRegistry, ReadVendorRegistry, ReadConstructionOS, SearchDrive, ReadDriveFile, SearchHubSpotDeals, SearchCompanies, SearchContacts, ReadBidTracker, GenerateBidLevel, HistoricalCostLookup, ProcurementStatus, ScheduleStatus, DraftEmail, CreateTask, UpdateRegistry, AwardRecommendation, ProjectMining, GetApprovalQueue, CreateDriveFolder, UploadFileToDrive, ListDriveFolder, ReadSheet, WriteSheet, ExecutiveReport, GetROISummary
 
 ---
 
 ## 📋 Current Sprint
 
 **Sprint:** 1 — System Verification
-**Status:** Pre-launch — awaiting human owner Sprint 1 ACR
-**Sprint Doc:** CURRENT_SPRINT.md (committed this session)
+**Status:** 🟢 ACTIVE — ACR-002 issued (Issue #1)
+**Sprint Doc:** CURRENT_SPRINT.md
 **Opened:** 2026-06-26
-**Target Close:** TBD (human owner sets)
+**Target Close:** TBD
 
 ### Sprint Goal
-Verify all live systems are registered and operating under governance, activate Sprint 1 automation workflows, and complete the integration state sync so every AI agent knows what exists and what it owns.
-
-### Sprint 1 Pre-Launch Checklist
-| Item | Status | Owner |
-|---|---|---|
-| LIVE_PROJECT_STATE.md created | ✅ Done | Browser Claude |
-| CURRENT_SPRINT.md created | ✅ Done | Browser Claude |
-| ACR-001 received and confirmed | ✅ Done | Browser Claude |
-| Human owner issues Sprint 1 ACR | ⏳ Pending | @buck-HCI-AI |
-| Claude Code pulls repo (local sync) | ⏳ Pending | Claude Code |
-| Branch protection on main enabled | ⏳ Pending | @buck-HCI-AI |
+Verify all live systems are registered and operating under governance, activate Sprint 1 automation workflows, integrate the ACR-001 MCP branch, and complete the state synchronization so every AI agent knows what exists and what it owns.
 
 ---
 
 ## 🤖 Active Workflows (n8n + MCP)
 
-| Workflow / Tool | Type | Schedule / Trigger | Status | Last Run |
-|---|---|---|---|---|
-| WF-007 — AI Bid Leveling Engine | n8n | Daily 5PM MDT + webhook | ✅ Live | Daily |
-| ReadRepositoryStatus | MCP tool | On-demand | ✅ Live | ACR-001 |
-| ReadDecisionLog | MCP tool | On-demand | ✅ Live | ACR-001 |
-| ReadAutomationRegistry | MCP tool | On-demand | ✅ Live | ACR-001 |
-| ReadLiveProjectState | MCP tool | On-demand | ⚠️ Waiting local file | ACR-001 |
-| ReadCurrentSprint | MCP tool | On-demand | ⚠️ Waiting local file | ACR-001 |
-| AUTO-001 — Daily Status Report | n8n | Daily 07:00 | ⏳ Sprint 1 setup | — |
-| AUTO-002 — Workflow Health Check | n8n | Daily 06:00 | ⏳ Sprint 1 setup | — |
-| AUTO-003 — n8n Self-Status | n8n | Daily 08:00 | ⏳ Sprint 1 setup | — |
+| Workflow / Tool | Type | Schedule / Trigger | Status |
+|---|---|---|---|
+| WF-007 — AI Bid Leveling Engine | n8n | Daily 5PM MDT + webhook | ✅ Live |
+| ReadRepositoryStatus | MCP tool | On-demand | ✅ Live |
+| ReadDecisionLog | MCP tool | On-demand | ✅ Live |
+| ReadAutomationRegistry | MCP tool | On-demand | ✅ Live |
+| ReadLiveProjectState | MCP tool | On-demand | ⚠️ Waiting Claude Code git pull |
+| ReadCurrentSprint | MCP tool | On-demand | ⚠️ Waiting Claude Code git pull |
+| AUTO-001 — Daily Status Report | n8n | Daily 07:00 | ⏳ Sprint 1 setup |
+| AUTO-002 — Workflow Health Check | n8n | Daily 06:00 | ⏳ Sprint 1 setup |
+| AUTO-003 — n8n Self-Status | n8n | Daily 08:00 | ⏳ Sprint 1 setup |
 
 ---
 
@@ -129,32 +116,30 @@ Verify all live systems are registered and operating under governance, activate 
 | n8n | Internal | ✅ | ✅ workflows | Pre-approved | ✅ Active |
 | MCP Server | ngrok HTTPS | ✅ 31 tools | Gate-controlled | Per-tool | ✅ Live (ACR-001) |
 | Houzz Pro | Browser | Sprint 1 | ❌ Prohibited | HZ-R | Design complete |
-| PostgreSQL | Internal | ⏳ | ⏳ | — | Not deployed |
-| Qdrant | Internal | ⏳ | ⏳ | — | Not deployed |
-| Redis | Internal | ⏳ | ⏳ | — | Not deployed |
+| PostgreSQL | Internal | 🟡 Confirm | 🟡 Confirm | — | Confirm with Claude Code |
+| Qdrant | Internal | 🟡 Confirm | 🟡 Confirm | — | Confirm with Claude Code |
 
 ---
 
 ## 🚧 Pending Human Decisions
 
-| Item | Decision Needed | Priority | Raised By |
+| Item | Decision Needed | Priority | Status |
 |---|---|---|---|
-| Sprint 1 ACR | Issue Sprint 1 ACR to formally begin Sprint 1 | **Critical** | Claude Code |
-| Branch protection on main | Enable Settings → Branches → Add rule | High | Browser Claude |
-| ACR-001 PR merge | Merge feature/data-architecture-document-storage → main | High | Claude Code |
-| Claude Code local pull | Pull repo so MCP ReadLiveProjectState / ReadCurrentSprint work | High | Browser Claude |
-| INT-001 | Single repo confirmed? Yes — single repo architecture | Confirm | Browser Claude |
+| Merge ACR-001 branch | Push branch to GitHub → open PR → merge (Gate G) | **Critical** | ⏳ Claude Code must push branch first |
+| Branch protection email verify | Check your GitHub email and click verify link | High | ⏳ Email sent to @buck-HCI-AI |
+
+> **Note:** Branch protection was configured (PR required + 1 approval) but GitHub requires email identity verification to save security settings. Check your email from GitHub and click the verification link to activate.
 
 ---
 
 ## ⚠️ Open Blockers
 
-| Blocker ID | Description | Blocking | Raised | Status |
-|---|---|---|---|---|
-| BLOCK-001 | Branch protection not enabled on main | All PRs unprotected | 2026-06-26 | ⏳ Human action needed |
-| BLOCK-002 | ReadLiveProjectState / ReadCurrentSprint returning not_found | MCP tools 30 + 31 | 2026-06-26 | ⏳ Claude Code pull needed |
-| BLOCK-003 | ACR-001 branch not merged | MCP 31 tools on feature branch only | 2026-06-26 | ⏳ Human Gate G approval needed |
-| BLOCK-004 | Sprint 1 ACR not issued | Sprint 1 formally blocked | 2026-06-26 | ⏳ @buck-HCI-AI |
+| Blocker ID | Description | Blocking | Status |
+|---|---|---|---|
+| BLOCK-001 | Branch protection not yet activated — email verify needed | Merge protection | ⏳ @buck-HCI-AI check email |
+| BLOCK-002 | ReadLiveProjectState/ReadCurrentSprint local files missing | MCP tools 30+31 | ⏳ Claude Code: git pull after merge |
+| BLOCK-003 | ACR-001 branch not yet pushed or merged | MCP 31 tools on feature branch only | ⏳ Claude Code: git push + open PR |
+| ~~BLOCK-004~~ | ~~Sprint 1 ACR not issued~~ | ~~Sprint 1 blocked~~ | ✅ **RESOLVED** — ACR-002 issued (Issue #1) |
 
 ---
 
@@ -170,19 +155,17 @@ Verify all live systems are registered and operating under governance, activate 
 | Integration Activation (INT) | 13 | 0 | 0 | 13 | 0 |
 | **Total** | **80** | **29** | **0** | **51** | **0** |
 
-*Last synced: 2026-06-26*
-
 ---
 
 ## 🤖 AI Agent Status
 
 | Agent | Current Task | Last Active | Status |
 |---|---|---|---|
-| ChatGPT | Awaiting Sprint 1 ACR confirmation | 2026-06-26 | ⏳ ACR-001 received — Sprint 1 ACR pending |
-| Claude Code | ACR-001 complete — 31 MCP tools on feature branch | 2026-06-26 | ✅ Holding for Sprint 1 approval |
-| Browser Claude | LIVE_PROJECT_STATE.md + CURRENT_SPRINT.md created | 2026-06-26 | ✅ Sprint 1 pre-launch tasks complete |
+| ChatGPT | Sprint 1 kickoff — sync with Claude Code | 2026-06-26 | ⏳ ACR-002 issued — Sprint 1 active |
+| Claude Code | Push ACR-001 branch + open PR | 2026-06-26 | ⏳ Waiting to push feature branch |
+| Browser Claude | Sprint 1 pre-launch tasks complete | 2026-06-26 | ✅ Sprint 1 active |
 | Codex | Not yet activated | — | ⏳ Sprint 2 |
-| n8n | WF-007 running | Daily | ✅ Active (WF-007 only — AUTO-001/002/003 Sprint 1) |
+| n8n | WF-007 running; Sprint 1 automations pending | Daily | ✅ WF-007 live |
 
 ---
 
@@ -197,6 +180,7 @@ Verify all live systems are registered and operating under governance, activate 
 | 2026-06-26 | **[STATE CHANGE] ACR-001 complete** | Claude Code | MCP now has 31 tools — branch not yet merged |
 | 2026-06-26 | LIVE_PROJECT_STATE.md activated | Browser Claude | Template populated with current system state |
 | 2026-06-26 | CURRENT_SPRINT.md created | Browser Claude | Sprint 1 System Verification — pre-launch |
+| 2026-06-26 | **[STATE CHANGE] Sprint 1 ACTIVE — ACR-002 issued** | Browser Claude | Issue #1 created. Branch protection configured (email verify pending). BLOCK-004 resolved. |
 
 ---
 
@@ -211,12 +195,11 @@ Verify all live systems are registered and operating under governance, activate 
 | SPRINT_OPERATING_MODEL.md | How sprints work | Root |
 | PROJECT.md | Master roadmap + backlog | Root |
 | TASKS.md | Active task register | Root |
-| CURRENT_SPRINT.md | **Current sprint plan** | Root |
+| **CURRENT_SPRINT.md** | **Current sprint plan** | Root |
 | IMPLEMENTATION_INTEGRATION_PLAN.md | Integration strategy | Root |
 | REPOSITORY_RELATIONSHIP_MAP.md | Repo architecture | Root |
 
 ---
 
 *LIVE_PROJECT_STATE.md | HCI AI Operating System | Hendrickson Construction, Inc.*
-*Any agent may update this file with factual, observable state changes.*
-*Authorized by: @buck-HCI-AI | Activated by: Browser Claude*
+*Sprint 1 ACTIVE | Authorized by: @buck-HCI-AI | Maintained by: All agents*
