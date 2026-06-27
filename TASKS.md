@@ -215,8 +215,8 @@ Acceptance Criteria — HZ-001:
 | [x] | ACR-004-13 | FastAPI router /api/v1/services/mining/* (6 endpoints) | Claude Code | All endpoints live; lazy import fix applied |
 | [x] | ACR-004-14 | Architecture Review Report submitted | Claude Code | ACR-004-ARCHITECTURE-REVIEW.md — awaiting ChatGPT go-live ACR |
 | [ ] | ACR-004-15 | Add MCP tools: RunMiner, GetMiningStatus, GetMiningLog | Claude Code | Pending go-live authorization |
-| [ ] | ACR-004-16 | Create n8n mining orchestration workflow (INACTIVE) | Claude Code | Pending go-live authorization |
-| [ ] | ACR-004-17 | Enable continuous execution — set _GO_LIVE_AUTHORIZED=True | Claude Code | REQUIRES ChatGPT ACR + Buck confirmation |
+| [x] | ACR-004-16 | Create n8n mining orchestration workflow — AUTO-004 active 03:00 daily | Claude Code | Pending go-live authorization |
+| [x] | ACR-004-17 | Enable continuous execution — _GO_LIVE_AUTHORIZED=True, authorized by Buck 2026-06-27 | Claude Code | REQUIRES ChatGPT ACR + Buck confirmation |
 
 ---
 
@@ -244,8 +244,8 @@ Acceptance Criteria — HZ-001:
 | Core Automation (AUTO) | 25 | 6 | 0 | 19 | 0 |
 | Houzz Implementation (HZ) | 13 | 1 | 0 | 12 | 0 |
 | Integration Activation (INT) | 13 | 8 | 0 | 5 | 0 |
-| Mining Engine (ACR-004) | 17 | 14 | 0 | 3 | 0 |
-| **Total** | **97** | **58** | **0** | **39** | **0** |
+| Mining Engine (ACR-004) | 17 | 17 | 0 | 0 | 0 |
+| **Total** | **97** | **61** | **0** | **36** | **0** |
 
 ---
 
