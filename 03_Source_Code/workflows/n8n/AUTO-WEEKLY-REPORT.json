@@ -1,0 +1,112 @@
+{
+  "name": "AUTO-WEEKLY-REPORT — Sunday 19:00 Autonomy Opportunities",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 19 * * 0" }]
+        }
+      },
+      "name": "Cron Sunday 19:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/autonomy/report",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Autonomy Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/autonomy/backlog",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Full Backlog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 500],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $('Get Autonomy Report').first().json;\nconst backlog = $('Get Full Backlog').first().json;\nconst today = new Date().toISOString().split('T')[0];\n\nconst top3 = (report.top_opportunities || []).slice(0, 3);\nconst topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\\n   ${o.description || ''}`).join('\\n\\n') || 'No new opportunities this week.';\n\nconst backlogItems = (backlog.opportunities || []);\nconst totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);\nconst implemented = backlogItems.filter(o => o.status === 'implemented').length;\nconst pending = backlogItems.filter(o => o.status === 'backlog').length;\n\nconst md = `# HCI AI — Weekly Automation Opportunities\\n**${today}**\\n\\n## Top 3 This Week\\n\\n${topList}\\n\\n## Backlog Summary\\n- Total opportunities tracked: ${backlogItems.length}\\n- Implemented: ${implemented}\\n- Pending: ${pending}\\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\\n\\n---\\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;\n\nconst pushMsg = top3.length > 0\n  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`\n  : 'No new automation opportunities detected this week';\n\nreturn [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
+      },
+      "name": "Format Opportunities Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/write-report",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={ \"filename\": \"{{ $json.filename }}\", \"content\": {{ JSON.stringify($json.md) }} }",
+        "options": {}
+      },
+      "name": "Write Report to Disk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "Weekly Automation Opportunities Ready" },
+            { "name": "Tags", "value": "robot,chart_with_upwards_trend" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Actions", "value": "view, View Dashboard, http://localhost:8000/executive" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $json.pushMsg }} | Cumulative ROI: {{ $json.total_roi }} min/wk",
+        "options": {}
+      },
+      "name": "Push: Opportunities Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 500]
+    }
+  ],
+  "connections": {
+    "Cron Sunday 19:00": {
+      "main": [[
+        { "node": "Get Autonomy Report", "type": "main", "index": 0 },
+        { "node": "Get Full Backlog", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get Autonomy Report": { "main": [[{ "node": "Format Opportunities Report", "type": "main", "index": 0 }]] },
+    "Get Full Backlog": { "main": [[{ "node": "Format Opportunities Report", "type": "main", "index": 0 }]] },
+    "Format Opportunities Report": {
+      "main": [[
+        { "node": "Write Report to Disk", "type": "main", "index": 0 },
+        { "node": "Push: Opportunities Summary", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "weekly-ops" }, { "name": "autonomy" }],
+  "_hci_notes": "AUTO-WEEKLY-REPORT — Sunday 19:00. Pulls top 3 automation opportunities from autonomy service. Writes markdown to reports/sprint/auto-opps-YYYY-MM-DD.md via write-report endpoint. Pushes ntfy summary with cumulative ROI."
+}

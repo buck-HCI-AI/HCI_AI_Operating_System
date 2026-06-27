@@ -369,6 +369,26 @@ def _resolve_inbox_item(exec_id: str, token: str, resolution: str) -> dict:
     execution_note = None
     if resolution == "approved":
         execution_note = _execute_approved_action(item)
+    elif resolution == "deferred":
+        # Re-queue with +7d deadline and new tokens
+        import secrets, uuid
+        new_exec_id = f"EXEC-D{uuid.uuid4().hex[:6].upper()}"
+        new_deadline = (datetime.now(timezone.utc).date() + __import__('datetime').timedelta(days=7)).isoformat()
+        _run("""
+            INSERT INTO executive_inbox
+                (exec_id, title, decision, recommendation, confidence, business_impact,
+                 risk_description, deadline, action_type, action_payload,
+                 approve_token, reject_token, defer_token, token_expires_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, NOW() + INTERVAL '30 days')
+        """, (
+            new_exec_id, f"[DEFERRED] {item.get('title','')}",
+            item.get("decision",""), item.get("recommendation","Approve"),
+            item.get("confidence","Medium"), item.get("business_impact",""),
+            item.get("risk_description",""), new_deadline,
+            item.get("action_type",""), json.dumps(item.get("action_payload") or {}),
+            secrets.token_urlsafe(24), secrets.token_urlsafe(24), secrets.token_urlsafe(24),
+        ))
+        execution_note = f"Re-queued as {new_exec_id} — due {new_deadline}"
 
     return _confirmation_html(exec_id, resolution, title=item.get("title",""), note=execution_note)
 
@@ -825,6 +845,36 @@ def weekend_summary():
             for c in connector_states
         ],
     }
+
+
+# ── Write-file endpoint — enables n8n AUTO-010 to persist sprint reports ──────
+
+@router.post("/write-report")
+def write_report(payload: dict):
+    """
+    Write a markdown report to disk. Used by AUTO-010 weekly sprint review.
+    Body: { filename: 'reports/sprint/weekly-YYYY-MM-DD.md', content: '...' }
+    filename must be relative to project root and under reports/ or docs/.
+    """
+    filename = payload.get("filename", "")
+    content  = payload.get("content", "")
+    if not filename or not content:
+        raise HTTPException(status_code=422, detail="filename and content are required")
+
+    # Safety: only allow writes under reports/ or docs/ to prevent directory traversal
+    safe_prefixes = ("reports/", "docs/")
+    if not any(filename.startswith(p) for p in safe_prefixes):
+        raise HTTPException(status_code=403, detail=f"Write only allowed under {safe_prefixes}")
+    if ".." in filename:
+        raise HTTPException(status_code=403, detail="Path traversal not allowed")
+
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    full_path = os.path.join(project_root, filename)
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    with open(full_path, "w") as f:
+        f.write(content)
+
+    return {"written": filename, "bytes": len(content), "path": full_path}
 
 
 # ── Registry health — used by AUTO-011 weekly duplicate check ─────────────────
