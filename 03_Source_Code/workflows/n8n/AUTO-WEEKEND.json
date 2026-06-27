@@ -1,0 +1,58 @@
+{
+  "name": "AUTO-WEEKEND — Saturday 08:00 Weekly Summary Email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 * * 6" }]
+        }
+      },
+      "name": "Cron Saturday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/weekend-summary",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Weekend Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst exec = d.executive_summary;\nconst projects = (d.projects || []).map(p => `  ${p.health} ${p.name}: ${p.schedule_variance_days}d variance, ${p.open_risks} risks`).join('\\n');\nconst inbox = d.inbox;\nconst missions = d.missions;\nconst top3 = (missions.upcoming || []).slice(0,3).map(m => `  [${m.priority}] ${m.title} → ${m.assigned_to}`).join('\\n') || '  None queued';\nconst connectors = (d.connectors || []).map(c => `  ${c.connector}: ${c.errors > 0 ? c.errors + ' errors' : 'OK'} — last sync ${c.last_sync || 'never'}`).join('\\n') || '  None';\n\nconst body = `HCI AI — Weekly Summary\\n${d.period}\\n\\n` +\n  `WEEK PERFORMANCE\\n` +\n  `  Hours saved: ${exec.hours_saved_this_week}h\\n` +\n  `  Documents processed: ${exec.documents_processed}\\n` +\n  `  Risks detected: ${exec.risks_detected}\\n` +\n  `  Workflow runs: ${exec.workflow_runs}\\n\\n` +\n  `PROJECTS\\n${projects}\\n\\n` +\n  `INBOX\\n` +\n  `  Resolved this week: ${inbox.resolved_this_week}\\n` +\n  `  Still pending: ${inbox.still_pending}\\n` +\n  (inbox.deferred_items.length > 0 ? `  Deferred:\\n${inbox.deferred_items.map(i => '    - ' + i.title).join('\\n')}\\n\\n` : '\\n') +\n  `MISSIONS\\n` +\n  `  Completion rate: ${missions.complete_rate_pct}%\\n` +\n  `  Next week:\\n${top3}\\n\\n` +\n  `CONNECTORS\\n${connectors}\\n\\n` +\n  `Dashboard: http://localhost:8000/executive`;\n\nreturn [{ json: { subject: `HCI AI Weekly — ${d.report_date}`, body } }];"
+      },
+      "name": "Format Weekend Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "buck@ahmaspen.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "name": "Send Weekend Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Cron Saturday 08:00": { "main": [[{ "node": "Get Weekend Summary", "type": "main", "index": 0 }]] },
+    "Get Weekend Summary": { "main": [[{ "node": "Format Weekend Email", "type": "main", "index": 0 }]] },
+    "Format Weekend Email": { "main": [[{ "node": "Send Weekend Email", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "executive-ops" }],
+  "_hci_notes": "Import into n8n. Requires HCI API Key credential. Activate after validating /api/v1/executive/weekend-summary returns data."
+}

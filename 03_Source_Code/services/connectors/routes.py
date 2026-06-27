@@ -3,15 +3,17 @@ Connector Framework Routes — /api/v1/services/connectors
 
 Endpoints:
   GET  /connectors               — list all connectors + sync state summary
+  GET  /connectors/health        — cross-connector health check
   GET  /connectors/{name}        — connector detail + per-entity sync state
+  GET  /connectors/{name}/sync-state — sync watermarks per entity
   POST /connectors/{name}/ingest — receive canonical JSON from Browser Agent
-  GET  /connectors/{name}/sync-state — raw sync state per entity
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Any
@@ -19,14 +21,13 @@ from houzz_connector import HouzzConnector
 
 router = APIRouter()
 
-# Registry — add new connectors here as they're built
 CONNECTORS: dict[str, type] = {
     "houzz": HouzzConnector,
 }
 
 
 class IngestPayload(BaseModel):
-    data: dict[str, list[Any]]      # {entity_type: [records...]}
+    data: dict[str, list[Any]]
     source: Optional[str] = "browser_claude"
     extraction_notes: Optional[str] = None
     dry_run: Optional[bool] = True
@@ -49,10 +50,7 @@ def list_connectors():
             last_sync = max((s["last_synced_at"] for s in states if s.get("last_synced_at")), default=None)
             error_count = sum(1 for s in states if s.get("status") == "error")
         except Exception:
-            states = []
-            last_sync = None
-            error_count = 0
-
+            states = []; last_sync = None; error_count = 0
         result.append({
             "name": name,
             "version": cls.version,
@@ -63,6 +61,42 @@ def list_connectors():
             "status": "error" if error_count > 0 else "ok",
         })
     return {"connectors": result, "total": len(result)}
+
+
+# /health must be declared BEFORE /{name} to avoid being captured by the wildcard
+@router.get("/health")
+def connector_health():
+    """
+    Cross-connector health: last sync age, error count.
+    Used by n8n AUTO-PM morning check.
+    """
+    health_rows = []
+    for name, cls in CONNECTORS.items():
+        c = cls(dry_run=True)
+        try:
+            states = c.list_sync_states()
+        except Exception as e:
+            health_rows.append({"connector": name, "status": "db_error", "error": str(e)})
+            continue
+
+        error_count = sum(1 for s in states if s.get("status") == "error")
+        last_sync = max((s["last_synced_at"] for s in states if s.get("last_synced_at")), default=None)
+        idle = [s["entity_type"] for s in states if not s.get("last_synced_at")]
+        age_hours = (datetime.now(timezone.utc) - last_sync).total_seconds() / 3600 if last_sync else None
+
+        status = "error" if error_count > 0 else "stale" if (age_hours and age_hours > 24) else "never_synced" if not last_sync else "ok"
+        health_rows.append({
+            "connector": name,
+            "status": status,
+            "entities_tracked": len(states),
+            "entities_with_errors": error_count,
+            "entities_never_synced": len(idle),
+            "last_synced_at": str(last_sync) if last_sync else None,
+            "sync_age_hours": round(age_hours, 1) if age_hours else None,
+        })
+
+    overall = "ok" if all(r["status"] == "ok" for r in health_rows) else "degraded"
+    return {"status": overall, "checked_at": datetime.now(timezone.utc).isoformat(), "connectors": health_rows}
 
 
 @router.get("/{name}")
@@ -95,21 +129,17 @@ def sync_state(name: str, entity_type: Optional[str] = None, external_id: Option
 def ingest(name: str, payload: IngestPayload):
     """
     Receive canonical JSON from Browser Agent.
-    Set dry_run=false in payload to write to DB (requires prior dry_run pass).
+    Default dry_run=true — set false after validating dry_run output.
     """
     c = _get_connector(name, dry_run=payload.dry_run)
-
     if not payload.data:
         raise HTTPException(status_code=422, detail="payload.data is empty")
-
     total_records = sum(len(v) for v in payload.data.values())
     if total_records == 0:
         raise HTTPException(status_code=422, detail="No records found in payload.data")
-
     result = c.ingest(payload.data)
     result["source"] = payload.source
     result["extraction_notes"] = payload.extraction_notes
     result["entity_types_received"] = list(payload.data.keys())
     result["total_records_received"] = total_records
-
     return result

@@ -699,6 +699,164 @@ def create_or_update_mission(payload: dict):
         return {"action": "created", "mission_id": mid}
 
 
+# ── Weekend Summary ────────────────────────────────────────────────────────────
+
+@router.get("/weekend-summary")
+def weekend_summary():
+    """
+    Saturday 08:00 weekly rollup — deferred inbox items, week ROI,
+    mission completion rate, miner performance, upcoming week plan.
+    """
+    from datetime import timedelta
+    today = datetime.now(timezone.utc).date()
+    week_ago = today - timedelta(days=7)
+
+    roi = _roi()
+    projects = _projects()
+
+    # Week's resolved inbox items
+    resolved_week = _q("""
+        SELECT exec_id, title, status, resolved_at
+        FROM executive_inbox
+        WHERE status IN ('approved','rejected','deferred')
+          AND resolved_at >= %s
+        ORDER BY resolved_at DESC
+    """, (week_ago,))
+
+    # Still-pending inbox items (deferred accumulate here)
+    pending = _inbox_items()
+    deferred = [i for i in pending if i.get("status") == "deferred"]
+
+    # Mission stats for the week
+    missions_week = _q("""
+        SELECT status, COUNT(*) as count
+        FROM missions
+        WHERE updated_at >= %s
+        GROUP BY status
+    """, (week_ago,))
+    mission_map = {r["status"]: r["count"] for r in missions_week}
+    total_missions = sum(mission_map.values())
+    complete_rate = round(mission_map.get("COMPLETE", 0) / max(total_missions, 1) * 100)
+
+    # Miner performance this week
+    miners_week = _q("""
+        SELECT miner_name, COUNT(*) as runs,
+               SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as success,
+               SUM(intelligence_extracted) as records
+        FROM mining_runs
+        WHERE completed_at >= %s
+        GROUP BY miner_name
+    """, (week_ago,))
+
+    # Sync state for connectors
+    connector_states = _q("""
+        SELECT connector_name, COUNT(*) as entities,
+               SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) as errors,
+               MAX(last_synced_at) as last_sync
+        FROM connector_sync_state
+        GROUP BY connector_name
+    """)
+
+    # Upcoming week plan: open missions
+    upcoming = _q("""
+        SELECT mission_id, title, assigned_to, priority, sprint
+        FROM missions WHERE status = 'OPEN'
+        ORDER BY CASE priority WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END
+        LIMIT 10
+    """)
+
+    project_summaries = []
+    for p in projects:
+        var = p["schedule_variance_days"]
+        icon = "🟢" if p["health_status"] in ("green", "healthy") else "🟡" if p["health_status"] == "yellow" else "🔴"
+        project_summaries.append({
+            "name": p["name"],
+            "health": icon,
+            "schedule_variance_days": var,
+            "open_risks": p["open_risks"],
+        })
+
+    return {
+        "report_date": today.isoformat(),
+        "period": f"{week_ago.isoformat()} → {today.isoformat()}",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "executive_summary": {
+            "hours_saved_this_week": float(roi.get("hours_saved_week") or 0),
+            "documents_processed": int(roi.get("documents_processed") or 0),
+            "risks_detected": int(roi.get("risks_detected") or 0),
+            "workflow_runs": int(roi.get("workflow_runs") or 0),
+        },
+        "projects": project_summaries,
+        "inbox": {
+            "resolved_this_week": len(resolved_week),
+            "still_pending": len(pending),
+            "deferred_items": [
+                {"exec_id": i["exec_id"], "title": i["title"],
+                 "deadline": str(i["deadline"]) if i["deadline"] else None}
+                for i in deferred
+            ],
+        },
+        "missions": {
+            "total_this_week": total_missions,
+            "complete_rate_pct": complete_rate,
+            "by_status": mission_map,
+            "upcoming": [
+                {"id": m["mission_id"], "title": m["title"],
+                 "priority": m["priority"], "assigned_to": m["assigned_to"]}
+                for m in upcoming
+            ],
+        },
+        "miners": [
+            {
+                "name": m["miner_name"],
+                "runs": m["runs"],
+                "success_rate_pct": round(m["success"] / max(m["runs"], 1) * 100),
+                "records_extracted": int(m["records"] or 0),
+            }
+            for m in miners_week
+        ],
+        "connectors": [
+            {
+                "connector": c["connector_name"],
+                "entities_tracked": c["entities"],
+                "errors": c["errors"],
+                "last_sync": str(c["last_sync"]) if c["last_sync"] else None,
+            }
+            for c in connector_states
+        ],
+    }
+
+
+# ── Travel mode detection ──────────────────────────────────────────────────────
+
+@router.get("/travel-mode")
+def travel_mode_status():
+    """
+    Detects if Buck has been away (no approvals >48h).
+    Returns mode: normal | travel. Travel mode = critical-only digest.
+    """
+    last_approval = _q1("""
+        SELECT MAX(resolved_at) as last_action
+        FROM executive_inbox
+        WHERE status IN ('approved','rejected','deferred')
+          AND resolved_by LIKE 'buck%'
+    """)
+    last_ts = last_approval.get("last_action")
+    if not last_ts:
+        return {"mode": "normal", "last_activity": None, "hours_since": None}
+
+    hours_since = (datetime.now(timezone.utc) - last_ts).total_seconds() / 3600
+    mode = "travel" if hours_since > 48 else "normal"
+
+    return {
+        "mode": mode,
+        "last_activity": last_ts.isoformat(),
+        "hours_since": round(hours_since, 1),
+        "critical_only": mode == "travel",
+        "message": "Travel mode active — critical alerts only" if mode == "travel" else "Normal operating mode",
+    }
+
+
 # ── Dashboard HTML ─────────────────────────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)

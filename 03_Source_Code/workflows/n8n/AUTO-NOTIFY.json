@@ -1,0 +1,70 @@
+{
+  "name": "AUTO-NOTIFY — Urgent Alert Push (HIGH/CRITICAL events)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 */4 * * *" }]
+        }
+      },
+      "name": "Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/travel-mode",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Check Travel Mode",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/escalation-check",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Run Escalation Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/weekend-summary",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Autonomy Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 500],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    }
+  ],
+  "connections": {
+    "Every 4 Hours": {
+      "main": [[{ "node": "Check Travel Mode", "type": "main", "index": 0 }]]
+    },
+    "Check Travel Mode": {
+      "main": [[
+        { "node": "Run Escalation Check", "type": "main", "index": 0 },
+        { "node": "Get Autonomy Report", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "executive-ops" }, { "name": "notifications" }],
+  "_hci_notes": "Runs every 4h. Checks travel mode (>48h no activity = critical-only). Fires escalation check which sends ntfy push for unresolved items >24h (HIGH) or >72h (CRITICAL)."
+}

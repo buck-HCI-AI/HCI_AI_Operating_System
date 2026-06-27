@@ -1,0 +1,58 @@
+{
+  "name": "AUTO-EOD — Daily End-of-Day Email (19:00)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 19 * * *" }]
+        }
+      },
+      "name": "Cron 19:00 Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/eod-brief",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get EOD Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst date = d.date;\nconst summary = d.today_summary;\nconst projects = (d.projects || []).join('\\n');\nconst resolved = d.resolved_today.map(i => `  ✅ ${i.exec_id}: ${i.title}`).join('\\n') || '  None';\nconst pending = d.still_pending.map(i => `  ⏳ ${i.exec_id}: ${i.title}`).join('\\n') || '  None';\nconst complete = (d.missions?.complete || []).map(m => `  ✅ ${m}`).join('\\n') || '  None';\nconst blocked = (d.missions?.blocked || []).map(m => `  🚫 ${m}`).join('\\n') || '  None';\nconst overnight = (d.overnight_plan || []).join('\\n  ');\n\nconst body = `HCI AI — End of Day Brief\\n${date}\\n\\n` +\n  `SUMMARY\\n` +\n  `  Mining runs today: ${summary.mining_runs}\\n` +\n  `  Decisions resolved: ${summary.decisions_resolved}\\n` +\n  `  Decisions pending: ${summary.decisions_pending}\\n` +\n  `  Hours saved this week: ${d.roi_hours_this_week}h\\n\\n` +\n  `PROJECTS\\n${projects}\\n\\n` +\n  `RESOLVED TODAY\\n${resolved}\\n\\n` +\n  `STILL PENDING\\n${pending}\\n\\n` +\n  `MISSIONS\\n  Complete:\\n${complete}\\n  Blocked:\\n${blocked}\\n\\n` +\n  `OVERNIGHT PLAN\\n  ${overnight}\\n\\n` +\n  `Dashboard: http://localhost:8000/executive`;\n\nreturn [{ json: { subject: `HCI AI EOD — ${date}`, body } }];"
+      },
+      "name": "Format EOD Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "buck@ahmaspen.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "name": "Send EOD Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Cron 19:00 Daily": { "main": [[{ "node": "Get EOD Brief", "type": "main", "index": 0 }]] },
+    "Get EOD Brief": { "main": [[{ "node": "Format EOD Email", "type": "main", "index": 0 }]] },
+    "Format EOD Email": { "main": [[{ "node": "Send EOD Email", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "executive-ops" }],
+  "_hci_notes": "Import into n8n. Set HCI API Key credential: header X-API-Key, value from .env HCI_API_KEYS. Activate after validating /api/v1/executive/eod-brief returns data."
+}
