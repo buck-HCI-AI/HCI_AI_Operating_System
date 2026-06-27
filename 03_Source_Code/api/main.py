@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, PlainTextResponse
 
 from config import settings
 from middleware.logging import RequestLoggingMiddleware
@@ -165,6 +165,35 @@ def list_services():
 
 v1.include_router(svc)
 app.include_router(v1)
+
+# ── ACR-002: Public project state endpoint (no auth required) ────────────────
+# ChatGPT and any AI can read LIVE_PROJECT_STATE.md without an API key.
+_LIVE_STATE_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "LIVE_PROJECT_STATE.md")
+)
+
+@app.get("/project-state", tags=["architecture"])
+def get_project_state(fmt: str = "json"):
+    """
+    Public read-only endpoint — no API key required.
+    Returns LIVE_PROJECT_STATE.md, the single source of truth for HCI AI OS architecture.
+    fmt=json (default): JSON wrapper with content field.
+    fmt=markdown: raw markdown text.
+    """
+    try:
+        with open(_LIVE_STATE_PATH) as f:
+            content = f.read()
+        if fmt == "markdown":
+            return PlainTextResponse(content, media_type="text/markdown")
+        return {
+            "status": "ok",
+            "source": "LIVE_PROJECT_STATE.md",
+            "updated_by": "Claude Code",
+            "content": content,
+        }
+    except FileNotFoundError:
+        return {"status": "not_found", "message": "LIVE_PROJECT_STATE.md not found at repo root"}
+
 
 # ── Dashboard + static files ──────────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")

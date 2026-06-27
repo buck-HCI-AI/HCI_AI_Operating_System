@@ -740,6 +740,46 @@ def ReadRepositoryStatus() -> dict:
     }
 
 
+# ── ACR-002: GetProjectState ──────────────────────────────────────────────────
+
+@mcp.tool()
+def GetProjectState() -> dict:
+    """
+    ACR-002: Live system snapshot for architecture review sessions.
+    Fetches real-time data from all key services and bundles the LIVE_PROJECT_STATE.md document.
+    Use this to open any architecture review, sprint planning, or status check session.
+
+    Returns: system health, all projects, MVP status, ROI, pending approvals,
+             background learning state, and the full LIVE_PROJECT_STATE.md content.
+    Public HTTP equivalent: GET /project-state (no auth required).
+    Drive mirror: https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view
+    """
+    health   = _api("GET", "/api/v1/health")
+    projects = _api("GET", "/api/v1/projects")
+    mvp      = _api("GET", "/api/v1/mvp/status")
+    roi      = _api("GET", "/api/v1/mvp/roi-summary?project_filter=all")
+    aq       = _api("GET", "/api/v1/services/approval-queue/items?status=pending&limit=10")
+    bl       = _api("GET", "/api/v1/services/background-learning/summary")
+
+    try:
+        with open(os.path.join(REPO_ROOT, "LIVE_PROJECT_STATE.md")) as f:
+            live_state_doc = f.read()
+    except Exception:
+        live_state_doc = "LIVE_PROJECT_STATE.md not found — re-upload needed"
+
+    return {
+        "system_health":          health,
+        "projects":               projects,
+        "mvp_status":             mvp,
+        "roi":                    roi,
+        "approval_queue_pending": aq,
+        "background_learning":    bl,
+        "live_state_document":    live_state_doc,
+        "public_endpoint":        "https://speculate-armband-retinal.ngrok-free.dev/project-state",
+        "drive_url":              "https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view",
+    }
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def get_asgi_app():
