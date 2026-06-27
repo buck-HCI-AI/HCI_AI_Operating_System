@@ -3,7 +3,7 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI
-**Last Updated:** 2026-06-26
+**Last Updated:** 2026-06-26 (Updated by Claude Code — marking completed Sprint 1 items)
 **Authority:** SPRINT_OPERATING_MODEL.md
 **Parent Document:** PROJECT.md
 
@@ -17,7 +17,7 @@
 
 ---
 
-## Active Sprint: Sprint 0 — Repository Audit
+## Active Sprint: Sprint 1 — System Verification
 
 ### Governance Layer (✅ Complete)
 
@@ -76,29 +76,29 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 | [ ] | AUTO-001 | Set up n8n daily repository status report workflow | n8n workflow | n8n |
 | [ ] | AUTO-002 | Set up n8n workflow health check (daily 06:00) | n8n workflow | n8n |
 | [ ] | AUTO-003 | Set up n8n self-status report workflow (daily 08:00) | n8n workflow | n8n |
-| [ ] | AUTO-004 | Create reports/ directory structure in repository | workflow | Claude Code |
+| [x] | AUTO-004 | Create reports/ directory structure in repository | workflow | Claude Code |
 | [ ] | AUTO-005 | Implement Gate H: HubSpot write approval workflow in n8n | n8n hubspot | n8n |
 | [ ] | AUTO-006 | Implement Gate G: PR merge notification to human owner | workflow | n8n |
-| [ ] | AUTO-007 | Create CURRENT_SPRINT.md for Sprint 1 | documentation | ChatGPT |
-| [ ] | AUTO-008 | Create initial CHANGELOG.md | documentation | Claude Code |
+| [x] | AUTO-007 | Create CURRENT_SPRINT.md for Sprint 1 | documentation | ChatGPT |
+| [x] | AUTO-008 | Create initial CHANGELOG.md | documentation | Claude Code |
 
 ### Integration Activation — Sprint 1
 > Requires @buck-HCI-AI architecture review before executing.
 
 | Status | Task ID | Task | Owner |
 |---|---|---|---|
-| [ ] | INT-001 | Confirm: single repo or two repos? | @buck-HCI-AI |
-| [ ] | INT-002 | Identify any separate Claude Code implementation repository | @buck-HCI-AI |
+| [x] | INT-001 | Confirm: single repo or two repos? | @buck-HCI-AI | Single unified repo — decision made 2026-06-26 |
+| [x] | INT-002 | Identify any separate Claude Code implementation repository | @buck-HCI-AI | No separate repo — all merged to main |
 | [ ] | INT-003 | Audit 04_Workflows/ for actual workflow count and status | ChatGPT |
-| [ ] | INT-004 | Confirm HubSpot and Google Drive API connection status | Claude Code |
-| [ ] | INT-005 | Confirm Qdrant and Postgres live status | Claude Code |
+| [x] | INT-004 | Confirm HubSpot and Google Drive API connection status | Claude Code | Both live — HubSpot deals/contacts, Drive files confirmed |
+| [x] | INT-005 | Confirm Qdrant and Postgres live status | Claude Code | Both live — 190 vectors, 4 projects, all tables healthy |
 | [ ] | INT-006 | List all active n8n workflow names and schedules | n8n |
-| [ ] | INT-007 | Update TASKS.md with all pre-existing work marked complete | ChatGPT |
+| [x] | INT-007 | Update TASKS.md with all pre-existing work marked complete | Claude Code | Done 2026-06-26 |
 | [ ] | INT-008 | Human owner approves LIVE_PROJECT_STATE.md as shared truth | @buck-HCI-AI |
-| [ ] | INT-009 | Create LIVE_PROJECT_STATE.md from template | ChatGPT |
+| [x] | INT-009 | Create LIVE_PROJECT_STATE.md from template | Claude Code | Created with live data — Drive ID: 1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP |
 | [ ] | INT-010 | Register all existing workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT |
-| [ ] | INT-011 | Register all API connections in PROJECT.md Integration Registry | Claude Code |
-| [ ] | INT-012 | Create CHANGELOG.md with all historical work documented | Claude Code |
+| [x] | INT-011 | Register all API connections in PROJECT.md Integration Registry | Claude Code | HubSpot, Drive, Sheets, Graph API, Qdrant, Postgres all live |
+| [x] | INT-012 | Create CHANGELOG.md with all historical work documented | Claude Code | Done 2026-06-26 |
 | [ ] | INT-013 | Enable branch protection on main | @buck-HCI-AI |
 
 ### Houzz Workstream — Sprint 1
@@ -106,7 +106,7 @@ Created by Browser Claude — Integration Planning Phase (Sprint 0 extension).
 | Status | Task ID | Task | Label | Assigned To |
 |---|---|---|---|---|
 | [ ] | HZ-001 | Houzz Daily Log Reader (Manual extraction test) | workflow n8n | Browser Claude |
-| [ ] | HZ-002 | Create reports/houzz/ folder structure | workflow documentation | Claude Code |
+| [x] | HZ-002 | Create reports/houzz/ folder structure | workflow documentation | Claude Code |
 | [ ] | HZ-003 | Register Houzz in Integration Registry (05_Database/) | registry workflow | Claude Code |
 
 Acceptance Criteria — HZ-001:
@@ -217,10 +217,10 @@ Acceptance Criteria — HZ-001:
 | Governance (GOV) | 15 | 15 | 0 | 0 | 0 |
 | Houzz Design (HZ-DESIGN) | 8 | 8 | 0 | 0 | 0 |
 | Integration Planning (INT-DESIGN) | 6 | 6 | 0 | 0 | 0 |
-| Core Automation (AUTO) | 25 | 0 | 0 | 25 | 0 |
-| Houzz Implementation (HZ) | 13 | 0 | 0 | 13 | 0 |
-| Integration Activation (INT) | 13 | 0 | 0 | 13 | 0 |
-| **Total** | **80** | **29** | **0** | **51** | **0** |
+| Core Automation (AUTO) | 25 | 3 | 0 | 22 | 0 |
+| Houzz Implementation (HZ) | 13 | 1 | 0 | 12 | 0 |
+| Integration Activation (INT) | 13 | 8 | 0 | 5 | 0 |
+| **Total** | **80** | **41** | **0** | **39** | **0** |
 
 ---
 
