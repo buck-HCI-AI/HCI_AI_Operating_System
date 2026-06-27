@@ -238,14 +238,24 @@ class SystemAuditor(BaseIntelligenceService):
         services = [d.name for d in _SVC_DIR.iterdir()
                     if d.is_dir() and not d.name.startswith("_") and not d.name.startswith(".")]
 
-        # Find all test files
+        # Find all test files and read their contents
         test_files = list(_TESTS_DIR.glob("test_*.py")) if _TESTS_DIR.exists() else []
-        test_content = " ".join(f.name for f in test_files)
+        # Read test content to check if service names appear in test bodies
+        all_test_content = ""
+        for tf in test_files:
+            try:
+                all_test_content += tf.read_text(errors="replace").lower()
+            except Exception:
+                pass
 
         covered = []
         uncovered = []
         for svc in sorted(services):
-            has_test = svc in test_content or any(svc.replace("_", "-") in f.name for f in test_files)
+            svc_slug = svc.replace("_", "-")
+            # Check service name in test file names OR test file contents
+            has_test = (svc in all_test_content or
+                        svc_slug in all_test_content or
+                        any(svc in f.name or svc_slug in f.name for f in test_files))
             if has_test:
                 covered.append(svc)
             else:
