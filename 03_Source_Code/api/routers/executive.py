@@ -41,9 +41,12 @@ def _run(sql, params=None):
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params)
-            result = cur.fetchone()
             conn.commit()
-            return dict(result) if result else {}
+            try:
+                result = cur.fetchone()
+                return dict(result) if result else {}
+            except Exception:
+                return {}
 
 
 # ── Data collectors ────────────────────────────────────────────────────────────
@@ -407,6 +410,278 @@ def _execute_approved_action(item: dict) -> str:
         return "Action queued for Claude Code execution in next session."
 
     return "Action recorded — Claude Code will execute."
+
+
+# ── EOD Brief ─────────────────────────────────────────────────────────────────
+
+@router.get("/eod-brief")
+def eod_brief():
+    projects = _projects()
+    inbox_pending = _inbox_items()
+    inbox_resolved_today = _q("""
+        SELECT exec_id, title, status, resolved_at
+        FROM executive_inbox
+        WHERE status IN ('approved', 'rejected', 'deferred')
+          AND resolved_at >= CURRENT_DATE
+        ORDER BY resolved_at DESC
+    """)
+    roi = _roi()
+    missions_today = _q("""
+        SELECT mission_id, title, status, assigned_to
+        FROM missions
+        WHERE status IN ('COMPLETE', 'IN_PROGRESS', 'BLOCKED')
+        ORDER BY CASE status WHEN 'COMPLETE' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END
+    """)
+    miners = _q("""
+        SELECT miner_name, status, completed_at, intelligence_extracted as records_extracted
+        FROM mining_runs
+        WHERE completed_at >= CURRENT_DATE
+        ORDER BY completed_at DESC
+    """)
+
+    project_summaries = []
+    for p in projects:
+        var = p["schedule_variance_days"]
+        sched = f"+{var}d" if var > 0 else ("On track" if var == 0 else f"{var}d ahead")
+        project_summaries.append(f"{p['name']}: {sched}, {p['open_risks']} risks")
+
+    overnight_plan = []
+    blocked = [m for m in missions_today if m["status"] == "BLOCKED"]
+    in_progress = [m for m in missions_today if m["status"] == "IN_PROGRESS"]
+    if in_progress:
+        for m in in_progress:
+            overnight_plan.append(f"Continue: {m['title']} ({m['assigned_to']})")
+    if blocked:
+        for m in blocked:
+            overnight_plan.append(f"BLOCKED — {m['title']} (awaiting action)")
+    if not overnight_plan:
+        overnight_plan.append("No overnight missions queued")
+
+    return {
+        "date": datetime.now(timezone.utc).date().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "today_summary": {
+            "mining_runs": len(miners),
+            "decisions_resolved": len(inbox_resolved_today),
+            "decisions_pending": len(inbox_pending),
+            "hours_saved_today": float(roi.get("hours_saved_week") or 0),
+        },
+        "projects": project_summaries,
+        "resolved_today": [
+            {"exec_id": i["exec_id"], "title": i["title"], "resolution": i["status"]}
+            for i in inbox_resolved_today
+        ],
+        "still_pending": [
+            {"exec_id": i["exec_id"], "title": i["title"], "deadline": str(i["deadline"]) if i["deadline"] else None}
+            for i in inbox_pending
+        ],
+        "missions": {
+            "complete": [m["title"] for m in missions_today if m["status"] == "COMPLETE"],
+            "in_progress": [m["title"] for m in in_progress],
+            "blocked": [m["title"] for m in blocked],
+        },
+        "mining_today": [
+            {
+                "miner": m["miner_name"],
+                "status": m["status"],
+                "records": m["records_extracted"],
+                "time": m["completed_at"].isoformat() if m["completed_at"] else None,
+            }
+            for m in miners
+        ],
+        "overnight_plan": overnight_plan,
+        "roi_hours_this_week": float(roi.get("hours_saved_total") or 0),
+    }
+
+
+# ── Batch approve ──────────────────────────────────────────────────────────────
+
+@router.post("/batch-approve")
+def batch_approve(confidence_filter: str = "High"):
+    """Approve all pending inbox items matching the confidence level."""
+    items = _q(
+        "SELECT * FROM executive_inbox WHERE status = 'pending' AND confidence = %s",
+        (confidence_filter,)
+    )
+    if not items:
+        return {"approved": 0, "message": f"No pending {confidence_filter}-confidence items"}
+
+    results = []
+    for item in items:
+        _run("""
+            UPDATE executive_inbox
+            SET status = 'approved', resolved_at = NOW(), resolved_by = 'buck_adams_batch'
+            WHERE exec_id = %s
+        """, (item["exec_id"],))
+        note = _execute_approved_action(item)
+        results.append({"exec_id": item["exec_id"], "title": item["title"], "execution": note})
+
+    return {
+        "approved": len(results),
+        "confidence_filter": confidence_filter,
+        "items": results,
+        "message": f"Batch approved {len(results)} {confidence_filter}-confidence items.",
+    }
+
+
+# ── Auto-escalation check ─────────────────────────────────────────────────────
+
+@router.post("/escalation-check")
+def run_escalation_check():
+    """
+    Called by n8n daily. Checks for overdue inbox items and blocked missions,
+    fires notifications via notification engine.
+    """
+    import urllib.request as _ur
+
+    api_key = os.environ.get("HCI_API_KEY", "")
+    notify_url = "http://localhost:8000/api/v1/services/notifications/send"
+
+    escalations = []
+
+    # Items unresolved >72h → CRITICAL
+    critical_items = _q("""
+        SELECT exec_id, title, approve_token, created_at
+        FROM executive_inbox
+        WHERE status = 'pending'
+          AND created_at < NOW() - INTERVAL '72 hours'
+    """)
+    for item in critical_items:
+        age_h = int((datetime.now(timezone.utc) - item["created_at"]).total_seconds() / 3600)
+        payload = json.dumps({
+            "title": f"OVERDUE {age_h}h: {item['exec_id']}",
+            "message": item["title"],
+            "severity": "CRITICAL",
+            "tags": ["rotating_light", "clock3"],
+            "action_url": f"http://localhost:8000/api/v1/executive/approve/{item['exec_id']}?token={item['approve_token']}",
+        }).encode()
+        try:
+            req = _ur.Request(notify_url, data=payload,
+                              headers={"X-API-Key": api_key, "Content-Type": "application/json"},
+                              method="POST")
+            _ur.urlopen(req, timeout=5)
+        except Exception:
+            pass
+        _log_escalation("exec_inbox", item["exec_id"], "CRITICAL", f"Overdue {age_h}h")
+        escalations.append({"type": "overdue_inbox", "exec_id": item["exec_id"], "age_hours": age_h})
+
+    # Items unresolved >24h → HIGH
+    high_items = _q("""
+        SELECT exec_id, title, approve_token, created_at
+        FROM executive_inbox
+        WHERE status = 'pending'
+          AND created_at BETWEEN NOW() - INTERVAL '72 hours' AND NOW() - INTERVAL '24 hours'
+    """)
+    for item in high_items:
+        age_h = int((datetime.now(timezone.utc) - item["created_at"]).total_seconds() / 3600)
+        payload = json.dumps({
+            "title": f"Pending {age_h}h: {item['exec_id']}",
+            "message": item["title"],
+            "severity": "HIGH",
+            "tags": ["warning"],
+            "action_url": f"http://localhost:8000/api/v1/executive/approve/{item['exec_id']}?token={item['approve_token']}",
+        }).encode()
+        try:
+            req = _ur.Request(notify_url, data=payload,
+                              headers={"X-API-Key": api_key, "Content-Type": "application/json"},
+                              method="POST")
+            _ur.urlopen(req, timeout=5)
+        except Exception:
+            pass
+        _log_escalation("exec_inbox", item["exec_id"], "HIGH", f"Pending {age_h}h")
+        escalations.append({"type": "pending_inbox", "exec_id": item["exec_id"], "age_hours": age_h})
+
+    # Blocked missions >4h → HIGH
+    blocked_missions = _q("""
+        SELECT mission_id, title, blocker, last_activity
+        FROM missions
+        WHERE status = 'BLOCKED'
+          AND last_activity < NOW() - INTERVAL '4 hours'
+    """)
+    for m in blocked_missions:
+        age_h = int((datetime.now(timezone.utc) - m["last_activity"]).total_seconds() / 3600)
+        payload = json.dumps({
+            "title": f"Mission Blocked: {m['mission_id']}",
+            "message": f"{m['title']} — {m['blocker'] or 'reason unknown'}",
+            "severity": "HIGH",
+            "tags": ["no_entry"],
+        }).encode()
+        try:
+            req = _ur.Request(notify_url, data=payload,
+                              headers={"X-API-Key": api_key, "Content-Type": "application/json"},
+                              method="POST")
+            _ur.urlopen(req, timeout=5)
+        except Exception:
+            pass
+        _log_escalation("mission", m["mission_id"], "HIGH", f"Blocked {age_h}h")
+        escalations.append({"type": "blocked_mission", "mission_id": m["mission_id"], "age_hours": age_h})
+
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "escalations_fired": len(escalations),
+        "escalations": escalations,
+    }
+
+
+def _log_escalation(entity_type: str, entity_id: str, severity: str, message: str):
+    try:
+        _run("""
+            INSERT INTO notification_log (event_type, entity_type, entity_id, severity, message)
+            VALUES ('escalation', %s, %s, %s, %s)
+        """, (entity_type, entity_id, severity, message))
+    except Exception:
+        pass
+
+
+# ── Missions API ───────────────────────────────────────────────────────────────
+
+@router.get("/missions")
+def list_missions(status: str = ""):
+    if status:
+        rows = _q("SELECT * FROM missions WHERE status = %s ORDER BY priority, created_at", (status.upper(),))
+    else:
+        rows = _q("SELECT * FROM missions ORDER BY CASE status WHEN 'IN_PROGRESS' THEN 0 WHEN 'BLOCKED' THEN 1 WHEN 'OPEN' THEN 2 ELSE 3 END, priority")
+    return {"missions": [dict(r) for r in rows], "total": len(rows)}
+
+
+@router.get("/missions/blocked")
+def blocked_missions():
+    rows = _q("SELECT * FROM missions WHERE status = 'BLOCKED' ORDER BY priority, created_at")
+    return {
+        "blocked_count": len(rows),
+        "missions": [{"mission_id": r["mission_id"], "title": r["title"],
+                      "blocker": r["blocker"], "assigned_to": r["assigned_to"]} for r in rows],
+    }
+
+
+@router.post("/missions")
+def create_or_update_mission(payload: dict):
+    mid = payload.get("mission_id", "").upper()
+    if not mid:
+        raise HTTPException(status_code=400, detail="mission_id required")
+    existing = _q1("SELECT id FROM missions WHERE mission_id = %s", (mid,))
+    if existing:
+        _run("""
+            UPDATE missions SET
+                title = COALESCE(%s, title),
+                status = COALESCE(%s, status),
+                blocker = %s,
+                assigned_to = COALESCE(%s, assigned_to),
+                priority = COALESCE(%s, priority),
+                last_activity = NOW(), updated_at = NOW()
+            WHERE mission_id = %s
+        """, (payload.get("title"), payload.get("status"), payload.get("blocker"),
+              payload.get("assigned_to"), payload.get("priority"), mid))
+        return {"action": "updated", "mission_id": mid}
+    else:
+        _run("""
+            INSERT INTO missions (mission_id, title, description, assigned_to, status, blocker, priority, sprint, expected_output)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (mid, payload.get("title",""), payload.get("description"),
+              payload.get("assigned_to","claude_code"), payload.get("status","OPEN"),
+              payload.get("blocker"), payload.get("priority","MEDIUM"),
+              payload.get("sprint"), payload.get("expected_output")))
+        return {"action": "created", "mission_id": mid}
 
 
 # ── Dashboard HTML ─────────────────────────────────────────────────────────────
