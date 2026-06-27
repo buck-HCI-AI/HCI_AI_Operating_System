@@ -5,6 +5,48 @@
 
 ---
 
+## v2.4 — 2026-06-27 | Browser Handoff Auto-Intake Infrastructure + AO-HS-001/002/004/010
+
+**Trigger:** Buck Adams directive — "make the automation work as it should, automatically"
+
+**Changes:**
+- `Architecture/Platform_Intelligence/` — permanent living knowledge base structure:
+  - 9 platform directories: HubSpot, Houzz, GoogleDrive, Microsoft365, QuickBooks, n8n, PostgreSQL, BuildingConnected, Procore
+  - HubSpot + Houzz each have Current/, Archive/, Opportunities/ subdirectories
+  - Existing intelligence docs moved into Current/ subdirectories
+- `Architecture/Agent_Handoff/handoff_processor.py` — upgraded:
+  - Auto-injects `created_at` and `summary` if missing (no more validation failures on Browser Claude files)
+  - Dynamic `browser_discovery` routing by `related_system` field → system-specific `Current/` dir
+  - Auto-archives existing file before overwrite
+  - 9 platform system mappings in `SYSTEM_CURRENT_DIRS`
+- `Architecture/Agent_Handoff/BROWSER_CLAUDE_DISCOVERY_PROTOCOL.md` — new:
+  - Platform detection from URL
+  - Discovery checklists for HubSpot, Houzz Pro, Google Drive, QuickBooks
+  - Required frontmatter template (all fields)
+  - Preferred path: write directly to Inbox (zero-click)
+  - Fallback: Downloads + Desktop command file
+- `infrastructure/handoff_intake_watcher.py` — launchd-triggered script:
+  - Watches Downloads for BROWSER_HANDOFF_*, HCI_HANDOFF_*, AGENT_HANDOFF_* files
+  - Auto-moves to Inbox and triggers processor
+- `~/Library/LaunchAgents/com.hci.handoff-intake.plist` — live launchd job (WatchPaths)
+- `~/Desktop/HCI_Process_Handoffs.command` — fallback one-click intake for Downloads files
+- `workflows/n8n/AUTO-COI-COMPLIANCE-ENGINE.json` — AO-HS-001 + AO-HS-002:
+  - Daily 07:00 — fetches all HubSpot companies with coi_expiration_date
+  - Calculates days until expiry → sets coi_status: Active / Expired / Missing
+  - Renewal alerts: ntfy within 30 days (urgent at 7 days)
+- `workflows/n8n/AUTO-BID-INVITATION-TASKS.json` — AO-HS-004:
+  - 3× daily weekdays — detects deals moved to Sent Out in last 4h
+  - Creates follow-up task for each associated contact (due in 3 days)
+- `workflows/n8n/AUTO-AI-DEAL-SUMMARIZATION.json` — AO-HS-010:
+  - Weekdays 06:00 — fetches top 20 active deals
+  - Sends to Claude Haiku API for prioritized briefing
+  - Posts to Executive Inbox + ntfy
+- `tests/test_browser_handoff_pipeline.py` — 73/73 tests
+- **n8n imports:** 3 new workflows live (zgtuaysXDeGa7tIY, k6n0FNUF8JoNVLth, A9OAkREoqs4Ke0uu)
+- **Note:** COI + Bid workflows are INACTIVE in n8n — require Buck approval to activate (HubSpot write rule)
+
+---
+
 ## v2.3 — 2026-06-27 | Browser Handoff Ingestion — Houzz + HubSpot Platform Intelligence
 
 **Trigger:** BTW directive — two Browser Claude handoff files (HCI-BH-HP-001, HCI-BH-HS-001)

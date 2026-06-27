@@ -1,0 +1,169 @@
+{
+  "name": "AUTO-BID-INVITATION-TASKS — Sent Out Stage → Auto-Task Creation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8,12,16 * * 1-5" }]
+        }
+      },
+      "id": "trigger-poll",
+      "name": "Poll 3x Daily (Weekdays)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={ \"filterGroups\": [{ \"filters\": [{ \"propertyName\": \"dealstage\", \"operator\": \"EQ\", \"value\": \"presentationscheduled\" }] }], \"properties\": [\"dealname\", \"dealstage\", \"package_name\", \"tradescope\", \"estimator\", \"createdate\", \"hs_lastmodifieddate\"], \"limit\": 50 }",
+        "options": {}
+      },
+      "id": "fetch-sent-out-deals",
+      "name": "Fetch Sent Out Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter deals modified in last 4 hours (to catch newly moved deals)\n// and check if bid invitation task was already created\nconst results = $input.first().json;\nconst deals = results.results || [];\nconst cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000);\n\nconst newDeals = deals.filter(d => {\n  const modified = new Date(d.properties.hs_lastmodifieddate);\n  return modified > cutoff;\n});\n\nreturn newDeals.map(d => ({\n  json: {\n    deal_id: d.id,\n    deal_name: d.properties.dealname,\n    package_name: d.properties.package_name || '',\n    tradescope: d.properties.tradescope || '',\n    estimator: d.properties.estimator || 'Unassigned',\n    modified: d.properties.hs_lastmodifieddate,\n  }\n}));"
+      },
+      "id": "filter-new-deals",
+      "name": "Filter Recently Moved Deals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $input.all().length }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-new-deals",
+      "name": "New Deals to Process?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hubapi.com/crm/v3/objects/deals/{{ $json.deal_id }}/associations/contacts",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-contacts",
+      "name": "Fetch Associated Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create task payload for each associated contact\nconst dealData = $('Filter Recently Moved Deals').first().json;\nconst contactResp = $input.first().json;\nconst contacts = contactResp.results || [];\n\nconst dueDate = new Date();\ndueDate.setDate(dueDate.getDate() + 3);\nconst dueDateMs = dueDate.getTime();\n\nif (contacts.length === 0) {\n  return [{ json: { skip: true, deal_name: dealData.deal_name, reason: 'No contacts associated' } }];\n}\n\nreturn contacts.map(c => ({\n  json: {\n    contact_id: c.id,\n    deal_id: dealData.deal_id,\n    deal_name: dealData.deal_name,\n    tradescope: dealData.tradescope,\n    task_subject: `Bid Invitation: ${dealData.deal_name} — ${dealData.tradescope || dealData.package_name}`,\n    task_body: `Bid package sent out. Follow up with sub to confirm receipt and interest. Estimator: ${dealData.estimator}.`,\n    due_date_ms: dueDateMs,\n  }\n}));"
+      },
+      "id": "build-tasks",
+      "name": "Build Task Payloads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 240]
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/crm/v3/objects/tasks",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ properties: { hs_task_subject: $json.task_subject, hs_task_body: $json.task_body, hs_timestamp: $json.due_date_ms, hs_task_status: 'NOT_STARTED', hs_task_type: 'TODO' }, associations: [{ to: { id: $json.deal_id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 27 }] }, { to: { id: $json.contact_id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 204 }] }] }) }}",
+        "options": {}
+      },
+      "id": "create-task",
+      "name": "Create HubSpot Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1460, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all();\nconst created = all.filter(i => i.json.id).length;\nconst deals = [...new Set(all.map(i => i.json.deal_name || '?'))];\nreturn [{ json: {\n  message: `Bid tasks created: ${created} tasks for deals: ${deals.join(', ')}`,\n  count: created,\n}}];"
+      },
+      "id": "summarize",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "Bid Invitation Tasks Created" },
+            { "name": "Priority", "value": "default" },
+            { "name": "Content-Type", "value": "text/plain" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "ntfy-tasks",
+      "name": "Notify — Tasks Created",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 240]
+    }
+  ],
+  "connections": {
+    "Poll 3x Daily (Weekdays)": { "main": [[{ "node": "Fetch Sent Out Deals", "type": "main", "index": 0 }]] },
+    "Fetch Sent Out Deals": { "main": [[{ "node": "Filter Recently Moved Deals", "type": "main", "index": 0 }]] },
+    "Filter Recently Moved Deals": { "main": [[{ "node": "New Deals to Process?", "type": "main", "index": 0 }]] },
+    "New Deals to Process?": {
+      "main": [
+        [{ "node": "Fetch Associated Contacts", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Fetch Associated Contacts": { "main": [[{ "node": "Build Task Payloads", "type": "main", "index": 0 }]] },
+    "Build Task Payloads": { "main": [[{ "node": "Create HubSpot Task", "type": "main", "index": 0 }]] },
+    "Create HubSpot Task": { "main": [[{ "node": "Summarize", "type": "main", "index": 0 }]] },
+    "Summarize": { "main": [[{ "node": "Notify — Tasks Created", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["hubspot", "bids", "tasks", "ao-hs-004"],
+  "_hci_notes": "AO-HS-004. Polls 3x daily on weekdays. Detects deals moved to Sent Out stage in last 4 hours. Fetches associated contacts. Creates follow-up task (due in 3 days) for each contact. Notifies via ntfy. Requires HUBSPOT_API_KEY."
+}

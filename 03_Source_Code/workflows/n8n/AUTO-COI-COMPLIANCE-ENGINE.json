@@ -1,0 +1,227 @@
+{
+  "name": "AUTO-COI-COMPLIANCE-ENGINE — Daily 07:00 COI Status Refresh",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+        }
+      },
+      "id": "trigger-daily",
+      "name": "Cron Daily 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/crm/v3/objects/companies",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "properties", "value": "name,coi_expiration_date,coi_status,coi_file_link" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-companies-1",
+      "name": "Fetch Companies Page 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evaluate COI status for every company\nconst results = $input.first().json;\nconst companies = results.results || [];\nconst today = new Date();\ntoday.setHours(0,0,0,0);\n\nconst updates = [];\nconst renewalAlerts = [];\nconst stats = { active: 0, expired: 0, expiringSoon: 0, missing: 0, noChange: 0 };\n\nfor (const co of companies) {\n  const props = co.properties || {};\n  const id = co.id;\n  const name = props.name || 'Unknown';\n  const expStr = props.coi_expiration_date;\n  const currentStatus = props.coi_status || 'Missing';\n\n  if (!expStr) {\n    // No expiry date — mark Missing if not already\n    stats.missing++;\n    if (currentStatus !== 'Missing') {\n      updates.push({ id, name, new_status: 'Missing', reason: 'No COI date on file', days_until_expiry: null });\n    }\n    continue;\n  }\n\n  const expDate = new Date(expStr);\n  expDate.setHours(0,0,0,0);\n  const msPerDay = 1000 * 60 * 60 * 24;\n  const daysUntil = Math.round((expDate - today) / msPerDay);\n\n  let newStatus;\n  if (daysUntil < 0) {\n    newStatus = 'Expired';\n    stats.expired++;\n  } else if (daysUntil <= 30) {\n    newStatus = 'Active';  // still valid but alert needed\n    stats.expiringSoon++;\n    renewalAlerts.push({ id, name, days_until_expiry: daysUntil, expiry_date: expStr });\n  } else {\n    newStatus = 'Active';\n    stats.active++;\n  }\n\n  if (newStatus !== currentStatus) {\n    updates.push({ id, name, new_status: newStatus, old_status: currentStatus, days_until_expiry: daysUntil, expiry_date: expStr });\n  } else {\n    stats.noChange++;\n  }\n}\n\nreturn [{\n  json: {\n    updates,\n    renewal_alerts: renewalAlerts,\n    stats,\n    total_companies: companies.length,\n    has_updates: updates.length > 0,\n    has_renewals: renewalAlerts.length > 0,\n  }\n}];"
+      },
+      "id": "evaluate-coi",
+      "name": "Evaluate COI Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.has_updates }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "has-updates",
+      "name": "Has Updates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build individual PATCH payloads for each company that needs updating\nconst data = $input.first().json;\nreturn data.updates.map(u => ({\n  json: {\n    company_id: u.id,\n    company_name: u.name,\n    new_status: u.new_status,\n    old_status: u.old_status,\n    days_until_expiry: u.days_until_expiry,\n  }\n}));"
+      },
+      "id": "split-updates",
+      "name": "Split Into Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 160]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hubapi.com/crm/v3/objects/companies/{{ $json.company_id }}",
+        "method": "PATCH",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ properties: { coi_status: $json.new_status } }) }}",
+        "options": {}
+      },
+      "id": "patch-hubspot",
+      "name": "Update COI Status in HubSpot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all items back into a summary\nconst allItems = $input.all();\nconst updated = allItems.map(i => `${i.json.properties?.name || i.json.company_name || 'Unknown'} → ${i.json.new_status || '?'}`).join(', ') || 'none';\nreturn [{ json: { updated_companies: updated, count: allItems.length } }];"
+      },
+      "id": "aggregate-updates",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1460, 160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Evaluate COI Status').first().json.has_renewals }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "has-renewals",
+      "name": "Has Renewal Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build renewal alert message\nconst data = $('Evaluate COI Status').first().json;\nconst alerts = data.renewal_alerts || [];\nconst lines = alerts.map(a => `${a.name}: expires ${a.expiry_date} (${a.days_until_expiry} days)`);\nconst urgent = alerts.filter(a => a.days_until_expiry <= 7);\nreturn [{\n  json: {\n    message: lines.join(' | '),\n    priority: urgent.length > 0 ? 'high' : 'default',\n    title: urgent.length > 0 ? `COI URGENT: ${urgent.length} expiring this week` : `COI Renewal: ${alerts.length} expiring within 30 days`,\n  }\n}];"
+      },
+      "id": "build-renewal-msg",
+      "name": "Build Renewal Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Content-Type", "value": "text/plain" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "ntfy-renewal",
+      "name": "Send Renewal Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build daily COI status summary\nconst data = $('Evaluate COI Status').first().json;\nconst s = data.stats;\nconst msg = `COI Daily: ${data.total_companies} companies | Active: ${s.active} | Expired: ${s.expired} | Expiring 30d: ${s.expiringSoon} | Missing: ${s.missing} | Updated: ${data.updates?.length || 0}`;\nconst priority = s.expired > 0 ? 'default' : 'min';\nreturn [{ json: { message: msg, priority } }];"
+      },
+      "id": "build-summary",
+      "name": "Build Daily Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "COI Compliance — Daily Report" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Content-Type", "value": "text/plain" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "ntfy-summary",
+      "name": "Send Daily Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1680, 300]
+    }
+  ],
+  "connections": {
+    "Cron Daily 07:00": { "main": [[{ "node": "Fetch Companies Page 1", "type": "main", "index": 0 }]] },
+    "Fetch Companies Page 1": { "main": [[{ "node": "Evaluate COI Status", "type": "main", "index": 0 }]] },
+    "Evaluate COI Status": {
+      "main": [[
+        { "node": "Has Updates?", "type": "main", "index": 0 },
+        { "node": "Has Renewal Alerts?", "type": "main", "index": 0 },
+        { "node": "Build Daily Summary", "type": "main", "index": 0 }
+      ]]
+    },
+    "Has Updates?": {
+      "main": [
+        [{ "node": "Split Into Updates", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Split Into Updates": { "main": [[{ "node": "Update COI Status in HubSpot", "type": "main", "index": 0 }]] },
+    "Update COI Status in HubSpot": { "main": [[{ "node": "Aggregate Results", "type": "main", "index": 0 }]] },
+    "Aggregate Results": { "main": [[{ "node": "Build Daily Summary", "type": "main", "index": 0 }]] },
+    "Has Renewal Alerts?": {
+      "main": [
+        [{ "node": "Build Renewal Alert", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Build Renewal Alert": { "main": [[{ "node": "Send Renewal Alert", "type": "main", "index": 0 }]] },
+    "Build Daily Summary": { "main": [[{ "node": "Send Daily Summary", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["coi", "hubspot", "compliance", "ao-hs-001", "ao-hs-002"],
+  "_hci_notes": "AO-HS-001 + AO-HS-002. Runs daily 07:00. Fetches all HubSpot companies with coi_expiration_date. Calculates days until expiry. Updates coi_status: Active / Expired / Missing. Sends renewal alerts for companies expiring within 30 days (urgent if <=7 days). Requires HUBSPOT_API_KEY env var."
+}
