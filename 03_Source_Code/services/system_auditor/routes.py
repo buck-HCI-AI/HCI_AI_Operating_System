@@ -294,8 +294,8 @@ class SystemAuditor(BaseIntelligenceService):
             "LIVE_PROJECT_STATE.md": "Live project state",
         }
 
-        # Check in docs dir and root
-        search_dirs = [_DOCS_DIR, _ROOT, _ROOT / "03_Source_Code"]
+        # Check in docs dir, architecture dir, and root
+        search_dirs = [_DOCS_DIR, _ROOT, _ROOT / "03_Source_Code", _ROOT / "architecture"]
         for doc_name, description in spec_files.items():
             found = any((d / doc_name).exists() for d in search_dirs if d.exists())
             if found:

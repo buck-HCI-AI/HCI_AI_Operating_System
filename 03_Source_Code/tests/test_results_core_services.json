@@ -1,0 +1,157 @@
+{
+  "run_at": "2026-06-27T15:21:17.228970",
+  "passed": 37,
+  "failed": 0,
+  "total": 37,
+  "pass_rate": 100.0,
+  "tests": [
+    {
+      "test": "Health check",
+      "pass": true
+    },
+    {
+      "test": "Services index",
+      "pass": true
+    },
+    {
+      "test": "Bid intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Bid intelligence project 1",
+      "pass": true
+    },
+    {
+      "test": "Vendor intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Bid leveling service",
+      "pass": true
+    },
+    {
+      "test": "Bid leveling project 1",
+      "pass": true
+    },
+    {
+      "test": "Approval queue list",
+      "pass": true
+    },
+    {
+      "test": "Approval queue pending",
+      "pass": true
+    },
+    {
+      "test": "Historical cost root",
+      "pass": true
+    },
+    {
+      "test": "Historical cost project 1",
+      "pass": true
+    },
+    {
+      "test": "Lessons learned root",
+      "pass": true
+    },
+    {
+      "test": "Procurement root",
+      "pass": true
+    },
+    {
+      "test": "Schedule intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Risk intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Document intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Decision intelligence root",
+      "pass": true
+    },
+    {
+      "test": "KPI intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Connectors health",
+      "pass": true
+    },
+    {
+      "test": "Autonomy opportunities",
+      "pass": true
+    },
+    {
+      "test": "Autonomy report",
+      "pass": true
+    },
+    {
+      "test": "Autonomy backlog",
+      "pass": true
+    },
+    {
+      "test": "Operating rules root",
+      "pass": true
+    },
+    {
+      "test": "Business process library root",
+      "pass": true
+    },
+    {
+      "test": "Background learning root",
+      "pass": true
+    },
+    {
+      "test": "Connector registry root",
+      "pass": true
+    },
+    {
+      "test": "Houzz intelligence root",
+      "pass": true
+    },
+    {
+      "test": "Notification service",
+      "pass": true
+    },
+    {
+      "test": "Projects list",
+      "pass": true
+    },
+    {
+      "test": "Vendors list",
+      "pass": true
+    },
+    {
+      "test": "Bids list",
+      "pass": true
+    },
+    {
+      "test": "Executive morning brief",
+      "pass": true
+    },
+    {
+      "test": "Executive missions",
+      "pass": true
+    },
+    {
+      "test": "Executive mission control",
+      "pass": true
+    },
+    {
+      "test": "SOP list",
+      "pass": true
+    },
+    {
+      "test": "AI root",
+      "pass": true
+    },
+    {
+      "test": "Search root",
+      "pass": true
+    }
+  ]
+}
