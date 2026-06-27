@@ -5,6 +5,20 @@
 
 ---
 
+## v1.5 — 2026-06-27 | BTW-8 — PM Workspace: Client Comms + AI Ranked Actions
+
+**Trigger:** BTW-8 — PM Workspace additions (Strategic Backlog)
+
+**Changes:**
+- `api/routers/operations.py`: 2 new helpers + wired into `pm_weekly`:
+  - `_build_client_comm_queue(deal_id)` — queries HubSpot engagements + notes; returns days_since_contact, urgency label (CURRENT/DUE_SOON/OVERDUE), recent engagements list, recent notes
+  - `_rank_pm_actions(...)` — `priority_score = (severity × urgency × financial_impact) / max(days_remaining, 1)` — top 10 ranked actions across Budget, RFI, Procurement, Approval, Change Order, Client Comms categories
+- `pm_weekly` response: `client_comms` now live (was stub); `ai_ranked_actions` added (new field)
+- `tests/test_pm_workspace_btw8.py`: 69 tests — all passing
+- Health maintained: **95/100** | 101 Francis: 12d since contact (DUE_SOON); 1355 Riverside: 17d (OVERDUE)
+
+---
+
 ## v1.4 — 2026-06-27 | BTW-4 — Project Brain Extended Memory
 
 **Trigger:** BTW-4 — Project Brain Extended Memory (Strategic Backlog)

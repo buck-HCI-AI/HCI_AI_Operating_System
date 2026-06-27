@@ -285,7 +285,17 @@ def pm_weekly(project_id: int):
         blockers=len([r for r in rfis if r.get("days_overdue", 0) > 5]),
     )
 
-    # Priority synthesis
+    # Client communication queue (BTW-8)
+    deal_id = project.get("hubspot_deal_id")
+    client_comms = _build_client_comm_queue(deal_id)
+
+    # AI-ranked action list (BTW-8)
+    ranked_actions = _rank_pm_actions(
+        rfis, open_approvals, bid_packages, change_orders, budget_exposure,
+        client_comms, project_id
+    )
+
+    # Simple priority list for backward compatibility
     priorities = _derive_pm_priorities(rfis, open_approvals, bid_packages, change_orders, budget_exposure)
 
     return {
@@ -337,17 +347,13 @@ def pm_weekly(project_id: int):
             "items": [],
             "data_status": "pending_houzz_sync",
         },
-        "client_comms": {
-            "days_since_contact": None,
-            "open_items": 0,
-            "data_status": "pending_hubspot_sync",
-            "note": "Requires HubSpot sync — run POST /connectors/hubspot/sync",
-        },
+        "client_comms": client_comms,
         "outstanding_decisions": {
             "count": len(open_approvals),
             "items": _serialize(open_approvals[:5]),
         },
         "next_week_priorities": priorities,
+        "ai_ranked_actions": ranked_actions,
     }
 
 
@@ -794,6 +800,196 @@ def _build_daily_log_draft(project: dict, tasks: list, schedule: list) -> dict:
         "issues": "",
         "note": "Pre-filled from Houzz task and schedule data. Review and complete before submitting.",
     }
+
+def _build_client_comm_queue(deal_id: str) -> dict:
+    """
+    Build client communication queue from HubSpot data.
+    Returns days_since_contact, recent engagements, and open items requiring client response.
+    """
+    if not deal_id:
+        return {"days_since_contact": None, "open_items": 0, "data_status": "no_hubspot_deal_linked",
+                "engagements": [], "recent_notes": []}
+
+    # Days since last engagement
+    last_contact = _q1("""
+        SELECT GREATEST(
+            (SELECT MAX(he.created_at) FROM hubspot_engagements he WHERE he.deal_id = %s),
+            (SELECT MAX(hn.note_timestamp::timestamptz) FROM hubspot_notes hn WHERE hn.deal_id = %s)
+        ) AS last_contact
+    """, (deal_id, deal_id))
+
+    last_ts = last_contact.get("last_contact") if last_contact else None
+    days_since = None
+    if last_ts:
+        from datetime import timezone as tz
+        if hasattr(last_ts, 'date'):
+            days_since = (date.today() - last_ts.date()).days
+        else:
+            try:
+                from dateutil import parser as dp
+                days_since = (date.today() - dp.parse(str(last_ts)).date()).days
+            except Exception:
+                pass
+
+    # Recent engagements (last 30 days)
+    engagements = _q("""
+        SELECT engagement_type, subject, body, created_at
+        FROM hubspot_engagements
+        WHERE deal_id = %s
+          AND created_at >= NOW() - INTERVAL '30 days'
+        ORDER BY created_at DESC
+        LIMIT 5
+    """, (deal_id,))
+
+    # Recent notes
+    notes = _q("""
+        SELECT body, note_timestamp
+        FROM hubspot_notes
+        WHERE deal_id = %s
+        ORDER BY note_timestamp DESC NULLS LAST
+        LIMIT 3
+    """, (deal_id,))
+
+    # Pending client-facing decisions (all projects — filtered by urgency)
+    client_items = _q("""
+        SELECT title, deadline, business_impact,
+               (CURRENT_DATE - created_at::date) AS days_waiting
+        FROM executive_inbox
+        WHERE status = 'pending'
+        ORDER BY deadline NULLS LAST
+        LIMIT 5
+    """)
+
+    urgency_label = "OVERDUE" if days_since and days_since > 14 else \
+                    "DUE_SOON" if days_since and days_since > 7 else "CURRENT"
+
+    return {
+        "days_since_contact": days_since,
+        "urgency": urgency_label,
+        "open_items": len(client_items),
+        "pending_client_decisions": _serialize(client_items),
+        "recent_engagements": _serialize(engagements[:3]),
+        "recent_notes": [{"body": n.get("body", "")[:300], "date": str(n.get("note_timestamp", ""))} for n in notes],
+        "data_status": "live" if (engagements or notes) else "no_recent_activity",
+        "note": "Client comms sourced from HubSpot engagements + notes",
+    }
+
+
+def _rank_pm_actions(rfis, approvals, bids, change_orders, budget_exposure,
+                     client_comms: dict, project_id: int) -> list:
+    """
+    AI-ranked action list: priority_score = (severity × urgency × financial_impact) / max(days_remaining, 1)
+    Returns top 10 ranked actions for the PM's week.
+    """
+    actions = []
+
+    # Budget exposure — high financial impact
+    if budget_exposure > 0:
+        sev = 3 if budget_exposure > 50000 else 2 if budget_exposure > 10000 else 1
+        actions.append({
+            "rank": 0,
+            "category": "BUDGET",
+            "severity": "HIGH" if sev >= 3 else "MEDIUM" if sev >= 2 else "LOW",
+            "action": f"Resolve budget exposure: ${int(budget_exposure):,}",
+            "days_to_resolve": 3,
+            "financial_impact": int(budget_exposure),
+            "priority_score": round(sev * 3 * (budget_exposure / 10000) / 3, 2),
+        })
+
+    # Overdue RFIs — schedule risk
+    overdue_rfis = [r for r in rfis if (r.get("days_overdue") or 0) > 5]
+    for rfi in overdue_rfis[:3]:
+        days_overdue = int(rfi.get("days_overdue") or 0)
+        actions.append({
+            "rank": 0,
+            "category": "RFI",
+            "severity": "HIGH" if days_overdue > 10 else "MEDIUM",
+            "action": f"Resolve overdue RFI: {rfi.get('title', 'Unknown')} ({days_overdue}d overdue)",
+            "days_to_resolve": 2,
+            "financial_impact": 5000 * (days_overdue // 5),
+            "priority_score": round(3 * 3 * (days_overdue / 5) / max(1, 2), 2),
+        })
+
+    # Open bid packages — procurement risk
+    open_bids = [b for b in bids if b.get("status") not in ("awarded", "cancelled")]
+    if open_bids:
+        actions.append({
+            "rank": 0,
+            "category": "PROCUREMENT",
+            "severity": "HIGH" if len(open_bids) > 5 else "MEDIUM",
+            "action": f"Award decision on {len(open_bids)} open bid package(s)",
+            "days_to_resolve": 5,
+            "financial_impact": 0,
+            "priority_score": round(2 * 2 * len(open_bids) / 5, 2),
+        })
+
+    # Pending approvals
+    for appr in approvals[:3]:
+        days_waiting = 0
+        deadline = appr.get("deadline")
+        if deadline:
+            try:
+                from dateutil import parser as dp
+                days_to_deadline = (dp.parse(str(deadline)).date() - date.today()).days
+            except Exception:
+                days_to_deadline = 7
+        else:
+            days_to_deadline = 7
+        actions.append({
+            "rank": 0,
+            "category": "APPROVAL",
+            "severity": "HIGH" if days_to_deadline <= 2 else "MEDIUM",
+            "action": f"Approve: {appr.get('title', 'Unknown')} (deadline: {deadline or 'TBD'})",
+            "days_to_resolve": max(1, days_to_deadline),
+            "financial_impact": 0,
+            "priority_score": round(2 * 3 * 1 / max(1, days_to_deadline), 2),
+        })
+
+    # Unsigned change orders
+    unsigned_cos = [c for c in change_orders if not c.get("approved_date")]
+    if unsigned_cos:
+        co_total = sum(float(c.get("amount") or 0) for c in unsigned_cos)
+        actions.append({
+            "rank": 0,
+            "category": "CHANGE_ORDER",
+            "severity": "MEDIUM",
+            "action": f"Sign {len(unsigned_cos)} change order(s) — ${co_total:,.0f} total",
+            "days_to_resolve": 3,
+            "financial_impact": int(co_total),
+            "priority_score": round(2 * 2 * (co_total / 10000) / 3, 2),
+        })
+
+    # Client communication — overdue contact
+    days_since = client_comms.get("days_since_contact")
+    if days_since and days_since > 7:
+        actions.append({
+            "rank": 0,
+            "category": "CLIENT_COMMS",
+            "severity": "HIGH" if days_since > 14 else "MEDIUM",
+            "action": f"Client check-in overdue — {days_since} days since last contact",
+            "days_to_resolve": 1,
+            "financial_impact": 0,
+            "priority_score": round(2 * 3 * (days_since / 7) / 1, 2),
+        })
+
+    # Sort by priority_score descending, assign rank
+    actions.sort(key=lambda a: a["priority_score"], reverse=True)
+    for i, a in enumerate(actions):
+        a["rank"] = i + 1
+
+    if not actions:
+        actions.append({
+            "rank": 1,
+            "category": "STATUS",
+            "severity": "LOW",
+            "action": "All tracked items within normal parameters — verify Houzz data is current",
+            "days_to_resolve": None,
+            "financial_impact": 0,
+            "priority_score": 0,
+        })
+
+    return actions[:10]
+
 
 def _derive_pm_priorities(rfis, approvals, bids, change_orders, budget_exposure) -> list:
     priorities = []

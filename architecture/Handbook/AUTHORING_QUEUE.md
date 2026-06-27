@@ -69,7 +69,7 @@ Chief Architect resolves authoring items.
 | 4.2 | Superintendent Operating Model | 🔴 NOT STARTED | 4.1 | SUPERINTENDENT_DAILY_CONSOLE_SPEC.md | — | `api/routers/superintendent.py` | Chief Architect |
 | 4.3 | Project Manager Operating Model | 🔴 NOT STARTED | 4.1 | PM_WEEKLY_CONSOLE_SPEC.md | — | `api/routers/pm.py` | Chief Architect |
 | 4.4 | SS Console Implementation | ⚙️ IMPL ONLY | 4.2 | SUPERINTENDENT_DAILY_CONSOLE_SPEC.md | — | `api/routers/superintendent.py` | None |
-| 4.5 | PM Console Implementation | ⚙️ IMPL ONLY | 4.3 | PM_WEEKLY_CONSOLE_SPEC.md | — | `api/routers/pm.py` | None |
+| 4.5 | PM Console Implementation | ⚙️ IMPL ONLY | 4.3 | PM_WEEKLY_CONSOLE_SPEC.md | — | `api/routers/operations.py` pm_weekly + `_build_client_comm_queue` + `_rank_pm_actions` | None |
 | 4.6 | Leadership Dashboard | ⚙️ IMPL ONLY | 4.3 | LEADERSHIP_MISSION_CONTROL_SPEC.md | — | `api/routers/leadership.py` | None |
 
 ---
