@@ -1558,3 +1558,292 @@ def trade_my_work(project_id: int, trade: str = ""):
             *([ f"{len(open_pos)} open PO(s) — confirm receipt when materials arrive" ] if open_pos else []),
         ] or ["No open items — check back after next Houzz sync"],
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BTW-7 — Superintendent Field Enhancements (unblocked subset)
+# Photo documentation requires Houzz extraction — deferred.
+# Delivery tracking, inspection scheduling, material tracking, voice notes
+# are built here using available tables (houzz_purchase_orders, houzz_schedule_items,
+# houzz_tasks, houzz_daily_logs).
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _houzz_pid_for_project(project_id: int) -> str | None:
+    """Return houzz_project_id for an HCI project, or None."""
+    p = _get_project(project_id)
+    row = _q1("""
+        SELECT houzz_project_id FROM houzz_projects
+        WHERE name ILIKE %s LIMIT 1
+    """, (f"%{p.get('name','').split()[0]}%",))
+    return row.get("houzz_project_id")
+
+
+@router.get("/superintendent/{project_id}/deliveries")
+def superintendent_deliveries(project_id: int):
+    """Delivery tracking — expected PO deliveries for this project."""
+    project = _get_project(project_id)
+    today = date.today().isoformat()
+    houzz_pid = _houzz_pid_for_project(project_id)
+
+    expected_today = _q("""
+        SELECT po_number, vendor_name, description, po_amount, status,
+               expected_date, received_date
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s
+          AND expected_date::date = CURRENT_DATE
+          AND received_date IS NULL
+        ORDER BY vendor_name
+    """, (houzz_pid,)) if houzz_pid else []
+
+    expected_this_week = _q("""
+        SELECT po_number, vendor_name, description, po_amount, status,
+               expected_date, received_date
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s
+          AND expected_date::date > CURRENT_DATE
+          AND expected_date::date <= CURRENT_DATE + INTERVAL '7 days'
+          AND received_date IS NULL
+        ORDER BY expected_date, vendor_name
+    """, (houzz_pid,)) if houzz_pid else []
+
+    overdue_deliveries = _q("""
+        SELECT po_number, vendor_name, description, po_amount,
+               expected_date, status,
+               CURRENT_DATE - expected_date::date AS days_overdue
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s
+          AND expected_date::date < CURRENT_DATE
+          AND received_date IS NULL
+          AND status NOT IN ('cancelled', 'received')
+        ORDER BY expected_date
+    """, (houzz_pid,)) if houzz_pid else []
+
+    confirmed_this_week = _q("""
+        SELECT po_number, vendor_name, description, received_date
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s
+          AND received_date::date >= CURRENT_DATE - INTERVAL '7 days'
+        ORDER BY received_date DESC
+        LIMIT 5
+    """, (houzz_pid,)) if houzz_pid else []
+
+    urgency = "HIGH" if overdue_deliveries or expected_today else (
+        "MEDIUM" if expected_this_week else "LOW"
+    )
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "delivery_urgency": urgency,
+        "expected_today": {
+            "count": len(expected_today),
+            "items": _serialize(expected_today),
+        },
+        "expected_this_week": {
+            "count": len(expected_this_week),
+            "items": _serialize(expected_this_week),
+        },
+        "overdue_deliveries": {
+            "count": len(overdue_deliveries),
+            "items": _serialize(overdue_deliveries),
+        },
+        "confirmed_received": {
+            "this_week": len(confirmed_this_week),
+            "items": _serialize(confirmed_this_week),
+        },
+        "data_status": "live" if houzz_pid else "pending_houzz_sync",
+        "field_actions": [
+            *([ f"OVERDUE: {len(overdue_deliveries)} delivery(s) not yet received" ] if overdue_deliveries else []),
+            *([ f"{len(expected_today)} delivery(s) expected today — confirm receipt" ] if expected_today else []),
+            *([ f"{len(expected_this_week)} delivery(s) scheduled this week" ] if expected_this_week else []),
+        ] or ["No pending deliveries this week"],
+    }
+
+
+@router.get("/superintendent/{project_id}/inspections")
+def superintendent_inspections(project_id: int):
+    """Inspection scheduling — upcoming and overdue inspections from schedule items and tasks."""
+    project = _get_project(project_id)
+    today = date.today().isoformat()
+    houzz_pid = _houzz_pid_for_project(project_id)
+
+    def _is_inspection(title: str) -> bool:
+        return any(kw in (title or "").lower()
+                   for kw in ["inspect", "inspection", "insp", "walk", "walkthrough"])
+
+    schedule_inspections = _q("""
+        SELECT title, assignee, start_date, end_date, status, completion_pct
+        FROM houzz_schedule_items
+        WHERE project_id = %s
+          AND (LOWER(title) LIKE '%%inspect%%' OR LOWER(title) LIKE '%%walkthrough%%')
+          AND end_date::date >= CURRENT_DATE - INTERVAL '7 days'
+        ORDER BY end_date
+        LIMIT 20
+    """, (houzz_pid,)) if houzz_pid else []
+
+    task_inspections = _q("""
+        SELECT title, assigned_to, due_date, status, priority
+        FROM houzz_tasks
+        WHERE houzz_project_id = %s
+          AND (LOWER(title) LIKE '%%inspect%%' OR LOWER(title) LIKE '%%walkthrough%%')
+          AND status NOT IN ('complete', 'completed')
+        ORDER BY due_date NULLS LAST
+        LIMIT 10
+    """, (houzz_pid,)) if houzz_pid else []
+
+    due_today = [s for s in schedule_inspections
+                 if s.get("end_date") and str(s["end_date"])[:10] == today]
+    overdue = [s for s in schedule_inspections
+               if s.get("end_date") and str(s["end_date"])[:10] < today
+               and s.get("status") not in ("complete", "completed")]
+    upcoming = [s for s in schedule_inspections
+                if s.get("end_date") and str(s["end_date"])[:10] > today][:5]
+
+    urgency = "HIGH" if overdue or due_today else ("MEDIUM" if upcoming else "LOW")
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "inspection_urgency": urgency,
+        "due_today": _serialize(due_today),
+        "overdue": _serialize(overdue),
+        "upcoming_7_days": _serialize(upcoming),
+        "open_inspection_tasks": _serialize(task_inspections[:5]),
+        "data_status": "live" if (schedule_inspections or task_inspections) else "pending_houzz_sync",
+        "field_actions": [
+            *([ f"OVERDUE: {len(overdue)} inspection(s) past scheduled date" ] if overdue else []),
+            *([ f"{len(due_today)} inspection(s) due today — schedule now" ] if due_today else []),
+            *([ f"{len(upcoming)} inspection(s) coming up this week" ] if upcoming else []),
+            *([ f"{len(task_inspections)} open inspection task(s) unassigned" ] if task_inspections else []),
+        ] or ["No inspections scheduled — add to Houzz schedule"],
+    }
+
+
+@router.get("/superintendent/{project_id}/materials")
+def superintendent_materials(project_id: int):
+    """Material tracking — purchase order status by trade for a project."""
+    project = _get_project(project_id)
+    today = date.today().isoformat()
+    houzz_pid = _houzz_pid_for_project(project_id)
+
+    all_pos = _q("""
+        SELECT po_number, vendor_name, description, status,
+               po_amount, issued_date, expected_date, received_date
+        FROM houzz_purchase_orders
+        WHERE houzz_project_id = %s
+        ORDER BY expected_date NULLS LAST, vendor_name
+    """, (houzz_pid,)) if houzz_pid else []
+
+    by_status: dict = {}
+    for po in all_pos:
+        s = po.get("status") or "unknown"
+        by_status.setdefault(s, []).append(po)
+
+    total_value = sum(float(p.get("po_amount") or 0) for p in all_pos)
+    received_value = sum(float(p.get("po_amount") or 0) for p in all_pos if p.get("received_date"))
+    pending_value = total_value - received_value
+
+    critical_missing = [p for p in all_pos
+                        if not p.get("received_date")
+                        and p.get("expected_date")
+                        and str(p["expected_date"])[:10] <= (date.today() + timedelta(days=3)).isoformat()]
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "summary": {
+            "total_pos": len(all_pos),
+            "total_value": total_value,
+            "received_value": received_value,
+            "pending_value": pending_value,
+            "pct_received": round(received_value / total_value * 100, 1) if total_value > 0 else 0,
+        },
+        "by_status": {status: _serialize(items) for status, items in by_status.items()},
+        "critical_needed_soon": {
+            "count": len(critical_missing),
+            "items": _serialize(critical_missing),
+        },
+        "data_status": "live" if all_pos else "pending_houzz_sync",
+        "field_actions": [
+            *([ f"CRITICAL: {len(critical_missing)} material(s) needed within 3 days — confirm ETA" ] if critical_missing else []),
+            *([ f"${pending_value:,.0f} in materials still pending receipt" ] if pending_value > 0 else []),
+        ] or ["All tracked materials received"],
+    }
+
+
+@router.post("/superintendent/{project_id}/voice-note")
+def superintendent_voice_note(project_id: int, request: dict):
+    """
+    Voice note injection — accepts transcription text and injects into daily log.
+    Payload: { "transcription": str, "note_type": "observation|issue|decision|safety", "location": str }
+    """
+    from fastapi import Body
+    project = _get_project(project_id)
+    today = date.today().isoformat()
+
+    transcription = request.get("transcription", "").strip()
+    if not transcription:
+        from fastapi import HTTPException
+        raise HTTPException(400, "transcription is required")
+
+    note_type = request.get("note_type", "observation")
+    location = request.get("location", "")
+
+    valid_types = {"observation", "issue", "decision", "safety", "inspection"}
+    if note_type not in valid_types:
+        note_type = "observation"
+
+    tag_prefix = {
+        "observation": "[OBS]",
+        "issue": "[ISSUE]",
+        "decision": "[DECISION]",
+        "safety": "[SAFETY]",
+        "inspection": "[INSPECTION]",
+    }.get(note_type, "[NOTE]")
+
+    formatted = f"{tag_prefix} {transcription}"
+    if location:
+        formatted = f"{formatted} @ {location}"
+
+    import uuid as _uuid
+    log_id = f"VN-{today}-{str(_uuid.uuid4())[:8]}"
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO houzz_daily_logs
+                        (houzz_log_id, project_id, log_date, content, author, synced_at)
+                    VALUES (
+                        %s,
+                        (SELECT houzz_project_id FROM houzz_projects
+                         WHERE name ILIKE %s LIMIT 1),
+                        %s, %s, 'voice_note', NOW()
+                    )
+                    ON CONFLICT (houzz_log_id) DO NOTHING
+                """, (log_id, f"%{project.get('name','').split()[0]}%", today, formatted))
+                conn.commit()
+        db_status = "saved"
+    except Exception:
+        db_status = "pending_houzz_sync"
+
+    return {
+        "project_id": project_id,
+        "project_code": project["code"],
+        "project_name": project.get("name"),
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "date": today,
+        "note_type": note_type,
+        "location": location,
+        "transcription": transcription,
+        "formatted_entry": formatted,
+        "db_status": db_status,
+    }

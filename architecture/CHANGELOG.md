@@ -5,6 +5,22 @@
 
 ---
 
+## v2.0 — 2026-06-27 | BTW-7 — Superintendent Field Enhancements (Unblocked Subset)
+
+**Trigger:** BTW-7 — Superintendent Workspace (Strategic Backlog)
+
+**Changes:**
+- `api/routers/operations.py`: 4 new superintendent field endpoints:
+  - `GET /superintendent/{project_id}/deliveries` — PO delivery tracking (expected today, this week, overdue, confirmed received) from `houzz_purchase_orders`
+  - `GET /superintendent/{project_id}/inspections` — inspection scheduling (due today, overdue, upcoming 7d) from `houzz_schedule_items` + `houzz_tasks` LIKE pattern
+  - `GET /superintendent/{project_id}/materials` — material tracking by status, value summary, critical-needed-soon (within 3 days) from `houzz_purchase_orders`
+  - `POST /superintendent/{project_id}/voice-note` — voice note injection: accepts transcription + note_type + location, formats with tags ([OBS]/[ISSUE]/[DECISION]/[SAFETY]/[INSPECTION]), saves to `houzz_daily_logs`
+- `tests/test_btw7_field_enhancements.py`: 97/97 tests across 3 projects + all note types
+- **Deferred (Buck-gated):** Photo documentation (`houzz_files`) — requires Houzz Browser extraction first
+- Health maintained: **95/100**
+
+---
+
 ## v1.9 — 2026-06-27 | BTW-5 — Role Intelligence: 5 New Role Consoles
 
 **Trigger:** BTW-5 — Role Intelligence (Strategic Backlog)
