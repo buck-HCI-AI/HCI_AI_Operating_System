@@ -191,7 +191,7 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 |---|---|---|
 | Public HTTP endpoint | 🟢 LIVE | `https://speculate-armband-retinal.ngrok-free.dev/project-state` (no auth) |
 | Google Drive | 🟢 LIVE | `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` |
-| GitHub raw URL | 🔴 Private repo — 404 without auth | Make repo public for unauthenticated access (Buck decision) |
+| GitHub raw URL | 🟢 LIVE | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md` |
 | MCP | ❌ NOT for ChatGPT | Claude-only protocol |
 
 ---
