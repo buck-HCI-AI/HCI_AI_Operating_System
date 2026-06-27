@@ -18,10 +18,12 @@ class HubSpotMiner(BaseMiner):
         try:
             deals = self._mine_deals(result)
             contacts = self._mine_contacts(result)
+            companies = self._mine_companies(result)
             tasks = self._mine_tasks(result)
             result.summary = {
                 "deals_scanned": deals,
                 "contacts_scanned": contacts,
+                "companies_scanned": companies,
                 "tasks_scanned": tasks,
             }
             return self.complete_run(run_id, result)
@@ -35,7 +37,6 @@ class HubSpotMiner(BaseMiner):
             FROM hubspot_deals d
             LEFT JOIN projects p ON p.hubspot_deal_id = d.hubspot_deal_id
             ORDER BY d.last_modified DESC NULLS LAST
-            LIMIT 50
         """)
         result.records_scanned += len(deals)
 
@@ -59,7 +60,6 @@ class HubSpotMiner(BaseMiner):
                    c.email, c.phone, c.job_title
             FROM hubspot_contacts c
             ORDER BY c.synced_at DESC NULLS LAST
-            LIMIT 100
         """)
         result.records_scanned += len(contacts)
 
@@ -98,13 +98,52 @@ class HubSpotMiner(BaseMiner):
 
         return len(contacts)
 
+    def _mine_companies(self, result: MiningResult) -> int:
+        companies = self._query("""
+            SELECT c.hubspot_company_id, c.name as company_name, c.domain, c.industry, c.city, c.state
+            FROM hubspot_companies c
+            ORDER BY c.synced_at DESC NULLS LAST
+        """)
+        result.records_scanned += len(companies)
+
+        for co in companies:
+            name = co.get("company_name") or ""
+            if not name:
+                continue
+            existing = self._query_one(
+                "SELECT id FROM vendors WHERE company_name ILIKE %s LIMIT 1",
+                (f"%{name}%",)
+            )
+            if not existing:
+                self.queue_for_approval(
+                    action_type="vendor_candidate",
+                    title=f"New vendor candidate (company): {name}",
+                    description=(
+                        f"HubSpot company '{name}' (industry: {co.get('industry','unknown')}, "
+                        f"{co.get('city','')}, {co.get('state','')}) "
+                        "is not in the Vendor Registry. Approve to add."
+                    ),
+                    payload={
+                        "company_name": name,
+                        "domain": co.get("domain"),
+                        "industry": co.get("industry"),
+                        "city": co.get("city"),
+                        "state": co.get("state"),
+                        "hubspot_company_id": co["hubspot_company_id"],
+                    },
+                    priority="low"
+                )
+                result.items_queued_for_review += 1
+                result.intelligence_extracted += 1
+
+        return len(companies)
+
     def _mine_tasks(self, result: MiningResult) -> int:
         tasks = self._query("""
             SELECT t.hubspot_task_id, t.subject, t.status, t.due_timestamp
             FROM hubspot_tasks t
             WHERE t.status = 'COMPLETED'
             ORDER BY t.synced_at DESC NULLS LAST
-            LIMIT 50
         """)
         result.records_scanned += len(tasks)
 
