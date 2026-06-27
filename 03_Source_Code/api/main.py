@@ -74,6 +74,7 @@ predictive_routes       = _load_svc("predictive_engine")
 auditor_routes          = _load_svc("system_auditor")
 arch_sync_routes        = _load_svc("architecture_sync")
 kg_routes               = _load_svc("knowledge_graph")
+cd_routes               = _load_svc("continuous_discovery")
 
 from routers.mining import router as mining_router
 
@@ -165,6 +166,7 @@ svc.include_router(predictive_routes,   prefix="/predictive-engine",           t
 svc.include_router(auditor_routes,      prefix="/system-auditor",              tags=["system-auditor"])
 svc.include_router(arch_sync_routes,    prefix="/architecture-sync",           tags=["architecture-sync"])
 svc.include_router(kg_routes,           prefix="/knowledge-graph",             tags=["knowledge-graph"])
+svc.include_router(cd_routes,           prefix="/continuous-discovery",        tags=["continuous-discovery"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
@@ -191,6 +193,7 @@ def list_services():
         {"name": "connectors",                  "status": "active",   "path": "/api/v1/services/connectors"},
         {"name": "notifications",               "status": "active",   "path": "/api/v1/services/notifications"},
         {"name": "knowledge-graph",             "status": "active",   "path": "/api/v1/services/knowledge-graph"},
+        {"name": "continuous-discovery",        "status": "active",   "path": "/api/v1/services/continuous-discovery"},
     ]}
 
 v1.include_router(svc)

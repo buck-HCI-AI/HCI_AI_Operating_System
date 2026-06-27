@@ -5,6 +5,29 @@
 
 ---
 
+## v2.2 — 2026-06-27 | BTW-10 — Continuous Discovery Engine (Infrastructure)
+
+**Trigger:** BTW-10 — Continuous Discovery Engine (Strategic Backlog)
+
+**Changes:**
+- `services/continuous_discovery/` — new service:
+  - `detection.py` — change detection engine: compares connector sync state vs current DB record counts; stale thresholds (HubSpot: 2h, Houzz: 26h); detects: `CHANGES_DETECTED | NO_CHANGES | STALE | ERROR | NO_DATA`; logs scans to `platform_events`
+  - `routes.py` — 3 endpoints:
+    - `GET /services/continuous-discovery` — service info + schedule + flow description
+    - `GET /services/continuous-discovery/detect` — run detection across all connectors
+    - `GET /services/continuous-discovery/detect/{name}` — single connector detection
+    - `POST /services/continuous-discovery/scan-and-notify` — detect + log to platform_events (used by n8n)
+- `workflows/n8n/AUTO-CONTINUOUS-DISCOVERY.json` — dual-trigger workflow:
+  - HubSpot: every hour (cron `0 * * * *`)
+  - Houzz: nightly 02:00 (cron `0 2 * * *`)
+  - Evaluates status → ntfy only if CHANGES_DETECTED / ERROR / STALE
+- `api/main.py` — continuous-discovery service registered
+- `tests/test_btw10_continuous_discovery.py` — 55/55 tests
+- **Deferred (Buck-gated):** Houzz Browser extraction → full delta ingest flow (step 3+ of BTW-10 flow)
+- Health maintained: **95/100**
+
+---
+
 ## v2.1 — 2026-06-27 | BTW-9 — Company Knowledge Graph
 
 **Trigger:** BTW-9 — Company Knowledge Graph (Strategic Backlog)
