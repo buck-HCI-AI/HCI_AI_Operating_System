@@ -191,7 +191,7 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 |---|---|---|
 | Public HTTP endpoint | 🟢 LIVE | `https://speculate-armband-retinal.ngrok-free.dev/project-state` (no auth) |
 | Google Drive | 🟢 LIVE | `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` |
-| GitHub raw URL | 🟢 LIVE (after push) | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md` |
+| GitHub raw URL | 🟢 LIVE | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md` |
 | MCP | ❌ NOT for ChatGPT | Claude-only protocol |
 
 ---
@@ -200,4 +200,6 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 - **Location:** /Users/buckadams/HCI_AI_Operating_System (local Mac)
 - **GitHub:** https://github.com/buck-HCI-AI/HCI_AI_Operating_System
 - **Branch:** main (merged 2026-06-26)
+- **GitHub URL:** https://github.com/buck-HCI-AI/HCI_AI_Operating_System
+- **GitHub raw (LIVE_PROJECT_STATE):** https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md
 - **Last Commit:** Merge: Implementation + Program Repository unified
