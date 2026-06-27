@@ -5,6 +5,29 @@
 
 ---
 
+## v1.4 — 2026-06-27 | BTW-4 — Project Brain Extended Memory
+
+**Trigger:** BTW-4 — Project Brain Extended Memory (Strategic Backlog)
+
+**Changes:**
+- Migration `016_project_extended_memory.sql`: 4 new tables — `project_events`, `project_ai_conversations`, `project_document_links`, `project_daily_summaries`
+- `services/project_brain/routes.py`: 6 new endpoints:
+  - `GET /{project_id}/timeline` — chronological event timeline
+  - `POST /{project_id}/events` — log project event
+  - `GET /{project_id}/conversations` — AI interaction history
+  - `GET /{project_id}/document-links` — document-to-entity relationships
+  - `POST /{project_id}/document-links` — create document link
+  - `GET /{project_id}/daily-summary` — cached daily AI summary (generated + stored)
+- `services/project_brain/models.py`: `EventCreate` + `DocumentLinkCreate` models
+- `workflows/n8n/AUTO-DAILY-PROJECT-SUMMARY.json`: 5PM daily workflow — generates summaries for all 3 pilot projects + ntfy push
+- Conversation memory auto-logged on every non-cached `/query` call
+- `tests/test_project_brain_extended.py`: 36 tests — all passing
+- Health maintained: **95/100** | Test coverage: 90%
+
+**ADRs Created:** None (consistent with existing patterns)
+
+---
+
 ## v1.3 — 2026-06-27 | Definition of Done Codified + BTW-3 Complete
 
 **Trigger:** Directive.docx — Permanent Engineering Standard: 14-step Definition of Done

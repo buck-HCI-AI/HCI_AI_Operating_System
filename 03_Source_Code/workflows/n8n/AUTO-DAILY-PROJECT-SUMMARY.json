@@ -1,0 +1,95 @@
+{
+  "name": "AUTO-DAILY-PROJECT-SUMMARY",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 17,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily-5pm",
+      "name": "Daily 5:00 PM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate summaries for all 3 active pilot projects\nreturn [\n  { json: { project_id: 1, code: '64EW' } },\n  { json: { project_id: 2, code: '101F' } },\n  { json: { project_id: 3, code: '1355R' } }\n];"
+      },
+      "id": "project-list",
+      "name": "Active Projects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://localhost:8000/api/v1/services/project-brain/{{ $json.project_id }}/daily-summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "options": { "timeout": 60000 }
+      },
+      "id": "get-daily-summary",
+      "name": "Generate Daily Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const summaries = $input.all();\nconst lines = [];\n\nfor (const item of summaries) {\n  const s = item.json;\n  const health_icon = s.health === 'GREEN' ? '🟢' : s.health === 'YELLOW' ? '🟡' : '🔴';\n  const name = s.project_name || 'Project';\n  lines.push(`${health_icon} ${name}: ${s.health}`);\n  if (s.key_risks && s.key_risks.length > 0) {\n    lines.push(`  Risks: ${s.key_risks.map(r => r.title).join('; ')}`);\n  }\n  if (s.decisions_open > 0) {\n    lines.push(`  Open decisions: ${s.decisions_open}`);\n  }\n}\n\nconst all_green = summaries.every(i => i.json.health === 'GREEN');\nconst any_red   = summaries.some(i => i.json.health === 'RED');\nconst priority  = any_red ? 'urgent' : all_green ? 'default' : 'high';\n\nreturn [{\n  json: {\n    title: `EOD Project Summaries — ${new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'})}`,\n    message: lines.join('\\n'),\n    priority: priority\n  }\n}];"
+      },
+      "id": "build-summary",
+      "name": "Build ntfy Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Content-Type", "value": "text/plain" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "send-ntfy",
+      "name": "Send ntfy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Daily 5:00 PM": { "main": [[{ "node": "Active Projects", "type": "main", "index": 0 }]] },
+    "Active Projects": { "main": [[{ "node": "Generate Daily Summary", "type": "main", "index": 0 }]] },
+    "Generate Daily Summary": { "main": [[{ "node": "Build ntfy Message", "type": "main", "index": 0 }]] },
+    "Build ntfy Message": { "main": [[{ "node": "Send ntfy", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["automation", "project-brain", "daily"]
+}

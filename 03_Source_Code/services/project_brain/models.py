@@ -38,6 +38,30 @@ class BidPackageSummary(BaseModel):
     spread_pct: Optional[float]
 
 
+class EventCreate(BaseModel):
+    event_type: str = Field(..., description="milestone|risk|decision|change_order|document|issue|resolution|note")
+    event_date: Optional[str] = Field(default=None, description="ISO date (YYYY-MM-DD); defaults to today")
+    title: str
+    description: Optional[str] = None
+    source_table: Optional[str] = None
+    source_id: Optional[int] = None
+    created_by: str = Field(default="user")
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class DocumentLinkCreate(BaseModel):
+    document_type: str = Field(..., description="bid|meeting|daily_log|drive_file|houzz_file|hubspot_note|email")
+    document_id: str
+    document_name: str
+    document_date: Optional[str] = None
+    linked_entity_type: str = Field(..., description="decision|risk|change_order|milestone|issue|vendor")
+    linked_entity_id: Optional[str] = None
+    linked_entity_name: Optional[str] = None
+    relationship: str = Field(default="documented", description="drove|supported|contradicted|documented|resolved")
+    notes: Optional[str] = None
+    created_by: str = Field(default="user")
+
+
 class ProjectSnapshot(BaseModel):
     project_number: str
     name: str

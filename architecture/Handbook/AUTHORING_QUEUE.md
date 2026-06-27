@@ -57,6 +57,7 @@ Chief Architect resolves authoring items.
 | 3.3 | Snapshot Architecture | ⚙️ IMPL ONLY | — | — | — | `project_brain_snapshots` table | None |
 | 3.4 | Risk Detection Methodology | 🔴 NOT STARTED | 3.1 | — | ADR-003 | `_detect_risks()` | Chief Architect |
 | 3.5 | Cross-Project Aggregation | ⚙️ IMPL ONLY | — | — | ADR-002 | `services/cross_project/routes.py` | None |
+| 3.6 | Extended Memory | ⚙️ IMPL ONLY | — | BTW-4 (STRATEGIC_BACKLOG.md) | — | `project_events`, `project_ai_conversations`, `project_document_links`, `project_daily_summaries` + 6 new endpoints | None |
 
 ---
 

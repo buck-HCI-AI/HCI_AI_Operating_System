@@ -93,6 +93,7 @@
 
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
+| 2026-06-27 | 2.1 | BTW-4: Project Brain Extended Memory — 4 tables, 6 endpoints, 36 tests | Claude Code |
 | 2026-06-27 | 2.0 | Handbook v2 workspace created; 10-volume reorganization; authoring pipeline activated | Claude Code |
 | 2026-06-27 | 1.1 | Browser discovery gap analysis: 3 bugs fixed, health 85→95/100 | Claude Code |
 | 2026-06-27 | 1.0 | Initial Architecture Handbook workspace (BTW-3) | Claude Code |
