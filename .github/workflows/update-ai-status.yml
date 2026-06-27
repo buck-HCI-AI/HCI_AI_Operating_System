@@ -1,12 +1,10 @@
 name: Update AI Status
 
 on:
-  push:
-    branches: [main]
-  schedule:
-    # Runs daily at 6AM MDT (12:00 UTC)
-    - cron: '0 12 * * *'
   workflow_dispatch:
+
+# Requires repo Settings → Actions → General → Workflow permissions = "Read and write"
+# to enable auto-push. Until then, run manually via GitHub Actions tab when needed.
 
 jobs:
   update-status:
