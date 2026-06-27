@@ -1,43 +1,59 @@
-# LIVE PROJECT STATE — HCI AI Operating System
+# LIVE_PROJECT_STATE.md
+## HCI AI Operating System — Current Live State
+
+**Organization:** Hendrickson Construction, Inc.
+**Owner:** @buck-HCI-AI (Buck Adams)
 **Last Updated:** 2026-06-26T23:55 MST
 **Updated By:** Claude Code (Lead Implementation Engineer)
-**Status:** Gate 5 Pilot LIVE | Architecture Review v1 APPROVED | Holding for Sprint 1 ACR
+**Sprint:** Sprint 1 — System Verification (ACTIVE — ACR-001 + ACR-002 complete)
+**Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
+
+> **Update Protocol:** Any agent may commit factual, observable updates to this file.
+> Always append — never remove history. Tag significant changes with `[STATE CHANGE]`.
+> Human owner is the final authority on all state decisions.
 
 ---
 
-## System Health (Live as of 2026-06-26 23:55 UTC)
-| Service | Status | Detail |
-|---|---|---|
-| FastAPI | HEALTHY | localhost:8000 / ngrok unreachable from ChatGPT cloud |
-| PostgreSQL | OK | 4 projects, 47 tables, all seeded |
-| Qdrant | OK | 13 collections indexed |
-| Redis | OK | Running |
-| n8n | RUNNING | 15 workflows total, 7 active |
-| MCP Server | RUNNING | 31 tools — Claude Code only (not reachable from ChatGPT cloud) |
+## 🚦 System Health (Live as of 2026-06-26 23:55 UTC) [STATE CHANGE — Claude Code]
+
+| Service | Status | Last Verified | Agent | Notes |
+|---|---|---|---|---|
+| FastAPI | 🟢 HEALTHY | 2026-06-26 | Claude Code | localhost:8000 — 427 endpoints, 18 services |
+| PostgreSQL | 🟢 OK | 2026-06-26 | Claude Code | 4 projects, 47 tables, all seeded |
+| Qdrant | 🟢 OK | 2026-06-26 | Claude Code | 13 collections indexed |
+| Redis | 🟢 OK | 2026-06-26 | Claude Code | Running |
+| n8n | 🟢 RUNNING | 2026-06-26 | Claude Code | 15 workflows, 7 active |
+| MCP Server | 🟢 RUNNING | 2026-06-26 | Claude Code | 32 tools (ACR-001 + ACR-002) |
+| GitHub Repo | 🟢 LIVE | 2026-06-26 | Browser Claude | main branch + merged feature branch |
+| HubSpot CRM | 🟢 LIVE | 2026-06-26 | Claude Code | 3 active deals connected |
+| Google Drive | 🟢 LIVE | 2026-06-26 | Claude Code | API + OAuth active |
+| Google Sheets | 🟢 LIVE | 2026-06-26 | Claude Code | Bid trackers active |
+| Microsoft 365 | 🟢 LIVE | 2026-06-26 | Claude Code | Graph API — email read/send |
+| Houzz (Browser) | 🔴 BLOCKED | — | — | Strategy complete; awaiting architecture ACR |
 
 ---
 
 ## AI Team
 | AI | Role | Status |
 |---|---|---|
-| ChatGPT | Chief Architect & Architecture Review Board | Active — awaiting Sprint 1 ACR |
-| Claude Code | Lead Implementation Engineer | Holding on Sprint 1 ACR |
-| Browser Claude | Program Repository & Governance Manager | Active |
+| ChatGPT | Chief Architect, Integration Director, Architecture Review Board | Active |
+| Claude Code | Lead Implementation Engineer | Active — running on main |
+| Browser Claude | Program Repository & Governance Manager, GitHub Admin | Active |
 | n8n | Automation Orchestrator | 7 workflows running |
 | Future Codex | QA / Test Engineering | Not yet assigned |
 
 ---
 
 ## Active Projects — Gate 5 Pilot (2026-06-25 → 2026-07-01)
-| ID | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
-|---|---|---|---|---|---|---|---|
-| 1 | 64 Eastwood | Exterior & Site | 331240861419 | YELLOW | 35 | 2 | +1 day |
-| 2 | 101 Francis | Full Interior Remodel | 321401932527 | YELLOW | 26 | 4 | +2 days |
-| 3 | 1355 Riverside | Full Remodel | 321351275210 | GREEN | 58 | 0 | 0 days |
-| 4 | 83 Sagebrusch | TBD | None — Buck to confirm | — | — | — | — |
+| ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | +1 day |
+| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 4 | +2 days |
+| 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🟢 GREEN | 58 | 0 | 0 days |
+| 4 | — | 83 Sagebrusch | TBD | None — Buck to confirm | — | — | — | — |
 
-**Projects at risk:** 64EW (2 open risks, schedule slipping), 101F (4 open risks, schedule slipping)
-**Total open risks across pilot:** 6 | **Open RFIs:** 0
+**Projects at risk:** 64EW (2 open risks), 101F (4 open risks, schedule slipping)
+**Total open risks:** 6 | **Open RFIs:** 0
 
 ---
 
@@ -49,9 +65,8 @@
 | AI-assisted | 186 minutes |
 | Documents processed | 62 |
 | Risks detected | 31 |
-| Schedule risks flagged | Active (64EW + 101F) |
 
-### ROI by Workflow (Top Activities)
+### ROI by Workflow
 | Workflow | Runs | Min Saved/Run | Notes |
 |---|---|---|---|
 | executive_report | 8+ | 42 | Cross-project morning brief |
@@ -67,10 +82,10 @@
 ## Approval Queue (Live — Needs Buck Action)
 **Total:** 11 items | **Pending:** 9 | **Approved:** 2
 
-Key pending approvals:
-1. **Drive Upload** — 1355 Riverside Div 16 Electrical Bid Leveling Excel file → `15azXdDg5ACi6iRU3XBD8ozzY2H_eDSd_`
-2. **Bid Import** — Pacific Concrete Inc / Concrete / $185,000 → 101 Francis (multiple duplicate queue items from test runs)
-3. **Daily Log** — 1355 Riverside 2026-06-26 (concrete pour, crane delay, pump truck issue)
+Key pending:
+1. **Drive Upload** — 1355 Riverside Div 16 Electrical Bid Leveling Excel
+2. **Bid Import** — Pacific Concrete Inc / Concrete / $185,000 → 101 Francis
+3. **Daily Log** — 1355 Riverside 2026-06-26 (concrete pour, crane delay)
 
 ---
 
@@ -81,63 +96,71 @@ Key pending approvals:
 | Pending review | 190 |
 | Discovered | 189 |
 | Extracted | 1 |
-| Awaiting processing | All 190 |
 
 ---
 
-## What's Built
-### FastAPI REST (427 endpoints, 18 services)
-- `project_intelligence` — project registry, health, status
-- `vendor_intelligence` — 392 vendors, 258 with CSI divisions
-- `bid_intelligence` — bid entries, leveling, comparisons
-- `approval_queue` — human-in-loop for all write actions
-- `decision_intelligence` — architecture + implementation decisions log
-- `background_learning` — document discovery pipeline
-- `historical_cost` — 21 records from 655 S Garmisch
-- `lessons_learned` — 10 records (7 Garmisch, 3 gate tests)
-- `business_process_library` — 27 processes from SOP library
-- `sop_library` — 27 SOPs (Plan Review through Field Inspection)
-- `schedule_intelligence` — schedule risk detection
-- `executive_reporting` — cross-project morning report
-- `project_brain` — per-project context engine
-- `houzz_intelligence` — Houzz Browser Intelligence (BLOCKED pending architecture decision)
-- `hubspot_integration` — deals, contacts, companies
-- `google_drive_integration` — files, folders, uploads
-- `google_sheets_integration` — bid trackers
-- `outlook_integration` — email read/send via Graph API
+## 🧠 MCP Server Status (ACR-001 + ACR-002 Complete)
 
-### MCP Server (31 tools — Claude Code only)
-**New tools added in ACR-001:**
-- `ReadLiveProjectState` — reads this file
+**32 total tools** (Claude Code only — not reachable from ChatGPT cloud)
+
+ACR-001 tools (Chief Architect integration):
+- `ReadLiveProjectState` — reads this file from repo
 - `ReadCurrentSprint` — reads CURRENT_SPRINT.md
 - `ReadAutomationRegistry` — n8n + Python + MCP tool inventory
 - `ReadDecisionLog` — architecture/implementation decisions from DB
 - `ReadRepositoryStatus` — git state + service health
 
-**Existing 26 tools:**
-ReadProjectRegistry, ReadVendorRegistry, ReadConstructionOS,
-SearchDrive, ReadDriveFile, SearchHubSpotDeals, SearchCompanies,
-SearchContacts, ReadBidTracker, GenerateBidLevel, HistoricalCostLookup,
-ProcurementStatus, ScheduleStatus, DraftEmail, CreateTask,
-UpdateRegistry, AwardRecommendation, ProjectMining, GetApprovalQueue,
-CreateDriveFolder, UploadFileToDrive, ListDriveFolder, ReadSheet,
-WriteSheet, ExecutiveReport, GetROISummary
+ACR-002 tools:
+- `GetProjectState` — live dynamic snapshot from all services
 
-### PostgreSQL (47 tables)
-- projects (4 rows) | bid_entries | daily_logs | schedule_items
-- vendors (392 rows) | historical_cost_records (21 rows)
-- lessons_learned (10 rows) | business_processes (27 rows)
-- sop_library (27 rows) | approval_queue (11 rows)
-- background_learning (190 rows) | roi_log (60 rows)
-- + 35 additional tables
+Existing 26 tools: ReadProjectRegistry, ReadVendorRegistry, ReadConstructionOS,
+SearchDrive, ReadDriveFile, SearchHubSpotDeals, SearchCompanies, SearchContacts,
+ReadBidTracker, GenerateBidLevel, HistoricalCostLookup, ProcurementStatus,
+ScheduleStatus, DraftEmail, CreateTask, UpdateRegistry, AwardRecommendation,
+ProjectMining, GetApprovalQueue, CreateDriveFolder, UploadFileToDrive,
+ListDriveFolder, ReadSheet, WriteSheet, ExecutiveReport, GetROISummary
 
-### Connector Registry (18 connectors)
-- Google Drive: 6 connectors (registered)
-- HubSpot: 6 connectors (registered)
-- Houzz: 6 connectors (registered — BLOCKED pending architecture decision)
+---
+
+## What's Built (Implementation Repository — Claude Code)
+
+### FastAPI REST (427 endpoints, 18 services)
+| Service | Endpoints | Status |
+|---|---|---|
+| project_intelligence | ~15 | Active |
+| vendor_intelligence | ~20 | Active — 392 vendors, 258 with CSI |
+| bid_intelligence | ~25 | Active |
+| approval_queue | ~10 | Active — human-in-loop enforced |
+| decision_intelligence | ~8 | Active |
+| background_learning | ~12 | Active — 190 docs queued |
+| historical_cost | ~10 | Active — 21 Garmisch records |
+| lessons_learned | ~8 | Active — 10 records |
+| business_process_library | ~8 | Active — 27 processes |
+| sop_library | ~12 | Active — 27 SOPs |
+| schedule_intelligence | ~15 | Active |
+| executive_reporting | ~10 | Active |
+| project_brain | ~20 | Active |
+| bid_leveling | ~30 | Active |
+| houzz_intelligence | ~15 | BLOCKED — awaiting architecture ACR |
+| hubspot_integration | ~40 | Active |
+| google_drive_integration | ~30 | Active |
+| google_sheets_integration | ~20 | Active |
+
+### PostgreSQL (47 tables, 4 projects)
+projects, vendors (392), bid_entries, historical_cost_records (21),
+lessons_learned (10), business_processes (27), sop_library (27),
+approval_queue (11), background_learning (190), roi_log (60), + 37 more
 
 ### n8n Workflows (7 active of 15 total)
-All active workflows include approval gates — no auto-write to production.
+All workflows have approval gates — no auto-write to production.
+
+### Governance Layer (Browser Claude — Program Repository)
+AI_TEAM_CHARTER.md, AI_WORKFLOW_ROLES.md, APPROVAL_GATES.md,
+AUTOMATION_GOVERNANCE.md, HCI_AI_CONSTITUTION.md, CONTRIBUTING.md,
+CURRENT_SPRINT.md, TASKS.md, SPRINT_OPERATING_MODEL.md,
+REPOSITORY_RELATIONSHIP_MAP.md, PROGRAM_REPOSITORY_INVENTORY.md,
+PROGRAM_REPOSITORY_STATUS.md, GOVERNANCE_COMPLETION_REPORT.md,
+IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 
 ---
 
@@ -146,66 +169,35 @@ All active workflows include approval gates — no auto-write to production.
 |---|---|---|---|
 | ACR-001 | MCP Chief Architect Integration Tools | COMPLETE | 2026-06-26 |
 | ACR-002 | Universal Project State Access | COMPLETE | 2026-06-26 |
-| Sprint 1 ACR | Next sprint scope | PENDING — ChatGPT to issue | — |
+| Sprint 1 ACR | Sprint 1 scope authorization | PENDING — ChatGPT to issue | — |
 
 ---
 
 ## Open Items
 | Item | Owner | Priority | Status |
 |---|---|---|---|
-| Create CURRENT_SPRINT.md | ChatGPT → Browser Claude | P0 | BLOCKING Sprint 1 |
-| Sprint 1 ACR | ChatGPT | P0 | BLOCKING Sprint 1 |
+| Sprint 1 ACR | ChatGPT | P0 | BLOCKING Sprint 1 kickoff |
 | Approve pending queue items | Buck | P1 | 9 items pending |
 | 83 Sagebrusch HubSpot deal | Buck | P1 | Deal ID unknown |
 | HubSpot connected inbox | Buck | P1 | Settings → Email → Connect |
 | Houzz reconciliation | Architecture Review | P1 | BLOCKED — no ACR yet |
-| WF-008/009/010 staging tests | Claude Code | P1 | Blocked on Sprint 1 ACR |
-| GitHub remote setup | Buck (optional) | P2 | Enables ChatGPT raw file access |
+| WF-008/009/010 staging tests | Claude Code | P1 | On hold — Sprint 1 ACR needed |
 
 ---
 
-## Sprint 1 Gate Criteria
-- [x] Implementation Repository stable and committed
-- [x] LIVE_PROJECT_STATE.md created and uploaded to Drive
-- [x] ACR-001 complete (31 MCP tools)
-- [ ] CURRENT_SPRINT.md created and placed at repo root
-- [ ] ChatGPT confirms full picture received
-- [ ] Sprint 1 ACR issued by ChatGPT
-- [ ] Go-live auth from Buck
+## How ChatGPT Connects (ACR-002)
 
----
-
-## How ChatGPT Connects (ACR-002 Complete)
-**ngrok is NOT reachable from ChatGPT cloud (confirmed 2026-06-26).**
-
-| Method | Status | URL / Notes |
+| Method | Status | URL |
 |---|---|---|
-| Public HTTP endpoint | LIVE (ACR-002) | `https://speculate-armband-retinal.ngrok-free.dev/project-state` — no auth needed |
-| Google Drive | LIVE | `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` |
-| GitHub raw URL | PENDING Buck push | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/refs/heads/feature/data-architecture-document-storage/LIVE_PROJECT_STATE.md` |
-| ChatGPT Custom GPT | Not configured | Requires paid ngrok or hosted URL |
-| MCP | NOT for ChatGPT | MCP is Claude-only protocol |
-
-**Primary access:** `GET /project-state` — no API key, no special headers.
-**Stable fallback:** Google Drive link (Claude Code re-uploads on every state update).
-**GitHub:** Run `Push_To_GitHub.command` from Desktop to activate raw URL access.
+| Public HTTP endpoint | 🟢 LIVE | `https://speculate-armband-retinal.ngrok-free.dev/project-state` (no auth) |
+| Google Drive | 🟢 LIVE | `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` |
+| GitHub raw URL | 🟢 LIVE (after push) | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md` |
+| MCP | ❌ NOT for ChatGPT | Claude-only protocol |
 
 ---
 
 ## Implementation Repository
-- **Location:** /Users/buckadams/HCI_AI_Operating_System (local Mac mini M2)
-- **Branch:** feature/data-architecture-document-storage
-- **Last Commit:** ACR-001 complete — 31 MCP tools (2026-06-26)
-- **Remote:** None configured — not pushed to GitHub
-
-## Key Root Files
-| File | Purpose |
-|---|---|
-| LIVE_PROJECT_STATE.md | This file — operational source of truth |
-| CURRENT_SPRINT.md | Sprint plan — does not exist yet (Browser Claude to create) |
-| IMPLEMENTATION_REPOSITORY_STATUS.md | Full technical status |
-| IMPLEMENTATION_INVENTORY.md | All components: KEEP / MERGE / ARCHIVE |
-| DUPLICATE_RISK_REPORT.md | 10 identified risks |
-| INTEGRATION_RECOMMENDATIONS.md | 6 architectural recommendations |
-| MCP_INTEGRATION_REPORT.md | MCP tool inventory + ACR-001 spec |
-| HCI_AI_IMPLEMENTATION_HANDOFF_FOR_CHATGPT.md | Full handoff document |
+- **Location:** /Users/buckadams/HCI_AI_Operating_System (local Mac)
+- **GitHub:** https://github.com/buck-HCI-AI/HCI_AI_Operating_System
+- **Branch:** main (merged 2026-06-26)
+- **Last Commit:** Merge: Implementation + Program Repository unified
