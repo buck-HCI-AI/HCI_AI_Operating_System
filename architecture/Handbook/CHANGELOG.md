@@ -1,0 +1,55 @@
+# Architecture Handbook CHANGELOG
+
+> Maintained by: Claude Code (Implementation Engineer)
+> Authored by: ChatGPT + Buck Adams (Chief Architect)
+
+---
+
+## v1.1 — 2026-06-27 | Browser Discovery & Auditor Fixes
+
+**Trigger:** BTW (Browser .docx) — gap analysis against Browser Agent Standard
+
+**Chapters Affected:**
+- Volume 07 (Construction Intelligence Engine) — connector framework bugs fixed
+- Volume 08 (Automation Architecture) — migration 015 added
+- Volume 09 (Governance) — system health score updated 85→95
+
+**Changes:**
+- `houzz_connector.py`: Fixed `ON CONFLICT DO UPDATE` missing conflict target (invalid SQL)
+  — correct target: `(houzz_project_id, category, (COALESCE(as_of_date, '1970-01-01'::date)))`
+- Migration `015_hubspot_activities.sql`: Created `hubspot_activities` table missing from schema;
+  HubSpot connector was in permanent error state without it
+- `system_auditor/routes.py`: Fixed Python `0 or 999` falsy bug in data freshness scoring
+  — data_freshness score: 11/100 → 100/100; overall health: 85/100 → 95/100
+- HubSpot connector_sync_state: cleared error status for contacts/companies (now idle)
+
+**ADRs Created:** None this revision
+
+**Chief Architect Review Items Generated:** See CHIEF_ARCHITECT_REVIEW_QUEUE.md
+
+---
+
+## v1.0 — 2026-06-27 | Initial Architecture Handbook (BTW-3)
+
+**Trigger:** BTW-3 (Execute ONLY after.docx) — Chief Architect Architecture Handbook initiative
+
+**Chapters Created:**
+- `00_Master_Architecture_Handbook.md` — master index, TOC, ADR table, platform state
+- `Volume_01_Executive_Vision.md` — stub awaiting Chief Architect
+- `Volume_02_Construction_Intelligence_Model.md` — 4-layer model, health scoring, prediction types
+- `Volume_03_Project_Brain.md` — endpoints, snapshot schema, class hierarchy
+- `Volume_04_Superintendent_Intelligence.md` — console layout, safety topics, data model
+- `Volume_05_Project_Manager_Intelligence.md` — priority algorithm, endpoints, reports
+- `Volume_06_Executive_Mission_Control.md` — 11 sections, approval workflow
+- `Volume_07_Construction_Intelligence_Engine.md` — service directory, BaseIntelligenceService
+- `Volume_08_Automation_Architecture.md` — n8n workflows, launchd, error handling
+- `Volume_09_Governance.md` — approval gates, security standards, test registry
+- `Volume_10_Future_Vision.md` — stub awaiting Chief Architect
+- `ADRs/ADR-001` through `ADR-005` — 5 architecture decisions recorded
+
+**Platform State at v1.0:**
+- 95/100 HEALTHY (post v1.1 fixes)
+- 18 services, 427 endpoints
+- 107 tests, 89% service coverage
+- 15 n8n workflows (7 active)
+- 73-table PostgreSQL schema, 15 migrations

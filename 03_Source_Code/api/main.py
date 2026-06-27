@@ -72,6 +72,7 @@ autonomy_routes      = _load_svc("autonomy")
 cross_project_routes    = _load_svc("cross_project")
 predictive_routes       = _load_svc("predictive_engine")
 auditor_routes          = _load_svc("system_auditor")
+arch_sync_routes        = _load_svc("architecture_sync")
 
 from routers.mining import router as mining_router
 
@@ -161,6 +162,7 @@ svc.include_router(autonomy_routes,      prefix="/autonomy",                  ta
 svc.include_router(cross_project_routes, prefix="/cross-project",              tags=["cross-project-intelligence"])
 svc.include_router(predictive_routes,   prefix="/predictive-engine",           tags=["predictive-engine"])
 svc.include_router(auditor_routes,      prefix="/system-auditor",              tags=["system-auditor"])
+svc.include_router(arch_sync_routes,    prefix="/architecture-sync",           tags=["architecture-sync"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
