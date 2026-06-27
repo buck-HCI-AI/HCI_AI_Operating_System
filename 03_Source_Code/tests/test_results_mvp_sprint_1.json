@@ -1,8 +1,8 @@
 {
   "suite": "MVP Sprint 1",
-  "run_at": "2026-06-26T18:05:27.086480",
-  "passed": 48,
-  "failed": 0,
+  "run_at": "2026-06-27T19:40:40.602256",
+  "passed": 47,
+  "failed": 1,
   "total": 48,
   "results": [
     {
@@ -238,7 +238,7 @@
     {
       "id": "SC-01-02",
       "desc": "All pending items have rollback_path specified",
-      "status": "PASS"
+      "status": "FAIL"
     },
     {
       "id": "SC-01-03",
