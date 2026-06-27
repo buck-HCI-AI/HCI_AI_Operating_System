@@ -47,6 +47,8 @@ class MiningResult:
         self.intelligence_extracted = 0
         self.items_queued_for_review = 0
         self.items_auto_written = 0
+        self.rows_skipped = 0
+        self.rows_duplicate = 0
         self.summary: dict = {}
         self.error_message: Optional[str] = None
 
@@ -60,6 +62,8 @@ class MiningResult:
             "intelligence_extracted": self.intelligence_extracted,
             "items_queued_for_review": self.items_queued_for_review,
             "items_auto_written": self.items_auto_written,
+            "rows_skipped": self.rows_skipped,
+            "rows_duplicate": self.rows_duplicate,
             "summary": self.summary,
             "error_message": self.error_message,
         }
@@ -120,11 +124,13 @@ class BaseMiner:
                     completed_at = NOW(), status = %s,
                     records_scanned = %s, records_discovered = %s,
                     intelligence_extracted = %s, items_queued_for_review = %s,
-                    items_auto_written = %s, summary = %s
+                    items_auto_written = %s, rows_skipped = %s,
+                    rows_duplicate = %s, summary = %s
                 WHERE id = %s
             """, (result.status, result.records_scanned, result.records_discovered,
                   result.intelligence_extracted, result.items_queued_for_review,
-                  result.items_auto_written, json.dumps(result.summary), run_id))
+                  result.items_auto_written, result.rows_skipped,
+                  result.rows_duplicate, json.dumps(result.summary), run_id))
         return result
 
     def fail_run(self, run_id: int, error: str) -> MiningResult:
@@ -143,9 +149,16 @@ class BaseMiner:
     def queue_for_approval(self, action_type: str, title: str, description: str,
                            payload: dict, project_id: int = None,
                            priority: str = "medium") -> Optional[int]:
-        """Route an intelligence item to the approval queue for Buck's review."""
+        """Route an intelligence item to the approval queue for Buck's review.
+        Idempotent: skips insert if a pending item with the same title already exists."""
         if self.dry_run:
             return None
+        existing = self._query_one(
+            "SELECT id FROM approval_queue WHERE target_description = %s AND status = 'pending' LIMIT 1",
+            (title[:255],)
+        )
+        if existing:
+            return existing["id"]
         row = self._execute("""
             INSERT INTO approval_queue
                 (action_type, target_system, target_description, reason, proposed_payload,
