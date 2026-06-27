@@ -311,7 +311,7 @@ class HouzzConnector(BaseConnector):
                 (houzz_project_id, category, budgeted_amount, actual_amount,
                  committed_amount, as_of_date, raw_data, synced_at)
             VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
-            ON CONFLICT DO UPDATE SET
+            ON CONFLICT (houzz_project_id, category, (COALESCE(as_of_date, '1970-01-01'::date))) DO UPDATE SET
                 budgeted_amount  = COALESCE(EXCLUDED.budgeted_amount, houzz_budget.budgeted_amount),
                 actual_amount    = COALESCE(EXCLUDED.actual_amount, houzz_budget.actual_amount),
                 committed_amount = COALESCE(EXCLUDED.committed_amount, houzz_budget.committed_amount),

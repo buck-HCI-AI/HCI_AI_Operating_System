@@ -157,7 +157,8 @@ class SystemAuditor(BaseIntelligenceService):
         never_synced = []
 
         for r in rows:
-            days = int(r.get("days_stale") or 9999)
+            days_val = r.get("days_stale")
+            days = int(days_val) if days_val is not None else 9999
             name = r.get("connector_name", "unknown")
             if not r.get("last_synced_at"):
                 never_synced.append(name)
@@ -439,7 +440,8 @@ class SystemAuditor(BaseIntelligenceService):
                            CURRENT_DATE - MAX({ts_col})::date AS days_since
                     FROM {table}
                 """)
-                days = int(row.get("days_since") or 999) if row else 999
+                days_val = row.get("days_since") if row else None
+                days = int(days_val) if days_val is not None else 999
                 count = int(row.get("row_count") or 0) if row else 0
                 last = str(row.get("last_update",""))[:10] if row else None
                 is_stale = days > 3 or count == 0
