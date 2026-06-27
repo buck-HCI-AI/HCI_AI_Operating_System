@@ -1,0 +1,53 @@
+{
+  "run_at": "2026-06-27T15:17:41.573734",
+  "passed": 11,
+  "failed": 0,
+  "total": 11,
+  "pass_rate": 100.0,
+  "tests": [
+    {
+      "test": "Service info",
+      "pass": true
+    },
+    {
+      "test": "Full audit run",
+      "pass": true
+    },
+    {
+      "test": "Latest audit (after run)",
+      "pass": true
+    },
+    {
+      "test": "Audit history (default 30 days)",
+      "pass": true
+    },
+    {
+      "test": "Audit history custom days",
+      "pass": true
+    },
+    {
+      "test": "Recommendations endpoint",
+      "pass": true
+    },
+    {
+      "test": "API health validates all 18 probes",
+      "pass": true
+    },
+    {
+      "test": "Health check",
+      "pass": true
+    },
+    {
+      "test": "Predictive engine still works",
+      "pass": true
+    },
+    {
+      "test": "Mission control still works",
+      "pass": true
+    },
+    {
+      "test": "Cross-project health matrix",
+      "pass": true
+    }
+  ]
+}
