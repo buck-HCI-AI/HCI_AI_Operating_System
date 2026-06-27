@@ -5,6 +5,49 @@
 
 ---
 
+## v1.3 — 2026-06-27 | Definition of Done Codified + BTW-3 Complete
+
+**Trigger:** Directive.docx — Permanent Engineering Standard: 14-step Definition of Done
+
+**Changes:**
+- `CLAUDE.md` (root): Definition of Done (14 steps + stop conditions) added as permanent standard
+- `memory/feedback_definition_of_done.md`: DoD saved to persistent memory
+- `tests/test_architecture_sync.py`: 21 tests added for architecture sync service (all passing)
+- `Handbook/AUTHORING_QUEUE.md`: Sections 1.A–1.D marked 🟢 PUBLISHED
+- `Handbook/00_Master_Index.md`: Test coverage updated to 90/100
+- `architecture/STRATEGIC_BACKLOG.md`: BTW-4 through BTW-10 queued
+- `architecture/CHIEF_ARCHITECT_PIPELINE.md`, `AUTHORING_PIPELINE_SPEC.md`, `ARCHITECTURE_SYNC_ENGINE.md`: Authoring pipeline fully specified
+- `services/architecture_sync/routes.py`: Full Architecture Sync service (8 endpoints, ADR-006)
+
+**ADRs Created:** ADR-006 (Architecture Sync Service)
+
+**Platform State:** 95/100 HEALTHY | Test coverage 90% | DoD permanently adopted
+
+---
+
+## v1.2 — 2026-06-27 | Chief Architect Pipeline + Volume I Authored
+
+**Trigger:** BTW (Book - 2.docx + One thing I think we almost missed.docx)
+
+**Chapters Created / Modified:**
+- `Handbook/Volume_01_Executive_Vision.md`: Sections 1.A–1.D authored by Buck Adams
+  — AI Organization, Design Principles, Maturity Model, North Star
+- `Handbook/Volume_04_Role_Intelligence.md`: Consolidated SS+PM+Leadership
+- `Handbook/Volume_05_Executive_Intelligence.md`: Executive Mission Control
+- `Handbook/Volume_09_Roadmap.md`: New volume — CA-reserved
+- `Handbook/AUTHORING_QUEUE.md`: 65+ chapters as work items
+- `Handbook/00_Master_Index.md`: Master index v2 — 10-volume TOC, ADR table, pipeline table
+- `Handbook/CHANGELOG.md`, `Handbook/Published/`, `Handbook/Drafts/`: Pipeline workspace
+- `CHIEF_ARCHITECT_PIPELINE.md`, `AUTHORING_PIPELINE_SPEC.md`, `ARCHITECTURE_SYNC_ENGINE.md`: Spec docs
+- `services/architecture_sync/routes.py` + `api/main.py` registration: Service live
+- `architecture/STRATEGIC_BACKLOG.md`: BTW-4 through BTW-10 queued with dependency analysis
+
+**ADRs Created:** ADR-006 (Architecture Sync)
+
+**Chief Architect Review Items:** Volume I sections 1.1, 1.2, 1.3, 1.5 pending
+
+---
+
 ## v1.1 — 2026-06-27 | Browser Discovery & Auditor Fixes
 
 **Trigger:** BTW (Browser .docx) — gap analysis against Browser Agent Standard

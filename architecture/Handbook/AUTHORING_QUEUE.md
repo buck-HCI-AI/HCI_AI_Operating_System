@@ -24,6 +24,10 @@ Chief Architect resolves authoring items.
 
 | # | Chapter | Status | Dependencies | Source Docs | Related ADRs | Related Code | Review Required |
 |---|---------|--------|-------------|-------------|-------------|-------------|----------------|
+| 1.A | HCI AI Organization | 🟢 PUBLISHED | None | One thing I think we almost missed.docx | — | — | None |
+| 1.B | Design Principles | 🟢 PUBLISHED | 1.A | One thing I think we almost missed.docx | — | — | None |
+| 1.C | Maturity Model | 🟢 PUBLISHED | 1.A | One thing I think we almost missed.docx | ADR-004 | — | None |
+| 1.D | North Star | 🟢 PUBLISHED | 1.A | One thing I think we almost missed.docx | — | — | None |
 | 1.1 | Platform Purpose | 🔴 NOT STARTED | None | — | — | — | Chief Architect |
 | 1.2 | Operating Philosophy | 🔴 NOT STARTED | 1.1 | — | — | — | Chief Architect |
 | 1.3 | Intelligence Model Philosophy | 🔴 NOT STARTED | 1.2 | — | ADR-002, ADR-003 | `services/project_brain/` | Chief Architect |
@@ -147,11 +151,11 @@ Chief Architect resolves authoring items.
 
 | Status | Count | Volumes Affected |
 |--------|-------|-----------------|
-| 🔴 NOT STARTED | 22 | I, II, III, IV, V, VI, IX, X |
+| 🔴 NOT STARTED | 18 | I, II, III, IV, V, VI, IX, X |
 | ⚙️ IMPL ONLY | 20 | II, III, IV, V, VI, VII, VIII, IX |
 | 🟡 IN PROGRESS | 0 | — |
 | 🟠 DRAFT READY | 0 | — |
-| 🟢 PUBLISHED | 0 | — |
+| 🟢 PUBLISHED | 4 | — |
 | ⚠️ CONFLICT | 0 | — |
 
 **Volumes awaiting Chief Architect authorship before implementation can reference them:**

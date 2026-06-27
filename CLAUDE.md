@@ -25,3 +25,32 @@
 - No explanatory comments in code unless the WHY is non-obvious
 - No trailing summaries — Buck can read the diff
 - Short, direct responses — one sentence per update while working
+
+## Definition of Done (Permanent Engineering Standard — 2026-06-27)
+Every completed milestone must automatically conclude with all 14 steps below.
+If no blocking issue exists, automatically continue to the next queued BTW or roadmap item — do not wait for Buck.
+
+**14-Step Checklist:**
+1. Implementation complete — all specified features built and functional
+2. Tests written and passing — unit and integration coverage for new code
+3. System auditor run — confirm health score maintained or improved
+4. API health verified — all endpoints return expected responses
+5. Connector health verified — no new connector errors introduced
+6. n8n workflow health verified — no regression in active workflows
+7. Docs sync — README, spec, and inline docs reflect current behavior
+8. Handbook sync — relevant Architecture Handbook volumes updated
+9. ADR filed — any architectural decision documented in architecture/ADRs/
+10. CHANGELOG updated — entry added to architecture/CHANGELOG.md
+11. Dashboard updated — platform state table reflects current scores
+12. Commit — all changes committed with descriptive message
+13. ntfy notification sent — `hci-executive` topic, summary of milestone
+14. Recommend next objective — identify and state next unblocked BTW or roadmap item
+
+**Stop only for:**
+- Production write approval required
+- Credentials / OAuth needed
+- Security concern identified
+- Destructive operation (delete, drop, reset)
+- Conflicting business requirement
+- Chief Architect (ChatGPT) decision required
+- Buck Adams decision required
