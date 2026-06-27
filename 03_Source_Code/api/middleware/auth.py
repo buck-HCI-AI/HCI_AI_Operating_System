@@ -9,6 +9,9 @@ from starlette.responses import JSONResponse
 
 OPEN_PATHS = {"/health", "/docs", "/redoc", "/openapi.json", "/api/v1/health"}
 
+# Paths that require API key (in addition to /api/v1/*)
+PROTECTED_PREFIXES = ("/api/v1", "/mcp")
+
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, valid_keys: set):
@@ -16,8 +19,7 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
         self.valid_keys = valid_keys
 
     async def dispatch(self, request: Request, call_next):
-        # Only enforce on /api/v1/* when keys are configured
-        if self.valid_keys and request.url.path.startswith("/api/v1"):
+        if self.valid_keys and any(request.url.path.startswith(p) for p in PROTECTED_PREFIXES):
             if request.url.path not in OPEN_PATHS:
                 key = request.headers.get("X-API-Key", "")
                 if key not in self.valid_keys:

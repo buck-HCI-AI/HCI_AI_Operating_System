@@ -145,6 +145,7 @@ All active workflows include approval gates — no auto-write to production.
 | ACR | Title | Status | Date |
 |---|---|---|---|
 | ACR-001 | MCP Chief Architect Integration Tools | COMPLETE | 2026-06-26 |
+| ACR-002 | Universal Project State Access | COMPLETE | 2026-06-26 |
 | Sprint 1 ACR | Next sprint scope | PENDING — ChatGPT to issue | — |
 
 ---
@@ -174,17 +175,20 @@ All active workflows include approval gates — no auto-write to production.
 
 ---
 
-## How ChatGPT Connects
+## How ChatGPT Connects (ACR-002 Complete)
 **ngrok is NOT reachable from ChatGPT cloud (confirmed 2026-06-26).**
 
-| Method | Status | How |
+| Method | Status | URL / Notes |
 |---|---|---|
-| Google Drive links | WORKING | Claude Code uploads any file; Buck shares link |
-| GitHub raw URLs | Not configured | Buck needs to push repo to GitHub |
+| Public HTTP endpoint | LIVE (ACR-002) | `https://speculate-armband-retinal.ngrok-free.dev/project-state` — no auth needed |
+| Google Drive | LIVE | `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` |
+| GitHub raw URL | PENDING Buck push | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/refs/heads/feature/data-architecture-document-storage/LIVE_PROJECT_STATE.md` |
 | ChatGPT Custom GPT | Not configured | Requires paid ngrok or hosted URL |
 | MCP | NOT for ChatGPT | MCP is Claude-only protocol |
 
-**For now:** Claude Code uploads files to Drive → Buck pastes link → ChatGPT reads.
+**Primary access:** `GET /project-state` — no API key, no special headers.
+**Stable fallback:** Google Drive link (Claude Code re-uploads on every state update).
+**GitHub:** Run `Push_To_GitHub.command` from Desktop to activate raw URL access.
 
 ---
 
