@@ -1,0 +1,91 @@
+{
+  "name": "AUTO-010 — Monday 07:00 Weekly Sprint Review",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1" }]
+        }
+      },
+      "name": "Cron Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/weekend-summary",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Weekend Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst today = new Date().toISOString().split('T')[0];\nconst exec = d.executive_summary || {};\nconst projects = (d.projects || []).map(p => `## ${p.health} ${p.name}\\n- Variance: ${p.schedule_variance_days}d | Risks: ${p.open_risks} | Budget: ${p.budget_health}`).join('\\n\\n');\nconst missions = (d.missions?.upcoming || []).slice(0, 5).map((m, i) => `${i+1}. [${m.priority}] ${m.title} → ${m.assigned_to}`).join('\\n') || 'None queued';\nconst connectors = (d.connectors || []).map(c => `- ${c.connector}: ${c.errors > 0 ? c.errors + ' errors' : 'OK'}`).join('\\n') || 'None';\n\nconst md = `# HCI AI — Weekly Sprint Review\\n**${d.period || today}**\\n\\n## Executive Summary\\n- Hours saved this week: ${exec.hours_saved_this_week || 0}h\\n- Documents processed: ${exec.documents_processed || 0}\\n- Risks detected: ${exec.risks_detected || 0}\\n- Workflow runs: ${exec.workflow_runs || 0}\\n\\n## Projects\\n${projects || 'No project data'}\\n\\n## Top Missions (Next 5)\\n${missions}\\n\\n## Connector Health\\n${connectors}\\n\\n---\\n*Generated: ${new Date().toISOString()} by AUTO-010*`;\n\nreturn [{ json: { filename: `reports/sprint/weekly-${today}.md`, content: md, date: today } }];"
+      },
+      "name": "Format Sprint Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/weekend-summary",
+        "method": "GET",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Write Report via API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } },
+      "_note": "n8n cannot write local files directly. The report content is pushed to ntfy and the API for review. To write the file, add a Code node that calls a file-write webhook or use the filesystem module if n8n has local access."
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "Weekly Sprint Review Ready" },
+            { "name": "Tags", "value": "calendar,chart_with_upwards_trend" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Actions", "value": "view, Dashboard, http://localhost:8000/executive" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "=Sprint review for {{ $('Format Sprint Report').first().json.date }} ready. Hours saved: {{ $('Get Weekend Summary').first().json.executive_summary?.hours_saved_this_week || 0 }}h | Open risks: {{ $('Get Weekend Summary').first().json.executive_summary?.risks_detected || 0 }}",
+        "options": {}
+      },
+      "name": "Push: Review Ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 500]
+    }
+  ],
+  "connections": {
+    "Cron Monday 07:00": { "main": [[{ "node": "Get Weekend Summary", "type": "main", "index": 0 }]] },
+    "Get Weekend Summary": { "main": [[{ "node": "Format Sprint Report", "type": "main", "index": 0 }]] },
+    "Format Sprint Report": {
+      "main": [[
+        { "node": "Write Report via API", "type": "main", "index": 0 },
+        { "node": "Push: Review Ready", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "weekly-ops" }, { "name": "sprint-review" }],
+  "_hci_notes": "AUTO-010 — Fires Monday 07:00. Pulls weekend-summary, formats as markdown sprint review, pushes ntfy alert. File write to reports/sprint/ requires either n8n filesystem access or a dedicated write-file endpoint."
+}

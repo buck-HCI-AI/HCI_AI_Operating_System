@@ -1,0 +1,87 @@
+{
+  "name": "GATE-G — PR Merge Notification to Buck (AUTO-006)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gate-github-pr",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook: GitHub PR Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "gate-github-pr",
+      "_note": "Add this webhook URL to GitHub repo Settings → Webhooks. Content-Type: application/json. Events: Pull requests."
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst action = body.action;\nconst pr = body.pull_request || {};\nconst repo = body.repository?.full_name || 'HCI_AI';\nconst title = pr.title || 'No title';\nconst url = pr.html_url || '';\nconst user = pr.user?.login || 'unknown';\nconst branch = pr.head?.ref || '';\nconst base = pr.base?.ref || '';\n\nconst relevantActions = ['opened', 'merged', 'closed', 'review_requested'];\nif (!relevantActions.includes(action)) {\n  return [{ json: { skip: true } }];\n}\n\nconst emoji = action === 'merged' ? '✅' : action === 'opened' ? '🔔' : action === 'closed' ? '🔴' : '👁️';\nconst notifTitle = `PR ${action.toUpperCase()}: ${repo}`;\nconst message = `${emoji} #${pr.number}: ${title}\\n${branch} → ${base}\\nBy: ${user}`;\n\nreturn [{ json: { skip: false, notifTitle, message, pr_url: url, action } }];"
+      },
+      "name": "Parse PR Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [{
+            "id": "not_skip",
+            "leftValue": "={{ $json.skip }}",
+            "rightValue": false,
+            "operator": { "type": "boolean", "operation": "equals" }
+          }]
+        }
+      },
+      "name": "Relevant Action?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.notifTitle }}" },
+            { "name": "Tags", "value": "octocat,bell" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Actions", "value": "={{ 'view, View PR, ' + $json.pr_url }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $json.message }}",
+        "options": {}
+      },
+      "name": "Push: PR Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 200]
+    }
+  ],
+  "connections": {
+    "Webhook: GitHub PR Event": {
+      "main": [[{ "node": "Parse PR Event", "type": "main", "index": 0 }]]
+    },
+    "Parse PR Event": {
+      "main": [[{ "node": "Relevant Action?", "type": "main", "index": 0 }]]
+    },
+    "Relevant Action?": {
+      "main": [
+        [{ "node": "Push: PR Notification", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "approval-gates" }, { "name": "github" }],
+  "_hci_notes": "Gate G — after import, copy the webhook production URL and add it to GitHub repo Settings → Webhooks. Fires on PR open, merge, close. Sends ntfy push to Buck with link to PR. No approval needed — notification only."
+}

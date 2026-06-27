@@ -1,0 +1,84 @@
+{
+  "name": "GATE-H — HubSpot Write Approval (AUTO-005)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gate-hubspot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook: HubSpot Write Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "gate-hubspot"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/approval-queue/enqueue",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"workflow\": \"GATE-H\",\n  \"action_type\": \"hubspot_write\",\n  \"target_system\": \"hubspot\",\n  \"target_id\": \"{{ $json.target_id }}\",\n  \"target_description\": \"{{ $json.target_description }}\",\n  \"proposed_payload\": {{ JSON.stringify($json.proposed_payload || {}) }},\n  \"reason\": \"{{ $json.reason }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"{{ $json.priority || 'normal' }}\"\n}",
+        "options": {}
+      },
+      "name": "Enqueue in Approval Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "HubSpot Write Pending Approval" },
+            { "name": "Tags", "value": "hubspot,rotating_light" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Actions", "value": "=view, Review & Approve, http://localhost:8000/executive; view, Approval Queue, http://localhost:8000/api/v1/services/approval-queue/pending" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $('Webhook: HubSpot Write Request').first().json.target_description }} — Queue ID: {{ $json.queue_id }}",
+        "options": {}
+      },
+      "name": "Push: Buck Approval Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"message\": \"HubSpot write queued for Buck approval\" }"
+      },
+      "name": "Respond to Caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: HubSpot Write Request": {
+      "main": [[{ "node": "Enqueue in Approval Queue", "type": "main", "index": 0 }]]
+    },
+    "Enqueue in Approval Queue": {
+      "main": [[
+        { "node": "Push: Buck Approval Request", "type": "main", "index": 0 },
+        { "node": "Respond to Caller", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "approval-gates" }, { "name": "hubspot" }],
+  "_hci_notes": "Gate H — any HCI AI system wanting to write to HubSpot POSTs here first. Enqueues to approval_queue, pushes Buck on phone. Buck approves at /executive. Webhook URL after import: copy from n8n webhook node production URL."
+}

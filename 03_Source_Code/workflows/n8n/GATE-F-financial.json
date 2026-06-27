@@ -1,0 +1,97 @@
+{
+  "name": "GATE-F — Financial Action Approval (AUTO-018)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gate-financial",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook: Financial Action Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "gate-financial"
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $input.first().json;\nconst amount = parseFloat(req.amount || 0);\nconst type = req.action_type || 'financial_action';\n\n// Priority escalation by amount\nlet priority = 'normal';\nif (amount >= 50000) priority = 'high';\nif (amount >= 200000) priority = 'urgent';\n\nconst formatted = amount > 0 ? `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A';\nconst description = `${type.replace(/_/g,' ').toUpperCase()}: ${req.description || req.target_description} — ${formatted}`;\n\nreturn [{ json: { ...req, priority, formatted_amount: formatted, description } }];"
+      },
+      "name": "Assess Priority by Amount",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/approval-queue/enqueue",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"workflow\": \"GATE-F\",\n  \"action_type\": \"{{ $json.action_type || 'financial_action' }}\",\n  \"target_system\": \"{{ $json.target_system || 'quickbooks' }}\",\n  \"target_id\": \"{{ $json.target_id }}\",\n  \"target_description\": \"{{ $json.description }}\",\n  \"proposed_payload\": {\n    \"amount\": {{ $json.amount || 0 }},\n    \"formatted_amount\": \"{{ $json.formatted_amount }}\",\n    \"action_type\": \"{{ $json.action_type }}\",\n    \"vendor\": \"{{ $json.vendor || '' }}\",\n    \"details\": {{ JSON.stringify($json.details || {}) }}\n  },\n  \"reason\": \"{{ $json.reason || 'Financial commitment requires owner authorization' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"{{ $json.priority }}\"\n}",
+        "options": {}
+      },
+      "name": "Enqueue in Approval Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "Financial Action Requires Approval" },
+            { "name": "Tags", "value": "dollar,rotating_light" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Priority", "value": "={{ $('Assess Priority by Amount').first().json.priority === 'urgent' ? 'urgent' : 'high' }}" },
+            { "name": "Actions", "value": "view, Review & Approve, http://localhost:8000/executive" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $('Assess Priority by Amount').first().json.description }}\nQueue ID: {{ $('Enqueue in Approval Queue').first().json.queue_id }}",
+        "options": {}
+      },
+      "name": "Push: Financial Approval Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"priority\": \"{{ $('Assess Priority by Amount').first().json.priority }}\", \"message\": \"Financial action queued — awaiting Buck authorization\" }"
+      },
+      "name": "Respond to Caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Financial Action Request": {
+      "main": [[{ "node": "Assess Priority by Amount", "type": "main", "index": 0 }]]
+    },
+    "Assess Priority by Amount": {
+      "main": [[{ "node": "Enqueue in Approval Queue", "type": "main", "index": 0 }]]
+    },
+    "Enqueue in Approval Queue": {
+      "main": [[
+        { "node": "Push: Financial Approval Request", "type": "main", "index": 0 },
+        { "node": "Respond to Caller", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "approval-gates" }, { "name": "financial" }],
+  "_hci_notes": "Gate F — blocks budget approvals, bid awards, contract actions, change orders. POST body: { action_type, target_id, description, amount, vendor, project_id, reason }. Priority auto-escalates: normal <$50k, high $50k-$200k, urgent >$200k. Never auto-executes — always queues."
+}

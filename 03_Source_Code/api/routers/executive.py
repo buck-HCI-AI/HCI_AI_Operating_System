@@ -827,6 +827,30 @@ def weekend_summary():
     }
 
 
+# ── Registry health — used by AUTO-011 weekly duplicate check ─────────────────
+
+@router.get("/registry-health")
+def registry_health():
+    """Checks integration registry for stale connectors and overall status. Used by AUTO-011."""
+    entries = _q("SELECT integration_key, category, status, last_sync_at, last_health_check FROM integration_registry ORDER BY category, integration_key")
+    stale = [r for r in entries if not r.get("last_sync_at")]
+    stale_old = [r for r in entries if r.get("last_sync_at") and
+                 (datetime.now(timezone.utc) - r["last_sync_at"]).total_seconds() > 48 * 3600]
+    all_stale = stale + stale_old
+    inactive = [r for r in entries if r.get("status") != "active"]
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "total_integrations": len(entries),
+        "registry_entries": entries,
+        "never_synced_count": len(stale),
+        "stale_count": len(stale_old),
+        "stale_connectors": [r["integration_key"] for r in all_stale],
+        "inactive_count": len(inactive),
+        "inactive": [r["integration_key"] for r in inactive],
+        "status": "ok" if not all_stale and not inactive else "needs_attention",
+    }
+
+
 # ── Travel mode detection ──────────────────────────────────────────────────────
 
 @router.get("/travel-mode")

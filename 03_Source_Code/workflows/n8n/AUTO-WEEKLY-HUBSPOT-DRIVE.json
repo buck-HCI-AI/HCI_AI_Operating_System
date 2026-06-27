@@ -1,0 +1,90 @@
+{
+  "name": "AUTO-013 — Monday 08:30 HubSpot/Drive Reconciliation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "30 8 * * 1" }]
+        }
+      },
+      "name": "Cron Monday 08:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/executive/dashboard",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Project List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/connectors/hubspot/sync-state",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get HubSpot Sync State",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 500],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const dashboard = $('Get Project List').first().json;\nconst hubspot = $('Get HubSpot Sync State').first().json;\n\nconst projects = dashboard.projects || [];\nconst hsStates = hubspot.sync_states || [];\n\n// Check which entity types have never synced\nconst neverSynced = hsStates.filter(s => !s.last_synced_at).map(s => s.entity_type);\nconst lastSync = hsStates.filter(s => s.last_synced_at).reduce((max, s) => {\n  const t = new Date(s.last_synced_at).getTime();\n  return t > max.ts ? { ts: t, dt: s.last_synced_at } : max;\n}, { ts: 0, dt: null });\n\nconst ageHours = lastSync.dt ? (Date.now() - lastSync.ts) / 3600000 : null;\nconst stale = ageHours && ageHours > 48;\n\nconst issues = [];\nif (neverSynced.length > 0) issues.push(`HubSpot never synced: ${neverSynced.join(', ')}`);\nif (stale) issues.push(`HubSpot last sync ${Math.round(ageHours)}h ago — trigger /connectors/hubspot/sync`);\nif (projects.length === 0) issues.push('No projects found in dashboard');\n\nconst summary = issues.length > 0 ? issues.join(' | ') : `HubSpot current (${Math.round(ageHours || 0)}h ago) | ${projects.length} projects active`;\n\nreturn [{ json: { hasIssues: issues.length > 0, issues, summary, project_count: projects.length, never_synced: neverSynced } }];"
+      },
+      "name": "Reconcile HubSpot vs Projects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.hasIssues ? 'HubSpot/Drive Sync Issues' : 'HubSpot Reconciliation OK' }}" },
+            { "name": "Tags", "value": "={{ $json.hasIssues ? 'warning,arrows_counterclockwise' : 'white_check_mark,arrows_counterclockwise' }}" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Actions", "value": "view, Dashboard, http://localhost:8000/executive; http, Sync HubSpot Now, http://localhost:8000/api/v1/services/connectors/hubspot/sync, method=POST, clear=true" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $json.summary }}",
+        "options": {}
+      },
+      "name": "Push: Reconciliation Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 400]
+    }
+  ],
+  "connections": {
+    "Cron Monday 08:30": {
+      "main": [[
+        { "node": "Get Project List", "type": "main", "index": 0 },
+        { "node": "Get HubSpot Sync State", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get Project List": { "main": [[{ "node": "Reconcile HubSpot vs Projects", "type": "main", "index": 0 }]] },
+    "Get HubSpot Sync State": { "main": [[{ "node": "Reconcile HubSpot vs Projects", "type": "main", "index": 0 }]] },
+    "Reconcile HubSpot vs Projects": { "main": [[{ "node": "Push: Reconciliation Report", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "weekly-ops" }, { "name": "reconciliation" }],
+  "_hci_notes": "AUTO-013 — Monday 08:30. Compares HubSpot sync state vs active projects. Flags stale syncs (>48h) and entity types never synced. Always pushes a summary — actionable 'Sync Now' button triggers /hubspot/sync directly from notification."
+}

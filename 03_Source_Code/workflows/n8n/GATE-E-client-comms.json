@@ -1,0 +1,85 @@
+{
+  "name": "GATE-E — Client Comms Approval (AUTO-017)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gate-client-comms",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook: Client Comms Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "gate-client-comms"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/approval-queue/enqueue",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"workflow\": \"GATE-E\",\n  \"action_type\": \"client_communication\",\n  \"target_system\": \"{{ $json.channel || 'email' }}\",\n  \"target_id\": \"{{ $json.recipient_email || $json.recipient }}\",\n  \"target_description\": \"Client comms to {{ $json.recipient }} re: {{ $json.subject }}\",\n  \"proposed_payload\": {\n    \"to\": \"{{ $json.recipient }}\",\n    \"subject\": \"{{ $json.subject }}\",\n    \"body_preview\": \"{{ ($json.body || '').substring(0, 200) }}\",\n    \"channel\": \"{{ $json.channel || 'email' }}\"\n  },\n  \"reason\": \"{{ $json.reason || 'AI-generated client communication pending review' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"high\"\n}",
+        "options": {}
+      },
+      "name": "Enqueue in Approval Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "Client Comms Needs Approval" },
+            { "name": "Tags", "value": "email,rotating_light" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Priority", "value": "high" },
+            { "name": "Actions", "value": "view, Review Draft, http://localhost:8000/executive" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "=To: {{ $('Webhook: Client Comms Request').first().json.recipient }}\nRe: {{ $('Webhook: Client Comms Request').first().json.subject }}\nQueue ID: {{ $json.queue_id }} — Review before sending",
+        "options": {}
+      },
+      "name": "Push: Comms Approval Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"message\": \"Client communication queued for Buck approval — not sent\" }"
+      },
+      "name": "Respond to Caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Client Comms Request": {
+      "main": [[{ "node": "Enqueue in Approval Queue", "type": "main", "index": 0 }]]
+    },
+    "Enqueue in Approval Queue": {
+      "main": [[
+        { "node": "Push: Comms Approval Request", "type": "main", "index": 0 },
+        { "node": "Respond to Caller", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "approval-gates" }, { "name": "client-comms" }],
+  "_hci_notes": "Gate E — blocks ANY AI-generated client-facing communication. POST body: { recipient, subject, body, channel, project_id, reason }. Always queues, never sends. Buck reviews at /executive. High priority push — client comms are never auto-sent."
+}

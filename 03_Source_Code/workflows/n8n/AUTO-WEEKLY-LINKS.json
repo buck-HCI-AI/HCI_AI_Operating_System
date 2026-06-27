@@ -1,0 +1,102 @@
+{
+  "name": "AUTO-012 — Monday 08:00 Broken Link Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1" }]
+        }
+      },
+      "name": "Cron Monday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/connectors/hubspot/sync-state",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Check HubSpot Connector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 200],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/services/connectors/houzz/sync-state",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Check Houzz Connector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 400],
+      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/health",
+        "options": {}
+      },
+      "name": "Check API Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [300, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "const hs = $('Check HubSpot Connector').first().json;\nconst hz = $('Check Houzz Connector').first().json;\nconst api = $('Check API Health').first().json;\n\nconst links = [];\nconst broken = [];\n\n// HubSpot connector\nconst hsStates = hs.sync_states || [];\nconst hsOk = hsStates.length > 0;\nlinks.push({ name: 'HubSpot connector', ok: hsOk, detail: `${hsStates.length} entity states tracked` });\nif (!hsOk) broken.push('HubSpot connector unreachable');\n\n// Houzz connector\nconst hzStates = hz.sync_states || [];\nconst hzOk = hzStates.length > 0;\nlinks.push({ name: 'Houzz connector', ok: hzOk, detail: `${hzStates.length} entity states tracked` });\nif (!hzOk) broken.push('Houzz connector unreachable');\n\n// API\nconst apiOk = api.status === 'healthy';\nlinks.push({ name: 'HCI AI API', ok: apiOk, detail: api.status || 'unknown' });\nif (!apiOk) broken.push(`API status: ${api.status}`);\n\nconst summary = broken.length === 0\n  ? `All ${links.length} integrations reachable`\n  : `${broken.length} integration(s) broken: ${broken.join('; ')}`;\n\nreturn [{ json: { hasIssues: broken.length > 0, broken, links, summary } }];"
+      },
+      "name": "Assess Link Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.hasIssues ? 'Integration Links Broken' : 'Weekly Link Check: All OK' }}" },
+            { "name": "Tags", "value": "={{ $json.hasIssues ? 'warning,broken_heart' : 'white_check_mark,link' }}" },
+            { "name": "Cache", "value": "yes" },
+            { "name": "Expires", "value": "24h" },
+            { "name": "Actions", "value": "view, Dashboard, http://localhost:8000/executive" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $json.summary }}",
+        "options": {}
+      },
+      "name": "Push: Link Check Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 400]
+    }
+  ],
+  "connections": {
+    "Cron Monday 08:00": {
+      "main": [[
+        { "node": "Check HubSpot Connector", "type": "main", "index": 0 },
+        { "node": "Check Houzz Connector", "type": "main", "index": 0 },
+        { "node": "Check API Health", "type": "main", "index": 0 }
+      ]]
+    },
+    "Check HubSpot Connector": { "main": [[{ "node": "Assess Link Status", "type": "main", "index": 0 }]] },
+    "Check Houzz Connector": { "main": [[{ "node": "Assess Link Status", "type": "main", "index": 0 }]] },
+    "Check API Health": { "main": [[{ "node": "Assess Link Status", "type": "main", "index": 0 }]] },
+    "Assess Link Status": { "main": [[{ "node": "Push: Link Check Result", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "weekly-ops" }, { "name": "link-check" }],
+  "_hci_notes": "AUTO-012 — Monday 08:00. Checks API health + all connector sync states in parallel. Always sends a push — green check if clean, warning if broken. Expand checks list as new connectors are added to CONNECTORS dict in connectors/routes.py."
+}
