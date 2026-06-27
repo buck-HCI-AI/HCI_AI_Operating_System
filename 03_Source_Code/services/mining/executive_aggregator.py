@@ -75,8 +75,11 @@ class ExecutiveAggregator(BaseMiner):
         ]:
             self._execute("""
                 INSERT INTO kpi_snapshots
-                    (kpi_code, scope, value, unit, source_service, calculated_at)
-                VALUES (%s, 'portfolio', %s, 'count', 'executive_aggregator', NOW())
+                    (kpi_code, scope, value, unit, source_service, calculated_at,
+                     period_start, period_end, status)
+                VALUES (%s, 'company', %s, 'count', 'executive_aggregator', NOW(),
+                        CURRENT_DATE, CURRENT_DATE, 'none')
+                ON CONFLICT DO NOTHING
             """, (kpi_code, float(value)))
 
     def _get_mining_summary(self) -> dict:

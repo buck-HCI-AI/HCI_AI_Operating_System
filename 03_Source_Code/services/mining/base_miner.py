@@ -148,11 +148,11 @@ class BaseMiner:
             return None
         row = self._execute("""
             INSERT INTO approval_queue
-                (action_type, target_description, reason, proposed_payload, project_id,
-                 priority, status, workflow, actor)
-            VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s, %s)
+                (action_type, target_system, target_description, reason, proposed_payload,
+                 project_id, priority, status, workflow, actor)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s)
             RETURNING id
-        """, (action_type, title[:255], description, json.dumps(payload),
+        """, (action_type, "mining", title[:255], description, json.dumps(payload),
               project_id, priority, f"mining:{self.MINER_NAME}", self.MINER_NAME),
             returning=True)
         return row["id"] if row else None

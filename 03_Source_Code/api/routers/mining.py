@@ -1,6 +1,7 @@
 """
 ACR-004: Continuous Mining & Learning Engine — FastAPI router.
-All mining runs are DRY RUN by default until Buck issues go-live authorization.
+GO-LIVE AUTHORIZED by Buck Adams (Owner) 2026-06-27.
+dry_run defaults True (safe) — pass dry_run=False for live execution.
 """
 import os, sys
 
@@ -11,8 +12,8 @@ from fastapi import APIRouter, Query, HTTPException
 
 router = APIRouter(prefix="/mining", tags=["mining"])
 
-_DRY_RUN_DEFAULT    = True
-_GO_LIVE_AUTHORIZED = False
+_DRY_RUN_DEFAULT    = True   # default stays safe — explicit dry_run=False required for live
+_GO_LIVE_AUTHORIZED = True   # authorized by Buck Adams (Owner) 2026-06-27
 
 
 def _import_mining():
@@ -45,7 +46,9 @@ def _pg():
 
 def _get_orchestrator(dry_run: bool = True):
     mod = _import_mining()
-    return mod.MiningOrchestrator(dry_run=dry_run or _DRY_RUN_DEFAULT)
+    # When not authorized: force dry_run regardless of caller. When authorized: respect caller's intent.
+    effective_dry_run = dry_run if _GO_LIVE_AUTHORIZED else True
+    return mod.MiningOrchestrator(dry_run=effective_dry_run)
 
 
 def _get_registry():
