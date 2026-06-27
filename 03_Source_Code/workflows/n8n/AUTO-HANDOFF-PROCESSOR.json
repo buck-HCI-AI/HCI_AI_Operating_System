@@ -1,0 +1,103 @@
+{
+  "name": "AUTO-HANDOFF-PROCESSOR",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "trigger-every-5min",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "ls /Users/buckadams/HCI_AI_Operating_System/Architecture/Agent_Handoff/Inbox/*.md /Users/buckadams/HCI_AI_Operating_System/Architecture/Agent_Handoff/Inbox/*.json 2>/dev/null | wc -l"
+      },
+      "id": "check-inbox",
+      "name": "Check Inbox Count",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ parseInt($json.stdout.trim()) }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-files",
+      "name": "Has Files?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /Users/buckadams/HCI_AI_Operating_System && python3 Architecture/Agent_Handoff/handoff_processor.py 2>&1"
+      },
+      "id": "run-processor",
+      "name": "Run Handoff Processor",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.stdout || '';\nconst success = !output.includes('ERROR') && !output.includes('Traceback');\nconst lines = output.trim().split('\\n');\nconst summary = lines.filter(l => l.includes('✅') || l.includes('❌') || l.includes('Handoff Bus:')).join(' | ');\n\nreturn [{\n  json: {\n    success,\n    summary: summary || output.slice(-200),\n    title: success ? 'Handoff Processed' : 'Handoff FAILED',\n    priority: success ? 'default' : 'urgent'\n  }\n}];"
+      },
+      "id": "build-notification",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "={{ $json.title }}" },
+            { "name": "Priority", "value": "={{ $json.priority }}" },
+            { "name": "Content-Type", "value": "text/plain" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.summary }}",
+        "options": {}
+      },
+      "id": "send-ntfy",
+      "name": "Send ntfy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 240]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": { "main": [[{ "node": "Check Inbox Count", "type": "main", "index": 0 }]] },
+    "Check Inbox Count": { "main": [[{ "node": "Has Files?", "type": "main", "index": 0 }]] },
+    "Has Files?": { "main": [[{ "node": "Run Handoff Processor", "type": "main", "index": 0 }], []] },
+    "Run Handoff Processor": { "main": [[{ "node": "Build Notification", "type": "main", "index": 0 }]] },
+    "Build Notification": { "main": [[{ "node": "Send ntfy", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["automation", "handoff-bus", "agent-coordination"]
+}

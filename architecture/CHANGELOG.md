@@ -5,6 +5,37 @@
 
 ---
 
+## v1.7 — 2026-06-27 | Agent Handoff Bus
+
+**Trigger:** Build Agent Handoff Bus.docx — eliminate manual document relay between agents
+
+**Changes:**
+- `Architecture/Agent_Handoff/` — full directory structure (Inbox/Processing/Processed/Failed/Archive/templates/)
+- `Architecture/Agent_Handoff/handoff_processor.py` — validator, router, file mover, ntfy notification
+- `Architecture/Agent_Handoff/AGENT_HANDOFF_BUS.md` — spec + usage guide
+- `Architecture/Agent_Handoff/HANDOFF_INDEX.md` — auto-maintained log
+- `Architecture/Agent_Handoff/templates/` — 4 standard templates (browser_discovery, chief_architect_directive, architecture_chapter, implementation_request)
+- `workflows/n8n/AUTO-HANDOFF-PROCESSOR.json` — 5-minute polling workflow (check inbox → process → ntfy)
+- `tests/test_handoff_processor.py` — 42 tests, all passing
+- 10 handoff types supported: browser_discovery, houzz_export, hubspot_export, platform_opportunity_report, business_process_architecture, chief_architect_directive, architecture_chapter, implementation_request, approval_request, executive_brief
+
+---
+
+## v1.6 — 2026-06-27 | Platform Intelligence Ingestion (HCI-OR-001)
+
+**Trigger:** HCI OPPORTUNITY REPORT.docx + Business Process Architecture Ingestion.docx
+
+**Changes:**
+- `Architecture/Platform_Intelligence/HCI_BUSINESS_PROCESS_ARCHITECTURE_V1.md` — 38 opportunities structured with process_id, scoring (BV/FI/PM/EX/TC), phase assignments
+- `Architecture/Platform_Intelligence/BUSINESS_PROCESS_BACKLOG.md` — 4-phase prioritized roadmap; Phase 1: 17 items; Phase 2: 15 items; Phase 3-4: 6 items
+- `Architecture/Platform_Intelligence/PROCESS_AUTOMATION_MATRIX.md` — Tier 1/2/3 automation map; 6 n8n workflow designs
+- `Architecture/Platform_Intelligence/SYSTEM_OWNERSHIP_MATRIX.md` — 17 lifecycle phases, data ownership, integration priority matrix
+- `Architecture/Platform_Intelligence/AI_OPPORTUNITY_MATRIX.md` — 20 AI opportunities (A: drafting, B: analysis, C: detection); maturity map vs. HCI AI OS
+- `Architecture/Platform_Intelligence/FIELD_READINESS_GAPS.md` — SS field score 33/80, PM score 47/80, Executive score 44/80; path to ORR-001 pass (74+/80)
+- Critical gap documented: HubSpot Deal ↔ Houzz Pro Project bridge — zero automation today
+
+---
+
 ## v1.5 — 2026-06-27 | BTW-8 — PM Workspace: Client Comms + AI Ranked Actions
 
 **Trigger:** BTW-8 — PM Workspace additions (Strategic Backlog)
