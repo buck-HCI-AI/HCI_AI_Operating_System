@@ -8,11 +8,14 @@ import urllib.request
 import urllib.error
 import json
 import sys
+import os
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 API_BASE = "http://localhost:8000/api/v1/platform"
-API_KEY  = "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+API_KEY  = os.environ["HCI_API_KEY"]
 HEADERS  = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 results: list[dict] = []

@@ -9,17 +9,24 @@ Usage:
   python3 run_ingestion.py --test       # test connections only
 """
 import sys, os, argparse
+from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "integrations"))
 sys.path.insert(0, os.path.dirname(__file__))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 def test_connections():
     print("=== Testing Connections ===")
     # Postgres
     import psycopg2
     try:
-        c = psycopg2.connect(host="localhost", port=5432, dbname="hci_os",
-                             user="hci_admin", password="hci_postgres_2026")
+        c = psycopg2.connect(
+            host=os.environ.get("POSTGRES_HOST", "localhost"),
+            port=int(os.environ.get("POSTGRES_PORT", 5432)),
+            dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+            user=os.environ.get("POSTGRES_USER", "hci_admin"),
+            password=os.environ["POSTGRES_PASSWORD"],
+        )
         cur = c.cursor()
         cur.execute("SELECT COUNT(*) FROM projects")
         n = cur.fetchone()[0]
@@ -40,7 +47,11 @@ def test_connections():
     # Redis
     import redis
     try:
-        r = redis.Redis(host="localhost", port=6379, password="hci_redis_2026")
+        r = redis.Redis(
+            host=os.environ.get("REDIS_HOST", "localhost"),
+            port=int(os.environ.get("REDIS_PORT", 6379)),
+            password=os.environ["REDIS_PASSWORD"],
+        )
         r.ping()
         print(f"  ✓ Redis — connected")
     except Exception as e:

@@ -35,7 +35,7 @@ def chk_postgres():
         port=int(os.environ.get("POSTGRES_PORT", 5432)),
         dbname=os.environ.get("POSTGRES_DB", "hci_os"),
         user=os.environ.get("POSTGRES_USER", "hci_admin"),
-        password=os.environ.get("POSTGRES_PASSWORD", "hci_postgres_2026"),
+        password=os.environ["POSTGRES_PASSWORD"],
     )
     conn.close()
 check("PostgreSQL connection", chk_postgres)
@@ -46,7 +46,7 @@ def chk_redis():
     r = redis.Redis(
         host=os.environ.get("REDIS_HOST", "localhost"),
         port=int(os.environ.get("REDIS_PORT", 6379)),
-        password=os.environ.get("REDIS_PASSWORD", "hci_redis_2026"),
+        password=os.environ["REDIS_PASSWORD"],
     )
     assert r.ping() == True
 check("Redis PING", chk_redis)
@@ -68,7 +68,7 @@ def chk_tables():
         host=os.environ.get("POSTGRES_HOST","localhost"), port=5432,
         dbname=os.environ.get("POSTGRES_DB","hci_os"),
         user=os.environ.get("POSTGRES_USER","hci_admin"),
-        password=os.environ.get("POSTGRES_PASSWORD","hci_postgres_2026"),
+        password=os.environ["POSTGRES_PASSWORD"],
     )
     cur = conn.cursor()
     required = ["projects", "vendors", "bid_packages", "bid_entries", "lessons_learned",
@@ -87,7 +87,7 @@ def chk_projects():
     import psycopg2
     conn = psycopg2.connect(
         host="localhost", port=5432, dbname="hci_os",
-        user="hci_admin", password=os.environ.get("POSTGRES_PASSWORD","hci_postgres_2026"),
+        user="hci_admin", password=os.environ["POSTGRES_PASSWORD"],
     )
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM projects")
@@ -101,7 +101,7 @@ def chk_drive_sync():
     import psycopg2
     conn = psycopg2.connect(
         host="localhost", port=5432, dbname="hci_os",
-        user="hci_admin", password=os.environ.get("POSTGRES_PASSWORD","hci_postgres_2026"),
+        user="hci_admin", password=os.environ["POSTGRES_PASSWORD"],
     )
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM drive_sync_log")
@@ -126,7 +126,7 @@ def chk_doc_insert():
     import psycopg2
     conn = psycopg2.connect(
         host="localhost", port=5432, dbname="hci_os",
-        user="hci_admin", password=os.environ.get("POSTGRES_PASSWORD","hci_postgres_2026"),
+        user="hci_admin", password=os.environ["POSTGRES_PASSWORD"],
     )
     cur = conn.cursor()
     test_id = str(uuid.uuid4())

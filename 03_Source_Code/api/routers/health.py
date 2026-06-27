@@ -17,8 +17,10 @@ def health():
     results = {}
 
     try:
-        c = psycopg2.connect(host="localhost", port=5432, dbname="hci_os",
-                             user="hci_admin", password="hci_postgres_2026")
+        from config import settings as _s
+        c = psycopg2.connect(host=_s.postgres_host, port=_s.postgres_port,
+                             dbname=_s.postgres_db, user=_s.postgres_user,
+                             password=_s.postgres_password)
         cur = c.cursor()
         cur.execute("SELECT COUNT(*) FROM projects")
         n = cur.fetchone()[0]
@@ -35,7 +37,8 @@ def health():
         results["qdrant"] = {"status": "error", "detail": str(e)}
 
     try:
-        r = redis_lib.Redis(host="localhost", port=6379, password="hci_redis_2026")
+        from config import settings as _s
+        r = redis_lib.Redis(host=_s.redis_host, port=_s.redis_port, password=_s.redis_password)
         r.ping()
         results["redis"] = {"status": "ok"}
     except Exception as e:

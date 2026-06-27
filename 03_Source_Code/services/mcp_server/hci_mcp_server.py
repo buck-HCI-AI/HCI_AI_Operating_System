@@ -7,7 +7,7 @@ Also runs standalone on port 8080 for local MCP clients.
 
 ChatGPT connection:
   URL:  https://speculate-armband-retinal.ngrok-free.dev/mcp
-  Auth: X-API-Key header → hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c
+  Auth: X-API-Key header → value from HCI_API_KEY in .env
 """
 import sys, os, json, ssl, urllib.parse, urllib.request, urllib.error, argparse, base64
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
@@ -21,7 +21,7 @@ import certifi
 from mcp.server.fastmcp import FastMCP
 
 HCI_API  = "http://localhost:8000"
-HCI_KEY  = os.environ.get("HCI_API_KEY", "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c")
+HCI_KEY  = os.environ["HCI_API_KEY"]
 SSL_CTX  = ssl.create_default_context(cafile=certifi.where())
 
 mcp = FastMCP(

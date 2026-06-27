@@ -7,9 +7,11 @@ Run from: 03_Source_Code/
     python3 tests/test_bid_leveling.py
 """
 import sys, os, json, urllib.request, urllib.error, time, datetime
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 BASE = "http://localhost:8000"
-API_KEY = "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+API_KEY = os.environ["HCI_API_KEY"]
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 RESULTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results_bid_leveling.json")
 

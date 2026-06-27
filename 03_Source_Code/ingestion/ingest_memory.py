@@ -14,11 +14,19 @@ import sys, os, glob, psycopg2
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 from fastembed import TextEmbedding
+from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "integrations"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
-DB     = dict(host="localhost", port=5432, dbname="hci_os", user="hci_admin", password="hci_postgres_2026")
+DB = dict(
+    host=os.environ.get("POSTGRES_HOST", "localhost"),
+    port=int(os.environ.get("POSTGRES_PORT", 5432)),
+    dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+    user=os.environ.get("POSTGRES_USER", "hci_admin"),
+    password=os.environ["POSTGRES_PASSWORD"],
+)
 Q      = QdrantClient(host="localhost", port=6333)
 EMBED  = TextEmbedding("BAAI/bge-small-en-v1.5")
 

@@ -9,9 +9,11 @@ Run from 03_Source_Code/:
     python3 tests/test_mvp_sprint_1.py
 """
 import urllib.request, urllib.error, json, sys, datetime, os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 BASE    = "http://localhost:8000/api/v1"
-HEADERS = {"X-API-Key": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c",
+HEADERS = {"X-API-Key": os.environ["HCI_API_KEY"],
            "Content-Type": "application/json"}
 
 passed = failed = 0
