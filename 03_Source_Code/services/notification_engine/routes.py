@@ -16,6 +16,17 @@ class NotificationPayload(BaseModel):
     tags: list[str] = []
     action_url: Optional[str] = None
     topic: Optional[str] = None
+    actions: Optional[list[dict]] = None
+
+
+class ApprovalPayload(BaseModel):
+    exec_id: str
+    title: str
+    approve_token: str
+    reject_token: str
+    defer_token: str
+    deadline: Optional[str] = None
+    confidence: str = "High"
 
 
 @router.post("/send")
@@ -27,12 +38,43 @@ def send_notification(payload: NotificationPayload):
         tags=payload.tags,
         action_url=payload.action_url,
         topic=payload.topic,
+        actions=payload.actions,
+    )
+
+
+@router.post("/approval-required")
+def notify_approval_required(payload: ApprovalPayload):
+    """Send actionable Approve/Reject/Defer notification to Buck's phone."""
+    return NotificationService.approval_required(
+        exec_id=payload.exec_id,
+        title=payload.title,
+        approve_token=payload.approve_token,
+        reject_token=payload.reject_token,
+        defer_token=payload.defer_token,
+        deadline=payload.deadline,
+        confidence=payload.confidence,
     )
 
 
 @router.post("/morning-brief-push")
-def morning_brief_push(inbox_count: int, health: str = "🟢", one_action: Optional[str] = None):
-    return NotificationService.morning_brief_push(inbox_count, health, one_action)
+def morning_brief_push(
+    inbox_count: int,
+    health: str = "",
+    one_action: Optional[str] = None,
+    top_exec_id: Optional[str] = None,
+    approve_token: Optional[str] = None,
+    reject_token: Optional[str] = None,
+    defer_token: Optional[str] = None,
+):
+    return NotificationService.morning_brief_push(
+        inbox_count=inbox_count,
+        health=health,
+        one_action=one_action,
+        top_exec_id=top_exec_id,
+        approve_token=approve_token,
+        reject_token=reject_token,
+        defer_token=defer_token,
+    )
 
 
 @router.post("/alert/inbox/{exec_id}")

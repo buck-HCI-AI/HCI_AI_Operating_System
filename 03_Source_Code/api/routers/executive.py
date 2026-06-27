@@ -532,60 +532,55 @@ def run_escalation_check():
     Called by n8n daily. Checks for overdue inbox items and blocked missions,
     fires notifications via notification engine.
     """
-    import urllib.request as _ur
-
-    api_key = os.environ.get("HCI_API_KEY", "")
-    notify_url = "http://localhost:8000/api/v1/services/notifications/send"
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
+    from notification_engine.notification_svc import NotificationService as _NS
 
     escalations = []
 
-    # Items unresolved >72h → CRITICAL
+    # Items unresolved >72h → CRITICAL with action buttons
     critical_items = _q("""
-        SELECT exec_id, title, approve_token, created_at
+        SELECT exec_id, title, approve_token, reject_token, defer_token, deadline, confidence, created_at
         FROM executive_inbox
         WHERE status = 'pending'
           AND created_at < NOW() - INTERVAL '72 hours'
     """)
     for item in critical_items:
         age_h = int((datetime.now(timezone.utc) - item["created_at"]).total_seconds() / 3600)
-        payload = json.dumps({
-            "title": f"OVERDUE {age_h}h: {item['exec_id']}",
-            "message": item["title"],
-            "severity": "CRITICAL",
-            "tags": ["rotating_light", "clock3"],
-            "action_url": f"http://localhost:8000/api/v1/executive/approve/{item['exec_id']}?token={item['approve_token']}",
-        }).encode()
         try:
-            req = _ur.Request(notify_url, data=payload,
-                              headers={"X-API-Key": api_key, "Content-Type": "application/json"},
-                              method="POST")
-            _ur.urlopen(req, timeout=5)
+            _NS.approval_required(
+                exec_id=item["exec_id"],
+                title=f"OVERDUE {age_h}h: {item['title']}",
+                approve_token=item["approve_token"] or "",
+                reject_token=item["reject_token"] or "",
+                defer_token=item["defer_token"] or "",
+                deadline=str(item["deadline"]) if item["deadline"] else None,
+                confidence=item["confidence"] or "High",
+            )
         except Exception:
             pass
         _log_escalation("exec_inbox", item["exec_id"], "CRITICAL", f"Overdue {age_h}h")
         escalations.append({"type": "overdue_inbox", "exec_id": item["exec_id"], "age_hours": age_h})
 
-    # Items unresolved >24h → HIGH
+    # Items unresolved >24h → HIGH with action buttons
     high_items = _q("""
-        SELECT exec_id, title, approve_token, created_at
+        SELECT exec_id, title, approve_token, reject_token, defer_token, deadline, confidence, created_at
         FROM executive_inbox
         WHERE status = 'pending'
           AND created_at BETWEEN NOW() - INTERVAL '72 hours' AND NOW() - INTERVAL '24 hours'
     """)
     for item in high_items:
         age_h = int((datetime.now(timezone.utc) - item["created_at"]).total_seconds() / 3600)
-        payload = json.dumps({
-            "title": f"Pending {age_h}h: {item['exec_id']}",
-            "message": item["title"],
-            "severity": "HIGH",
-            "tags": ["warning"],
-            "action_url": f"http://localhost:8000/api/v1/executive/approve/{item['exec_id']}?token={item['approve_token']}",
-        }).encode()
         try:
-            req = _ur.Request(notify_url, data=payload,
-                              headers={"X-API-Key": api_key, "Content-Type": "application/json"},
-                              method="POST")
-            _ur.urlopen(req, timeout=5)
+            _NS.approval_required(
+                exec_id=item["exec_id"],
+                title=f"Pending {age_h}h: {item['title']}",
+                approve_token=item["approve_token"] or "",
+                reject_token=item["reject_token"] or "",
+                defer_token=item["defer_token"] or "",
+                deadline=str(item["deadline"]) if item["deadline"] else None,
+                confidence=item["confidence"] or "High",
+            )
         except Exception:
             pass
         _log_escalation("exec_inbox", item["exec_id"], "HIGH", f"Pending {age_h}h")
