@@ -582,6 +582,176 @@ def executive_report():
     }
 
 
+# ── BTW-8: Client Comms Queue ─────────────────────────────────────────────────
+
+@router.get("/projects/{code}/client-comms")
+def pm_client_comms(code: str):
+    """
+    Outstanding items requiring client/owner communication, ranked by urgency.
+    BTW-008: Client communication queue for PM workspace.
+    """
+    proj = _get_project(code)
+    pid = proj["id"]
+    items = []
+
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, subject, status, submitted_date as date,
+                       required_response_date
+                FROM rfis WHERE project_id = %s AND status = 'open'
+                ORDER BY submitted_date ASC NULLS LAST LIMIT 20
+            """, (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                overdue = bool(d.get("required_response_date") and
+                    d["required_response_date"] < datetime.now(timezone.utc).date())
+                items.append({
+                    "type": "RFI", "id": d["id"],
+                    "title": d["subject"] or f"RFI #{d['id']}",
+                    "status": d["status"],
+                    "date": str(d["date"]) if d["date"] else None,
+                    "urgency": "HIGH" if overdue else "MEDIUM",
+                    "action_needed": "Response overdue" if overdue else "Client response required",
+                    "amount": None,
+                })
+
+            cur.execute("""
+                SELECT id, description, status, submitted_date as date,
+                       required_approval_date
+                FROM submittals WHERE project_id = %s
+                  AND status NOT IN ('approved','closed','rejected')
+                ORDER BY submitted_date ASC NULLS LAST LIMIT 20
+            """, (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                overdue = bool(d.get("required_approval_date") and
+                    d["required_approval_date"] < datetime.now(timezone.utc).date())
+                items.append({
+                    "type": "Submittal", "id": d["id"],
+                    "title": d["description"] or f"Submittal #{d['id']}",
+                    "status": d["status"],
+                    "date": str(d["date"]) if d["date"] else None,
+                    "urgency": "HIGH" if overdue else "MEDIUM",
+                    "action_needed": "Approval overdue" if overdue else "Pending client approval",
+                    "amount": None,
+                })
+
+            cur.execute("""
+                SELECT id, risk_type, description, severity, status, identified_date as date
+                FROM risks WHERE project_id = %s AND status = 'open'
+                  AND severity IN ('high','critical')
+                ORDER BY identified_date DESC LIMIT 10
+            """, (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                items.append({
+                    "type": "Risk", "id": d["id"],
+                    "title": f"{d['risk_type']} — {(d['description'] or '')[:60]}",
+                    "status": d["status"], "date": str(d["date"]),
+                    "urgency": "HIGH", "action_needed": "Client notification required",
+                    "amount": None,
+                })
+
+    urgency_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+    items.sort(key=lambda x: urgency_order.get(x["urgency"], 9))
+
+    return {
+        "project": proj["name"],
+        "project_code": code,
+        "as_of": datetime.now(timezone.utc).date().isoformat(),
+        "total_items": len(items),
+        "high_urgency": sum(1 for i in items if i["urgency"] == "HIGH"),
+        "items": items,
+    }
+
+
+# ── BTW-8: AI Ranked Action List ──────────────────────────────────────────────
+
+@router.get("/projects/{code}/action-list")
+def pm_action_list(code: str):
+    """
+    AI-ranked top 10 actions for the PM's day.
+    priority_score = (severity × urgency × financial_impact) / max(days_remaining, 1)
+    BTW-008.
+    """
+    proj = _get_project(code)
+    pid = proj["id"]
+    actions = []
+
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, risk_type, description, severity, mitigation, status, identified_date
+                FROM risks WHERE project_id = %s AND status = 'open'
+                ORDER BY
+                    CASE severity WHEN 'critical' THEN 4 WHEN 'high' THEN 3
+                                  WHEN 'medium' THEN 2 ELSE 1 END DESC
+                LIMIT 20
+            """, (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                sev = {"low": 1, "medium": 2, "high": 3, "critical": 4}.get(
+                    str(d.get("severity","")).lower(), 2)
+                days_open = (datetime.now(timezone.utc).date() - d["identified_date"]).days if d["identified_date"] else 1
+                score = round((sev * sev * 5000) / max(days_open, 1), 1)
+                actions.append({
+                    "category": "Risk",
+                    "id": d["id"],
+                    "title": f"{d['risk_type']}: {(d['description'] or '')[:80]}",
+                    "action": d.get("mitigation") or "Review and assign mitigation",
+                    "priority_score": score,
+                    "financial_impact": None,
+                })
+
+            cur.execute("""
+                SELECT id, subject, status, submitted_date
+                FROM rfis WHERE project_id = %s AND status = 'open'
+                ORDER BY submitted_date ASC NULLS LAST LIMIT 10
+            """, (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                days_open = (datetime.now(timezone.utc).date() - d["submitted_date"]).days if d["submitted_date"] else 7
+                score = round((2 * 3 * 5000) / max(days_open, 1), 1)
+                actions.append({
+                    "category": "RFI",
+                    "id": d["id"],
+                    "title": d["subject"] or f"RFI #{d['id']}",
+                    "action": "Follow up — client/architect response overdue" if days_open > 7 else "Monitor for response",
+                    "priority_score": score,
+                    "financial_impact": None,
+                })
+
+            cur.execute("""
+                SELECT COUNT(*) as count, SUM(budget_amount) as total
+                FROM bid_packages WHERE project_id = %s AND status = 'active'
+            """, (pid,))
+            bids = dict(cur.fetchone() or {})
+            if bids.get("count", 0):
+                actions.append({
+                    "category": "Procurement",
+                    "id": None,
+                    "title": f"{bids['count']} bid packages still open",
+                    "action": "Review and award before schedule impact",
+                    "priority_score": round(float(bids["total"] or 0) / 10000, 1),
+                    "financial_impact": float(bids["total"] or 0),
+                })
+
+    actions.sort(key=lambda x: -x["priority_score"])
+    top_10 = actions[:10]
+    for i, a in enumerate(top_10):
+        a["rank"] = i + 1
+
+    return {
+        "project": proj["name"],
+        "project_code": code,
+        "as_of": datetime.now(timezone.utc).date().isoformat(),
+        "formula": "priority_score = (severity × urgency × financial_impact) / days_open",
+        "total_actions": len(actions),
+        "top_10": top_10,
+    }
+
+
 # Aliases matching GBT Bid Leveling Directive URL spec
 @router.get("/executive-report")
 def executive_report_alias():

@@ -5,6 +5,33 @@
 
 ---
 
+## v2.6 — 2026-06-28 | GBT Orchestrator Gateway Bridge + Full BTW Audit
+
+**Trigger:** "Do it all" + GBT connection workaround directive (HCI AI Operating System.docx)
+
+**Changes:**
+- `03_Source_Code/api/routers/gbt_gateway.py` — NEW: GBT Orchestrator Gateway
+  - 15 endpoints at `/gateway/*` — project state, project brain, PM console, exec report, knowledge graph, drive search, agent handoff
+  - Standard response envelope on every endpoint: `{status, timestamp, execution_time_ms, source_system, payload, warnings, errors}`
+  - Request logging via `gateway_request_log` PostgreSQL table
+  - AUTH: X-API-Key on write endpoints; reads open
+  - No DB credentials or internal IDs exposed
+  - Registered in main.py at `/gateway`
+  - **LIVE at ngrok: https://speculate-armband-retinal.ngrok-free.dev/gateway/health** ✅
+- `gateway_request_log` — new PostgreSQL table (request_id, path, source_system, upstream_endpoint, status, execution_ms)
+- `LIVE_PROJECT_STATE.md` — updated with full gateway endpoint table, usage instructions
+- `Architecture/Platform_Intelligence/VENDOR_DEDUP_COMPARISON.md` — all 67 "duplicate" vendors are multi-contact entries (different people, same firm) — no true duplicates, no merges needed
+- **All BTW milestones confirmed passing:**
+  - BTW-4 (Project Brain Extended): 36/36 ✅
+  - BTW-5 (Role Consoles): 115/115 ✅
+  - BTW-6 (Exec Reports): 40/40 — weekly + monthly workflows activated ✅
+  - BTW-7 (Field Enhancements): 97/97 ✅ — Houzz data still pending
+  - BTW-8 (PM Workspace): 69/69 — client comms + ranked action list ✅
+  - BTW-9 (Knowledge Graph): 60/60 ✅
+  - BTW-10 (Continuous Discovery): 55/55 ✅
+- `Downloads/HCI AI Operating System.docx` — updated to reflect built status (all 6 requirements ✅)
+- **Full test run: 136/136 core BTW tests + 39 platform + 37 core services = all passing**
+
 ## v2.5 — 2026-06-27 | Drive Intelligence + Data Integrity Audit + Full System Test
 
 **Trigger:** ARCHITECTURE DIRECTIVE — "complete audit and test of everything"

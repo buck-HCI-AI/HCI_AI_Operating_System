@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-27T12:00 MST
-**Updated By:** Claude Code — API key rotated (SEC-001). Houzz ingestion endpoint LIVE. Command Center built (CMD-001–006).
+**Last Updated:** 2026-06-28T00:00 MST
+**Updated By:** Claude Code — GBT Gateway Bridge built (v2.6). BTW-4 through BTW-10 all passing. Drive Intelligence active. 136+ tests passing.
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -230,14 +230,53 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 
 ---
 
-## How ChatGPT Connects (ACR-002)
+## How ChatGPT Connects (GBT Gateway Bridge — v2.6)
 
+**Primary method: GBT Orchestrator Gateway** — all endpoints return standard JSON envelope.
+
+```
+Base: https://speculate-armband-retinal.ngrok-free.dev
+Auth: X-API-Key header (hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6) for write endpoints
+```
+
+| Endpoint | Method | What GBT Gets |
+|---|---|---|
+| `/gateway/health` | GET | Gateway health + service count |
+| `/gateway/services` | GET | Service registry (all 11 endpoints) |
+| `/gateway/project-state` | GET | Full live system state (this file) |
+| `/gateway/project/64EW/brain` | GET | 64 Eastwood project brain snapshot |
+| `/gateway/project/101F/brain` | GET | 101 Francis project brain snapshot |
+| `/gateway/project/1355R/brain` | GET | 1355 Riverside project brain snapshot |
+| `/gateway/project/{code}/schedule` | GET | Schedule status for a project |
+| `/gateway/project/{code}/bids` | GET | Bid packages and procurement |
+| `/gateway/project/{code}/pm` | GET | PM console — health, risks, actions |
+| `/gateway/executive/report` | GET | Morning brief across all projects |
+| `/gateway/executive/mission-control` | GET | Mission control — all KPIs |
+| `/gateway/knowledge/vendor?name=X` | GET | Vendor cross-project lookup |
+| `/gateway/knowledge/issues?q=X` | GET | Similar issues semantic search |
+| `/gateway/drive/search?q=X` | GET | Search Google Drive |
+| `POST /gateway/agent/handoff` | POST | Send implementation request to Claude Code |
+
+**Standard response envelope** (all endpoints):
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-06-28T...",
+  "execution_time_ms": 120,
+  "source_system": "hci-api",
+  "payload": { ... },
+  "warnings": [],
+  "errors": []
+}
+```
+
+**Fallback read methods:**
 | Method | Status | URL |
 |---|---|---|
-| Public HTTP endpoint | 🟢 LIVE | `https://speculate-armband-retinal.ngrok-free.dev/project-state` (no auth) |
+| Project state (direct) | 🟢 LIVE | `https://speculate-armband-retinal.ngrok-free.dev/project-state` (no auth) |
 | Google Drive | 🟢 LIVE | `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` |
-| GitHub raw URL | 🟢 LIVE | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md` |
-| MCP | ❌ NOT for ChatGPT | Claude-only protocol |
+| GitHub raw | 🟢 LIVE | `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md` |
+| MCP | ❌ Claude-only | Not available to ChatGPT |
 
 ---
 

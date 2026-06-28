@@ -35,6 +35,7 @@ from routers import platform as platform_router
 from routers import mvp_ops
 from routers import executive as exec_router
 from routers import operations as ops_router
+from routers import gbt_gateway as gbt_gateway_router
 
 # Construction Intelligence Services — loaded via importlib to avoid service.py name collisions
 import importlib.util as _ilu
@@ -245,6 +246,9 @@ app.include_router(exec_router.router, prefix="/executive", include_in_schema=Fa
 
 # Operations console HTML at /superintendent, /pm, /leadership (mobile-first, no auth)
 app.include_router(ops_router.router, include_in_schema=False)
+
+# ── GBT Orchestrator Gateway (/gateway/*) ────────────────────────────────────
+app.include_router(gbt_gateway_router.router)
 
 # ── Legacy routes (backward compat — launchd scripts + existing integrations) ─
 
