@@ -1,6 +1,6 @@
 {
   "suite": "Sprint 3 & 4",
-  "run_at": "2026-06-27T19:18:25.928097+00:00",
+  "run_at": "2026-06-28T00:47:43.495393+00:00",
   "summary": {
     "total": 35,
     "passed": 35,
@@ -51,7 +51,7 @@
     {
       "test": "Driving brief text",
       "status": "PASS",
-      "detail": "chars=396"
+      "detail": "chars=398"
     },
     {
       "test": "Driving brief is markdown-free",
@@ -71,7 +71,7 @@
     {
       "test": "Morning brief structure",
       "status": "PASS",
-      "detail": "inbox_count=1"
+      "detail": "inbox_count=2"
     },
     {
       "test": "Blocked missions endpoint",
@@ -86,7 +86,7 @@
     {
       "test": "List missions",
       "status": "PASS",
-      "detail": "count=6"
+      "detail": "count=15"
     },
     {
       "test": "Mission status filter",
@@ -121,7 +121,7 @@
     {
       "test": "Escalation check runs",
       "status": "PASS",
-      "detail": "fired=0"
+      "detail": "fired=2"
     },
     {
       "test": "approval_required endpoint works",
@@ -166,7 +166,7 @@
     {
       "test": "Houzz status endpoint",
       "status": "PASS",
-      "detail": "keys=['status', 'table_counts', 'last_sync']"
+      "detail": "keys=['status', 'total_records', 'table_counts', 'last_sync']"
     },
     {
       "test": "Migration 007: executive_inbox table",
