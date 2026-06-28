@@ -150,15 +150,21 @@ def project_brain(code: str):
     t0 = time.time()
     rid = str(uuid.uuid4())[:8]
     try:
-        pid = _get_pid(code)
-        snap = _proxy(f"/services/project-brain/{pid}")
+        # project-brain resolves by code string (extracts leading digits via ILIKE)
+        # For test projects without a numeric prefix (TSNB, TSREM), fall back to numeric ID
+        brain_ref = code
+        try:
+            snap = _proxy(f"/services/project-brain/{brain_ref}")
+        except HTTPException:
+            brain_ref = str(_get_pid(code))
+            snap = _proxy(f"/services/project-brain/{brain_ref}")
         intel = {}
         try:
-            intel = _proxy(f"/services/project-brain/{pid}/intelligence")
+            intel = _proxy(f"/services/project-brain/{brain_ref}/intelligence")
         except Exception:
             pass
         payload = {"snapshot": snap, "intelligence": intel}
-        _log(f"/project/{code}/brain", "ChatGPT", f"/services/project-brain/{pid}",
+        _log(f"/project/{code}/brain", "ChatGPT", f"/services/project-brain/{brain_ref}",
              "ok", round((time.time()-t0)*1000), rid)
         return _response(f"/project/{code}/brain", payload, start=t0)
     except HTTPException as e:

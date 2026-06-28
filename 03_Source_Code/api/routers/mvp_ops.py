@@ -737,16 +737,16 @@ def pm_action_list(code: str):
                 })
 
             cur.execute("""
-                SELECT COUNT(*) as count, SUM(budget_amount) as total
-                FROM bid_packages WHERE project_id = %s AND status = 'active'
+                SELECT COUNT(*) as count, SUM(awarded_amount) as total
+                FROM bid_packages WHERE project_id = %s AND status IN ('bids_receiving','active','not_started')
             """, (pid,))
             bids = dict(cur.fetchone() or {})
             if bids.get("count", 0):
                 actions.append({
                     "category": "Procurement",
                     "id": None,
-                    "title": f"{bids['count']} bid packages still open",
-                    "action": "Review and award before schedule impact",
+                    "title": f"{bids['count']} bid packages pending award",
+                    "action": "Review bids received and issue awards before schedule impact",
                     "priority_score": round(float(bids["total"] or 0) / 10000, 1),
                     "financial_impact": float(bids["total"] or 0),
                 })
