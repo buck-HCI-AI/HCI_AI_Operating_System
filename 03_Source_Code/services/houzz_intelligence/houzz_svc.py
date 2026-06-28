@@ -250,17 +250,19 @@ class HouzzIngestionService:
         ]
         counts = {}
         last_syncs = {}
-        with _pg() as conn:
-            with conn.cursor() as cur:
-                for table in tables:
-                    try:
-                        cur.execute(f"SELECT COUNT(*), MAX(synced_at) FROM {table}")
-                        row = cur.fetchone()
-                        counts[table] = row[0]
-                        last_syncs[table] = str(row[1]) if row[1] else None
-                    except Exception:
-                        counts[table] = None
-                        last_syncs[table] = None
+        conn = _pg()
+        conn.autocommit = True
+        for table in tables:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(f"SELECT COUNT(*) AS cnt, MAX(synced_at) AS last FROM {table}")
+                    row = cur.fetchone()
+                    counts[table] = row["cnt"]
+                    last_syncs[table] = str(row["last"]) if row["last"] else None
+            except Exception:
+                counts[table] = None
+                last_syncs[table] = None
+        conn.close()
 
         total = sum(v for v in counts.values() if v is not None)
         return {

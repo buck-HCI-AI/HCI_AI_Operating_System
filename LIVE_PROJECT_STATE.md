@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-28T00:00 MST
-**Updated By:** Claude Code — GBT Gateway Bridge built (v2.6). BTW-4 through BTW-10 all passing. Drive Intelligence active. 136+ tests passing.
+**Last Updated:** 2026-06-28T01:30 MST
+**Updated By:** Claude Code — Drive→DB schedule import complete (v2.7). 995 schedule items loaded for 64EW/101F/1355R. WF-009 Schedule Intelligence unblocked. HouzzMiner activated.
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -31,8 +31,9 @@
 | Microsoft 365 | 🟢 LIVE | 2026-06-26 | Claude Code | Graph API — email read/send |
 | Mining Engine | 🟢 LIVE | 2026-06-27 | Claude Code | 8 agents, 03:00 daily, authorized by Buck 2026-06-27 |
 | Integration Registry | 🟢 LIVE | 2026-06-27 | Claude Code | 8 integrations seeded (05_Database/integration_registry.sql) |
-| Houzz Ingestion | 🟢 LIVE | 2026-06-27 | Claude Code | POST /api/v1/services/houzz/ingest — awaiting Browser Claude data load |
-| Houzz (Browser) | 🔄 ACTIVE | 2026-06-27 | Browser Claude | Directive on Desktop — extract 101 Francis + POST to endpoint |
+| Houzz Ingestion | 🟢 LIVE | 2026-06-28 | Claude Code | 995 schedule items loaded from Drive xlsx — 64EW(336), 101F(259), 1355R(400) |
+| Houzz Miner | 🟢 ACTIVE | 2026-06-28 | Claude Code | houzz_miner running — was paused, now activated with data in DB |
+| Schedule Intelligence | 🟢 LIVE | 2026-06-28 | Claude Code | WF-009 unblocked — /mvp/projects/{code}/schedule-status returning health |
 
 ---
 

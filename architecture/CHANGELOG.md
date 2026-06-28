@@ -5,6 +5,33 @@
 
 ---
 
+## v2.7 — 2026-06-28 | Drive → DB Schedule Import + WF-009 Unblocked
+
+**Trigger:** Gate 5 pilot projects had 0 Houzz schedule data; real data lives in Drive MS Project exports.
+
+**Changes:**
+- `03_Source_Code/scripts/import_drive_schedules.py` — NEW: imports Production Schedule xlsx from Drive into `houzz_schedule_items`
+  - 995 total records: 64EW(336), 101F(259), 1355R(400)
+  - Column mapping for all 3 xlsx schemas (different column names per project)
+  - Excel serial date conversion for 1355R dates
+  - ON CONFLICT DO UPDATE — idempotent re-import safe
+  - Critical/milestone flags appended to notes field
+- `houzz_schedule_items` — 995 records inserted; `houzz_item_id` unique per project (101F prefixed with "101F-")
+- `services/houzz_intelligence/houzz_svc.py` — **fixed table count bug**: `row[0]` → `row["cnt"]` (RealDictCursor uses string keys); also fixed transaction isolation (autocommit per table)
+- HouzzMiner activated: was `⏸ PAUSED`, now `🟢 ACTIVE` — `/api/v1/services/mining/run/houzz_miner` confirmed live
+- Schedule Intelligence (WF-009): **UNBLOCKED** — all 3 projects returning health status:
+  - 64EW: `on_track` | 101F: `at_risk` | 1355R: `on_track`
+- `LIVE_PROJECT_STATE.md` — updated Houzz/Schedule/Miner status rows
+
+**DB state after import:**
+| Table | Records |
+|---|---|
+| houzz_schedule_items | 995 |
+| houzz_projects | 3 |
+| houzz_daily_logs | 9 |
+
+---
+
 ## v2.6 — 2026-06-28 | GBT Orchestrator Gateway Bridge + Full BTW Audit
 
 **Trigger:** "Do it all" + GBT connection workaround directive (HCI AI Operating System.docx)
