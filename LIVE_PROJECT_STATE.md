@@ -3,7 +3,7 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-28T05:14 MST
+**Last Updated:** 2026-06-28T06:32 MST
 **Updated By:** Claude Code v3.0 — 🔒 ARCHITECTURE FREEZE v1.0 DECLARED. Foundation locked: 427 endpoints, 47 tables, 40 workflows, GBT Gateway Bridge. Sprint 3 ready.
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
@@ -66,6 +66,9 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 | 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🟢 GREEN | 58 | 0 | 0 days |
 | 4 | 83SB | 83 Sagebrusch | TBD |  | 🟢 GREEN | 0 | 0 | 0 days |
 | 8 | 246GW | 246 Gallo Way | New Construction — Chaparral Lot 7 | 321358358216 | 🟢 GREEN | 44 | 0 | 0 days |
+| 11 | ASPN-NEW | 842 Ridge Road | New Construction 9,200 SF Ultra-Luxury |  | 🟢 GREEN | 39 | 0 | 0 days |
+| 12 | ASPN-REM | 710 Cemetery Lane | Full Remodel 4,800 SF Victorian Conversion |  | 🟢 GREEN | 26 | 0 | 0 days |
+| 13 | ASPN-MC | 200 E Hopkins | 25-Unit Luxury Condo 68,000 GSF |  | 🟢 GREEN | 41 | 0 | 0 days |
 
 **Projects at risk:** 64EW (2 open risks), 101F (4 open risks, schedule slipping)
 **Total open risks:** 6 | **Open RFIs:** 0
