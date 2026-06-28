@@ -21,6 +21,65 @@
 - n8n: http://localhost:5678 (API key in .env as N8N_API_KEY)
 - Gate 5 Pilot: 2026-06-25 to 2026-07-01 on 64 Eastwood, 101 Francis, 1355 Riverside
 
+## GBT Gateway Bridge — How to Use It
+The Gateway Bridge is how ChatGPT (GBT / Chief Architect) connects to the OS. Claude Code owns and maintains it.
+
+**Base URL:** `https://speculate-armband-retinal.ngrok-free.dev`
+**Auth:** `X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6` — required on write endpoints only; all reads are open.
+**Source file:** `03_Source_Code/api/routers/gbt_gateway.py`
+**Registered at:** `/gateway/*` in `main.py`
+
+### At the start of every session:
+1. Verify the gateway is live: `curl -s https://speculate-armband-retinal.ngrok-free.dev/gateway/health`
+2. Check for pending GBT handoffs: `ls Architecture/Agent_Handoff/Inbox/`
+3. If handoffs exist, read and execute them before taking other work
+4. If ngrok is down, restart it: `ngrok http 8000` — the URL is static on the free plan
+
+### Key endpoints GBT uses (reads — no auth):
+| Endpoint | What GBT Gets |
+|---|---|
+| `GET /gateway/health` | Gateway live check + service count |
+| `GET /gateway/project-state` | Full LIVE_PROJECT_STATE.md |
+| `GET /gateway/project/{code}/brain` | Project brain snapshot (64EW, 101F, 1355R) |
+| `GET /gateway/project/{code}/schedule` | Schedule status + variance |
+| `GET /gateway/project/{code}/pm` | PM console — health, risks, actions |
+| `GET /gateway/executive/report` | Morning brief across all projects |
+| `GET /gateway/executive/mission-control` | All KPIs |
+| `GET /gateway/knowledge/vendor?name=X` | Vendor cross-project lookup |
+| `GET /gateway/drive/search?q=X` | Google Drive search |
+
+### Write endpoint GBT uses to send Claude Code a task:
+```
+POST /gateway/agent/handoff
+X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
+{"title": "...", "body": "...", "priority": "high|medium|low", "source": "chief_architect"}
+```
+This writes a `.md` file to `Architecture/Agent_Handoff/Inbox/`. Claude Code picks it up at session start.
+
+### Standard response envelope (every endpoint returns this):
+```json
+{"status": "ok", "timestamp": "...", "execution_time_ms": 76,
+ "source_system": "hci-api", "payload": {...}, "warnings": [], "errors": []}
+```
+
+### SOP alignment check (required before every build):
+Before implementing any feature, verify:
+1. Does a Business Process (BP-XX) govern this? → `SELECT * FROM business_processes WHERE process_name ILIKE '%X%'`
+2. Is there an approval gate required? → Check `sop_approval_gates`
+3. Does the build trace back to the Architecture Handbook? → See `AI_TEAM/SOP_WORKFLOW_COMPLIANCE_MAP.md`
+If no BP governs it: flag it. Either it's OS infrastructure (OK) or a missing SOP (needs GBT review).
+
+### When adding or modifying gateway endpoints:
+- Keep the `_response()` wrapper on every endpoint — GBT depends on the standard envelope
+- Log all gateway calls via `_log()` → `gateway_request_log` table
+- Never expose raw DB credentials, internal IDs, or full stack traces in gateway responses
+- After any change, test via: `curl -s https://speculate-armband-retinal.ngrok-free.dev/gateway/health`
+
+### Fallback when ngrok is down:
+GBT can still read system state via:
+- Google Drive: `https://drive.google.com/file/d/1Jjug6nbx-mGN9v4GrEyofkGXY5nMHvpP/view` (LIVE_PROJECT_STATE.md)
+- GitHub raw: `https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md`
+
 ## Style
 - No explanatory comments in code unless the WHY is non-obvious
 - No trailing summaries — Buck can read the diff
