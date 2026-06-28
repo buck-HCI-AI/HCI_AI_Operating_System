@@ -927,3 +927,146 @@ def _get_pid(code: str) -> int:
         "ASPN-NEW": 11, "ASPN-REM": 12, "ASPN-MC": 13,
     }
     return PILOT.get(code.upper(), 1)
+
+
+# ── Permitting Research (Claude AI) ─────────────────────────────────────────
+@router.get("/permitting/research/{code}")
+def permitting_research(code: str):
+    """AI-powered permit research for City of Aspen projects using Claude."""
+    t0 = time.time()
+    pid = _get_pid(code)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.name, p.address, p.scope, p.status,
+                        (SELECT COUNT(*) FROM bid_packages bp WHERE bp.project_id = p.id) AS pkg_count,
+                        (SELECT COUNT(*) FROM rfis r WHERE r.project_id = p.id AND r.status='open') AS open_rfis
+                    FROM projects p WHERE p.id = %s
+                """, (pid,))
+                row = cur.fetchone()
+        if not row:
+            return _response(f"/permitting/research/{code}", {}, errors=["Project not found"], start=t0)
+
+        # Build permit research using Claude AI
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+        scope = row["scope"] or "Construction project"
+        address = row["address"] or "Aspen, CO"
+
+        prompt = f"""You are a construction permitting expert specializing in Aspen, Colorado.
+Provide a concise permitting roadmap for this project:
+
+Project: {row['name']}
+Address: {address}
+Scope: {scope}
+Status: {row['status']}
+
+Provide:
+1. Required permits (Building, Grading, ROW, HPC if applicable, etc.)
+2. City of Aspen specific requirements (HPC Historic Preservation, FAR/setback notes)
+3. Estimated review timelines (City of Aspen Building Dept typically 8-16 weeks)
+4. Key submittals required
+5. Any altitude/environmental considerations (7,900 ft elevation, wildfire zone, etc.)
+
+Be specific to City of Aspen Building Department processes. Keep response under 400 words."""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        research = message.content[0].text
+
+        _log(f"/permitting/research/{code}", "GBT", f"claude-haiku permit research",
+             "ok", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response(f"/permitting/research/{code}", {
+            "project_code": code,
+            "project_name": row["name"],
+            "address": address,
+            "scope": scope,
+            "permit_research": research,
+            "jurisdiction": "City of Aspen Building Department",
+            "hpc_required": "cemetery" in address.lower() or "historic" in (scope or "").lower(),
+            "ai_model": "claude-haiku-4-5-20251001"
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/permitting/research/{code}", {}, errors=[str(e)], start=t0)
+
+
+# ── Houzz Design Intelligence ────────────────────────────────────────────────
+@router.get("/houzz/design-intel/{code}")
+def houzz_design_intel(code: str):
+    """Houzz design intelligence — luxury finish specs and design trends for project type."""
+    t0 = time.time()
+    pid = _get_pid(code)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT name, address, scope, status FROM projects WHERE id = %s", (pid,))
+                row = cur.fetchone()
+                if not row:
+                    return _response(f"/houzz/design-intel/{code}", {}, errors=["Project not found"], start=t0)
+
+                # Pull Houzz data if available
+                cur.execute("SELECT id, name, status FROM houzz_projects WHERE name ILIKE %s LIMIT 1",
+                            (f"%{code.replace('-',' ')}%",))
+                houzz_proj = cur.fetchone()
+
+                # Get finish selections from houzz_selections if available
+                selections = []
+                if houzz_proj:
+                    cur.execute("SELECT item_name, selection, brand, cost FROM houzz_selections WHERE project_id = %s LIMIT 20",
+                                (houzz_proj["id"],))
+                    selections = [dict(s) for s in cur.fetchall()]
+
+        # Generate design intelligence using Claude
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+        scope = row["scope"] or "Luxury Aspen construction"
+        project_type = ("New Construction" if "new construction" in scope.lower()
+                       else "Remodel" if "remodel" in scope.lower()
+                       else "Multifamily" if "condo" in scope.lower() or "unit" in scope.lower()
+                       else "Custom")
+
+        prompt = f"""You are a luxury interior design consultant for high-end Aspen, Colorado projects.
+Provide finish specifications and design intelligence for:
+
+Project: {row['name']} ({project_type})
+Address: {row['address']}
+Scope: {scope}
+
+Provide specific luxury finish recommendations:
+1. Kitchen: cabinetry, countertop material/brand, appliances
+2. Primary Bath: tile brand/pattern, fixtures, vanity specification
+3. Flooring: species/type, width, finish
+4. Hardware: brand/finish
+5. Lighting: key brands/styles
+6. HVAC/Mechanical: preferred systems for Aspen altitude + climate
+7. Window brand recommendation (triple-pane for Aspen climate)
+8. Current Aspen luxury market trends (2026)
+
+Be specific with brands and specs appropriate for $1,000+/SF ultra-luxury Aspen market.
+Keep response under 500 words."""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=700,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        design_intel = message.content[0].text
+
+        return _response(f"/houzz/design-intel/{code}", {
+            "project_code": code,
+            "project_name": row["name"],
+            "project_type": project_type,
+            "houzz_project_linked": houzz_proj is not None,
+            "existing_selections": len(selections),
+            "design_intelligence": design_intel,
+            "market_tier": "ultra-luxury ($1,000+/SF)",
+            "location": "Aspen, CO 81611 (7,900 ft elevation)",
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/houzz/design-intel/{code}", {}, errors=[str(e)], start=t0)
