@@ -6,6 +6,23 @@ Format: [Agent] Description — Date
 
 ---
 
+## [End-to-End Test Scenario Complete] — 2026-06-27 — Both Test Projects Full Chain Validated
+
+### Claude Code — Full Scenario Run (Buck directive: "run entire scenario start to finish — plans to handoff")
+- **2 test projects created**: TSNB (TEST-Alpine Modern, id=9, New Construction, 4,800SF Snowmass) + TSREM (TEST-Canyon Remodel, id=10, Remodel, 2,800SF Aspen)
+- **SOP chain 04-30**: 34/34 instances created — all SOPs initiate clean on both test projects
+- **SOP actions validated**: SOP 07 AI estimate, SOP 09 budget (12 line items, PM + Buck approve), SOP 17 milestones (11 TSNB + 8 TSREM, all phases), SOP 23 startup checklist, SOP 25 daily logs (6 entries across both projects), SOP 27 QC checklists, SOP 29 safety plan AI
+- **MVP operations**: pm-review, pm-weekly-review, daily-log, schedule-status — all working on test codes
+- **Intelligence services** (28/28 pass): project-brain, schedule-intelligence, schedule-variance, risk-intelligence, kpi-intelligence — all resolve test project IDs
+- **Gateway brain fixed**: `project_brain()` now uses `_get_pid(code)` before calling `/services/project-brain/{id}` — was passing "TSNB" string to a numeric-ID endpoint
+- **CODE_MAP expanded**: Both CODE_MAP instances in gbt_gateway.py now include TSNB→9 and TSREM→10
+- **Exec report isolation fixed**: `executive_report()` in mvp_ops.py now skips projects where `role.startswith("test_")` — test data clean from exec report; `projects_active` is now dynamic (not hardcoded 3)
+- **Route/field corrections documented**: weather enum (clear/partly_cloudy/…), phase enum (preconstruction/mobilization/…), SOP 09 requires `description`, SOP 11 needs `target_issue_date`+`bid_due_date`, SOP 17 needs project_name+dates
+- **Exec isolation verified**: `/api/v1/mvp/exec-report` and `/gateway/executive/report` both clean — test projects excluded; real portfolio shows 64EW, 101F, 1355R, 83SB, 246GW only
+- **System ready for field test** — all major systems validated end-to-end with realistic data without touching production projects
+
+---
+
 ## [Extended Audit + Data Cleanup] — 2026-06-28 — n8n Restored, Vendor Dedup, Governance
 
 ### Claude Code — Extended Audit Pass (Buck directive: "keep mining, keep fixing")

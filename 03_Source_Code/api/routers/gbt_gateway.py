@@ -150,14 +150,15 @@ def project_brain(code: str):
     t0 = time.time()
     rid = str(uuid.uuid4())[:8]
     try:
-        snap = _proxy(f"/services/project-brain/{code}")
+        pid = _get_pid(code)
+        snap = _proxy(f"/services/project-brain/{pid}")
         intel = {}
         try:
-            intel = _proxy(f"/services/project-brain/{code.replace(code, _get_pid(code))}/intelligence")
+            intel = _proxy(f"/services/project-brain/{pid}/intelligence")
         except Exception:
             pass
         payload = {"snapshot": snap, "intelligence": intel}
-        _log(f"/project/{code}/brain", "ChatGPT", f"/services/project-brain/{code}",
+        _log(f"/project/{code}/brain", "ChatGPT", f"/services/project-brain/{pid}",
              "ok", round((time.time()-t0)*1000), rid)
         return _response(f"/project/{code}/brain", payload, start=t0)
     except HTTPException as e:
@@ -718,10 +719,10 @@ async def sync_live_state(request: Request):
                 """)
                 rows = [dict(r) for r in cur.fetchall()]
 
-        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW"}
-        NAME_MAP = {1: "64 Eastwood", 2: "101 Francis", 3: "1355 Riverside", 4: "83 Sagebrusch", 8: "246 Gallo Way"}
-        HS_MAP   = {1: "331240861419", 2: "321401932527", 3: "321351275210", 4: "", 8: "321358358216"}
-        SCOPE_MAP = {1: "Exterior & Site", 2: "Full Interior Remodel", 3: "Full Remodel", 4: "TBD", 8: "New Construction — Chaparral Lot 7"}
+        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM"}
+        NAME_MAP = {1: "64 Eastwood", 2: "101 Francis", 3: "1355 Riverside", 4: "83 Sagebrusch", 8: "246 Gallo Way", 9: "TEST-Alpine Modern", 10: "TEST-Canyon Remodel"}
+        HS_MAP   = {1: "331240861419", 2: "321401932527", 3: "321351275210", 4: "", 8: "321358358216", 9: "", 10: ""}
+        SCOPE_MAP = {1: "Exterior & Site", 2: "Full Interior Remodel", 3: "Full Remodel", 4: "TBD", 8: "New Construction — Chaparral Lot 7", 9: "New Construction 4,800 SF", 10: "Full Interior Remodel 2,800 SF"}
 
         # Build updated table rows
         table_lines = [
@@ -823,7 +824,7 @@ async def export_schedule_csv(request: Request,
     try:
         import csv, io
         pid = _get_pid(project_code)
-        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW"}
+        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM"}
         HCI_FOLDER = os.environ.get("HCI_AI_DRIVE_FOLDER", "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI")
         FOLDER_MAP = {1: HCI_FOLDER, 2: HCI_FOLDER, 3: HCI_FOLDER}
 
@@ -912,5 +913,5 @@ async def export_schedule_csv(request: Request,
 
 
 def _get_pid(code: str) -> int:
-    PILOT = {"64EW": 1, "101F": 2, "1355R": 3, "246GW": 8, "83SB": 4}
+    PILOT = {"64EW": 1, "101F": 2, "1355R": 3, "246GW": 8, "83SB": 4, "TSNB": 9, "TSREM": 10}
     return PILOT.get(code.upper(), 1)

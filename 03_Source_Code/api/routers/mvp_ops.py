@@ -29,11 +29,13 @@ DB = dict(
 )
 
 PILOT_PROJECTS = {
-    "64EW":  {"id": 1, "name": "64 Eastwood",    "role": "historical_reference"},
-    "101F":  {"id": 2, "name": "101 Francis",     "role": "pm_bid_daily_ops"},
-    "1355R": {"id": 3, "name": "1355 Riverside",  "role": "primary_advanced_pilot"},
-    "83SB":  {"id": 4, "name": "83 Sagebrusch",   "role": "pending_initialization"},
-    "246GW": {"id": 8, "name": "246 Gallo Way",   "role": "new_construction_pilot"},
+    "64EW":  {"id": 1, "name": "64 Eastwood",       "role": "historical_reference"},
+    "101F":  {"id": 2, "name": "101 Francis",        "role": "pm_bid_daily_ops"},
+    "1355R": {"id": 3, "name": "1355 Riverside",     "role": "primary_advanced_pilot"},
+    "83SB":  {"id": 4, "name": "83 Sagebrusch",      "role": "pending_initialization"},
+    "246GW": {"id": 8, "name": "246 Gallo Way",      "role": "new_construction_pilot"},
+    "TSNB":  {"id": 9,  "name": "TEST-Alpine Modern", "role": "test_new_build"},
+    "TSREM": {"id": 10, "name": "TEST-Canyon Remodel","role": "test_remodel"},
 }
 
 
@@ -537,6 +539,8 @@ def executive_report():
     projects_at_risk = []
 
     for code, proj in PILOT_PROJECTS.items():
+        if proj.get("role", "").startswith("test_"):
+            continue
         pid = proj["id"]
         with _pg() as conn:
             with conn.cursor() as cur:
@@ -582,7 +586,7 @@ def executive_report():
         "report_date": datetime.now(timezone.utc).date().isoformat(),
         "mode": "read_only",
         "summary": {
-            "projects_active": 3,
+            "projects_active": len(reports),
             "projects_at_risk": projects_at_risk,
             "total_open_risks": total_risks,
             "total_open_rfis": total_rfis,
