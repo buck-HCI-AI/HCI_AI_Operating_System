@@ -29,13 +29,16 @@ DB = dict(
 )
 
 PILOT_PROJECTS = {
-    "64EW":  {"id": 1, "name": "64 Eastwood",       "role": "historical_reference"},
-    "101F":  {"id": 2, "name": "101 Francis",        "role": "pm_bid_daily_ops"},
-    "1355R": {"id": 3, "name": "1355 Riverside",     "role": "primary_advanced_pilot"},
-    "83SB":  {"id": 4, "name": "83 Sagebrusch",      "role": "pending_initialization"},
-    "246GW": {"id": 8, "name": "246 Gallo Way",      "role": "new_construction_pilot"},
-    "TSNB":  {"id": 9,  "name": "TEST-Alpine Modern", "role": "test_new_build"},
-    "TSREM": {"id": 10, "name": "TEST-Canyon Remodel","role": "test_remodel"},
+    "64EW":    {"id": 1,  "name": "64 Eastwood",                  "role": "historical_reference"},
+    "101F":    {"id": 2,  "name": "101 Francis",                   "role": "pm_bid_daily_ops"},
+    "1355R":   {"id": 3,  "name": "1355 Riverside",                "role": "primary_advanced_pilot"},
+    "83SB":    {"id": 4,  "name": "83 Sagebrusch",                 "role": "pending_initialization"},
+    "246GW":   {"id": 8,  "name": "246 Gallo Way",                 "role": "new_construction_pilot"},
+    "TSNB":    {"id": 9,  "name": "TEST-Alpine Modern",            "role": "test_new_build"},
+    "TSREM":   {"id": 10, "name": "TEST-Canyon Remodel",           "role": "test_remodel"},
+    "ASPN-NEW":{"id": 11, "name": "842 Ridge Road — Luxury Modern","role": "aspen_new_construction"},
+    "ASPN-REM":{"id": 12, "name": "710 Cemetery Lane — Victorian", "role": "aspen_remodel"},
+    "ASPN-MC": {"id": 13, "name": "200 E Hopkins — Luxury Condos", "role": "aspen_multifamily"},
 }
 
 

@@ -158,9 +158,11 @@ def project_brain(code: str):
         except HTTPException:
             brain_ref = str(_get_pid(code))
             snap = _proxy(f"/services/project-brain/{brain_ref}")
+        # intelligence endpoint requires integer project_id
+        numeric_pid = _get_pid(code)
         intel = {}
         try:
-            intel = _proxy(f"/services/project-brain/{brain_ref}/intelligence")
+            intel = _proxy(f"/services/project-brain/{numeric_pid}/intelligence")
         except Exception:
             pass
         payload = {"snapshot": snap, "intelligence": intel}
@@ -223,7 +225,7 @@ def executive_report():
                     (SELECT COUNT(*) FROM project_schedule_items psi WHERE psi.project_id = p.id::text) AS schedule_items,
                     (SELECT MAX(ABS(sv.variance_days)) FROM schedule_variance sv WHERE sv.project_id = p.id) AS max_variance_days,
                     (SELECT COUNT(*) FROM daily_logs dl WHERE dl.project_id = p.id) AS daily_logs
-                FROM projects p WHERE p.status = 'active' ORDER BY p.id
+                FROM projects p WHERE p.status IN ('active','design') AND p.name NOT LIKE 'TEST-%' ORDER BY p.id
             """)
             rows = cur.fetchall()
         conn.close()
@@ -721,14 +723,14 @@ async def sync_live_state(request: Request):
                          WHERE r.project_id = p.id AND r.status = 'open') AS open_risks,
                         (SELECT MAX(ABS(sv.variance_days)) FROM schedule_variance sv
                          WHERE sv.project_id = p.id) AS max_variance_days
-                    FROM projects p WHERE p.status = 'active' ORDER BY p.id
+                    FROM projects p WHERE p.status IN ('active','design') AND p.name NOT LIKE 'TEST-%' ORDER BY p.id
                 """)
                 rows = [dict(r) for r in cur.fetchall()]
 
-        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM"}
-        NAME_MAP = {1: "64 Eastwood", 2: "101 Francis", 3: "1355 Riverside", 4: "83 Sagebrusch", 8: "246 Gallo Way", 9: "TEST-Alpine Modern", 10: "TEST-Canyon Remodel"}
-        HS_MAP   = {1: "331240861419", 2: "321401932527", 3: "321351275210", 4: "", 8: "321358358216", 9: "", 10: ""}
-        SCOPE_MAP = {1: "Exterior & Site", 2: "Full Interior Remodel", 3: "Full Remodel", 4: "TBD", 8: "New Construction — Chaparral Lot 7", 9: "New Construction 4,800 SF", 10: "Full Interior Remodel 2,800 SF"}
+        CODE_MAP  = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM", 11: "ASPN-NEW", 12: "ASPN-REM", 13: "ASPN-MC"}
+        NAME_MAP  = {1: "64 Eastwood", 2: "101 Francis", 3: "1355 Riverside", 4: "83 Sagebrusch", 8: "246 Gallo Way", 9: "TEST-Alpine Modern", 10: "TEST-Canyon Remodel", 11: "842 Ridge Road", 12: "710 Cemetery Lane", 13: "200 E Hopkins"}
+        HS_MAP    = {1: "331240861419", 2: "321401932527", 3: "321351275210", 4: "", 8: "321358358216", 9: "", 10: "", 11: "", 12: "", 13: ""}
+        SCOPE_MAP = {1: "Exterior & Site", 2: "Full Interior Remodel", 3: "Full Remodel", 4: "TBD", 8: "New Construction — Chaparral Lot 7", 9: "New Construction 4,800 SF", 10: "Full Interior Remodel 2,800 SF", 11: "New Construction 9,200 SF Ultra-Luxury", 12: "Full Remodel 4,800 SF Victorian Conversion", 13: "25-Unit Luxury Condo 68,000 GSF"}
 
         # Build updated table rows
         table_lines = [
@@ -830,9 +832,9 @@ async def export_schedule_csv(request: Request,
     try:
         import csv, io
         pid = _get_pid(project_code)
-        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM"}
+        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM", 11: "ASPN-NEW", 12: "ASPN-REM", 13: "ASPN-MC"}
         HCI_FOLDER = os.environ.get("HCI_AI_DRIVE_FOLDER", "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI")
-        FOLDER_MAP = {1: HCI_FOLDER, 2: HCI_FOLDER, 3: HCI_FOLDER}
+        FOLDER_MAP = {1: HCI_FOLDER, 2: HCI_FOLDER, 3: HCI_FOLDER, 11: HCI_FOLDER, 12: HCI_FOLDER, 13: HCI_FOLDER}
 
         with _pg() as conn:
             with conn.cursor() as cur:
@@ -919,5 +921,9 @@ async def export_schedule_csv(request: Request,
 
 
 def _get_pid(code: str) -> int:
-    PILOT = {"64EW": 1, "101F": 2, "1355R": 3, "246GW": 8, "83SB": 4, "TSNB": 9, "TSREM": 10}
+    PILOT = {
+        "64EW": 1, "101F": 2, "1355R": 3, "246GW": 8, "83SB": 4,
+        "TSNB": 9, "TSREM": 10,
+        "ASPN-NEW": 11, "ASPN-REM": 12, "ASPN-MC": 13,
+    }
     return PILOT.get(code.upper(), 1)

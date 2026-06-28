@@ -6,6 +6,43 @@ Format: [Agent] Description — Date
 
 ---
 
+## [3 Aspen Luxury Projects + Full System Test] — 2026-06-28 — Plans to Handoff with All Mined Data
+
+### Claude Code — 3 Complex High-End Aspen Builds (Buck directive: "create 3 complex highend residential builds — new, remodel, multifamily 25 unit condo — use all mined data — start to finish real test")
+
+**Projects Created:**
+- **ASPN-NEW** (id=11): 842 Ridge Road, Aspen CO — 9,200 SF ultra-luxury new construction, $14.2M ROM, 30 months (2026-10-01 → 2029-04-01)
+- **ASPN-REM** (id=12): 710 Cemetery Lane, Aspen CO — 4,800 SF Victorian-to-contemporary full remodel, $6.8M ROM, 18 months (2026-11-01 → 2028-09-01)
+- **ASPN-MC** (id=13): 200 E Hopkins Ave, Aspen CO — 25-unit luxury condo 68,000 GSF, $42M ROM, 36 months (2027-03-15 → 2030-06-30)
+
+**Data Seeded from All Mined Sources:**
+- 106 bid packages (39 / 26 / 41) — priced using 275 Sunnyside HubSpot data, Galloway comps, 655 Garmisch historicals
+- 112 schedule items (43 / 31 / 38) with realistic Aspen construction phasing
+- 14 RFIs (5 / 4 / 5) — all real Aspen construction issues (HPC reviews, altitude specs, FAR calculations)
+- 11 key packages assigned to real vendors from registry (Aspen Craftwork, TJ Concrete, Vision Builders, Skyline Mechanical, Western Slope Waterproofing, Mountain Peak, Pella, Ajac Stone)
+- HubSpot deals staged locally for all 3 (NOT pushed to HubSpot — awaiting Buck authorization)
+
+**SOP Chain (04-30):**
+- 63 total SOP instances created (21 per project)
+- All SOPs from plan-set-received through safety-plan created on all 3 projects
+- Multiple schema gaps discovered and fixed (see below)
+
+**Intelligence Services:** 21/21 tests passing per project (63/63 total)
+- project-brain, schedule-intelligence, schedule-variance, kpi-intelligence, risk-intelligence ✓
+- gateway brain, gateway schedule, gateway pm ✓
+
+**System Fixes Applied:**
+- `gbt_gateway.py`: `_get_pid()` map extended with ASPN-NEW/REM/MC (ids 11/12/13)
+- `gbt_gateway.py`: Intelligence endpoint uses numeric `_get_pid(code)` not string code
+- `gbt_gateway.py`: Exec report query now includes `status IN ('active','design')` + excludes TEST- prefix
+- `gbt_gateway.py`: Both CODE_MAP instances updated with ids 11/12/13
+- `mvp_ops.py`: PILOT_PROJECTS extended with ASPN-NEW/REM/MC (role prefix `aspen_*`)
+- SOP gap documentation: `pm_name` is query param on SOP 07 + 09; SOP 12 uses `/bid-lists`; SOP 25 entries need `delays`/`safety_topics` as arrays; SOP 29 action is `/ai-safety-plan`
+
+**Published:** GBT_HANDOFF_2026-06-28_ASPN_3_PROJECT_BUILD_ANALYSIS handoff document (Drive + local inbox)
+
+---
+
 ## [End-to-End Test Scenario Complete] — 2026-06-27 — Both Test Projects Full Chain Validated
 
 ### Claude Code — Full Scenario Run (Buck directive: "run entire scenario start to finish — plans to handoff")
