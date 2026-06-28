@@ -32,6 +32,8 @@ PILOT_PROJECTS = {
     "64EW":  {"id": 1, "name": "64 Eastwood",    "role": "historical_reference"},
     "101F":  {"id": 2, "name": "101 Francis",     "role": "pm_bid_daily_ops"},
     "1355R": {"id": 3, "name": "1355 Riverside",  "role": "primary_advanced_pilot"},
+    "83SB":  {"id": 4, "name": "83 Sagebrusch",   "role": "pending_initialization"},
+    "246GW": {"id": 8, "name": "246 Gallo Way",   "role": "new_construction_pilot"},
 }
 
 
@@ -367,12 +369,20 @@ def pm_weekly_review(code: str):
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT COUNT(*) as total,
-                       SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) as active,
-                       SUM(CASE WHEN status='closed' THEN 1 ELSE 0 END) as closed
+                SELECT id, csi_division, package_name, scope_description,
+                       status, awarded_amount, notes
                 FROM bid_packages WHERE project_id = %s
+                ORDER BY csi_division, package_name
             """, (pid,))
-            bids = dict(cur.fetchone() or {})
+            all_pkgs = [dict(r) for r in cur.fetchall()]
+            bids = {
+                "total": len(all_pkgs),
+                "awarded": sum(1 for p in all_pkgs if p["status"] == "awarded"),
+                "bids_receiving": sum(1 for p in all_pkgs if p["status"] == "bids_receiving"),
+                "not_started": sum(1 for p in all_pkgs if p["status"] == "not_started"),
+                "committed_amount": float(sum(p["awarded_amount"] or 0 for p in all_pkgs if p["status"] == "awarded")),
+                "packages": all_pkgs,
+            }
 
             cur.execute("""
                 SELECT * FROM daily_logs WHERE project_id = %s

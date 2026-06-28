@@ -94,17 +94,18 @@ Every workflow start, completion, failure, and data write is logged here. This t
 The system runs two workflow automation stacks:
 
 **Stack 1 — Python/FastAPI** (`03_Source_Code/workflows/`):
-- 18 workflows active: WF-001/002/003/004/005/006, WF-SUPER, WF-PM, WF-PM-W, WF-REPORT-* (5), WF-SYNC-* (3)
+- 18 Python workflows: WF-001/002/003/004/005/006, WF-SUPER, WF-PM, WF-PM-W, WF-REPORT-* (5), WF-SYNC-* (3)
 - Direct Postgres/Qdrant/API access
 - Runs as part of FastAPI process or standalone scripts
 
 **Stack 2 — n8n** (`04_Workflows/`):
-- WF-007 (Bid Leveling Engine)
-- Visual workflow builder
-- Accesses HCI system via webhooks and API calls
+- **50 workflows total, 43 active** (as of 2026-06-28 audit)
+- Covers: WF-007 (Bid Leveling), WF-008 (Bid Follow-Up), WF-009 (New Job Setup), WF-010 (Email Routing), WF-011 (SS Briefing), GATE-E/F/G/H approval gates, AUTO-001 through AUTO-021 (exec/reporting automations), AUTO-HANDOFF-PROCESSOR (processes Agent_Handoff/Inbox/ every 5 min), AUTO-SCHEDULE-VARIANCE-WEEKLY, AUTO-WEEKLY-EXEC, AUTO-PM-WEEKLY, AUTO-DAILY-PROJECT-SUMMARY, and 20+ additional automations
+- Visual workflow builder; accesses HCI system via webhooks and API calls
 - Runs at `localhost:5678`
+- **API auth status:** JWT signing key rotates on container restart — regenerate API key in n8n Settings → API after each restart
 
-Both stacks coexist. New field and PM workflows are built in Stack 1 (Python). WF-007 stays in n8n until bid data migrates to Postgres.
+Both stacks coexist. New field and PM workflows are built in Stack 1 (Python). n8n handles all event-driven automations, gate workflows, and GBT handoff processing.
 
 ---
 

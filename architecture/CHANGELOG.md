@@ -5,6 +5,35 @@
 
 ---
 
+## v3.0 — 2026-06-28 | 🔒 ARCHITECTURE FREEZE v1.0
+
+**Declared by:** Buck Adams (Owner) + GBT (Chief Architect)
+**Implemented by:** Claude Code
+
+**What is frozen:**
+- FastAPI: 427 endpoints, 18 services
+- PostgreSQL: 47 tables, hci_os
+- n8n: 40 active workflows
+- GBT Gateway Bridge: 14 endpoints (health, project-state, exec report, drive/write, agent/handoff, admin/process-inbox)
+- Agent Handoff Bus: AUTO-HANDOFF-PROCESSOR active (every 5 min)
+- SOP baseline: 6 fully automated, 10 partial, 11 none
+
+**Session fixes included in freeze:**
+- `POST /gateway/drive/write` — new endpoint, plain text to Drive, view_link fixed
+- `POST /gateway/admin/process-inbox` — new endpoint, replaces broken executeCommand in n8n
+- `/gateway/executive/report` — now pulls live DB (schedule_variance + risks), not kpi_snapshots
+- `MAX(ABS(variance_days))` — fixed exec report variance display (was MAX() missing negatives)
+- AUTO-HANDOFF-PROCESSOR — rebuilt with HTTP Request nodes, now active
+- 4 risks re-filed to risks table (64EW: 2, 101F: 2)
+- 8 GBT handoffs processed from inbox
+- Custom GPT schema v2.0: added gateway endpoints, fixed .app → .dev URL
+
+**Documented exceptions (E-001 through E-006):** See Architecture/ARCHITECTURE_FREEZE_v1.0.md
+
+**Next:** Sprint 3 — Mobile Command Center, BP-17 schedule automation, BP-06 risk auto-filing
+
+---
+
 ## v2.7 — 2026-06-28 | Drive → DB Schedule Import + WF-009 Unblocked
 
 **Trigger:** Gate 5 pilot projects had 0 Houzz schedule data; real data lives in Drive MS Project exports.

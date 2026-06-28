@@ -13,21 +13,23 @@
 
 | Table | Rows | Purpose |
 |-------|------|---------|
-| `projects` | 4 | Master project registry (id, name, address, status, scope, hubspot_deal_id) |
-| `vendors` | 392 | HCI vendor roster (company_name, trade, tier, hubspot_contact_id) |
-| `bid_packages` | 119 | CSI-organized bid packages per project |
-| `bid_entries` | 26 | Actual bids received (amount, status, notes, vendor_id FK) |
+| `projects` | 5 | Master project registry — 64EW, 101F, 1355R, 83SB, 246GW (id=8 added 2026-06-28) |
+| `vendors` | 274 | HCI vendor roster (company_name, trade, tier, hubspot_contact_id) — 119 duplicates removed 2026-06-28; seed_postgres.py fixed with company-level dedup |
+| `bid_packages` | 163 | CSI-organized bid packages per project (246GW: 44 packages added 2026-06-28) |
+| `bid_entries` | 26 | Actual bids received (amount, status, notes, vendor_id FK) — 19 have valid vendor_id FK; 7 have vendor_id NULL |
 | `meetings` | 0 | Meeting records (title, date, summary, action_items, transcript_path) |
-| `daily_logs` | 0 | Field daily logs (date, weather, work_performed, issues) |
+| `daily_logs` | 6 | Field daily logs — all test data as of 2026-06-28; no real field submissions yet |
+| `project_schedule_items` | 1,275 | MS Project schedule activities: 64EW(336), 101F(259), 1355R(400), 246GW(280) |
+| `schedule_variance` | 4 | Schedule variance records from analyze_log() — all test-generated |
+| `approval_queue` | 1,020 | Queued approval requests — 986 are LEGITIMATE vendor candidate approvals from HubSpot mining (unique companies, awaiting Buck review); 9 true dups deleted 2026-06-28 |
+| `kpi_snapshots` | 15 | KPI snapshots: schedule_variance_max_days + open_risks per project |
+| `gateway_request_log` | 75+ | GBT gateway request log |
 | `hubspot_deals` | 306 | Synced HubSpot deals |
 | `hubspot_notes` | 3 | Synced HubSpot deal notes |
-| `hubspot_tasks` | — | Synced HubSpot tasks |
 | `lessons_learned` | 1 | Captured lessons (title, category, csi_division, outcome) |
-| `risks` | 0 | Project risks (type, severity, description, mitigation, status) |
-| `long_lead_items` | 0 | Procurement long-lead tracking |
-| `procurement_items` | 0 | PO tracking (vendor, amount, required_date, status) |
+| `risks` | 4 | Open project risks (2 per 64EW, 2 per 101F — all from test data) |
 | `historical_cost_records` | 0 | Bid vs. actual costs per package |
-| `drive_sync_log` | — | Google Drive sync history |
+| `sop_execution_logs` | — | SOP execution audit trail |
 
 ### Key Relationships
 

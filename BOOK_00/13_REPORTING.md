@@ -1,6 +1,6 @@
 # BOOK_00 § 13 — Reporting and Dashboards
 
-**Status:** 🔜 Spec complete — build in Phase 10 (after PM and Super workflows produce data)
+**Status:** ✅ LIVE — Built 2026-06-26/28. Executive reporting via GBT Gateway (/gateway/executive/report and /gateway/executive/mission-control). n8n workflows: AUTO-WEEKLY-EXEC, AUTO-PM-WEEKLY, AUTO-DAILY-PROJECT-SUMMARY, AUTO-WEEKLY-JOB, AUTO-WEEKLY-COMPANY all active. Weekly email reports running Friday 16:00. Morning brief 07:00 daily.
 
 ---
 

@@ -1,6 +1,6 @@
 # BOOK_00 § 12 — Daily Logs, Schedule Intelligence, and Status Reporting
 
-**Status:** 🔜 Spec complete — build in Phase 9.2 (after WF-SUPER produces data)
+**Status:** ✅ LIVE — Built 2026-06-26/28. ScheduleIntelligenceService.analyze_log() running. schedule_variance table active. BP-06 risk escalation fixed (silent failure isolated 2026-06-28). AUTO-SCHEDULE-VARIANCE-WEEKLY workflow active (n8n ID: jFzQFu9MybnWtrZd).
 
 ---
 

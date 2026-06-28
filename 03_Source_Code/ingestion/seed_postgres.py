@@ -123,11 +123,20 @@ def seed_vendors(cur):
                           WHERE hubspot_contact_id=%s""",
                        (company, contact_name or None, p.get("email"), p.get("phone"), hs_id))
         else:
-            cur.execute("""INSERT INTO vendors (company_name, contact_name, email, phone,
-                          hubspot_contact_id)
-                          VALUES (%s, %s, %s, %s, %s)""",
-                       (company, contact_name or None, p.get("email"), p.get("phone"), hs_id))
-            count += 1
+            # Check by company name before inserting — prevents one company from appearing
+            # as multiple vendor rows when it has several HubSpot contacts
+            cur.execute("SELECT id FROM vendors WHERE company_name ILIKE %s LIMIT 1", (company,))
+            existing = cur.fetchone()
+            if existing:
+                # Link this contact to the existing company record
+                cur.execute("UPDATE vendors SET hubspot_contact_id=%s WHERE id=%s AND hubspot_contact_id IS NULL",
+                           (hs_id, existing[0]))
+            else:
+                cur.execute("""INSERT INTO vendors (company_name, contact_name, email, phone,
+                              hubspot_contact_id)
+                              VALUES (%s, %s, %s, %s, %s)""",
+                           (company, contact_name or None, p.get("email"), p.get("phone"), hs_id))
+                count += 1
     print(f"  ✓ {count} new vendors inserted")
 
 # ── Seed: bid packages + entries from Sheets ──────────────────────────────────

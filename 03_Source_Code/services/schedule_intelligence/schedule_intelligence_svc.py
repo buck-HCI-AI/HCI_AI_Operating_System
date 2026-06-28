@@ -1,9 +1,11 @@
 """Schedule Intelligence Service — project schedules, milestones, lookahead, variance analysis."""
-import os, sys, json, re
+import os, sys, json, re, logging
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from base import BaseIntelligenceService
 import services.db as db
+
+logger = logging.getLogger(__name__)
 
 SCHEDULE_ANALYSIS_SYSTEM = """You are a construction schedule analyst for Hendrickson Construction.
 Analyze daily field log data and identify schedule variance or risk.
@@ -142,20 +144,108 @@ Analyze for schedule variance. Return JSON only:
 
                 # Escalate high/critical to risks table
                 if risk_level in ("high", "critical"):
-                    db.execute("""
-                        INSERT INTO risks (project_id, risk_type, severity, description,
-                                           mitigation, status, identified_date)
-                        VALUES (%s, 'schedule_variance', %s, %s, %s, 'open', CURRENT_DATE)
-                    """, (
-                        log["project_id"], risk_level,
-                        f"Schedule variance on {log['log_date']}: {analysis.get('cause', '')}",
-                        analysis.get("recovery_action"),
-                    ))
+                    try:
+                        db.execute("""
+                            INSERT INTO risks (project_id, risk_type, severity, description,
+                                               mitigation, status, identified_date)
+                            VALUES (%s, 'schedule_variance', %s, %s, %s, 'open', CURRENT_DATE)
+                        """, (
+                            log["project_id"], risk_level,
+                            f"Schedule variance on {log['log_date']}: {analysis.get('cause', '')}",
+                            analysis.get("recovery_action"),
+                        ))
+                    except Exception as risk_err:
+                        logger.error("BP-06 risk INSERT failed for log %s project %s: %s",
+                                     daily_log_id, log["project_id"], risk_err)
+                        analysis["risk_file_error"] = str(risk_err)
 
             return analysis
 
         except Exception as e:
+            logger.error("analyze_log failed for log %s: %s", daily_log_id, e)
             return {"error": str(e), "risk_level": "unknown"}
+
+    @staticmethod
+    def backfill_risks() -> dict:
+        """File risks for any high/critical schedule_variance records not yet in risks table."""
+        unfiled = db.query("""
+            SELECT sv.id, sv.project_id, sv.activity_name, sv.risk_level,
+                   sv.cause, sv.recovery_action, dl.log_date
+            FROM schedule_variance sv
+            LEFT JOIN daily_logs dl ON dl.id = sv.daily_log_id
+            WHERE sv.risk_level IN ('high','critical')
+              AND NOT EXISTS (
+                SELECT 1 FROM risks r
+                WHERE r.project_id = sv.project_id
+                  AND r.risk_type = 'schedule_variance'
+                  AND r.description ILIKE '%' || sv.activity_name || '%'
+              )
+        """)
+        filed, errors = 0, []
+        for row in unfiled:
+            try:
+                log_date = row.get("log_date") or "unknown date"
+                db.execute("""
+                    INSERT INTO risks (project_id, risk_type, severity, description,
+                                       mitigation, status, identified_date)
+                    VALUES (%s, 'schedule_variance', %s, %s, %s, 'open', CURRENT_DATE)
+                """, (
+                    row["project_id"], row["risk_level"],
+                    f"Schedule variance on {log_date}: {row.get('cause', '')}",
+                    row.get("recovery_action"),
+                ))
+                filed += 1
+            except Exception as e:
+                errors.append(f"sv_id={row['id']}: {e}")
+        return {"backfilled": filed, "skipped_with_errors": errors}
+
+    @staticmethod
+    def backfill_kpi_snapshots() -> dict:
+        """Populate kpi_snapshots from live DB data for all active projects."""
+        projects = db.query("SELECT id, name FROM projects WHERE status = 'active'")
+        inserted = 0
+        for p in projects:
+            pid = p["id"]
+            # schedule_variance KPI
+            sv = db.query_one("""
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN risk_level IN ('high','critical') THEN 1 ELSE 0 END) AS high_count,
+                       MAX(ABS(variance_days)) AS max_days
+                FROM schedule_variance WHERE project_id = %s
+            """, (pid,))
+            max_days = float(sv["max_days"] or 0)
+            high_count = int(sv["high_count"] or 0)
+            status = "red" if high_count > 0 else ("yellow" if max_days >= 3 else "green")
+            try:
+                db.execute("""
+                    INSERT INTO kpi_snapshots (kpi_code, scope, project_id, value, unit,
+                        period_start, period_end, status, source_service, calculated_at)
+                    VALUES ('schedule_variance_max_days','project',%s,%s,'days',
+                        CURRENT_DATE - INTERVAL '7 days', CURRENT_DATE, %s,
+                        'schedule_intelligence', NOW())
+                """, (pid, max_days, status))
+                inserted += 1
+            except Exception as e:
+                logger.error("kpi_snapshots insert failed project %s: %s", pid, e)
+
+            # open_risks KPI
+            risk_count = db.query_one(
+                "SELECT COUNT(*) AS c FROM risks WHERE project_id = %s AND status = 'open'", (pid,))
+            rc = int(risk_count["c"])
+            risk_status = "red" if rc > 3 else ("yellow" if rc > 0 else "green")
+            try:
+                db.execute("""
+                    INSERT INTO kpi_snapshots (kpi_code, scope, project_id, value, unit,
+                        period_start, period_end, status, source_service, calculated_at)
+                    VALUES ('open_risks','project',%s,%s,'count',
+                        CURRENT_DATE - INTERVAL '7 days', CURRENT_DATE, %s,
+                        'schedule_intelligence', NOW())
+                """, (pid, rc, risk_status))
+                inserted += 1
+            except Exception as e:
+                logger.error("kpi_snapshots risk insert failed project %s: %s", pid, e)
+
+        return {"kpi_rows_inserted": inserted, "projects_processed": len(projects)}
 
     @staticmethod
     def recent_variance(project_number: str, limit: int = 10) -> dict:

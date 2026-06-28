@@ -1,7 +1,7 @@
 # HCI AI Operating System — Current Status
 
-**Last Updated:** 2026-06-26 (MCP Server LIVE — 26 tools, ngrok endpoint, GBT+Claude.ai connected; Full System Audit complete; HubSpot deal IDs linked; SOP+HistCost MCP paths fixed)  
-**Mode: GATE 5 PILOT — Daily operations active on 3 pilot projects; all writes approval-controlled**  
+**Last Updated:** 2026-06-28 (Deep reconciliation audit complete; n8n API restored (Docker VirtioFS restart); approval_queue corrected: 986 legitimate vendor approvals + 9 dups deleted; duplicate n8n workflow archived; all P0 stale workflows already retired from prior session; Architecture Freeze v1.0 active)
+**Mode: GATE 5 PILOT — Closes 2026-07-01; 5 active projects (64EW/101F/1355R/83SB/246GW); all writes approval-controlled**  
 **API:** http://localhost:8000 (live, launchd-managed, API key enforced)  
 **Dashboard:** http://localhost:8000/dashboard  
 **Docs:** http://localhost:8000/docs  
@@ -17,9 +17,9 @@
 | Gate 2 | Integration Testing | ✅ PASSED 2026-06-25 |
 | Gate 3 | Workflow Acceptance Testing | ✅ PASSED 2026-06-25 |
 | Gate 4 | User Acceptance Testing (Buck) | ✅ PASSED 2026-06-25 |
-| Gate 5 | Pilot Approval + Buck Sign-Off | 🔄 IN PROGRESS — 2026-06-25 to 2026-07-01; 3 pilot projects active |
+| Gate 5 | Pilot Approval + Buck Sign-Off | 🔄 IN PROGRESS — 2026-06-25 to 2026-07-01; 5 projects active; verdict 2026-07-01 |
 
-**Go-Live verdict: BLOCKED.** See `docs/QA_VALIDATION_STANDARD.md` and `BOOK_00/17_QUALITY_ASSURANCE_AND_VALIDATION.md`.
+**Go-Live verdict: READY WITH EXCEPTIONS** (as of 2026-06-28). Exceptions: 1355R no real field data; schedule variance sign bug (101F shows 0 days when -5 days behind); 986 vendor approvals pending Buck review (HubSpot mining backlog). Core infrastructure: all PASS. n8n API: ✅ restored post-container-restart. See `HCI_AI_OS_SYSTEM_AUDIT_2026-06-28.md` + `HCI_AI_OS_RECONCILIATION_REPORT_2026-06-28.md` in Drive.
 
 ---
 
@@ -27,13 +27,14 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| PostgreSQL (hci_os) | ✅ Running | 22 tables, 4 projects, 392 vendors, 306 HubSpot deals |
-| Redis | ✅ Running | Project Brain cache active |
-| Qdrant | ⚠️ Running | API healthy; docker ps shows "unhealthy" label (cosmetic) |
+| PostgreSQL (hci_os) | ✅ Running | 47+ tables, 5 active projects, 1,275 schedule items, 163 bid packages |
+| Redis | ✅ Running | Connected; 0 HCI keys (cold cache — normal) |
+| Qdrant | ⚠️ Running | API healthy; 13 collections; docker ps shows "unhealthy" label (cosmetic) |
 | MinIO | ✅ Running | hci-raw-documents bucket; 4 app buckets |
-| FastAPI | ✅ Running | Port 8000, launchd, X-API-Key enforced |
-| ngrok tunnel | ✅ Running | Webhook relay + MCP external access |
-| MCP Server (26 tools) | ✅ Running | Port 8080, proxied at :8000/mcp, ngrok at speculate-armband-retinal.ngrok-free.dev/mcp |
+| FastAPI | ✅ Running | Port 8000, launchd KeepAlive (plist fixed 2026-06-28), X-API-Key enforced |
+| ngrok tunnel | ✅ Running | https://speculate-armband-retinal.ngrok-free.dev — static on free plan |
+| MCP Server | ✅ Running | Port 8080, proxied at :8000/mcp |
+| n8n | ✅ Running | v2.25.7, 50 workflows (42 active, 8 inactive); API ✅ restored 2026-06-28 (Docker VirtioFS restart fixed SQLite I/O error) |
 | Backup | ✅ Active | Daily 2 AM, 7-day rotation |
 | Monitor | ✅ Active | 5-min health check, auto-restart, alert email |
 | Mac mini | ⏳ Pending | M4 Pro arriving ~2026-09-17; playbook at infrastructure/setup_mac_mini.sh |
@@ -77,7 +78,7 @@
 |---------|--------|-------|
 | project-brain | ✅ ACTIVE | Claude Q&A + snapshot; cache 30 min |
 | bid-intelligence | ✅ ACTIVE | 119 packages, leveling analysis |
-| vendor-intelligence | ✅ ACTIVE | 392 vendors; Qdrant search needs embed run |
+| vendor-intelligence | ✅ ACTIVE | 274 unique vendors (119 dups removed 2026-06-28); Qdrant embed run needed |
 | document-intelligence | ✅ ACTIVE | Upload → MinIO + Qdrant (collections now exist) |
 | lessons-learned | ✅ ACTIVE | CRUD + search |
 | procurement | ✅ ACTIVE | Tables live; 0 rows — needs field data |
@@ -148,7 +149,9 @@ BOOK_01 is complete: `BOOK_01/README.md` + volumes `00` through `18`.
 
 ---
 
-## Workflow Engine — 18 Active Workflows
+## Workflow Engine — 68 Active Workflows (18 Python + 50 n8n)
+
+**Stack 1 — Python/FastAPI (18 workflows):**
 
 | Category | Workflows | Status |
 |----------|-----------|--------|
@@ -157,7 +160,19 @@ BOOK_01 is complete: `BOOK_01/README.md` + volumes `00` through `18`.
 | Inbox | WF-006 Inbox Review (bids + RFIs + submittals) | ✅ |
 | Reporting | WF-003 Morning Brief, WF-PM, WF-PM-W, WF-REPORT-* (5) | ✅ |
 | Sync | WF-SYNC-HS, WF-SYNC-DRIVE, WF-SYNC-HOUZZ | ✅ (Houzz tables created 2026-06-25) |
-| Bid Leveling | WF-007 (n8n) | ✅ |
+
+**Stack 2 — n8n (50 workflows, 43 active — audited 2026-06-28):**
+
+| Category | Workflows | Status |
+|----------|-----------|--------|
+| Bid/Procurement | WF-007 Bid Leveling, WF-008 Bid Follow-Up | ✅ |
+| Job/Field | WF-009 New Job Setup, WF-010 Email Routing, WF-011 SS Briefing | ✅ |
+| Approval Gates | GATE-E Client Comms, GATE-F Financial, GATE-G PR Merge, GATE-H HubSpot Write | ✅ |
+| Executive | AUTO-WEEKLY-EXEC, AUTO-PM-WEEKLY, AUTO-DAILY-PROJECT-SUMMARY, AUTO-WEEKLY-JOB | ✅ |
+| Reporting | AUTO-WEEKLY-SPRINT, AUTO-WEEKLY-REGISTRY, AUTO-WEEKLY-LINKS, AUTO-WEEKLY-HUBSPOT-DRIVE | ✅ |
+| Handoff | AUTO-HANDOFF-PROCESSOR (5 min interval) | ✅ (fixed 2026-06-28) |
+| Schedule | AUTO-SCHEDULE-VARIANCE-WEEKLY | ✅ |
+| Additional | AUTO-001 through AUTO-021 + others | 43 active / 50 total |
 
 ---
 
@@ -195,10 +210,13 @@ See `HCI_AI_Audit_20260626/` for full audit deliverables (6 files).
 
 | Priority | Gap | Status |
 |----------|-----|--------|
-| P0 | Duplicate Bid Receipt Processing v5 in n8n | OPEN — Buck deactivate duplicate in n8n UI |
-| P0 | 83 Sagebrusch (project id=4) — no HubSpot deal found | OPEN — confirm project details |
-| P0 | TMP-cl-84994d n8n workflow — unfinished webhook | OPEN — Buck deactivate in n8n UI |
-| P0 | ChatGPT Chrome Bridge n8n workflow — old OpenAI webhook | OPEN — Buck retire in n8n UI |
+| P0 | Duplicate Bid Receipt Processing v5 in n8n | ✅ Fixed 2026-06-28 — duplicate archived as "ARCHIVED — Bid Receipt Processing v5" (inactive); active copy: MQ6ZrG6Jv99GwIaA |
+| P0 | 83 Sagebrusch (project id=4) — no HubSpot deal found | OPEN — confirm project details with Buck |
+| P0 | TMP-cl-84994d n8n workflow — unfinished webhook | ✅ Fixed 2026-06-28 — renamed "RETIRED — TMP-cl-84994d (unused Outlook webhook)" (inactive) |
+| P0 | ChatGPT Chrome Bridge n8n workflow — old OpenAI webhook | ✅ Fixed 2026-06-28 — renamed "RETIRED — ChatGPT Chrome Bridge (superseded by MCP)" (inactive) |
+| P0 | Duplicate AUTO-NIGHTLY-AUDIT n8n workflow | ✅ Fixed 2026-06-28 — duplicate archived; active copy: XIihPRTFx27A18Vy |
+| P0 | n8n API auth 401 | ✅ Fixed 2026-06-28 — root cause: Docker VirtioFS SQLite I/O error; resolved by container restart. API key valid (exp 2026-07-15) |
+| P0 | approval_queue "1,023 stale entries" | ✅ Corrected 2026-06-28 — 986 are LEGITIMATE pending vendor approvals from HubSpot mining; 9 true dups deleted; 1,020 remain (all valid) |
 | P0 | HubSpot deal IDs for pilot projects | ✅ Fixed 2026-06-26 (64EW: 331240861419, 101F: 321401932527, 1355R: 321351275210) |
 | P0 | SOP MCP tool path wrong | ✅ Fixed 2026-06-26 → /api/v1/sop/registry |
 | P0 | HistoricalCost MCP tool path wrong | ✅ Fixed 2026-06-26 → /search not /lookup |

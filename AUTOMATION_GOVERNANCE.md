@@ -184,4 +184,102 @@ All API keys, tokens, and credentials are stored in GitHub Secrets or a designat
 
 ---
 
+---
+
+## Part 5 — Full Workflow Inventory (INT-010 — Completed 2026-06-28)
+
+**Audit date:** 2026-06-28 | **Source:** n8n API + Python workflow files
+**Totals:** 50 n8n workflows (42 active, 8 inactive/archived) + 18 Python/FastAPI workflows = 68 total
+
+### 5.1 — n8n Workflows (Stack 2)
+
+#### Active (42)
+
+| n8n ID | Name | Schedule/Trigger | Category |
+|--------|------|-----------------|----------|
+| 1Blqe9p0iWWimdCs | AUTO-001 Daily Repository Status Report | Daily 07:00 | Reporting |
+| 1EbteMeNL7WUoq5F | AUTO-002 Workflow Health Check | Daily 06:00 | Health |
+| s1m9fvGkS53Ce2Rt | AUTO-003 Sprint Self-Status Report | Manual | Reporting |
+| 67n7ENkCpGIzHgc1 | AUTO-004 Daily Mining Engine | Daily 03:00 | Mining |
+| FkiYQVre39L9ElCO | AUTO-005 Gate H: HubSpot Write Approval | Webhook | Gate |
+| nMjAbRJ3thgKQq2O | AUTO-006 Gate G: PR Merge Notification | Webhook | Gate |
+| Blt32qhKBJvox0SR | AUTO-010 Weekly Sprint Review Summary | Weekly | Reporting |
+| 3wAvUsdeVJU98ZR4 | AUTO-011 Weekly Registry Duplicate Check | Weekly Tue 07:00 | Validation |
+| AtHXWsAfByeYwnO1 | AUTO-012 Weekly Broken Link Check | Weekly Wed 07:00 | Validation |
+| AbP7zYz3zOGdb7mA | AUTO-013 HubSpot/Drive Reconciliation Report | Weekly Thu 07:00 | Reconciliation |
+| WWv3euSPYehmjkoi | AUTO-017 Gate E: Client Comms Approval | Webhook | Gate |
+| 6bDcqZX2ZGUiaKnx | AUTO-018 Gate F: Financial Action Approval | Webhook | Gate |
+| whHMnB1l8kTJE5gz | AUTO-019 Morning Brief Email | Daily 07:00 | Reporting |
+| nXXrsQ7eo8JuRG2z | AUTO-020 EOD Brief Email | Daily 19:00 | Reporting |
+| fmNSNN797HDT5vcA | AUTO-021 Escalation Check | Daily 10:00 & 18:00 | Alerts |
+| A9OAkREoqs4Ke0uu | AUTO-AI-DEAL-SUMMARIZATION | Daily | CRM |
+| k6n0FNUF8JoNVLth | AUTO-BID-INVITATION-TASKS | HubSpot deal stage trigger | Bids |
+| zgtuaysXDeGa7tIY | AUTO-COI-COMPLIANCE-ENGINE | Daily 07:00 | Compliance |
+| vylopikjmX2FIKGq | AUTO-DAILY-PROJECT-SUMMARY | Daily | Reporting |
+| fI0LGWhdzopkcmrg | AUTO-HANDOFF-PROCESSOR | Every 5 min | Agent Ops |
+| VrRq3XdWLS626UYS | AUTO-MONTHLY-REVIEW | 1st of month 09:00 | Reporting |
+| XIihPRTFx27A18Vy | AUTO-NIGHTLY-AUDIT | Nightly 02:00 | Audit |
+| DhmrAAEhlzKW8Y3i | AUTO-NOTIFY | Event-driven (HIGH/CRITICAL) | Alerts |
+| iCTepJbZuzEORs3z | AUTO-PM | Daily 06:00 | PM Ops |
+| 9fsVJ2gBOn54fLnT | AUTO-PM-WEEKLY | Monday 07:00 | PM Ops |
+| jFzQFu9MybnWtrZd | AUTO-SCHEDULE-VARIANCE-WEEKLY | Weekly Mon 07:00 | Schedule |
+| kraZAzvt5p7GNSE7 | AUTO-SS-MORNING | Daily 06:00 | Field Ops |
+| xxjxjznM2lHw9ukj | AUTO-WEEKEND | Saturday 08:00 | Reporting |
+| oqMYGwlU2wYmf3BJ | AUTO-WEEKLY-COMPANY | Friday 16:30 | Reporting |
+| 6GyIgmZUJOh3ae2D | AUTO-WEEKLY-EXEC | Friday 16:00 | Reporting |
+| MRu2VM90cURMdk7q | AUTO-WEEKLY-JOB | Friday 16:00 | Reporting |
+| 06sPrar8glcwKRKn | AUTO-WEEKLY-REPORT | Sunday 19:00 | Reporting |
+| MQ6ZrG6Jv99GwIaA | Bid Receipt Processing v5 | Webhook (email/Drive) | Bids |
+| ffDh9C43mK83qgSp | WF-003 Historical Cost Queue | Event-driven | Data |
+| 1HbcdWIT0uytLnIf | WF-004 Lessons Learned Engine | Event-driven | Learning |
+| xQzzjmHR48otUQOn | WF-005 SOP Registry Sync | Event-driven | SOPs |
+| P4fOHS47k2RrkZJn | WF-006 Executive Alerts | Event-driven | Alerts |
+| Q1akV9pVnDkmATIo | WF-007 AI Bid Leveling Engine | Webhook | Bids |
+| 4UORmVSvQS4PjJ0B | WF-008 Bid Follow-Up Engine | Scheduled | Bids |
+| XLtyF4tDTmVRWjoU | WF-009 New Job Setup | Webhook | Projects |
+| flsIMOI21JRgtlMe | WF-010 Outlook Email Router | Email webhook | Inbox |
+| wOyGdyLNZKdrth9M | WF-011 Site Superintendent Daily Briefing | Daily | Field Ops |
+
+#### Inactive / Archived (8)
+
+| n8n ID | Name | Reason Inactive |
+|--------|------|----------------|
+| 20dD4J8YUxko5g0U | ARCHIVED — Bid Leveling (merged into WF-007) | Superseded |
+| 8xZkUWgxudrbbgCS | ARCHIVED — Bid Receipt Processing v5 (duplicate) | Duplicate of MQ6ZrG6Jv99GwIaA |
+| hMIMIUy3fSSVDJcr | ARCHIVED — AUTO-NIGHTLY-AUDIT (duplicate import 2026-06-27) | Duplicate of XIihPRTFx27A18Vy |
+| 2iM1eViWnnQ4I2Xv | AUTO-CONTINUOUS-DISCOVERY — HubSpot Hourly + Houzz Nightly | Paused — Houzz data not ready |
+| hMIMIUy3fSSVDJcr | AUTO-NIGHTLY-AUDIT (older copy) | Duplicate |
+| KUw5KCchqRiWTOvS | HZ-004 Houzz Daily Log Extraction Trigger | Blocked — Houzz DB empty |
+| zUcZtUmiZwWUS72X | Inbox Cleanup — Delete Test Emails | One-time use |
+| UCav5gp2W3dNYllG | RETIRED — ChatGPT Chrome Bridge (superseded by MCP) | Retired |
+| nihv5r68lbt5QjP3 | RETIRED — TMP-cl-84994d (unused Outlook webhook) | Retired |
+
+### 5.2 — Python/FastAPI Workflows (Stack 1)
+
+Located in `03_Source_Code/workflows/` — all active as part of the FastAPI process.
+
+| Workflow ID | Name | Trigger | Module |
+|-------------|------|---------|--------|
+| WF-001 | New Project Setup | API call / HubSpot webhook | wf_new_project.py |
+| WF-002 | Meeting Intelligence | API call | wf_meeting.py |
+| WF-003 | Morning Brief | launchd 07:00 daily | wf_morning_brief.py |
+| WF-004 | Legacy Field Wrapper | Superseded by WF-SUPER | wf_field.py |
+| WF-005 | Lessons Learned | Event-driven | wf_lessons.py |
+| WF-006 | Inbox Review | API call | wf_inbox.py |
+| WF-SUPER | Superintendent Daily Log | API call / Houzz | wf_superintendent.py |
+| WF-PM | PM Daily Review | launchd | wf_pm.py |
+| WF-PM-W | PM Weekly Review | Friday trigger | wf_pm_weekly.py |
+| WF-REPORT-EXEC | Executive Health Report | Friday trigger | wf_report_exec.py |
+| WF-REPORT-OWNER | Owner Summary | Manual | wf_report_owner.py |
+| WF-REPORT-FIELD | Daily Field Report | WF-SUPER trigger | wf_report_field.py |
+| WF-REPORT-RISK | Procurement Risk Report | Monday trigger | wf_report_risk.py |
+| WF-REPORT-SCHED | Schedule Variance Report | On detection | wf_report_schedule.py |
+| WF-SYNC-HS | HubSpot Sync | Startup + hourly | wf_sync_hubspot.py |
+| WF-SYNC-DRIVE | Drive Sync | Weekly | wf_sync_drive.py |
+| WF-SYNC-HOUZZ | Houzz Sync | Daily | wf_sync_houzz.py |
+| WF-009 | New Job Data Setup | WF-009 companion | wf_job_setup.py |
+
+---
+
 *Governed by HCI_AI_CONSTITUTION.md | Hendrickson Construction, Inc.*
+*INT-010 COMPLETE — 2026-06-28 by Claude Code*

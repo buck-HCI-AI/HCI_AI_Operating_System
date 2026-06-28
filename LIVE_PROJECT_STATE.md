@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-28T01:30 MST
-**Updated By:** Claude Code — Drive→DB schedule import complete (v2.7). 995 schedule items loaded for 64EW/101F/1355R. WF-009 Schedule Intelligence unblocked. HouzzMiner activated.
+**Last Updated:** 2026-06-28T05:14 MST
+**Updated By:** Claude Code v3.0 — 🔒 ARCHITECTURE FREEZE v1.0 DECLARED. Foundation locked: 427 endpoints, 47 tables, 40 workflows, GBT Gateway Bridge. Sprint 3 ready.
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -61,10 +61,11 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 ## Active Projects — Gate 5 Pilot (2026-06-25 → 2026-07-01)
 | ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | +1 day |
-| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 4 | +2 days |
+| 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | 0 days |
+| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 2 | 0 days |
 | 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🟢 GREEN | 58 | 0 | 0 days |
-| 4 | — | 83 Sagebrusch | TBD | None — Buck to confirm | — | — | — | — |
+| 4 | 83SB | 83 Sagebrusch | TBD |  | 🟢 GREEN | 0 | 0 | 0 days |
+| 8 | 246GW | 246 Gallo Way | New Construction — Chaparral Lot 7 | 321358358216 | 🟢 GREEN | 44 | 0 | 0 days |
 
 **Projects at risk:** 64EW (2 open risks), 101F (4 open risks, schedule slipping)
 **Total open risks:** 6 | **Open RFIs:** 0
@@ -257,6 +258,7 @@ Auth: X-API-Key header (hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6) fo
 | `/gateway/knowledge/issues?q=X` | GET | Similar issues semantic search |
 | `/gateway/drive/search?q=X` | GET | Search Google Drive |
 | `POST /gateway/agent/handoff` | POST | Send implementation request to Claude Code |
+| `POST /gateway/drive/write` | POST | Write plain text/markdown directly to Drive — no base64 needed |
 
 **Standard response envelope** (all endpoints):
 ```json

@@ -167,16 +167,26 @@ Sprint 2 is complete when ALL of the following are true:
 
 ---
 
-## Gate 5 Pilot Checkpoint — 2026-07-01
+## Gate 5 Pilot Checkpoint — 2026-07-01 (Updated 2026-06-28)
 
 | Item | Status |
 |---|---|
-| 64 Eastwood | 🟡 2 open risks |
-| 101 Francis | 🟡 4 open risks, schedule +2 days |
-| 1355 Riverside | 🟢 On track |
+| 64 Eastwood | 🟡 2 open risks (test data); gateway endpoints all PASS |
+| 101 Francis | 🟡 Critical risk (steel delay from test log); gateway endpoints all PASS |
+| 1355 Riverside | 🟢 No field data — GREEN is empty not confirmed |
+| 246 Gallo Way | 🟢 Initialized: 280 schedule items, 44 bid packages, all endpoints live |
+| 83 Sagebrusch | 🟢 In OS; pending activation |
 | Mining engine live | ✅ 03:00 daily runs |
-| Houzz data populated | ⏳ Browser completing inserts |
-| Go-live authorization | ✅ Buck + ChatGPT ACR 2026-06-27 |
+| Architecture Freeze v1.0 | ✅ Declared 2026-06-28 |
+| Overnight BUILD-1–6 | ✅ All 6 operational builds complete |
+| Gateway audit | ✅ 15/15 endpoints PASS |
+| Data integrity | ✅ WF-009 audit clean; 14 dup rows fixed |
+| n8n API auth | ✅ Restored 2026-06-28 — Docker VirtioFS restart fixed SQLite I/O error; 42 active workflows |
+| Approval queue | ✅ Corrected 2026-06-28 — 986 legitimate vendor approvals (HubSpot mining backlog); 9 true dups deleted |
+| 1355R daily log | 🔴 No real field submission — Gate 5 exception |
+| 246GW procurement gaps | 🔴 5 critical gaps: elevator (16-20wk lead), venetian plaster ($800K/0 bids), MEP all 3 trades |
+| Schedule variance sign bug | 🔴 101F reports 0 days behind when actually -5 days — GBT action needed |
+| Go-live verdict | ⚠️ READY WITH EXCEPTIONS — see HCI_AI_OS_RECONCILIATION_REPORT_2026-06-28.md in Drive |
 
 ---
 
@@ -187,6 +197,7 @@ Sprint 2 is complete when ALL of the following are true:
 | 2026-06-27 | Sprint 2 Open | Sprint 1 closed. Mining engine live. 35 MCP tools. AUTO-016, HZ-003, AUTO-025 completed (registry foundation). | BLOCK-005 (Houzz), BLOCK-001 (branch protection) |
 | 2026-06-27 | Building | Sprint 5-7 complete: Universal Connector Framework, HouzzConnector (17 entities), HubSpotConnector (direct API), autonomy service, 4 executive n8n workflows, connector health fixed. 71/71 tests. | ntfy app fixed. Houzz data still pending Browser Claude. |
 | 2026-06-27 | Building | Sprint 2 gate workflows complete: GATE-H/G/E/F. Weekly automations: AUTO-010/011/012/013. registry-health endpoint added. 12 n8n JSONs total ready to import. | n8n import requires Buck UI action. GitHub webhook URL needed for GATE-G. |
+| 2026-06-28 | Overnight Build | BUILD-1–6 complete. Architecture Freeze v1.0 declared. 246GW initialized (280 schedule items + 44 bid packages). Data integrity audit: 14 dup rows fixed, all FK refs clean. Gateway: 15/15 endpoints PASS. 8 GBT handoffs processed. | n8n API auth broken; 1355R needs real field log; approval queue dedup needs Buck approval. |
 
 ---
 
