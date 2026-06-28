@@ -23,10 +23,10 @@ class ScheduleIntelligenceService(BaseIntelligenceService):
             "SELECT id, name FROM projects WHERE id = %s", (pid,))
 
         schedule_items = ScheduleIntelligenceService.pg_query("""
-            SELECT hsi.* FROM houzz_schedule_items hsi
+            SELECT hsi.* FROM project_schedule_items hsi
             WHERE hsi.project_id = %s::text ORDER BY hsi.start_date
         """, (project["id"],)) if ScheduleIntelligenceService.pg_one(
-            "SELECT 1 FROM pg_tables WHERE tablename='houzz_schedule_items' AND schemaname='public'") else []
+            "SELECT 1 FROM pg_tables WHERE tablename='project_schedule_items' AND schemaname='public'") else []
 
         daily_logs = ScheduleIntelligenceService.pg_query("""
             SELECT log_date, work_performed, weather, subcontractor_progress,
@@ -65,11 +65,11 @@ class ScheduleIntelligenceService(BaseIntelligenceService):
         # Get recent schedule items for context (table may not exist yet)
         schedule_items = []
         if ScheduleIntelligenceService.pg_one(
-            "SELECT 1 FROM pg_tables WHERE tablename='houzz_schedule_items' AND schemaname='public'"
+            "SELECT 1 FROM pg_tables WHERE tablename='project_schedule_items' AND schemaname='public'"
         ):
             schedule_items = ScheduleIntelligenceService.pg_query("""
                 SELECT hsi.title AS item_name, hsi.start_date, hsi.end_date, hsi.status
-                FROM houzz_schedule_items hsi
+                FROM project_schedule_items hsi
                 WHERE hsi.project_id = %s::text AND hsi.end_date >= CURRENT_DATE - INTERVAL '30 days'
                 ORDER BY hsi.start_date LIMIT 10
             """, (log["project_id"],))

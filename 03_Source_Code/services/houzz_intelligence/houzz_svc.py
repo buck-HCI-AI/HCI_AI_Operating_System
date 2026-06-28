@@ -170,33 +170,33 @@ class HouzzIngestionService:
                 # ── Schedule Items ───────────────────────────────────────────
                 for item in schedule_items:
                     sm.attempted += 1
-                    iid = item.get("houzz_item_id", "").strip()
+                    iid = item.get("activity_id", "").strip()
                     ipid = item.get("project_id", "").strip()
                     if not iid:
-                        validation_errors.append({"table": "schedule_items", "error": "missing houzz_item_id", "record": item})
+                        validation_errors.append({"table": "schedule_items", "error": "missing activity_id", "record": item})
                         sm.skipped += 1
                         continue
                     if not ipid:
-                        validation_errors.append({"table": "schedule_items", "error": "missing project_id", "houzz_item_id": iid})
+                        validation_errors.append({"table": "schedule_items", "error": "missing project_id", "activity_id": iid})
                         sm.skipped += 1
                         continue
                     try:
                         cur.execute("""
-                            INSERT INTO houzz_schedule_items
-                                (houzz_item_id, project_id, title, start_date, end_date,
+                            INSERT INTO project_schedule_items
+                                (activity_id, project_id, title, start_date, end_date,
                                  status, parent_item_id, assignee, completion_pct,
                                  task_type, notes, synced_at)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                            ON CONFLICT (houzz_item_id) DO UPDATE SET
-                                title          = COALESCE(EXCLUDED.title, houzz_schedule_items.title),
-                                start_date     = COALESCE(EXCLUDED.start_date, houzz_schedule_items.start_date),
-                                end_date       = COALESCE(EXCLUDED.end_date, houzz_schedule_items.end_date),
-                                status         = COALESCE(EXCLUDED.status, houzz_schedule_items.status),
-                                parent_item_id = COALESCE(EXCLUDED.parent_item_id, houzz_schedule_items.parent_item_id),
-                                assignee       = COALESCE(EXCLUDED.assignee, houzz_schedule_items.assignee),
-                                completion_pct = COALESCE(EXCLUDED.completion_pct, houzz_schedule_items.completion_pct),
-                                task_type      = COALESCE(EXCLUDED.task_type, houzz_schedule_items.task_type),
-                                notes          = COALESCE(EXCLUDED.notes, houzz_schedule_items.notes),
+                            ON CONFLICT (activity_id) DO UPDATE SET
+                                title          = COALESCE(EXCLUDED.title, project_schedule_items.title),
+                                start_date     = COALESCE(EXCLUDED.start_date, project_schedule_items.start_date),
+                                end_date       = COALESCE(EXCLUDED.end_date, project_schedule_items.end_date),
+                                status         = COALESCE(EXCLUDED.status, project_schedule_items.status),
+                                parent_item_id = COALESCE(EXCLUDED.parent_item_id, project_schedule_items.parent_item_id),
+                                assignee       = COALESCE(EXCLUDED.assignee, project_schedule_items.assignee),
+                                completion_pct = COALESCE(EXCLUDED.completion_pct, project_schedule_items.completion_pct),
+                                task_type      = COALESCE(EXCLUDED.task_type, project_schedule_items.task_type),
+                                notes          = COALESCE(EXCLUDED.notes, project_schedule_items.notes),
                                 synced_at      = NOW()
                             RETURNING (xmax = 0) AS is_insert
                         """, (
@@ -218,7 +218,7 @@ class HouzzIngestionService:
                         else:
                             sm.duplicate += 1
                     except Exception as e:
-                        validation_errors.append({"table": "schedule_items", "error": str(e), "houzz_item_id": iid})
+                        validation_errors.append({"table": "schedule_items", "error": str(e), "activity_id": iid})
                         sm.skipped += 1
                         conn.rollback()
                         continue
@@ -241,7 +241,7 @@ class HouzzIngestionService:
     @staticmethod
     def status() -> dict:
         tables = [
-            "houzz_projects", "houzz_daily_logs", "houzz_schedule_items",
+            "houzz_projects", "houzz_daily_logs", "project_schedule_items",
             "houzz_files", "houzz_time_entries", "houzz_tasks", "houzz_messages",
             "houzz_budget", "houzz_estimates", "houzz_contracts",
             "houzz_purchase_orders", "houzz_change_orders", "houzz_selections",

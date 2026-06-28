@@ -58,7 +58,7 @@ def ensure_houzz_tables(cur):
         )
     """)
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS houzz_schedule_items (
+        CREATE TABLE IF NOT EXISTS project_schedule_items (
             id               SERIAL PRIMARY KEY,
             houzz_project_id TEXT NOT NULL,
             task_name        TEXT,
@@ -269,7 +269,7 @@ def run(headless: bool = True) -> dict:
                             continue
                         try:
                             cur.execute("""
-                                INSERT INTO houzz_schedule_items
+                                INSERT INTO project_schedule_items
                                     (houzz_project_id, task_name, status, raw_data)
                                 VALUES (%s, %s, %s, %s)
                             """, (proj_id, item["name"], item.get("status"), json.dumps(item)))

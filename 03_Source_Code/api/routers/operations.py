@@ -78,10 +78,10 @@ def superintendent_today(project_id: int):
     today = date.today().isoformat()
 
     # Schedule items due today
-    # houzz_schedule_items uses project_id (FK to houzz_projects.id, not houzz_projects.houzz_project_id)
+    # project_schedule_items uses project_id (FK to houzz_projects.id, not houzz_projects.houzz_project_id)
     schedule_items = _q("""
         SELECT title, assignee, start_date, end_date, status, task_type
-        FROM houzz_schedule_items
+        FROM project_schedule_items
         WHERE project_id = (
             SELECT houzz_project_id FROM houzz_projects WHERE name ILIKE %s LIMIT 1
         ) AND (end_date::date = %s OR (start_date::date <= %s AND end_date::date >= %s))
@@ -1371,7 +1371,7 @@ def client_project_status(project_id: int):
 
     schedule_items = _q("""
         SELECT title, status, start_date, end_date, task_type
-        FROM houzz_schedule_items
+        FROM project_schedule_items
         WHERE project_id = %s
         ORDER BY start_date
         LIMIT 20
@@ -1484,7 +1484,7 @@ def trade_my_work(project_id: int, trade: str = ""):
 
     upcoming_schedule = _q("""
         SELECT title, assignee, start_date, end_date, status
-        FROM houzz_schedule_items
+        FROM project_schedule_items
         WHERE project_id = %s
           AND end_date::date >= CURRENT_DATE
           AND end_date::date <= CURRENT_DATE + INTERVAL '14 days'
@@ -1564,7 +1564,7 @@ def trade_my_work(project_id: int, trade: str = ""):
 # BTW-7 — Superintendent Field Enhancements (unblocked subset)
 # Photo documentation requires Houzz extraction — deferred.
 # Delivery tracking, inspection scheduling, material tracking, voice notes
-# are built here using available tables (houzz_purchase_orders, houzz_schedule_items,
+# are built here using available tables (houzz_purchase_orders, project_schedule_items,
 # houzz_tasks, houzz_daily_logs).
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -1676,7 +1676,7 @@ def superintendent_inspections(project_id: int):
 
     schedule_inspections = _q("""
         SELECT title, assignee, start_date, end_date, status, completion_pct
-        FROM houzz_schedule_items
+        FROM project_schedule_items
         WHERE project_id = %s
           AND (LOWER(title) LIKE '%%inspect%%' OR LOWER(title) LIKE '%%walkthrough%%')
           AND end_date::date >= CURRENT_DATE - INTERVAL '7 days'

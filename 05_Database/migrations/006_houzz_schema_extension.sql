@@ -2,8 +2,8 @@
 -- Sprint 2.5 Platform Hardening | Chief Architect Directive 2026-06-27
 -- Extends houzz tables to capture all data Browser Claude is extracting.
 
--- ── houzz_schedule_items: add hierarchy + assignment columns ────────────────
-ALTER TABLE houzz_schedule_items
+-- ── project_schedule_items: add hierarchy + assignment columns ────────────────
+ALTER TABLE project_schedule_items
     ADD COLUMN IF NOT EXISTS parent_item_id  TEXT,
     ADD COLUMN IF NOT EXISTS assignee        TEXT,
     ADD COLUMN IF NOT EXISTS completion_pct  NUMERIC(5,2),

@@ -204,9 +204,9 @@ CREATE TABLE IF NOT EXISTS houzz_daily_logs (
     synced_at           TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS houzz_schedule_items (
+CREATE TABLE IF NOT EXISTS project_schedule_items (
     id                  SERIAL PRIMARY KEY,
-    houzz_item_id       TEXT UNIQUE NOT NULL,
+    activity_id       TEXT UNIQUE NOT NULL,
     project_id          TEXT,
     title               TEXT,
     start_date          DATE,

@@ -1,5 +1,5 @@
 """
-Houzz Intelligence Miner — reads houzz_daily_logs, houzz_projects, houzz_schedule_items.
+Houzz Intelligence Miner — reads houzz_daily_logs, houzz_projects, project_schedule_items.
 Extracts: daily log intelligence, schedule variance signals, manpower data.
 Writes to: background_learning_records, approval_queue (lessons learned candidates).
 
@@ -85,7 +85,7 @@ class HouzzMiner(BaseMiner):
         items = self._query("""
             SELECT si.id, si.project_id, si.title as task_name,
                    si.start_date, si.end_date, si.status
-            FROM houzz_schedule_items si
+            FROM project_schedule_items si
             WHERE si.status IN ('delayed', 'overdue', 'at_risk', 'behind')
             LIMIT 30
         """)

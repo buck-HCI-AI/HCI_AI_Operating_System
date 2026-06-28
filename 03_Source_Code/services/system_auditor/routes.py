@@ -459,7 +459,7 @@ class SystemAuditor(BaseIntelligenceService):
                 results.append({"table": table, "label": label, "error": str(e), "status": "unknown"})
 
         # Houzz data availability
-        houzz_check = self.pg_one("SELECT COUNT(*) as n FROM houzz_schedule_items")
+        houzz_check = self.pg_one("SELECT COUNT(*) as n FROM project_schedule_items")
         houzz_empty = int((houzz_check or {}).get("n") or 0) == 0
 
         score = round((len(results) - len(stale_tables)) / max(len(results), 1) * 100)

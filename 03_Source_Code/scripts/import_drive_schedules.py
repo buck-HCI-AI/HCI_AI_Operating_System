@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import MS Project schedule xlsx files from Google Drive into houzz_schedule_items."""
+"""Import MS Project schedule xlsx files from Google Drive into project_schedule_items."""
 
 import sys, io, os
 from datetime import datetime, date
@@ -178,7 +178,7 @@ def import_project(proj, conn):
                 skipped += 1
                 continue
 
-            houzz_item_id = f"{prefix}{raw_id}"
+            activity_id = f"{prefix}{raw_id}"
             title = safe_str(row.get(cols["title"]))
             if not title:
                 skipped += 1
@@ -206,11 +206,11 @@ def import_project(proj, conn):
 
             try:
                 cur.execute("""
-                    INSERT INTO houzz_schedule_items
-                        (houzz_item_id, project_id, title, start_date, end_date,
+                    INSERT INTO project_schedule_items
+                        (activity_id, project_id, title, start_date, end_date,
                          status, assignee, completion_pct, task_type, notes)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (houzz_item_id) DO UPDATE SET
+                    ON CONFLICT (activity_id) DO UPDATE SET
                         title = EXCLUDED.title,
                         start_date = EXCLUDED.start_date,
                         end_date = EXCLUDED.end_date,
@@ -221,7 +221,7 @@ def import_project(proj, conn):
                         notes = EXCLUDED.notes,
                         synced_at = now()
                 """, (
-                    houzz_item_id, project_id, title,
+                    activity_id, project_id, title,
                     start_date, end_date, status, assignee,
                     completion_pct, task_type, notes
                 ))
@@ -229,7 +229,7 @@ def import_project(proj, conn):
             except Exception as e:
                 errors += 1
                 if errors <= 3:
-                    print(f"  ⚠ Row error ({houzz_item_id}): {e}")
+                    print(f"  ⚠ Row error ({activity_id}): {e}")
 
     conn.commit()
     print(f"  ✅ Imported: {inserted}  Skipped: {skipped}  Errors: {errors}")
@@ -260,7 +260,7 @@ def main():
     with conn2.cursor() as cur:
         cur.execute("""
             SELECT p.name, COUNT(*) as items
-            FROM houzz_schedule_items h
+            FROM project_schedule_items h
             JOIN projects p ON p.id::text = h.project_id
             GROUP BY p.name ORDER BY p.id
         """)

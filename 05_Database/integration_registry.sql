@@ -92,7 +92,7 @@ VALUES
     null, null,
     'browser_claude',
     'Browser Claude reads daily logs, schedules, photos. Zero writes to Houzz. DB tables pending Browser insert.',
-    '{"projects": ["64 Eastwood", "101 Francis", "1355 Riverside"], "tables": ["houzz_projects", "houzz_daily_logs", "houzz_schedule_items"], "mining_enabled": false}'
+    '{"projects": ["64 Eastwood", "101 Francis", "1355 Riverside"], "tables": ["houzz_projects", "houzz_daily_logs", "project_schedule_items"], "mining_enabled": false}'
 ),
 -- Qdrant vector store
 (

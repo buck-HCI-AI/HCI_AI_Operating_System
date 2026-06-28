@@ -58,7 +58,7 @@ class HouzzConnector(BaseConnector):
     _REQUIRED = {
         "projects":        ["houzz_project_id"],
         "daily_logs":      ["houzz_log_id", "project_id"],
-        "schedule_items":  ["houzz_item_id", "project_id"],
+        "schedule_items":  ["activity_id", "project_id"],
         "files":           ["houzz_file_id", "houzz_project_id"],
         "time_entries":    ["houzz_entry_id", "houzz_project_id"],
         "tasks":           ["houzz_task_id", "houzz_project_id"],
@@ -203,23 +203,23 @@ class HouzzConnector(BaseConnector):
 
     def _persist_schedule_items(self, r: dict, cur) -> bool:
         return self._upsert(cur, """
-            INSERT INTO houzz_schedule_items
-                (houzz_item_id, project_id, title, start_date, end_date,
+            INSERT INTO project_schedule_items
+                (activity_id, project_id, title, start_date, end_date,
                  status, parent_item_id, assignee, completion_pct,
                  task_type, notes, synced_at)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
-            ON CONFLICT (houzz_item_id) DO UPDATE SET
-                title          = COALESCE(EXCLUDED.title, houzz_schedule_items.title),
-                start_date     = COALESCE(EXCLUDED.start_date, houzz_schedule_items.start_date),
-                end_date       = COALESCE(EXCLUDED.end_date, houzz_schedule_items.end_date),
-                status         = COALESCE(EXCLUDED.status, houzz_schedule_items.status),
-                completion_pct = COALESCE(EXCLUDED.completion_pct, houzz_schedule_items.completion_pct),
-                assignee       = COALESCE(EXCLUDED.assignee, houzz_schedule_items.assignee),
-                notes          = COALESCE(EXCLUDED.notes, houzz_schedule_items.notes),
+            ON CONFLICT (activity_id) DO UPDATE SET
+                title          = COALESCE(EXCLUDED.title, project_schedule_items.title),
+                start_date     = COALESCE(EXCLUDED.start_date, project_schedule_items.start_date),
+                end_date       = COALESCE(EXCLUDED.end_date, project_schedule_items.end_date),
+                status         = COALESCE(EXCLUDED.status, project_schedule_items.status),
+                completion_pct = COALESCE(EXCLUDED.completion_pct, project_schedule_items.completion_pct),
+                assignee       = COALESCE(EXCLUDED.assignee, project_schedule_items.assignee),
+                notes          = COALESCE(EXCLUDED.notes, project_schedule_items.notes),
                 synced_at      = NOW()
             RETURNING (xmax=0) AS is_insert
         """, (
-            r.get("houzz_item_id"), r.get("project_id"), r.get("title"),
+            r.get("activity_id"), r.get("project_id"), r.get("title"),
             r.get("start_date"), r.get("end_date"), r.get("status"),
             r.get("parent_item_id"), r.get("assignee"), r.get("completion_pct"),
             r.get("task_type"), r.get("notes"),

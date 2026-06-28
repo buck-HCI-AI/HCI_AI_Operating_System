@@ -20,7 +20,7 @@ ENTITY_TABLE_MAP = {
     "houzz": [
         ("projects",       "houzz_projects",       "id"),
         ("tasks",          "houzz_tasks",           "id"),
-        ("schedule_items", "houzz_schedule_items",  "id"),
+        ("schedule_items", "project_schedule_items",  "id"),
         ("purchase_orders","houzz_purchase_orders",  "id"),
         ("change_orders",  "houzz_change_orders",    "id"),
         ("subcontractors", "houzz_subcontractors",   "id"),
