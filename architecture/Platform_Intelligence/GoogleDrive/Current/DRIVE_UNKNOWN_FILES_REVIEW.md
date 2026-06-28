@@ -1,0 +1,45 @@
+# Unknown Files — Needs Review
+**Date:** 2026-06-28 | **Count:** 40
+
+| File | Path | MIME | URL |
+|---|---|---|---|
+| HCI_AI_Build_Session_20260619_Summary | Buck AI/Workflow Exports/HCI_AI_Build_Session_20260619_Summary | txt | [link](https://drive.google.com/file/d/1dolZ7JIqoR3tRpEt05O2eIPmb4kmAuLO/view?usp=drivesdk) |
+| n8n_Exports_WF007_WF010_20260619 | Buck AI/Workflow Exports/n8n_Exports_WF007_WF010_20260619 | txt | [link](https://drive.google.com/file/d/1Z2JqGJ_2xeCe_EMXzjv3HT6PXd-1gttg/view?usp=drivesdk) |
+| Buck_AI_Master_Context_Pad | Buck AI/Handoffs/Buck_AI_Master_Context_Pad | pdf | [link](https://drive.google.com/file/d/17oP4C_gk1HFWibQllec_SMK8dePOj0_D/view?usp=drivesdk) |
+| HCI_HubSpot_Outlook_Reconciliation_Summary | Buck AI/Handoffs/HCI_HubSpot_Outlook_Reconciliation_Summary | pdf | [link](https://drive.google.com/file/d/1wTh104v0trJJNSsdOK5DEsVFNpeUuGjo/view?usp=drivesdk) |
+| Claude_Drive_Folder_Reorganization_Summary | Buck AI/Handoffs/Claude_Drive_Folder_Reorganization_Summary | pdf | [link](https://drive.google.com/file/d/1qtI9bzVbM-dR20TmQk6VyxjNrvq5Zxb7/view?usp=drivesdk) |
+| Claude_Drive_Folder_Reorganization_Summary.pdf | Buck AI/Claude_Drive_Folder_Reorganization_Summary.pdf | pdf | [link](https://drive.google.com/file/d/1zcRNTAtxI_t-7lzYS60NpiW5QFgBO5oe/view?usp=drivesdk) |
+| HCI_HubSpot_Outlook_Reconciliation_Summary.pdf | Buck AI/HCI_HubSpot_Outlook_Reconciliation_Summary.pdf | pdf | [link](https://drive.google.com/file/d/1h1MpW5tqLCikwFYCDWlDnWsKC3usxNrx/view?usp=drivesdk) |
+| HCI_Cost_Code_Structure_v1.xlsx | Buck AI/HCI_Cost_Code_Structure_v1.xlsx | xlsx | [link](https://docs.google.com/spreadsheets/d/1O4sTvLGGTPxpTiZyicm08f2cHHnnFWfQ/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_Scope_Package_Registry_v1.xlsx | Buck AI/HCI_Scope_Package_Registry_v1.xlsx | xlsx | [link](https://docs.google.com/spreadsheets/d/1Nn7aRDGNuYWyg7Y7wHhO8huZvL2iuxY0/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_Master_Tracker_Workbook_v1.xlsx | Buck AI/HCI_Master_Tracker_Workbook_v1.xlsx | xlsx | [link](https://docs.google.com/spreadsheets/d/1J1KNDvfGq9VGoiNv5cUU91v-zbuJMyJ6/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_AI_Operating_Instructions_for_ChatGPT_v1.0.docx | Buck AI/HCI_AI_Operating_Instructions_for_ChatGPT_v1.0.docx | docx | [link](https://docs.google.com/document/d/1oeEuQbdtFe5ClPzYl__cie8PQUY60g-i/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_AI_Construction_OS_Registry_Build_v2_Garmisch_Mined | Buck AI/HCI_AI_Construction_OS_Registry_Build_v2_Garmisch_Mined | google_sheet | [link](https://docs.google.com/spreadsheets/d/1019ju5mO80X8XqtpjR16OeIeUELc7oPQ0wi5sCAKatI/edit?usp=drivesdk) |
+| Buck_AI_Master_Context_Pad.pdf | Buck AI/Buck_AI_Master_Context_Pad.pdf | pdf | [link](https://drive.google.com/file/d/15brhBzqotdppr5Pcrr0gZC-xnqSr1WFi/view?usp=drivesdk) |
+| Buck_AI_Master_Transcript_Reconstruction_v1.pdf | Buck AI/Buck_AI_Master_Transcript_Reconstruction_v1.pdf | pdf | [link](https://drive.google.com/file/d/1eREqTgegLke6mSU0xvu4KTf9s_kHdSA5/view?usp=drivesdk) |
+| Buck_AI_Master_Transcript_Reconstruction_v1 copy.pdf | Buck AI/Buck_AI_Master_Transcript_Reconstruction_v1 copy.pdf | pdf | [link](https://drive.google.com/file/d/1OvMqgKIKH8rnIlnY-CTlFqARi5vIx85_/view?usp=drivesdk) |
+| Buck AI Master Knowledge Base | Buck AI/Buck AI Master Knowledge Base | google_doc | [link](https://docs.google.com/document/d/1vqTB7uZcDZVk4fOQ9z0JGAq1JG3qWg0SDmxy_MPVTkM/edit?usp=drivesdk) |
+| HCI_Registry_Build_v1_ORIGINAL_SUPERSEDED | _archive/HCI_Registry_Build_v1_ORIGINAL_SUPERSEDED | google_sheet | [link](https://docs.google.com/spreadsheets/d/1yVpNfLZnoH7I-GCmU2Th3103ibIZ0pxQKm_iM4-rTV8/edit?usp=drivesdk) |
+| HCI_Construction_OS_v2_ORIGINAL_SUPERSEDED | _archive/HCI_Construction_OS_v2_ORIGINAL_SUPERSEDED | google_sheet | [link](https://docs.google.com/spreadsheets/d/14zNvYjBG_ZpoALQNvikBH5KXNx_O9cXICI3jWkc96NQ/edit?usp=drivesdk) |
+| HCI_Registry_Build_v2_ORIGINAL_SUPERSEDED | _archive/HCI_Registry_Build_v2_ORIGINAL_SUPERSEDED | google_sheet | [link](https://docs.google.com/spreadsheets/d/1JZ8xtwvCQuBUba3w8PQpTheLjQq3Tcen2dR4TYsr6_Q/edit?usp=drivesdk) |
+| HCI_AI_Construction_OS_Registry_Build_v1_SUPERSEDED | _archive/HCI_AI_Construction_OS_Registry_Build_v1_SUPERSEDED | google_sheet | [link](https://docs.google.com/spreadsheets/d/1e0SG7Q5VXkWOgxwVkBjWiE3MRWNtFTwJgDBMECa_GmY/edit?usp=drivesdk) |
+| files.zip | _archive/files.zip | file | [link](https://drive.google.com/file/d/1qrQQsGtHVmueZGV28G-HCAMRBpa98cvz/view?usp=drivesdk) |
+| HCI_Master_Contact_List_v2.xlsx | _archive/HCI_Master_Contact_List_v2.xlsx | xlsx | [link](https://docs.google.com/spreadsheets/d/1LKle5IhbmwrSYqbgnn69o7ywl-xgcfa9/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_AI_Division_of_Labor_Operating_Rules | 06 Systems/HCI_AI_Division_of_Labor_Operating_Rules | google_doc | [link](https://docs.google.com/document/d/1ABGgU865J5Y6oEsGLB2sieEqQliDsj7B91Cawy5qR9I/edit?usp=drivesdk) |
+| Buck_AI_Master_Knowledge_Base | 06 Systems/Buck_AI_Master_Knowledge_Base | google_doc | [link](https://docs.google.com/document/d/1tXsd1MRFWrsYcj5wZKkAiqSPk3GFqAxfupDAFvexMLQ/edit?usp=drivesdk) |
+| HCI_AI_Operating_Instructions_for_ChatGPT_v1 | 06 Systems/HCI_AI_Operating_Instructions_for_ChatGPT_v1 | docx | [link](https://docs.google.com/document/d/1aK5sp4U3UAO_WQlel8nWzd3YjlpE6FFA/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_HubSpot_Build_Standards_v1.docx | 06 Systems/HCI_HubSpot_Build_Standards_v1.docx | docx | [link](https://docs.google.com/document/d/1HEHqgmMdDdqtoAy9A5iRFLV6UnUIE9_G/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_AI_Operating_Instructions_for_ChatGPT_v1.0.docx | 06 Systems/HCI_AI_Operating_Instructions_for_ChatGPT_v1.0.docx | docx | [link](https://docs.google.com/document/d/1RfPdp601r81oft7isNzkAmEUJmK_iXEx/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_Construction_Operating_System_v2 | 03 Registries/HCI_Construction_Operating_System_v2 | google_sheet | [link](https://docs.google.com/spreadsheets/d/1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA/edit?usp=drivesdk) |
+| HCI_AI_Construction_OS_Registry_Build_v2_Garmisch_Mined | 03 Registries/HCI_AI_Construction_OS_Registry_Build_v2_Garmisch_Mined | google_sheet | [link](https://docs.google.com/spreadsheets/d/1y0XC3K45iq1pmzZCLaIEywkNzkYAPOXvMiM0Y86jU50/edit?usp=drivesdk) |
+| HCI_HubSpot_Outlook_Reconciliation_Summary.pdf | 03 Registries/HCI_HubSpot_Outlook_Reconciliation_Summary.pdf | pdf | [link](https://drive.google.com/file/d/1qorXG6FgFGQn27oXnOzpPUC9tNp6CWe7/view?usp=drivesdk) |
+| HCI_Master_Contact_List_v3_HubSpot_Outlook_Reconciled.xlsx | 03 Registries/HCI_Master_Contact_List_v3_HubSpot_Outlook_Reconciled.xlsx | xlsx | [link](https://docs.google.com/spreadsheets/d/15JJW-M9YqTb4Mi5mXmj48-Fcf4JOyRb8/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_AI_Construction_OS_Registry_Build_v1 | 03 Registries/HCI_AI_Construction_OS_Registry_Build_v1 | google_sheet | [link](https://docs.google.com/spreadsheets/d/1xgGZUBxH4xnDDHrwBA3d6UOrgNuC0rM8jUtGtgkKEkY/edit?usp=drivesdk) |
+| HCI_Cost_Code_Structure_v1 | 02 Templates/HCI_Cost_Code_Structure_v1 | xlsx | [link](https://docs.google.com/spreadsheets/d/1_fVZnsXVhtapBBtBGLuSXI7nW9B5ZSHp/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_Scope_Package_Registry_v1 | 02 Templates/HCI_Scope_Package_Registry_v1 | xlsx | [link](https://docs.google.com/spreadsheets/d/1ossuqNVvljqL0FQRpXcx0LL7Vmun3rZX/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_Master_Tracker_Workbook_v1 | 02 Templates/HCI_Master_Tracker_Workbook_v1 | xlsx | [link](https://docs.google.com/spreadsheets/d/1EFG5eIiPPoJVxNBgPmnAyxevE7XZ9MP6/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_HubSpot_Build_Standards_v1 | 01 SOPs/01 Active SOP Copies/HCI_HubSpot_Build_Standards_v1 | docx | [link](https://docs.google.com/document/d/1Y_OdHD2BeXGWXYWsAxDyAO9q7JW1dL6q/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_SOP_Pack_All_42_SOPs | 01 SOPs/01 Active SOP Copies/HCI_SOP_Pack_All_42_SOPs | docx | [link](https://docs.google.com/document/d/1Ever9FeEDHboUnHMzNqJCPPljNNwtTbc/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| SOP_00_Master_HCI_Construction_Operating_System | 01 SOPs/01 Active SOP Copies/SOP_00_Master_HCI_Construction_Operating_System | docx | [link](https://docs.google.com/document/d/1tZ-3PSeQ5oMO1gjti7Vtvw3qMtPNUWR2/edit?usp=drivesdk&ouid=105444123879326982668&rtpof=true&sd=true) |
+| HCI_AI_OS_Master_Index | 00 Executive/HCI_AI_OS_Master_Index | google_doc | [link](https://docs.google.com/document/d/1WF4ae2eR25pWJU_XSBRzqluHhSfNoX71TyQRY2XcuCA/edit?usp=drivesdk) |
+| HCI Knowledge Base Index v1 | 00 Executive/HCI Knowledge Base Index v1 | google_doc | [link](https://docs.google.com/document/d/1xqnqKgm-ZFK5xFgynddVJI4y3emFKonc4f5fM0s7xgw/edit?usp=drivesdk) |

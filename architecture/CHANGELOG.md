@@ -5,6 +5,40 @@
 
 ---
 
+## v2.5 — 2026-06-27 | Drive Intelligence + Data Integrity Audit + Full System Test
+
+**Trigger:** ARCHITECTURE DIRECTIVE — "complete audit and test of everything"
+
+**Changes:**
+- `03_Source_Code/services/drive_intelligence/` — new service (3 files):
+  - `drive_client.py` — Google Drive OAuth, recursive tree walk, file metadata, search
+  - `classifier.py` — 19 category rules, 11 routing destinations, project name detection, confidence scoring
+  - `routes.py` — 8 endpoints: `/tree`, `/files`, `/file/{id}`, `/search`, `/audit`, `/classify`, `/route`, `/ingest`
+  - Registered in `api/main.py` at `/api/v1/services/drive-intelligence`
+- `Architecture/Platform_Intelligence/GoogleDrive/Current/` — 6 audit reports written:
+  - `DRIVE_KNOWLEDGE_AUDIT.md`, `DRIVE_FOLDER_TREE.md`, `DRIVE_CLASSIFICATION_REPORT.md`
+  - `DRIVE_ROUTING_RECOMMENDATIONS.md`, `DRIVE_PROJECT_BRAIN_CANDIDATES.md`, `DRIVE_UNKNOWN_FILES_REVIEW.md`
+  - **Drive audit results:** 131 files, 47 folders, 23 service registered
+- `Architecture/Platform_Intelligence/DATA_INTEGRITY_AUDIT.md` — comprehensive pre-WF-009 baseline
+- `Architecture/Platform_Intelligence/DUPLICATE_RECORD_REPORT.md` — 67 vendor name duplicates (pending Buck approval to merge)
+- `Architecture/Platform_Intelligence/STALE_RECORD_REPORT.md` — Houzz data gap flagged (0 schedule/task/PO records)
+- `Architecture/Platform_Intelligence/SCHEDULE_BASELINE_AUDIT.md` — WF-009 readiness: 2 blockers
+- `Architecture/Platform_Intelligence/PROJECT_REFERENTIAL_INTEGRITY.md` — 3/4 projects linked to HubSpot; 83 Sagebrusch pending
+- `Architecture/Platform_Intelligence/CLEANUP_RECOMMENDATIONS.md` — 5 prioritized actions
+- `03_Source_Code/tests/test_drive_intelligence.py` — 63/63 tests passing
+- **n8n workflows activated:** COI Compliance Engine (daily 07:00), Bid Invitation Tasks (3×/day), AI Deal Summarization (06:00)
+- **Full system audit:** 94/100 HEALTHY — 18/18 API endpoints, GBT project-state LIVE via ngrok
+- **BTW handoff files processed:** 5/5 routed (Watch Cycle 1 ingested, `platform_watch` type added)
+
+**Key findings:**
+- HubSpot records: CLEAN (0 duplicates across contacts/companies/deals)
+- Vendor DB: 67 name duplicates — biggest is Sunny Oasis Holdings ×10, Custom Structural Steel ×6
+- Houzz data: NOT LOADED — all tasks/schedule/PO tables empty (requires Browser extraction)
+- schedule_variances table: does not exist (WF-009 migration will create)
+- GBT access: ✅ CONFIRMED — `/project-state` accessible at ngrok URL
+
+---
+
 ## v2.4 — 2026-06-27 | Browser Handoff Auto-Intake Infrastructure + AO-HS-001/002/004/010
 
 **Trigger:** Buck Adams directive — "make the automation work as it should, automatically"

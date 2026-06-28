@@ -11,8 +11,7 @@ discovery_date: 2026-06-27
 document_id: HCI-BH-HS-TEST
 version: 1.0
 created_at: 2026-06-27
-summary: Intake pipeline smoke test — HubSpot route verification
+summary: Intake pipeline smoke test — HubSpot direct-write route verification
 ---
-
-# Test Handoff — HubSpot Intake Verification
-This is an automated smoke test to verify the end-to-end handoff pipeline.
+# Test Handoff
+Direct write to Inbox path — no Downloads required.

@@ -43,6 +43,7 @@ SYSTEM_CURRENT_DIRS = {
 
 ROUTING = {
     "browser_discovery":            None,   # resolved dynamically by related_system
+    "platform_watch":               REPO_ROOT / "Architecture/Platform_Intelligence",
     "houzz_export":                 REPO_ROOT / "Architecture/Platform_Intelligence/Houzz/Current",
     "hubspot_export":               REPO_ROOT / "Architecture/Platform_Intelligence/HubSpot/Current",
     "platform_opportunity_report":  REPO_ROOT / "Architecture/Platform_Intelligence",
