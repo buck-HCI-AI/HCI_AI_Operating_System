@@ -1,0 +1,329 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HCI AI Operating System",
+    "description": "Gateway Bridge + Bid Leveling + Project Data for Hendrickson Construction AI OS.",
+    "version": "2.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://speculate-armband-retinal.ngrok-free.dev"
+    }
+  ],
+  "paths": {
+    "/gateway/health": {
+      "get": {
+        "operationId": "getGatewayHealth",
+        "summary": "Verify gateway is live — call this first every session",
+        "responses": {
+          "200": { "description": "Gateway health status" }
+        }
+      }
+    },
+    "/gateway/project-state": {
+      "get": {
+        "operationId": "getProjectState",
+        "summary": "Full live system state — all services, projects, sprint, open items",
+        "responses": {
+          "200": { "description": "LIVE_PROJECT_STATE.md content" }
+        }
+      }
+    },
+    "/gateway/executive/report": {
+      "get": {
+        "operationId": "getExecutiveReport",
+        "summary": "Morning brief — health, risks, schedule across all 3 projects",
+        "responses": {
+          "200": { "description": "Executive report" }
+        }
+      }
+    },
+    "/gateway/executive/mission-control": {
+      "get": {
+        "operationId": "getMissionControl",
+        "summary": "All KPIs across the OS",
+        "responses": {
+          "200": { "description": "Mission control KPIs" }
+        }
+      }
+    },
+    "/gateway/project/{code}/brain": {
+      "get": {
+        "operationId": "getProjectBrain",
+        "summary": "Project brain snapshot — use code 64EW, 101F, or 1355R",
+        "parameters": [
+          { "name": "code", "in": "path", "required": true, "schema": { "type": "string", "enum": ["64EW", "101F", "1355R"] } }
+        ],
+        "responses": {
+          "200": { "description": "Project brain data" }
+        }
+      }
+    },
+    "/gateway/project/{code}/schedule": {
+      "get": {
+        "operationId": "getProjectSchedule",
+        "summary": "Schedule + variance — use code 64EW, 101F, or 1355R",
+        "parameters": [
+          { "name": "code", "in": "path", "required": true, "schema": { "type": "string", "enum": ["64EW", "101F", "1355R"] } }
+        ],
+        "responses": {
+          "200": { "description": "Schedule data" }
+        }
+      }
+    },
+    "/gateway/project/{code}/pm": {
+      "get": {
+        "operationId": "getProjectPM",
+        "summary": "PM console — health, risks, open actions — use code 64EW, 101F, or 1355R",
+        "parameters": [
+          { "name": "code", "in": "path", "required": true, "schema": { "type": "string", "enum": ["64EW", "101F", "1355R"] } }
+        ],
+        "responses": {
+          "200": { "description": "PM console data" }
+        }
+      }
+    },
+    "/gateway/project/{code}/bids": {
+      "get": {
+        "operationId": "getProjectBids",
+        "summary": "Bid packages + procurement — use code 64EW, 101F, or 1355R",
+        "parameters": [
+          { "name": "code", "in": "path", "required": true, "schema": { "type": "string", "enum": ["64EW", "101F", "1355R"] } }
+        ],
+        "responses": {
+          "200": { "description": "Bid package data" }
+        }
+      }
+    },
+    "/gateway/knowledge/vendor": {
+      "get": {
+        "operationId": "vendorLookup",
+        "summary": "Cross-project vendor lookup",
+        "parameters": [
+          { "name": "name", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Vendor data" }
+        }
+      }
+    },
+    "/gateway/knowledge/issues": {
+      "get": {
+        "operationId": "searchIssues",
+        "summary": "Similar issues and lessons learned",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Issues and lessons learned" }
+        }
+      }
+    },
+    "/gateway/drive/search": {
+      "get": {
+        "operationId": "searchDrive",
+        "summary": "Search Google Drive",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Drive search results" }
+        }
+      }
+    },
+    "/gateway/drive/write": {
+      "post": {
+        "operationId": "writeToDrive",
+        "summary": "Write a document directly to Google Drive — plain text or markdown, no base64 needed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["filename", "content"],
+                "properties": {
+                  "filename": { "type": "string", "description": "e.g. ARCHITECTURE_FREEZE_v1.md" },
+                  "content": { "type": "string", "description": "Plain text or markdown content" },
+                  "folder_id": { "type": "string", "description": "Drive folder ID — defaults to HCI AI Master folder" },
+                  "mime_type": { "type": "string", "default": "text/plain" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "File created or updated in Drive" }
+        }
+      }
+    },
+    "/gateway/agent/handoff": {
+      "post": {
+        "operationId": "sendHandoffToClaude",
+        "summary": "Send implementation task to Claude Code — writes to Agent Handoff Inbox",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "body"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "body": { "type": "string" },
+                  "priority": { "type": "string", "enum": ["high", "medium", "low"], "default": "medium" },
+                  "source": { "type": "string", "default": "chief_architect" },
+                  "sop_references": { "type": "array", "items": { "type": "string" } },
+                  "acr_number": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Handoff queued" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "summary": "List all configured projects",
+        "responses": {
+          "200": { "description": "Project list" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/projects/{project_id}/data": {
+      "get": {
+        "operationId": "getProjectBidData",
+        "summary": "Get all raw bid data — project_id: 1=64EW, 2=101F, 3=1355R",
+        "parameters": [
+          { "name": "project_id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "All bid data" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/projects/{project_id}/summary": {
+      "get": {
+        "operationId": "getDivisionSummary",
+        "summary": "Division-level bid leveling summary — project_id: 1=64EW, 2=101F, 3=1355R",
+        "parameters": [
+          { "name": "project_id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Division summary" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/projects/{project_id}/run": {
+      "post": {
+        "operationId": "runBidLeveling",
+        "summary": "Run bid leveling — always dry_run=true unless Buck says otherwise",
+        "parameters": [
+          { "name": "project_id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dry_run": { "type": "boolean", "default": true },
+                  "divisions": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Bid leveling result" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/sheets/read": {
+      "get": {
+        "operationId": "readSheet",
+        "summary": "Read a Google Sheets range",
+        "parameters": [
+          { "name": "sheet_id", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "range_name", "in": "query", "required": false, "schema": { "type": "string", "default": "Sheet1!A1:Z200" } }
+        ],
+        "responses": {
+          "200": { "description": "Sheet data" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/sheets/write": {
+      "post": {
+        "operationId": "writeSheet",
+        "summary": "Write values to a Google Sheets range",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sheet_id", "range_name", "values"],
+                "properties": {
+                  "sheet_id": { "type": "string" },
+                  "range_name": { "type": "string" },
+                  "values": { "type": "array", "items": { "type": "array" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Write result" }
+        }
+      }
+    },
+    "/api/v1/services/bid-leveling/drive/list/{folder_id}": {
+      "get": {
+        "operationId": "listDriveFolder",
+        "summary": "List contents of a Google Drive folder",
+        "parameters": [
+          { "name": "folder_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Folder contents" }
+        }
+      }
+    },
+    "/api/v1/mvp/executive-report": {
+      "get": {
+        "operationId": "executiveReport",
+        "summary": "Cross-project morning briefing (legacy — use /gateway/executive/report instead)",
+        "responses": {
+          "200": { "description": "Executive report" }
+        }
+      }
+    },
+    "/api/v1/services/approval-queue/items": {
+      "get": {
+        "operationId": "getApprovalQueue",
+        "summary": "Get approval queue items for Buck",
+        "parameters": [
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "default": "pending" } }
+        ],
+        "responses": {
+          "200": { "description": "Queue items" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  },
+  "security": [{ "apiKey": [] }]
+}

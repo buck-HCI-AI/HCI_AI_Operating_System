@@ -167,57 +167,66 @@ def _send_ntfy(
     topic: str | None,
     actions: list[dict] | None = None,
 ) -> dict:
-    import ssl, certifi
+    """Send via Telegram (primary). Falls back to ntfy if Telegram fails."""
+    import json as _json, ssl, certifi
     ctx = ssl.create_default_context(cafile=certifi.where())
 
+    tg_token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+
+    if tg_token and tg_chat_id:
+        try:
+            icons = {"CRITICAL": "🚨", "HIGH": "⚠️", "MEDIUM": "📋", "LOW": "ℹ️"}
+            tag_str = (tags[0].upper() if tags else "")
+            icon = next((v for k, v in icons.items() if k in tag_str), "📋")
+            text = f"{icon} *{title}*\n\n{message}"
+
+            # Build inline keyboard from actions if provided
+            markup = None
+            if actions:
+                buttons = []
+                for a in actions:
+                    btn = {"text": a.get("label", "Open")}
+                    if a.get("url"):
+                        btn["url"] = a["url"]
+                    buttons.append(btn)
+                markup = {"inline_keyboard": [buttons]}
+            elif action_url:
+                markup = {"inline_keyboard": [[{"text": "Open", "url": action_url}]]}
+
+            payload = {"chat_id": tg_chat_id, "text": text, "parse_mode": "Markdown"}
+            if markup:
+                payload["reply_markup"] = _json.dumps(markup)
+
+            data = _json.dumps(payload).encode()
+            req  = urllib.request.Request(
+                f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                data=data, headers={"Content-Type": "application/json"}, method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
+                return {"status": "sent", "channel": "telegram", "http_status": r.status}
+        except Exception:
+            pass  # fall through to ntfy
+
+    # ntfy fallback
     ntfy_url   = os.environ.get("NTFY_URL",   "https://ntfy.sh")
     ntfy_topic = topic or os.environ.get("NTFY_TOPIC", "hci-executive")
     ntfy_token = os.environ.get("NTFY_TOKEN", "")
-
-    # ntfy headers must be ASCII — strip unicode
     safe_title = title.encode("ascii", "replace").decode("ascii")
-
-    headers = {
-        "Title":        safe_title,
-        "Content-Type": "text/plain; charset=utf-8",
-        # Explicit retention: ensures messages appear in app history even if the
-        # app's WebSocket was disconnected when delivery occurred. Without this,
-        # re-subscribed topics with in-app caching toggled off show empty history.
-        "Cache":        "yes",
-        "Expires":      "24h",
-    }
+    headers = {"Title": safe_title, "Content-Type": "text/plain; charset=utf-8",
+               "Cache": "yes", "Expires": "24h"}
     if tags:
         headers["Tags"] = ",".join(tags)
     if action_url and not actions:
-        # Simple click-through when no action buttons
         headers["Click"] = action_url
     if ntfy_token:
         headers["Authorization"] = f"Bearer {ntfy_token}"
-
-    # Build action buttons string
-    # Format: "http, Label, URL, method=POST, clear=true; view, Label, URL"
-    if actions:
-        parts = []
-        for a in actions:
-            atype = a.get("action", "view")
-            label = a.get("label", "Open")
-            url   = a.get("url", "")
-            if atype == "http":
-                method = a.get("method", "POST")
-                clear  = "true" if a.get("clear") else "false"
-                parts.append(f"http, {label}, {url}, method={method}, clear={clear}")
-            else:
-                parts.append(f"view, {label}, {url}")
-        headers["Actions"] = "; ".join(parts)
-
     req = urllib.request.Request(
-        f"{ntfy_url}/{ntfy_topic}",
-        data=message.encode("utf-8"),
-        headers=headers,
-        method="POST",
+        f"{ntfy_url}/{ntfy_topic}", data=message.encode("utf-8"),
+        headers=headers, method="POST",
     )
     with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
-        return {"status": "sent", "http_status": r.status, "topic": ntfy_topic, "actions": len(actions or [])}
+        return {"status": "sent", "channel": "ntfy_fallback", "http_status": r.status, "topic": ntfy_topic}
 
 
 def _send_pushover(title: str, message: str, action_url: str | None = None) -> dict:

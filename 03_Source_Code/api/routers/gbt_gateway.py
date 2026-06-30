@@ -86,7 +86,7 @@ SERVICE_REGISTRY = [
     {"name": "services",            "path": "/gateway/services",                 "description": "This service registry"},
     {"name": "plan-read",           "path": "/gateway/plan/read",                "description": "POST: Vision AI plan reader — Drive PDF → page images → Sonnet/Opus gap analysis"},
     {"name": "batch",              "path": "/gateway/batch",                    "description": "POST: Execute N operations in 1 GBT call — ops: ntfyPush, emailDraft, sendHandoff, bidLevel, dbQuery"},
-    {"name": "notify-test",        "path": "/gateway/notify/test",              "description": "POST: Push test notification to Buck's ntfy topic (hci-ai-os-buck)"},
+    {"name": "notify-test",        "path": "/gateway/notify/test",              "description": "POST: Push test notification to Buck's ntfy topic (hci-executive)"},
     {"name": "poll-instructions",  "path": "/gateway/poll-instructions",        "description": "GET: Poll ntfy topic for incoming messages from Buck (last 5 min)"},
     {"name": "intent-route",       "path": "/gateway/intent/route",             "description": "POST: Natural language intent router — message → execute → ntfy push"},
     {"name": "project-plans",      "path": "/gateway/project/{code}/plans",     "description": "GET: Scan drawings folder, classify by discipline, filter by scope/type"},
@@ -3685,25 +3685,53 @@ async def plan_read_local_status():
     })
 
 
-# ── ntfy Push Notification Helper ─────────────────────────────────────────────
+# ── Telegram Push Helper (replaces ntfy) ──────────────────────────────────────
 
-NTFY_TOPIC = "hci-ai-os-buck"
+TG_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TG_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TG_BASE    = f"https://api.telegram.org/bot{TG_TOKEN}"
+
+# ntfy kept as silent fallback
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "hci-executive")
 NTFY_BASE  = f"https://ntfy.sh/{NTFY_TOPIC}"
+
+_TG_OFFSET: list[int] = [0]  # mutable so poll_instructions can track offset
 
 
 def _ntfy(title: str, body: str, priority: str = "default", tags: str = "") -> dict:
-    """Push a notification to ntfy. priority: min|low|default|high|urgent"""
+    """Send via Telegram primary; fall back to ntfy silently."""
+    tg_priority = {"min": "low", "low": "low", "default": "normal",
+                   "high": "high", "urgent": "urgent"}.get(priority, "normal")
+    icons = {"low": "ℹ️", "normal": "📋", "high": "⚠️", "urgent": "🚨"}
+    icon = icons.get(tg_priority, "📋")
+    text = f"{icon} *{title}*\n\n{body}"
     try:
-        # ntfy headers must be ASCII — encode title/body as UTF-8 percent encoding fallback
+        payload = {"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "Markdown"}
+        r = requests.post(f"{TG_BASE}/sendMessage", json=payload, timeout=10)
+        if r.ok:
+            return {"status": "sent", "channel": "telegram", "http": r.status_code}
+    except Exception:
+        pass
+    # ntfy fallback
+    try:
         safe_title = title.encode("ascii", errors="replace").decode("ascii")
-        headers = {
-            "Title":    safe_title,
-            "Priority": priority,
-            "Content-Type": "text/plain; charset=utf-8",
-        }
+        headers = {"Title": safe_title, "Priority": priority,
+                   "Content-Type": "text/plain; charset=utf-8"}
         if tags:
             headers["Tags"] = tags
-        r = requests.post(NTFY_BASE, data=body.encode("utf-8"), headers=headers, timeout=10)
+        r2 = requests.post(NTFY_BASE, data=body.encode("utf-8"), headers=headers, timeout=5)
+        return {"status": "sent", "channel": "ntfy_fallback", "http": r2.status_code}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
+def _tg_send(text: str, reply_markup: dict = None, parse_mode: str = "Markdown") -> dict:
+    """Low-level Telegram sendMessage — use this when you need markup/buttons."""
+    payload = {"chat_id": TG_CHAT_ID, "text": text, "parse_mode": parse_mode}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    try:
+        r = requests.post(f"{TG_BASE}/sendMessage", json=payload, timeout=10)
         return {"status": "sent" if r.ok else "failed", "http": r.status_code}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
@@ -3711,54 +3739,233 @@ def _ntfy(title: str, body: str, priority: str = "default", tags: str = "") -> d
 
 @router.post("/notify/test")
 async def notify_test(request: Request):
-    """Push a test notification to Buck's ntfy topic (no auth required)."""
+    """Push a test notification to Buck via Telegram."""
     t0 = time.time()
-    result = _ntfy(
-        title="HCI AI OS — Test Notification",
-        body="Gateway push is working. ntfy channel confirmed live.",
-        priority="default",
-        tags="white_check_mark",
-    )
+    result = _ntfy("HCI AI OS — Test Notification",
+                   "✅ Telegram channel confirmed live. Gateway push working.",
+                   priority="default")
     return _response("/notify/test", result, start=t0)
+
+
+@router.post("/telegram/send")
+async def telegram_send(request: Request):
+    """GBT-callable: send a Telegram message to Buck. Body: {text, priority?, buttons?}
+    buttons format: [[{text, url},...],...]  — optional inline keyboard rows."""
+    t0 = time.time()
+    body = await request.json()
+    text     = body.get("text", "")
+    priority = body.get("priority", "normal")
+    buttons  = body.get("buttons")
+    if not text:
+        return _response("/telegram/send", {}, errors=["text is required"], start=t0)
+    icons = {"low": "ℹ️", "normal": "📋", "high": "⚠️", "urgent": "🚨"}
+    icon  = icons.get(priority, "📋")
+    full  = f"{icon} {text}" if not text.startswith(("🚨","⚠️","ℹ️","📋","✅","❌")) else text
+    markup = {"inline_keyboard": buttons} if buttons else None
+    result = _tg_send(full, reply_markup=markup)
+    _log("/telegram/send", "gbt", "telegram", result.get("status","?"),
+         int((time.time()-t0)*1000), str(uuid.uuid4())[:8], text[:60])
+    return _response("/telegram/send", result, start=t0)
+
+
+@router.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Telegram webhook — receives messages and callback_query from Buck's phone."""
+    t0 = time.time()
+    try:
+        update = await request.json()
+        result = {"update_id": update.get("update_id")}
+
+        if "message" in update:
+            msg     = update["message"]
+            chat_id = str(msg["chat"]["id"])
+            text    = msg.get("text", "")
+            msg_id  = msg["message_id"]
+            result["type"] = "message"
+            result["text"] = text
+
+            # Store in platform_events for agent polling
+            conn = _pg()
+            cur  = conn.cursor()
+            cur.execute(
+                "INSERT INTO platform_events (event_type, source_service, actor, payload) VALUES (%s,%s,%s,%s)",
+                ("buck_message", "telegram", "Buck Adams",
+                 psycopg2.extras.Json({"chat_id": chat_id, "text": text,
+                                       "message_id": msg_id, "ts": datetime.now(timezone.utc).isoformat()}))
+            )
+            conn.commit(); cur.close(); conn.close()
+
+            # Auto-acknowledge with a simple receipt
+            ack = f"✅ Got it: _{text[:80]}_" if text else "✅ Received"
+            _tg_send(ack)
+
+        elif "callback_query" in update:
+            cb      = update["callback_query"]
+            cb_id   = cb["id"]
+            cb_data = cb.get("data", "")
+            result["type"] = "callback"
+            result["data"] = cb_data
+            # Acknowledge the button tap immediately
+            try:
+                requests.post(f"{TG_BASE}/answerCallbackQuery",
+                              json={"callback_query_id": cb_id, "text": "Received"}, timeout=5)
+            except Exception:
+                pass
+
+        return _response("/telegram/webhook", result, start=t0)
+    except Exception as e:
+        return _response("/telegram/webhook", {}, errors=[str(e)], start=t0)
 
 
 @router.get("/poll-instructions")
 async def poll_instructions():
-    """
-    Poll ntfy topic for incoming messages from Buck.
-    Returns any messages posted to hci-ai-os-buck in the last 5 minutes.
-    """
+    """Poll Telegram for new messages from Buck (GBT calls this at session start)."""
     t0 = time.time()
     try:
-        r = requests.get(
-            f"{NTFY_BASE}/json",
-            params={"poll": "1", "since": "5m"},
-            timeout=15,
-        )
+        params  = {"limit": 20, "timeout": 0}
+        if _TG_OFFSET[0]:
+            params["offset"] = _TG_OFFSET[0]
+        r = requests.get(f"{TG_BASE}/getUpdates", params=params, timeout=15)
+        updates = r.json().get("result", [])
         messages = []
-        for line in r.text.strip().splitlines():
-            if not line:
-                continue
-            try:
-                import json as _json
-                msg = _json.loads(line)
-                if msg.get("event") == "message":
-                    messages.append({
-                        "id":      msg.get("id"),
-                        "time":    msg.get("time"),
-                        "title":   msg.get("title", ""),
-                        "message": msg.get("message", ""),
-                    })
-            except Exception:
-                pass
+        for u in updates:
+            _TG_OFFSET[0] = u["update_id"] + 1
+            if "message" in u:
+                msg = u["message"]
+                messages.append({
+                    "id":      msg["message_id"],
+                    "time":    msg["date"],
+                    "from":    msg.get("from", {}).get("first_name", "Buck"),
+                    "message": msg.get("text", ""),
+                })
         return _response("/poll-instructions", {
-            "topic":    NTFY_TOPIC,
-            "window":   "last 5 minutes",
-            "count":    len(messages),
+            "channel": "telegram",
+            "count":   len(messages),
             "messages": messages,
         }, start=t0)
     except Exception as e:
         return _response("/poll-instructions", {}, errors=[str(e)], start=t0)
+
+
+# ── Buck Phone → System Messaging ──────────────────────────────────────────────
+
+class BuckMessageRequest(BaseModel):
+    title: str = "Message from Buck"
+    body: str
+    priority: str = "default"
+
+@router.post("/buck/message")
+async def buck_send_message(req: BuckMessageRequest):
+    """Receive a message from Buck (phone form or Siri shortcut) and store + push to agents."""
+    t0 = time.time()
+    msg_id = str(uuid.uuid4())[:8]
+    ts = datetime.now(timezone.utc).isoformat()
+    try:
+        conn = _pg()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO platform_events (event_type, source_service, actor, payload) VALUES (%s, %s, %s, %s)",
+            ("buck_message", "phone", "Buck Adams", psycopg2.extras.Json({"id": msg_id, "title": req.title, "body": req.body, "priority": req.priority, "ts": ts}))
+        )
+        conn.commit()
+        cur.close(); conn.close()
+    except Exception as e:
+        _log("buck_message_store_error", {"error": str(e)})
+
+    # Forward to ntfy so agents that poll /poll-instructions pick it up too
+    _ntfy(title=f"📲 Buck: {req.title}", body=req.body, priority=req.priority, tags="incoming_envelope")
+    _log("/buck/message", "phone", "platform_events", "ok", int((time.time()-t0)*1000), msg_id, f"title={req.title[:40]}")
+    return _response("/buck/message", {"status": "received", "id": msg_id, "ts": ts}, start=t0)
+
+@router.get("/buck/messages")
+async def buck_get_messages(since_minutes: int = 60):
+    """Return recent messages from Buck — GBT polls this at session start."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT payload, published_at FROM platform_events WHERE event_type = 'buck_message' AND published_at > NOW() - INTERVAL '%s minutes' ORDER BY published_at DESC LIMIT 20",
+            (since_minutes,)
+        )
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        messages = [{"data": r["payload"], "received_at": r["published_at"].isoformat()} for r in rows]
+        return _response("/buck/messages", {"count": len(messages), "window_minutes": since_minutes, "messages": messages}, start=t0)
+    except Exception as e:
+        return _response("/buck/messages", {}, errors=[str(e)], start=t0)
+
+@router.get("/buck/compose", response_class=None)
+async def buck_compose_form():
+    """Simple HTML form Buck bookmarks on his phone to send messages to the system."""
+    from fastapi.responses import HTMLResponse
+    html = """<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HCI Send">
+<title>HCI — Send Message</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #eee; margin: 0; padding: 20px; }
+  h2 { color: #e94560; margin-bottom: 24px; font-size: 18px; }
+  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 4px; }
+  input, textarea, select { width: 100%; box-sizing: border-box; background: #16213e; color: #fff;
+    border: 1px solid #444; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 16px; }
+  textarea { height: 120px; resize: vertical; }
+  button { width: 100%; background: #e94560; color: #fff; border: none; border-radius: 8px;
+    padding: 16px; font-size: 17px; font-weight: bold; cursor: pointer; }
+  button:active { background: #c73652; }
+  #status { margin-top: 16px; text-align: center; font-size: 14px; color: #4ecdc4; }
+</style>
+</head>
+<body>
+<h2>📲 Send Message to HCI System</h2>
+<form id="f">
+  <label>Title</label>
+  <input id="title" type="text" placeholder="Quick note, directive, question..." value="Message from Buck">
+  <label>Message</label>
+  <textarea id="body" placeholder="What do you need?"></textarea>
+  <label>Priority</label>
+  <select id="priority">
+    <option value="default">Normal</option>
+    <option value="high">High</option>
+    <option value="urgent">Urgent</option>
+    <option value="low">Low</option>
+  </select>
+  <button type="submit">Send to HCI OS</button>
+</form>
+<div id="status"></div>
+<script>
+document.getElementById('f').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.querySelector('button');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/gateway/buck/message', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title: document.getElementById('title').value,
+        body: document.getElementById('body').value,
+        priority: document.getElementById('priority').value,
+      })
+    });
+    const d = await r.json();
+    document.getElementById('status').textContent = '✅ Sent! ID: ' + (d.payload?.id || '?');
+    document.getElementById('body').value = '';
+    document.getElementById('title').value = 'Message from Buck';
+  } catch(err) {
+    document.getElementById('status').textContent = '❌ Error: ' + err.message;
+  }
+  btn.textContent = 'Send to HCI OS';
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
 
 
 # ── Batch Endpoint ─────────────────────────────────────────────────────────────
