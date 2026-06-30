@@ -1,0 +1,82 @@
+{
+  "name": "BTW-4 — Bid Stale Detection (Daily)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1-5" }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Daily 7am Weekdays",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/gateway/bids/stale/alert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 30000 }
+      },
+      "id": "stale-alert-call",
+      "name": "Run Stale Check + Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "credentials": { "httpHeaderAuth": { "id": "hci-api-key", "name": "HCI API Key" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [{
+            "id": "check-flags",
+            "leftValue": "={{ $json.payload.summary.total_flags }}",
+            "rightValue": 0,
+            "operator": { "type": "number", "operation": "gt" }
+          }],
+          "combinator": "and"
+        }
+      },
+      "id": "has-flags",
+      "name": "Any Flags?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/gateway/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{
+            "name": "message",
+            "value": "BTW-4 stale check ran — no flags"
+          }]
+        },
+        "options": {}
+      },
+      "id": "log-clean",
+      "name": "Log: All Clear",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 420]
+    }
+  ],
+  "connections": {
+    "Daily 7am Weekdays":    { "main": [[{ "node": "Run Stale Check + Alert", "type": "main", "index": 0 }]] },
+    "Run Stale Check + Alert": { "main": [[{ "node": "Any Flags?", "type": "main", "index": 0 }]] },
+    "Any Flags?": {
+      "main": [
+        [],
+        [{ "node": "Log: All Clear", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "BTW-4" }, { "name": "bid-intelligence" }, { "name": "daily" }]
+}

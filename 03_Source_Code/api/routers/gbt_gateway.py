@@ -619,6 +619,172 @@ def executive_report():
         return _response("/executive/report", {}, errors=[str(e)], start=t0)
 
 
+def _run_stale_check(conn) -> dict:
+    """BTW-4 inline stale detection — avoids cross-package import issues."""
+    from datetime import date, timedelta
+    today = date.today()
+    LIVE = [1, 2, 3, 8]
+    WARN_DAYS, ALERT_DAYS, PKG_DAYS, EXPIRY_WARN = 7, 14, 21, 3
+    r = {"run_date": today.isoformat(), "expiring": [], "expired": [],
+         "no_response": [], "stale_packages": []}
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT be.id, v.company_name, p.name, bp.csi_division,
+                   be.date_sent, be.bid_expiry_date,
+                   be.bid_expiry_date - %s, be.status
+            FROM bid_entries be
+            JOIN vendors v ON v.id = be.vendor_id
+            JOIN projects p ON p.id = be.project_id
+            LEFT JOIN bid_packages bp ON bp.id = be.bid_package_id
+            WHERE be.project_id = ANY(%s) AND be.bid_expiry_date IS NOT NULL
+              AND be.bid_expiry_date BETWEEN %s AND %s
+              AND be.status NOT IN ('received','awarded','bid_received')
+            ORDER BY be.bid_expiry_date
+        """, (today, LIVE, today, today + timedelta(days=EXPIRY_WARN)))
+        for row in cur.fetchall():
+            r["expiring"].append({"id": row[0], "vendor": row[1], "project": row[2],
+                "csi": row[3], "date_sent": str(row[4]) if row[4] else None,
+                "expiry": str(row[5]), "days_until_expiry": row[6], "status": row[7]})
+        cur.execute("""
+            SELECT be.id, v.company_name, p.name, bp.csi_division,
+                   be.date_sent, be.bid_expiry_date,
+                   %s - be.bid_expiry_date, be.status
+            FROM bid_entries be
+            JOIN vendors v ON v.id = be.vendor_id
+            JOIN projects p ON p.id = be.project_id
+            LEFT JOIN bid_packages bp ON bp.id = be.bid_package_id
+            WHERE be.project_id = ANY(%s) AND be.bid_expiry_date IS NOT NULL
+              AND be.bid_expiry_date < %s
+              AND be.status NOT IN ('received','awarded','bid_received')
+            ORDER BY be.bid_expiry_date
+        """, (today, LIVE, today))
+        for row in cur.fetchall():
+            r["expired"].append({"id": row[0], "vendor": row[1], "project": row[2],
+                "csi": row[3], "date_sent": str(row[4]) if row[4] else None,
+                "expiry": str(row[5]), "days_overdue": row[6], "status": row[7]})
+        cur.execute("""
+            SELECT be.id, v.company_name, p.name, bp.csi_division,
+                   be.date_sent, %s - be.date_sent, be.status,
+                   CASE WHEN %s - be.date_sent > %s THEN 'ALERT' ELSE 'WARN' END
+            FROM bid_entries be
+            JOIN vendors v ON v.id = be.vendor_id
+            JOIN projects p ON p.id = be.project_id
+            LEFT JOIN bid_packages bp ON bp.id = be.bid_package_id
+            WHERE be.project_id = ANY(%s) AND be.date_sent IS NOT NULL
+              AND be.date_received IS NULL
+              AND be.status NOT IN ('received','awarded','bid_received')
+              AND %s - be.date_sent >= %s
+            ORDER BY 6 DESC
+        """, (today, today, ALERT_DAYS, LIVE, today, WARN_DAYS))
+        for row in cur.fetchall():
+            r["no_response"].append({"id": row[0], "vendor": row[1], "project": row[2],
+                "csi": row[3], "date_sent": str(row[4]),
+                "days_waiting": row[5], "status": row[6], "severity": row[7]})
+        cur.execute("""
+            SELECT bp.id, p.name, bp.csi_division, bp.package_name,
+                   bp.status, bp.updated_at::date, %s - bp.updated_at::date
+            FROM bid_packages bp
+            JOIN projects p ON p.id = bp.project_id
+            WHERE bp.project_id = ANY(%s) AND bp.status IN ('bids_receiving','bidding')
+              AND %s - bp.updated_at::date >= %s
+              AND bp.package_name NOT ILIKE '%%DRAFT%%'
+              AND bp.package_name NOT ILIKE '%%CSI Division%%'
+              AND bp.package_name NOT ILIKE '%%Subcontractor%%'
+              AND bp.package_name NOT ILIKE '%%PM:%%'
+            ORDER BY 7 DESC LIMIT 30
+        """, (today, LIVE, today, PKG_DAYS))
+        for row in cur.fetchall():
+            r["stale_packages"].append({"id": row[0], "project": row[1], "csi": row[2],
+                "package": row[3], "status": row[4],
+                "last_updated": str(row[5]), "days_stale": row[6]})
+    r["summary"] = {
+        "expiring_count": len(r["expiring"]),
+        "expired_count": len(r["expired"]),
+        "no_response_count": len(r["no_response"]),
+        "stale_packages_count": len(r["stale_packages"]),
+        "total_flags": len(r["expiring"]) + len(r["expired"]) + len(r["no_response"]) + len(r["stale_packages"]),
+        "needs_attention": bool(r["expiring"] or r["expired"] or r["no_response"]),
+    }
+    return r
+
+
+def _format_stale_alert(results: dict) -> str | None:
+    s = results["summary"]
+    if not s["total_flags"]:
+        return None
+    lines = ["BID STALE ALERT — " + results["run_date"]]
+    if results["expiring"]:
+        lines.append(f"\nEXPIRING SOON ({s['expiring_count']}):")
+        for b in results["expiring"]:
+            lines.append(f"  {b['vendor']} | {b['project']} | expires {b['expiry']} ({b['days_until_expiry']}d)")
+    if results["expired"]:
+        lines.append(f"\nEXPIRED ({s['expired_count']}):")
+        for b in results["expired"]:
+            lines.append(f"  {b['vendor']} | {b['project']} | expired {b['expiry']} ({b['days_overdue']}d ago)")
+    if results["no_response"]:
+        alerts = [b for b in results["no_response"] if b["severity"] == "ALERT"]
+        warns  = [b for b in results["no_response"] if b["severity"] == "WARN"]
+        if alerts:
+            lines.append(f"\nNO RESPONSE — OVERDUE ({len(alerts)}):")
+            for b in alerts[:5]:
+                lines.append(f"  {b['vendor']} | {b['project']} | sent {b['date_sent']} ({b['days_waiting']}d)")
+        if warns:
+            lines.append(f"\nNO RESPONSE — WARNING ({len(warns)}):")
+            for b in warns[:3]:
+                lines.append(f"  {b['vendor']} | {b['project']} | sent {b['date_sent']} ({b['days_waiting']}d)")
+    if results["stale_packages"] and not s["needs_attention"]:
+        lines.append(f"\nSTALE PACKAGES ({s['stale_packages_count']}):")
+        for pkg in results["stale_packages"][:5]:
+            lines.append(f"  {pkg['project']} | {pkg['package']} | {pkg['days_stale']}d idle")
+    return "\n".join(lines)
+
+
+def _pg_stale_conn():
+    import psycopg2
+    return psycopg2.connect(
+        host=os.environ.get("POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("POSTGRES_PORT", 5432)),
+        dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+        user=os.environ.get("POSTGRES_USER", "hci_admin"),
+        password=os.environ.get("POSTGRES_PASSWORD", ""),
+    )
+
+
+@router.get("/bids/stale")
+def bids_stale():
+    """BTW-4 — Bid stale detection: expiring, expired, no-response, stale packages."""
+    t0 = time.time()
+    try:
+        conn = _pg_stale_conn()
+        results = _run_stale_check(conn)
+        conn.close()
+        return _response("/bids/stale", results, start=t0)
+    except Exception as e:
+        return _response("/bids/stale", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/bids/stale/alert")
+async def bids_stale_alert(request: Request):
+    """Run stale check and push Telegram alert if anything needs attention. Called by n8n daily."""
+    t0 = time.time()
+    try:
+        conn = _pg_stale_conn()
+        results = _run_stale_check(conn)
+        conn.close()
+        msg = _format_stale_alert(results)
+        sent = False
+        if msg:
+            tg = _tg_send(msg)
+            sent = tg.get("status") == "sent"
+        return _response("/bids/stale/alert", {
+            "summary": results["summary"],
+            "alert_sent": sent,
+            "message_preview": msg[:200] if msg else None,
+        }, start=t0)
+    except Exception as e:
+        return _response("/bids/stale/alert", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/executive/mission-control")
 def mission_control():
     """Mission control — cross-project command center."""
