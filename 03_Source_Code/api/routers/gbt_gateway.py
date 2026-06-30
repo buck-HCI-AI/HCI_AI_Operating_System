@@ -3725,9 +3725,14 @@ def _ntfy(title: str, body: str, priority: str = "default", tags: str = "") -> d
         return {"status": "error", "detail": str(e)}
 
 
-def _tg_send(text: str, reply_markup: dict = None, parse_mode: str = "Markdown") -> dict:
-    """Low-level Telegram sendMessage — use this when you need markup/buttons."""
-    payload = {"chat_id": TG_CHAT_ID, "text": text, "parse_mode": parse_mode}
+def _tg_send(text: str, reply_markup: dict = None, parse_mode: str = None) -> dict:
+    """Low-level Telegram sendMessage. parse_mode auto-detected from text content."""
+    import re as _re
+    if parse_mode is None:
+        parse_mode = "Markdown" if _re.search(r"[*_`\[]", text) else None
+    payload = {"chat_id": TG_CHAT_ID, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
     if reply_markup:
         payload["reply_markup"] = reply_markup
     try:
