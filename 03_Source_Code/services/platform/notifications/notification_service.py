@@ -48,7 +48,7 @@ ESCALATION_HOURS: dict[str, int] = {
 
 # Actor → email address map (authoritative; update when team changes)
 ACTOR_EMAILS: dict[str, str] = {
-    "Buck Adams": "buck@ahmaspen.com",
+    "Buck Adams": "buck@hendricksoninc.com",
 }
 
 

@@ -256,7 +256,7 @@ def _queue_email(title: str, message: str, action_url: str | None) -> dict:
         "subject": title,
         "body": message,
         "action_url": action_url,
-        "to": os.environ.get("EXECUTIVE_EMAIL", "buck@ahmaspen.com"),
+        "to": os.environ.get("EXECUTIVE_EMAIL", "buck@hendricksoninc.com"),
     }).encode()
     req = urllib.request.Request(
         n8n_webhook, data=payload,

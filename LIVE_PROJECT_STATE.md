@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-29T22:40 MST
-**Updated By:** Claude Code v3.5 — BTW-4/5/6/8/9/10 all complete. 5 new role consoles (Owner/Office/Accounting/Client/Trade Partner). 1355R SOW drafts (Concrete/Steel/Framing). 101F schedule variance fixed (-5d YELLOW). 204 duplicate approvals voided. External drive backup configured. 373 project events, 13 collections Qdrant, 63 n8n workflows (55 active).
+**Last Updated:** 2026-06-30T00:17 MST
+**Updated By:** Claude Code v4.0 — GATE 5 GO AUTHORIZED. Full Operations Manual build in progress (13 technical chapters complete, GBT authoring 16 business chapters tonight). Live: 64EW/101F/1355R. Monitored: 246GW. All other projects = learning only.
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -65,21 +65,35 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 
 ---
 
-## Active Projects — Gate 5 Pilot (2026-06-25 → 2026-07-01)
+## [STATE CHANGE 2026-06-30] Gate 5 GO — AUTHORIZED by Buck Adams
+
+**Gate 5 Verdict: GO — Full Production Authorization**
+**Authorization Date:** 2026-06-30
+**Authorized By:** Buck Adams (Owner)
+
+### Live Production Projects
 | ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
 |---|---|---|---|---|---|---|---|---|
 | 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | 0 days |
 | 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 2 | -5 days (steel delay) |
 | 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🟢 GREEN | 58 | 0 | 0 days |
-| 4 | 83SB | 83 Sagebrusch | TBD |  | 🟢 GREEN | 0 | 0 | 0 days |
-| 8 | 246GW | 246 Gallo Way | New Construction — Chaparral Lot 7 | 321358358216 | 🟢 GREEN | 44 | 0 | 0 days |
-| 11 | ASPN-NEW | 842 Ridge Road | New Construction 9,200 SF Ultra-Luxury |  | 🔴 RED | 39 | 4 | 0 days |
-| 12 | ASPN-REM | 710 Cemetery Lane | Full Remodel 4,800 SF Victorian Conversion |  | 🟡 YELLOW | 26 | 3 | 0 days |
-| 13 | ASPN-MC | 200 E Hopkins | 25-Unit Luxury Condo 68,000 GSF |  | 🔴 RED | 41 | 4 | 0 days |
-| 14 | 14 |  |  |  | 🟢 GREEN | 0 | 0 | 0 days |
 
-**Projects at risk:** 64EW (2 open risks), 101F (4 open risks, schedule slipping)
-**Total open risks:** 6 | **Open RFIs:** 0
+### Monitored / Staged
+| ID | Code | Project | Scope | HubSpot Deal | Health | Notes |
+|---|---|---|---|---|---|---|
+| 8 | 246GW | 246 Gallo Way | New Construction — Chaparral Lot 7 | 321358358216 | 🟢 GREEN | Monitored — pending full go-live |
+
+### All Other Projects — Learning & Monitoring Only
+| ID | Code | Project | Status |
+|---|---|---|---|
+| 4 | 83SB | 83 Sagebrusch | Learning/reference |
+| 11 | ASPN-NEW | 842 Ridge Road | Learning/reference |
+| 12 | ASPN-REM | 710 Cemetery Lane | Learning/reference |
+| 13 | ASPN-MC | 200 E Hopkins | Learning/reference |
+| 14+ | Various | 18+ additional | Learning/reference — no operational writes |
+
+**Active risks:** 64EW (2 open risks), 101F (steel delay -5 days critical)
+**Total open risks:** 4 | **Open RFIs:** 0
 
 ---
 

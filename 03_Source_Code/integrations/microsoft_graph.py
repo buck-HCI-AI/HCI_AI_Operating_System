@@ -143,6 +143,27 @@ def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple
     return _request("POST", "/me/sendMail", body=msg)
 
 
+def send_email_with_cc(subject: str, html_body: str, to: list[tuple[str, str]],
+                       cc: list[tuple[str, str]] = None) -> tuple:
+    """Send immediately with optional CC recipients."""
+    msg = {
+        "message": {
+            "subject": subject,
+            "body": {"contentType": "HTML", "content": html_body},
+            "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
+        },
+        "saveToSentItems": True,
+    }
+    if cc:
+        msg["message"]["ccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in cc]
+    return _request("POST", "/me/sendMail", body=msg)
+
+
+def send_draft(msg_id: str) -> tuple:
+    """Send an existing Outlook draft by message ID."""
+    return _request("POST", f"/me/messages/{msg_id}/send")
+
+
 def list_drafts(top: int = 10) -> list[dict]:
     r, _ = _request("GET", "/me/mailFolders/drafts/messages", params={
         "$select": "id,subject,createdDateTime",

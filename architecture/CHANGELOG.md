@@ -613,3 +613,56 @@
 - 107 tests, 89% service coverage
 - 15 n8n workflows (7 active)
 - 73-table PostgreSQL schema, 15 migrations
+
+## v4.0 — 2026-06-30
+
+### Gate 5 GO — Production Authorization
+- Buck Adams authorized Gate 5 GO on 2026-06-30
+- 64EW, 101F, 1355R: LIVE production
+- 246GW: Monitored/staged
+- All other projects: Learning/reference only (18 projects)
+
+### Operations Manual — Full Build (Overnight)
+- 13 technical chapters authored by Claude Code (Chapters 17-26, 29-32)
+- 16 business chapters assigned to GBT (Chapters 1-16, 27-28, 30)
+- Chapter 32: System intelligence improvements and roadmap analysis
+
+### New Endpoint: BTW-11 Procurement Action Plan
+- `GET /gateway/project/{code}/procurement`
+- Returns bid coverage, packages needing bids, matched vendors from registry by CSI code
+- CSI prefix matching (vendors use "09", packages use "09 — Painting")
+- 33 action items for 64EW with vendor matches
+- Added to SERVICE_REGISTRY
+
+### Bug Fixes
+- FIXED: Owner role `/gateway/role/owner` critical_risks was showing reference/learning projects
+  - Added `p.status NOT IN ('reference','completed','archived','cancelled')` filter
+  - Now shows only live project risks (64EW, 101F, 1355R, 246GW)
+- FIXED: `project_brain_snapshots` health was GREEN while exec report showed RED
+  - Updated all 4 live project snapshots to match exec report truth (RED with detailed factors)
+  - Root cause: two different health calculations — exec report has bid coverage logic, brain snapshots don't
+  - Future fix: unify health scoring into BaseIntelligenceService
+- FIXED: Chapter 24 documentation had wrong status value (`pending_approval` → `pending`)
+- FIXED: BTW-11 procurement endpoint column errors (`bid_due_date` → `scope_description`, `csi_division` → `csi_divisions`)
+
+### Data Updates
+- `project_document_links`: 7 records added (1355R structural drawings + 3 SOW drafts, 64EW procurement gap)
+- `project_brain_snapshots`: All 4 live projects synced to RED with accurate health_factors
+
+### System Test Results
+- All 7 key endpoints returning OK ✅
+- Owner role: 1,039 pending approvals, 4 live critical risks (correct)
+- Procurement: 5.7% bid coverage on 64EW (33 packages need outreach)
+- Documents: 6 docs for 1355R (SOW drafts + structural drawings)
+- Timeline: 15 events for 1355R, 10 for 64EW
+
+### Procurement Alert Sent to Buck
+- ntfy push sent: 64EW emergency (6% bid coverage), 101F/1355R status, system update
+
+### What's Next (BTW-11 through BTW-20 identified)
+- BTW-11: Procurement Intelligence Engine (URGENT — 64EW has 33 packages unawarded)
+- BTW-12: Permit & Inspection Tracking
+- BTW-13: Material & Long-Lead Item Tracking  
+- BTW-14: Owner/Client Decision Log
+- BTW-15: Subcontractor Performance Scoring
+- Full roadmap in Chapter 32

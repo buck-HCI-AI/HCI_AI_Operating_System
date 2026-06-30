@@ -26,7 +26,7 @@ DB = dict(
     user=os.environ.get("POSTGRES_USER", "hci_admin"),
     password=os.environ.get("POSTGRES_PASSWORD", ""),
 )
-BUCK_EMAIL = ("Buck Adams", os.environ.get("BUCK_EMAIL", "buck@ahmaspen.com"))
+BUCK_EMAIL = ("Buck Adams", os.environ.get("BUCK_EMAIL", "buck@hendricksoninc.com"))
 
 
 def _pg(sql, params=None):

@@ -36,7 +36,7 @@
     },
     {
       "parameters": {
-        "toRecipients": "buck@ahmaspen.com",
+        "toRecipients": "buck@hendricksoninc.com",
         "subject": "={{ $json.subject }}",
         "bodyContent": "={{ $json.body }}",
         "options": {}

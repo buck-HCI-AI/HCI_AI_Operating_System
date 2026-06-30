@@ -50,6 +50,11 @@ SERVICE_REGISTRY = [
     {"name": "drive-bids",         "path": "/gateway/project/{code}/drive-bids", "description": "GET: actual bids extracted from Drive vendor PDF files (source of truth)"},
     {"name": "pm-weekly",           "path": "/gateway/project/{code}/pm",         "description": "PM weekly console"},
     {"name": "project-timeline",     "path": "/gateway/project/{code}/timeline",       "description": "Chronological event timeline — logs, risks, RFIs, awards"},
+    {"name": "project-procurement",  "path": "/gateway/project/{code}/procurement",     "description": "BTW-11: Procurement action plan — packages needing bids, vendor matches, urgency"},
+    {"name": "project-houzz",        "path": "/gateway/project/{code}/houzz",           "description": "Houzz schedule intelligence — upcoming milestones, active phase, overdue items, COs"},
+    {"name": "houzz-portfolio",      "path": "/gateway/houzz/portfolio",                "description": "All-projects Houzz portfolio view — schedule health + milestones for every live job"},
+    {"name": "project-hubspot",      "path": "/gateway/project/{code}/hubspot",         "description": "HubSpot intelligence — notes, emails, tasks, engagements. Surfaces bid communications."},
+    {"name": "hubspot-portfolio",    "path": "/gateway/hubspot/portfolio",              "description": "HubSpot portfolio — notes + engagement counts for all live projects"},
     {"name": "weekly-digest",        "path": "/gateway/project/{code}/weekly-digest",  "description": "PM weekly digest — last 7 days + next week priorities"},
     {"name": "client-comms",         "path": "/gateway/project/{code}/client-comms",   "description": "Outstanding items needing client/owner communication"},
     {"name": "action-list",          "path": "/gateway/project/{code}/action-list",    "description": "AI-ranked top 10 PM actions for the day"},
@@ -383,6 +388,110 @@ def project_memory(code: str, limit: int = 20):
         return _response(f"/project/{code}/memory", {}, errors=[str(e.detail)], start=t0)
 
 
+@router.get("/project/{code}/procurement")
+def project_procurement_action_plan(code: str):
+    """BTW-11: Procurement action plan — packages needing bids, sub matches by CSI code, urgency ranking."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            # Packages with NO bids (urgent — need outreach)
+            cur.execute("""
+                SELECT bp.id, bp.package_name, bp.csi_division, bp.status,
+                       bp.scope_description,
+                       COUNT(be.id) as bid_count,
+                       SUM(be.bid_amount) as total_bid_value
+                FROM bid_packages bp
+                LEFT JOIN bid_entries be ON be.bid_package_id = bp.id AND be.bid_amount > 0
+                WHERE bp.project_id = %s
+                GROUP BY bp.id, bp.package_name, bp.csi_division, bp.status, bp.scope_description
+                ORDER BY bid_count ASC, bp.csi_division
+                LIMIT 50
+            """, (pid,))
+            packages = [dict(r) for r in cur.fetchall()]
+
+            # Find matching vendors from vendor registry by CSI code prefix
+            # bid_packages uses "09 — Painting" format; vendors use {"09"} short codes
+            no_bid_packages = [p for p in packages if (p["bid_count"] or 0) == 0]
+            vendor_matches = {}
+            if no_bid_packages:
+                # Extract 2-digit prefix from each CSI division string
+                import re
+                csi_prefix_map = {}  # "09" -> "09 — Painting" (full name)
+                for pkg in no_bid_packages:
+                    csi = pkg["csi_division"] or ""
+                    m = re.match(r"^(\d{2})", csi)
+                    if m:
+                        csi_prefix_map[m.group(1)] = csi
+                csi_prefixes = list(csi_prefix_map.keys())
+                if csi_prefixes:
+                    cur.execute("""
+                        SELECT v.id, v.company_name, v.contact_name, v.email, v.phone,
+                               v.csi_divisions, v.preferred_status
+                        FROM vendors v
+                        WHERE v.csi_divisions && %s::text[]
+                        AND (v.preferred_status IS NULL OR v.preferred_status != 'inactive')
+                        ORDER BY v.company_name
+                        LIMIT 150
+                    """, (csi_prefixes,))
+                    for v in cur.fetchall():
+                        vend_csids = v["csi_divisions"] or []
+                        for vcode in vend_csids:
+                            if vcode in csi_prefix_map:
+                                full_csi = csi_prefix_map[vcode]
+                                if full_csi not in vendor_matches:
+                                    vendor_matches[full_csi] = []
+                                vendor_matches[full_csi].append({
+                                    "id": v["id"],
+                                    "company": v["company_name"],
+                                    "contact": v["contact_name"],
+                                    "email": v["email"],
+                                    "phone": v["phone"]
+                                })
+
+            # Summary stats
+            total_pkgs = len(packages)
+            with_bids = sum(1 for p in packages if (p["bid_count"] or 0) > 0)
+            no_bids = total_pkgs - with_bids
+            awarded = sum(1 for p in packages if p["status"] == "awarded")
+
+        conn.close()
+
+        # Build urgency list: packages with no bids + matched vendors
+        action_items = []
+        for pkg in no_bid_packages[:20]:
+            csi = pkg["csi_division"] or ""
+            matched_vendors = vendor_matches.get(csi, [])
+            action_items.append({
+                "package_name": pkg["package_name"],
+                "csi_division": csi,
+                "status": pkg["status"],
+                "scope_description": pkg.get("scope_description", ""),
+                "matched_vendors": len(matched_vendors),
+                "vendors_to_invite": matched_vendors[:5],
+                "urgency": "HIGH" if not matched_vendors else "MEDIUM"
+            })
+
+        return _response(f"/project/{code}/procurement", {
+            "project_code": code,
+            "summary": {
+                "total_packages": total_pkgs,
+                "with_bids": with_bids,
+                "no_bids": no_bids,
+                "awarded": awarded,
+                "bid_coverage_pct": round(with_bids / total_pkgs * 100, 1) if total_pkgs > 0 else 0,
+            },
+            "action_items": action_items,
+            "all_packages": packages[:30],
+        }, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/procurement", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/procurement", {}, errors=[str(e)], start=t0)
+
+
 # ── Executive ─────────────────────────────────────────────────────────────────
 
 @router.get("/executive/report")
@@ -526,12 +635,13 @@ def role_owner():
             """)
             approvals = [dict(r) for r in cur.fetchall()]
 
-            # Critical risks across all active projects
+            # Critical risks across LIVE projects only (not reference/archive)
             cur.execute("""
                 SELECT p.project_code, r.risk_type, LEFT(r.description,100) as description,
                        r.severity, r.status, r.identified_date
                 FROM risks r JOIN projects p ON p.id = r.project_id
                 WHERE r.status = 'open' AND r.severity IN ('critical','high')
+                AND p.status NOT IN ('reference','completed','archived','cancelled')
                 ORDER BY CASE r.severity WHEN 'critical' THEN 1 ELSE 2 END, r.identified_date ASC
                 LIMIT 10
             """)
@@ -1031,6 +1141,77 @@ def create_email_draft(req: EmailDraftRequest):
         }, start=t0)
     except Exception as e:
         return _response("/email/draft", {}, errors=[str(e)], start=t0)
+
+
+class EmailSendRequest(BaseModel):
+    to_name: str
+    to_email: str
+    subject: str
+    body_html: str
+    cc: Optional[list] = None  # [{"name": "...", "email": "..."}]
+    reply_to_message_id: Optional[str] = None
+
+@router.post("/email/send")
+def send_email_now(req: EmailSendRequest):
+    """
+    Send an email immediately via Outlook (Microsoft Graph /me/sendMail).
+    Saves to Sent Items. Browser Claude uses this for bid invitations, follow-ups, etc.
+    For a reviewable draft first, use POST /email/draft instead.
+    Authorization: Buck Adams approved BC email-send capability 2026-06-30.
+    """
+    t0 = time.time()
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import send_email_with_cc, create_reply_draft, send_draft as _send_draft
+
+        cc_tuples = [(c["name"], c["email"]) for c in (req.cc or [])]
+
+        if req.reply_to_message_id:
+            # Create a reply draft then send it
+            draft = create_reply_draft(req.reply_to_message_id, req.body_html)
+            draft_id = draft.get("id", "")
+            if not draft_id:
+                raise ValueError("Reply draft creation returned no ID")
+            _send_draft(draft_id)
+            result, err = {"id": draft_id}, None
+        else:
+            result, err = send_email_with_cc(
+                req.subject, req.body_html,
+                [(req.to_name, req.to_email)],
+                cc=cc_tuples if cc_tuples else None,
+            )
+            if err:
+                raise ValueError(str(err))
+
+        _log("/email/send", "browser_claude", "outlook", "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4()),
+             f"Sent to {req.to_email}: {req.subject[:60]}")
+        return _response("/email/send", {
+            "status":   "sent",
+            "to_email": req.to_email,
+            "subject":  req.subject,
+            "note":     "Email sent and saved to Sent Items.",
+        }, start=t0)
+    except Exception as e:
+        return _response("/email/send", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/email/draft/{draft_id}/send")
+def send_existing_draft(draft_id: str):
+    """Send a previously created Outlook draft by its message ID."""
+    t0 = time.time()
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import send_draft as _send_draft
+        _send_draft(draft_id)
+        _log("/email/draft/send", "browser_claude", "outlook", "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4()), f"Sent draft {draft_id[:20]}")
+        return _response("/email/draft/send", {
+            "status": "sent", "draft_id": draft_id,
+            "note": "Draft sent and saved to Sent Items.",
+        }, start=t0)
+    except Exception as e:
+        return _response("/email/draft/send", {}, errors=[str(e)], start=t0)
 
 
 # ── Agent Handoff ─────────────────────────────────────────────────────────────
@@ -2202,6 +2383,437 @@ Keep response under 500 words."""
         return _response(f"/houzz/design-intel/{code}", {}, errors=[str(e)], start=t0)
 
 
+# ── HubSpot Intelligence ─────────────────────────────────────────────────────
+
+def _hs_strip_html(s):
+    import re as _re
+    return _re.sub(r'<[^>]+>', '', s or '').strip() if s else ''
+
+def _hs_deal_ids_for_project(cur, proj_name: str) -> list:
+    """Return all HubSpot deal IDs matching a project by name (covers all bid package deals)."""
+    # Match on first significant word(s) of project name to catch address variants
+    cur.execute("""
+        SELECT hubspot_deal_id FROM hubspot_deals
+        WHERE deal_name ILIKE %s
+           OR deal_name ILIKE %s
+        ORDER BY hubspot_deal_id
+    """, (f"%{proj_name}%", f"%{proj_name.split()[0]}%"))
+    return [r["hubspot_deal_id"] for r in cur.fetchall()]
+
+
+@router.get("/project/{code}/hubspot")
+def project_hubspot(code: str):
+    """HubSpot bid intelligence — queries ALL bid package deals for the project, not just the main deal."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT hubspot_deal_id, name, hubspot_search_term FROM projects WHERE id = %s", (pid,))
+            proj = cur.fetchone()
+            if not proj:
+                return _response(f"/project/{code}/hubspot", {}, errors=["Project not found"], start=t0)
+
+            proj_name = proj["name"]
+            search_term = proj.get("hubspot_search_term") or proj_name
+            cur.execute("""
+                SELECT hubspot_deal_id, deal_name, stage, amount
+                FROM hubspot_deals
+                WHERE deal_name ILIKE %s
+                ORDER BY hubspot_deal_id
+            """, (f"%{search_term}%",))
+            all_deals = [dict(r) for r in cur.fetchall()]
+            all_deal_ids = [d["hubspot_deal_id"] for d in all_deals]
+
+            if not all_deal_ids:
+                return _response(f"/project/{code}/hubspot", {
+                    "project": proj_name, "hubspot_deals_found": 0,
+                    "note": f"No HubSpot deals found matching '{search_name}'"
+                }, start=t0)
+
+            # Bid package summary by stage
+            stage_counts = {}
+            bid_total = 0.0
+            for d in all_deals:
+                stage_counts[d["stage"] or "Unknown"] = stage_counts.get(d["stage"] or "Unknown", 0) + 1
+                try:
+                    bid_total += float(d["amount"] or 0)
+                except:
+                    pass
+
+            # Notes across ALL deal IDs
+            cur.execute("""
+                SELECT body, note_timestamp, deal_id
+                FROM hubspot_notes
+                WHERE deal_id = ANY(%s)
+                ORDER BY note_timestamp DESC
+                LIMIT 20
+            """, (all_deal_ids,))
+            notes = [{"body": _hs_strip_html(r["body"])[:400],
+                      "timestamp": str(r["note_timestamp"]),
+                      "deal_id": r["deal_id"]} for r in cur.fetchall()]
+
+            # Engagements by type across ALL deals
+            cur.execute("""
+                SELECT engagement_type, COUNT(*) as cnt
+                FROM hubspot_engagements
+                WHERE deal_id = ANY(%s)
+                GROUP BY engagement_type ORDER BY cnt DESC
+            """, (all_deal_ids,))
+            engagement_counts = {r["engagement_type"]: r["cnt"] for r in cur.fetchall()}
+
+            # Recent emails across all deals
+            cur.execute("""
+                SELECT engagement_type, subject, LEFT(body,250) as snippet, created_at, deal_id
+                FROM hubspot_engagements
+                WHERE deal_id = ANY(%s) AND engagement_type IN ('EMAIL','INCOMING_EMAIL')
+                ORDER BY created_at DESC
+                LIMIT 10
+            """, (all_deal_ids,))
+            recent_emails = [dict(r) for r in cur.fetchall()]
+
+            # Tasks
+            cur.execute("""
+                SELECT subject, LEFT(body,250) as snippet, created_at, deal_id
+                FROM hubspot_engagements
+                WHERE deal_id = ANY(%s) AND engagement_type = 'TASK'
+                ORDER BY created_at DESC
+                LIMIT 15
+            """, (all_deal_ids,))
+            tasks = [dict(r) for r in cur.fetchall()]
+
+        return _response(f"/project/{code}/hubspot", {
+            "project": proj_name,
+            "project_code": code,
+            "hubspot_deals_found": len(all_deals),
+            "bid_packages": {
+                "total": len(all_deals),
+                "total_value": bid_total,
+                "by_stage": stage_counts,
+                "deals": all_deals[:50],
+            },
+            "notes": {"count": len(notes), "items": notes},
+            "engagements": {
+                "total": sum(engagement_counts.values()),
+                "by_type": engagement_counts,
+                "recent_emails": recent_emails,
+                "open_tasks": tasks,
+            },
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/hubspot", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/hubspot/portfolio")
+def hubspot_portfolio():
+    """HubSpot portfolio — bid packages, notes, engagements for ALL active + monitoring projects."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, project_code, hubspot_search_term
+                FROM projects
+                WHERE status IN ('active','live','monitoring')
+                  AND name NOT LIKE 'TEST-%%' AND name NOT LIKE 'ASPN-%%'
+                ORDER BY status, id
+            """)
+            all_projects = [dict(r) for r in cur.fetchall()]
+
+        results = []
+        for proj in all_projects:
+            proj_name = proj["name"]
+            search_term = proj.get("hubspot_search_term") or proj_name
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT hubspot_deal_id, deal_name, stage, amount
+                    FROM hubspot_deals WHERE deal_name ILIKE %s
+                """, (f"%{search_term}%",))
+                deals = [dict(r) for r in cur.fetchall()]
+                deal_ids = [d["hubspot_deal_id"] for d in deals]
+
+                note_count = eng_count = 0
+                latest_note = None
+                if deal_ids:
+                    cur.execute("SELECT COUNT(*) as cnt FROM hubspot_notes WHERE deal_id = ANY(%s)", (deal_ids,))
+                    note_count = cur.fetchone()["cnt"]
+                    cur.execute("SELECT COUNT(*) as cnt FROM hubspot_engagements WHERE deal_id = ANY(%s)", (deal_ids,))
+                    eng_count = cur.fetchone()["cnt"]
+                    cur.execute("""
+                        SELECT body FROM hubspot_notes WHERE deal_id = ANY(%s)
+                        ORDER BY note_timestamp DESC LIMIT 1
+                    """, (deal_ids,))
+                    n = cur.fetchone()
+                    latest_note = _hs_strip_html(n["body"])[:200] if n else None
+
+                bid_total = sum(float(d.get("amount") or 0) for d in deals)
+
+            results.append({
+                "project_code": proj["project_code"],
+                "project": proj_name,
+                "status": proj.get("status"),
+                "bid_packages": len(deals),
+                "bid_total": bid_total,
+                "notes": note_count,
+                "engagements": eng_count,
+                "latest_note": latest_note,
+                "summary": f"{proj['project_code']}: {len(deals)} packages, ${bid_total:,.0f} in bids, {note_count} notes"
+            })
+
+        # Sort by most bid activity
+        results.sort(key=lambda x: -(x["bid_packages"] + x["engagements"]))
+        return _response("/hubspot/portfolio", {
+            "as_of": datetime.now(timezone.utc).date().isoformat(),
+            "projects": results,
+        }, start=t0)
+    except Exception as e:
+        return _response("/hubspot/portfolio", {}, errors=[str(e)], start=t0)
+
+
+
+# ── Houzz Schedule Intelligence ──────────────────────────────────────────────
+
+@router.get("/project/{code}/houzz")
+def project_houzz(code: str, days_ahead: int = 14):
+    """Houzz schedule intelligence — upcoming milestones, active phase, overdue items, change orders."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            # Project basics
+            cur.execute("SELECT name, project_code, contract_value FROM projects WHERE id = %s", (pid,))
+            proj = cur.fetchone()
+            if not proj:
+                return _response(f"/project/{code}/houzz", {}, errors=["Project not found"], start=t0)
+
+            # Schedule summary: counts by status
+            cur.execute("""
+                SELECT status, count(*) as cnt
+                FROM project_schedule_items
+                WHERE project_id = %s::text
+                GROUP BY status
+            """, (pid,))
+            status_counts = {r["status"] or "Unknown": r["cnt"] for r in cur.fetchall()}
+
+            # Active construction phase (most common non-complete task type, including NULL as "Scheduled")
+            cur.execute("""
+                SELECT COALESCE(task_type, 'Scheduled') as task_type, count(*) as cnt
+                FROM project_schedule_items
+                WHERE project_id = %s::text
+                  AND status NOT IN ('Complete','Completed','Done')
+                  AND COALESCE(task_type,'x') NOT IN ('milestone','task','Weekly Updates','Owner Decisions','RFI / Coordination')
+                GROUP BY task_type
+                ORDER BY cnt DESC
+                LIMIT 3
+            """, (pid,))
+            active_phases = [r["task_type"] for r in cur.fetchall()]
+
+            # Upcoming items — look 60 days out to catch future-starting projects
+            cur.execute("""
+                SELECT title, start_date, end_date, status, task_type, completion_pct, assignee
+                FROM project_schedule_items
+                WHERE project_id = %s::text
+                  AND start_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 60
+                  AND status NOT IN ('Complete','Completed','Done')
+                ORDER BY start_date ASC
+                LIMIT 20
+            """, (pid,))
+            upcoming = [dict(r) for r in cur.fetchall()]
+
+            # Upcoming milestones specifically
+            cur.execute("""
+                SELECT title, start_date, status, completion_pct
+                FROM project_schedule_items
+                WHERE project_id = %s::text
+                  AND task_type = 'milestone'
+                  AND start_date >= CURRENT_DATE
+                ORDER BY start_date ASC
+                LIMIT 10
+            """, (pid,))
+            milestones = [dict(r) for r in cur.fetchall()]
+
+            # Overdue items (past start date, not complete)
+            cur.execute("""
+                SELECT title, start_date, end_date, status, task_type, assignee
+                FROM project_schedule_items
+                WHERE project_id = %s::text
+                  AND start_date < CURRENT_DATE
+                  AND status NOT IN ('Complete','Completed','Done')
+                ORDER BY start_date ASC
+                LIMIT 15
+            """, (pid,))
+            overdue = [dict(r) for r in cur.fetchall()]
+
+            # Owner decisions pending
+            cur.execute("""
+                SELECT title, start_date, status
+                FROM project_schedule_items
+                WHERE project_id = %s::text
+                  AND task_type = 'Owner Decisions'
+                  AND status NOT IN ('Complete','Completed','Done')
+                ORDER BY start_date ASC
+                LIMIT 10
+            """, (pid,))
+            owner_decisions = [dict(r) for r in cur.fetchall()]
+
+            # Change orders from approval_queue (source of truth for active projects)
+            cur.execute("""
+                SELECT aq.id, aq.status,
+                       (aq.proposed_payload->>'title') as title,
+                       (aq.proposed_payload->>'amount')::numeric as amount,
+                       aq.created_at
+                FROM approval_queue aq
+                WHERE aq.project_id = %s
+                  AND aq.action_type ILIKE '%%change_order%%'
+                ORDER BY aq.created_at DESC
+                LIMIT 10
+            """, (pid,))
+            change_orders = [dict(r) for r in cur.fetchall()]
+            co_total = sum(float(c.get("amount") or 0) for c in change_orders)
+            co_pending = sum(1 for c in change_orders if c.get("status") == "pending")
+
+            total_items = sum(status_counts.values())
+            complete = status_counts.get("Complete", 0) + status_counts.get("Completed", 0) + status_counts.get("Done", 0)
+            pct_complete = round(complete / total_items * 100) if total_items else 0
+
+        return _response(f"/project/{code}/houzz", {
+            "project": proj["name"],
+            "project_code": proj["project_code"],
+            "as_of": datetime.now(timezone.utc).date().isoformat(),
+            "schedule": {
+                "total_items": total_items,
+                "pct_complete": pct_complete,
+                "status_breakdown": status_counts,
+                "active_phases": active_phases,
+                "overdue_count": len(overdue),
+            },
+            "upcoming_items": upcoming,
+            "upcoming_milestones": milestones,
+            "overdue_items": overdue,
+            "owner_decisions_pending": owner_decisions,
+            "change_orders": {
+                "count": len(change_orders),
+                "total_value": co_total,
+                "pending_approval": co_pending,
+                "items": change_orders,
+            },
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/houzz", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/houzz/portfolio")
+def houzz_portfolio():
+    """Houzz portfolio view — schedule health + milestones for ALL live projects. The 'every job' report."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, project_code, contract_value
+                FROM projects
+                WHERE status IN ('active','live')
+                  AND name NOT LIKE 'TEST-%%'
+                ORDER BY id
+            """)
+            live_projects = [dict(r) for r in cur.fetchall()]
+
+        results = []
+        for proj in live_projects:
+            pid = proj["id"]
+            with conn.cursor() as cur:
+                # Schedule counts
+                cur.execute("""
+                    SELECT status, count(*) as cnt
+                    FROM project_schedule_items
+                    WHERE project_id = %s::text
+                    GROUP BY status
+                """, (pid,))
+                status_counts = {r["status"] or "Unknown": r["cnt"] for r in cur.fetchall()}
+
+                # Overdue count
+                cur.execute("""
+                    SELECT count(*) as cnt FROM project_schedule_items
+                    WHERE project_id = %s::text
+                      AND start_date < CURRENT_DATE
+                      AND status NOT IN ('Complete','Completed','Done')
+                """, (pid,))
+                overdue_cnt = cur.fetchone()["cnt"]
+
+                # Next 3 upcoming milestones
+                cur.execute("""
+                    SELECT title, start_date, status
+                    FROM project_schedule_items
+                    WHERE project_id = %s::text
+                      AND task_type = 'milestone'
+                      AND start_date >= CURRENT_DATE
+                    ORDER BY start_date ASC
+                    LIMIT 3
+                """, (pid,))
+                next_milestones = [dict(r) for r in cur.fetchall()]
+
+                # Active phase (include NULL task_type as "Scheduled")
+                cur.execute("""
+                    SELECT COALESCE(task_type, 'Scheduled') as task_type, count(*) as cnt
+                    FROM project_schedule_items
+                    WHERE project_id = %s::text
+                      AND status NOT IN ('Complete','Completed','Done')
+                      AND COALESCE(task_type,'x') NOT IN ('milestone','task','Weekly Updates','Owner Decisions','RFI / Coordination')
+                    GROUP BY task_type ORDER BY cnt DESC LIMIT 1
+                """, (pid,))
+                phase_row = cur.fetchone()
+                active_phase = phase_row["task_type"] if phase_row else "Scheduled"
+
+                # Owner decisions pending
+                cur.execute("""
+                    SELECT count(*) as cnt FROM project_schedule_items
+                    WHERE project_id = %s::text
+                      AND task_type = 'Owner Decisions'
+                      AND status NOT IN ('Complete','Completed','Done')
+                """, (pid,))
+                owner_pending = cur.fetchone()["cnt"]
+
+                total = sum(status_counts.values())
+                complete = status_counts.get("Complete", 0) + status_counts.get("Completed", 0) + status_counts.get("Done", 0)
+                pct = round(complete / total * 100) if total else 0
+
+                # Simple schedule health signal
+                if overdue_cnt > 10:
+                    sched_health = "RED"
+                elif overdue_cnt > 3:
+                    sched_health = "YELLOW"
+                else:
+                    sched_health = "GREEN"
+
+                results.append({
+                    "project": proj["name"],
+                    "project_code": proj["project_code"],
+                    "contract_value": float(proj["contract_value"] or 0),
+                    "active_phase": active_phase,
+                    "schedule_health": sched_health,
+                    "pct_complete": pct,
+                    "total_schedule_items": total,
+                    "overdue_items": overdue_cnt,
+                    "owner_decisions_pending": owner_pending,
+                    "next_milestones": next_milestones,
+                    "summary": f"{proj['project_code']}: {active_phase} phase, {pct}% complete, {overdue_cnt} overdue items"
+                })
+
+        return _response("/houzz/portfolio", {
+            "as_of": datetime.now(timezone.utc).date().isoformat(),
+            "live_projects": len(results),
+            "projects": results,
+        }, start=t0)
+    except Exception as e:
+        return _response("/houzz/portfolio", {}, errors=[str(e)], start=t0)
+
+
 # ── Gap9: Risk Register ───────────────────────────────────────────────────────
 
 class CreateRiskPayload(BaseModel):
@@ -3186,6 +3798,27 @@ def _exec_op(op: str, params: dict) -> dict:
                 to=[(to_name, to_email)],
             )
             return {**base, "status": "ok", "draft_id": r.get("id", "")[:30]}
+        except Exception as e:
+            return {**base, "status": "error", "detail": str(e)[:200]}
+
+    if op == "sendEmail":
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+            from microsoft_graph import send_email_with_cc
+            to_name  = params.get("to_name", "")
+            to_email = params.get("to_email", "")
+            cc_raw   = params.get("cc", [])
+            cc_tuples = [(c["name"], c["email"]) for c in cc_raw] if cc_raw else None
+            r, err = send_email_with_cc(
+                subject=params.get("subject", "(no subject)"),
+                html_body=params.get("body_html", params.get("body", "")),
+                to=[(to_name, to_email)],
+                cc=cc_tuples,
+            )
+            if err:
+                return {**base, "status": "error", "detail": str(err)[:200]}
+            return {**base, "status": "sent", "to": to_email}
         except Exception as e:
             return {**base, "status": "error", "detail": str(e)[:200]}
 

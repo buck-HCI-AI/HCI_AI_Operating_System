@@ -17,7 +17,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 import psycopg2, psycopg2.extras
 from microsoft_graph import send_email
 
-BUCK_EMAIL = ("Buck Adams", os.environ.get("BUCK_EMAIL", "buck@ahmaspen.com"))
+BUCK_EMAIL = ("Buck Adams", os.environ.get("BUCK_EMAIL", "buck@hendricksoninc.com"))
 
 DB = dict(
     host=os.environ.get("POSTGRES_HOST", "localhost"),
