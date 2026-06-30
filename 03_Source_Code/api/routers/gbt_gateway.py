@@ -175,6 +175,20 @@ def list_services():
 
 # ── Project State ─────────────────────────────────────────────────────────────
 
+@router.get("/directive")
+def advance_directive():
+    """GBT + BC advance directive — current state, lessons learned, build backlog, rules."""
+    t0 = time.time()
+    path = os.path.join(os.path.dirname(__file__), "../../../AI_TEAM/GBT_BC_ADVANCE_DIRECTIVE.md")
+    path = os.path.normpath(path)
+    try:
+        with open(path) as f:
+            content = f.read()
+        return _response("/directive", {"directive": content, "file": "AI_TEAM/GBT_BC_ADVANCE_DIRECTIVE.md"}, start=t0)
+    except FileNotFoundError:
+        return _response("/directive", {}, errors=["Directive file not found"], start=t0)
+
+
 @router.get("/project-state")
 def project_state():
     """Full live system state — same as /project-state root endpoint."""
