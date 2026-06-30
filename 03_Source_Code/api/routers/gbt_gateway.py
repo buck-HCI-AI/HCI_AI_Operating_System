@@ -972,6 +972,137 @@ def _drive_token() -> str:
         return ""
 
 
+# ── BTW-5: Schedule Variance Alerts ──────────────────────────────────────────
+
+@router.get("/schedule/variance")
+def schedule_variance():
+    """BTW-5 — Schedule variance: overdue items, data anomalies, per-project summary."""
+    t0 = time.time()
+    LIVE = [1, 2, 3, 8]
+    WARN_DAYS, ALERT_DAYS = 3, 7
+    try:
+        from datetime import date
+        today = date.today()
+        conn = _pg_stale_conn()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT p.id, p.name, p.project_code,
+                  COUNT(psi.id) as total,
+                  COUNT(CASE WHEN psi.end_date < %s
+                              AND psi.status NOT ILIKE '%%complete%%'
+                              AND psi.status NOT ILIKE '%%done%%'
+                              AND psi.start_date <= psi.end_date  -- exclude data errors
+                             THEN 1 END) as overdue,
+                  COUNT(CASE WHEN psi.end_date BETWEEN %s AND %s
+                              AND psi.status NOT ILIKE '%%complete%%'
+                             THEN 1 END) as due_soon,
+                  COUNT(CASE WHEN psi.start_date > psi.end_date THEN 1 END) as data_errors,
+                  COUNT(CASE WHEN psi.completion_pct > 0 AND psi.completion_pct < 100 THEN 1 END) as in_progress
+                FROM projects p
+                LEFT JOIN project_schedule_items psi ON psi.project_id::integer = p.id
+                WHERE p.id = ANY(%s)
+                GROUP BY p.id, p.name, p.project_code
+                ORDER BY p.id
+            """, (today, today, today + __import__('datetime').timedelta(days=WARN_DAYS), LIVE))
+            summary_rows = cur.fetchall()
+
+            # Top overdue items across all live projects
+            cur.execute("""
+                SELECT p.name, psi.title, psi.start_date, psi.end_date,
+                       psi.status, psi.completion_pct, psi.assignee,
+                       %s - psi.end_date as days_overdue
+                FROM project_schedule_items psi
+                JOIN projects p ON p.id = psi.project_id::integer
+                WHERE p.id = ANY(%s)
+                  AND psi.end_date < %s
+                  AND psi.status NOT ILIKE '%%complete%%'
+                  AND psi.status NOT ILIKE '%%done%%'
+                  AND psi.start_date <= psi.end_date
+                ORDER BY days_overdue DESC
+                LIMIT 20
+            """, (today, LIVE, today))
+            overdue_items = [{
+                "project": r[0], "title": r[1],
+                "start": str(r[2]) if r[2] else None,
+                "end": str(r[3]) if r[3] else None,
+                "status": r[4], "pct": float(r[5] or 0),
+                "assignee": r[6], "days_overdue": r[7],
+            } for r in cur.fetchall()]
+
+            # Due soon
+            cur.execute("""
+                SELECT p.name, psi.title, psi.end_date, psi.status, psi.completion_pct,
+                       psi.end_date - %s as days_remaining
+                FROM project_schedule_items psi
+                JOIN projects p ON p.id = psi.project_id::integer
+                WHERE p.id = ANY(%s)
+                  AND psi.end_date BETWEEN %s AND %s
+                  AND psi.status NOT ILIKE '%%complete%%'
+                ORDER BY psi.end_date ASC
+                LIMIT 10
+            """, (today, LIVE, today, today + __import__('datetime').timedelta(days=WARN_DAYS)))
+            due_soon = [{
+                "project": r[0], "title": r[1],
+                "end": str(r[2]), "status": r[3],
+                "pct": float(r[4] or 0), "days_remaining": r[5],
+            } for r in cur.fetchall()]
+        conn.close()
+
+        projects_summary = []
+        total_overdue = 0
+        for r in summary_rows:
+            pid, name, code, total, overdue, due_soon_ct, data_errors, in_prog = r
+            total_overdue += (overdue or 0)
+            health = "RED" if (overdue or 0) > 10 else "YELLOW" if (overdue or 0) > 0 else "GREEN"
+            projects_summary.append({
+                "project_id": pid, "project": name, "code": code,
+                "total_items": total, "overdue": overdue or 0,
+                "due_soon": due_soon_ct or 0, "in_progress": in_prog or 0,
+                "data_errors": data_errors or 0, "health": health,
+            })
+
+        return _response("/schedule/variance", {
+            "run_date": today.isoformat(),
+            "total_overdue_across_projects": total_overdue,
+            "projects": projects_summary,
+            "top_overdue_items": overdue_items,
+            "due_soon": due_soon,
+            "thresholds": {"warn_days": WARN_DAYS, "alert_days": ALERT_DAYS},
+        }, start=t0)
+    except Exception as e:
+        return _response("/schedule/variance", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/schedule/variance/alert")
+async def schedule_variance_alert(request: Request):
+    """BTW-5 — Run schedule variance check and Telegram alert if items overdue."""
+    t0 = time.time()
+    try:
+        r = requests.get("http://localhost:8000/gateway/schedule/variance", timeout=20)
+        data = r.json().get("payload", {})
+        total_overdue = data.get("total_overdue_across_projects", 0)
+        sent = False
+        if total_overdue > 0:
+            projects = data.get("projects", [])
+            lines = [f"SCHEDULE VARIANCE — {data.get('run_date','today')}"]
+            for p in projects:
+                if p["overdue"] > 0:
+                    lines.append(f"\n{p['project']} ({p['code']}): {p['overdue']} overdue, {p['due_soon']} due soon")
+            top = data.get("top_overdue_items", [])[:5]
+            if top:
+                lines.append("\nTop overdue:")
+                for item in top:
+                    lines.append(f"  {item['project']} | {item['title']} | {item['days_overdue']}d overdue")
+            msg = "\n".join(lines)
+            tg = _tg_send(msg)
+            sent = tg.get("status") == "sent"
+        return _response("/schedule/variance/alert", {
+            "total_overdue": total_overdue, "alert_sent": sent,
+        }, start=t0)
+    except Exception as e:
+        return _response("/schedule/variance/alert", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/executive/mission-control")
 def mission_control():
     """Mission control — cross-project command center."""
