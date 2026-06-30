@@ -785,6 +785,75 @@ async def bids_stale_alert(request: Request):
         return _response("/bids/stale/alert", {}, errors=[str(e)], start=t0)
 
 
+# ── BTW-8: Vendor Performance Scoring ────────────────────────────────────────
+
+def _pg_vendor_conn():
+    import psycopg2
+    return psycopg2.connect(
+        host=os.environ.get("POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("POSTGRES_PORT", 5432)),
+        dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+        user=os.environ.get("POSTGRES_USER", "hci_admin"),
+        password=os.environ.get("POSTGRES_PASSWORD", ""),
+    )
+
+
+def _vendor_scoring_module():
+    import importlib.util, sys as _sys
+    spec = importlib.util.spec_from_file_location(
+        "vendor_scoring",
+        "/Users/buckadams/HCI_AI_Operating_System/03_Source_Code/services/bid_intelligence/vendor_scoring.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@router.get("/vendors/scores")
+def vendor_scores():
+    """BTW-8 — Vendor performance scorecard across all live projects."""
+    t0 = time.time()
+    try:
+        vs = _vendor_scoring_module()
+        conn = _pg_vendor_conn()
+        scores = vs.score_all_vendors(conn)
+        saved  = vs.write_scores_to_db(scores, conn)
+        conn.close()
+        summary = {
+            "total_vendors_scored": len(scores),
+            "saved_to_db": saved,
+            "grade_breakdown": {
+                "A_preferred": sum(1 for s in scores if s["grade"] == "A"),
+                "B_active":    sum(1 for s in scores if s["grade"] == "B"),
+                "C_watch":     sum(1 for s in scores if s["grade"] == "C"),
+                "D_risk":      sum(1 for s in scores if s["grade"] == "D"),
+            },
+            "top_5": [{"vendor": s["company_name"], "score": s["score"],
+                        "grade": s["grade"], "trade": s["trade"]} for s in scores[:5]],
+            "watch_list": [{"vendor": s["company_name"], "score": s["score"],
+                             "note": s["response_note"]} for s in scores if s["grade"] in ("C","D")],
+        }
+        return _response("/vendors/scores", {"summary": summary, "scores": scores}, start=t0)
+    except Exception as e:
+        return _response("/vendors/scores", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/vendors/scores/{vendor_id}")
+def vendor_score_single(vendor_id: int):
+    """BTW-8 — Performance scorecard for a single vendor."""
+    t0 = time.time()
+    try:
+        vs = _vendor_scoring_module()
+        conn = _pg_vendor_conn()
+        score = vs.score_vendor(vendor_id, conn)
+        conn.close()
+        if not score:
+            return _response(f"/vendors/scores/{vendor_id}", {}, errors=["Vendor not found"], start=t0)
+        return _response(f"/vendors/scores/{vendor_id}", score, start=t0)
+    except Exception as e:
+        return _response(f"/vendors/scores/{vendor_id}", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/executive/mission-control")
 def mission_control():
     """Mission control — cross-project command center."""
