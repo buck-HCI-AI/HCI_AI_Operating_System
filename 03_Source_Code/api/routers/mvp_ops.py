@@ -16,7 +16,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/mvp", tags=["mvp-operations"])
 
@@ -419,17 +419,21 @@ def pm_weekly_review(code: str):
             """, (pid,))
             pending_submittals = [dict(r) for r in cur.fetchall()]
 
-    # Synthesize PM review
+    # Synthesize PM review — thresholds aligned with executive report
+    # green: 0 risks, no variance | yellow: 1-2 risks or variance | red: 3+ risks
     health = "green"
     alerts = []
-    if len(open_risks) > 3:
+    if len(open_risks) >= 3:
+        health = "red"
+        alerts.append(f"{len(open_risks)} open risks")
+    elif len(open_risks) >= 1:
         health = "yellow"
         alerts.append(f"{len(open_risks)} open risks")
     if len(open_rfis) > 2:
-        health = "yellow"
+        health = health if health == "red" else "yellow"
         alerts.append(f"{len(open_rfis)} open RFIs")
     if schedule_variance:
-        health = "yellow"
+        health = health if health == "red" else "yellow"
         alerts.append(f"{len(schedule_variance)} schedule variance items")
     if not recent_logs:
         alerts.append("No daily logs in past 7 days")
@@ -559,9 +563,9 @@ def executive_report():
                 variance = cur.fetchone()["cnt"]
 
         health = "green"
-        if risks > 3 or rfis > 2 or variance > 0:
+        if risks >= 1 or rfis > 2 or variance > 0:
             health = "yellow"
-        if risks > 5 or variance > 2:
+        if risks >= 3 or variance > 2:
             health = "red"
 
         if health != "green":
@@ -664,7 +668,7 @@ def pm_client_comms(code: str):
                 d = dict(r)
                 items.append({
                     "type": "Risk", "id": d["id"],
-                    "title": f"{d['risk_type']} — {(d['description'] or '')[:60]}",
+                    "title": f"{d['risk_type']} — {(d['description'] or '')[:120]}",
                     "status": d["status"], "date": str(d["date"]),
                     "urgency": "HIGH", "action_needed": "Client notification required",
                     "amount": None,
@@ -766,6 +770,139 @@ def pm_action_list(code: str):
         "formula": "priority_score = (severity × urgency × financial_impact) / days_open",
         "total_actions": len(actions),
         "top_10": top_10,
+    }
+
+
+# ── BTW-8: PM Weekly Digest ───────────────────────────────────────────────────
+
+@router.get("/projects/{code}/weekly-digest")
+def pm_weekly_digest(code: str):
+    """
+    PM weekly digest — what happened last 7 days, what's due next 7 days,
+    and a ranked action list for the week ahead.
+    BTW-008: completion item.
+    """
+    proj = _get_project(code)
+    pid = proj["id"]
+    today = datetime.now(timezone.utc).date()
+    week_ago = today - timedelta(days=7)
+    week_ahead = today + timedelta(days=7)
+
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            # What happened this week
+            cur.execute("""
+                SELECT event_type, event_date, title, description
+                FROM project_events
+                WHERE project_id = %s AND event_date >= %s
+                ORDER BY event_date DESC, created_at DESC LIMIT 30
+            """, (pid, week_ago))
+            this_week_events = [dict(r) for r in cur.fetchall()]
+
+            # Daily logs this week
+            cur.execute("""
+                SELECT log_date, logged_by, work_performed, crew_on_site,
+                       weather, field_risks, lookahead
+                FROM daily_logs WHERE project_id = %s AND log_date >= %s
+                ORDER BY log_date DESC
+            """, (pid, week_ago))
+            logs_this_week = [dict(r) for r in cur.fetchall()]
+
+            # Open RFIs — how long waiting
+            cur.execute("""
+                SELECT id, rfi_number, subject, submitted_date, required_response_date, status
+                FROM rfis WHERE project_id = %s AND status = 'open'
+                ORDER BY submitted_date ASC NULLS LAST
+            """, (pid,))
+            open_rfis = []
+            for r in cur.fetchall():
+                d = dict(r)
+                days_open = (today - d["submitted_date"]).days if d["submitted_date"] else 0
+                d["days_open"] = days_open
+                d["overdue"] = bool(d.get("required_response_date") and d["required_response_date"] < today)
+                open_rfis.append(d)
+
+            # Open risks
+            cur.execute("""
+                SELECT id, risk_type, severity, description, mitigation, identified_date, status
+                FROM risks WHERE project_id = %s AND status = 'open'
+                ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END
+            """, (pid,))
+            open_risks = [dict(r) for r in cur.fetchall()]
+
+            # Bid packages due / recently awarded
+            cur.execute("""
+                SELECT package_name, csi_division, status, awarded_amount
+                FROM bid_packages WHERE project_id = %s
+                  AND status IN ('bids_receiving', 'awarded', 'reviewing')
+                ORDER BY status, package_name LIMIT 20
+            """, (pid,))
+            active_bids = [dict(r) for r in cur.fetchall()]
+
+            # Schedule variance
+            cur.execute("""
+                SELECT activity_name, variance_days, risk_level, detected_at
+                FROM schedule_variance WHERE project_id = %s
+                ORDER BY ABS(variance_days) DESC LIMIT 5
+            """, (pid,))
+            variance_items = [dict(r) for r in cur.fetchall()]
+
+            # Upcoming meetings
+            cur.execute("""
+                SELECT title, meeting_type, meeting_date, attendees
+                FROM meetings WHERE project_id = %s AND meeting_date >= %s
+                ORDER BY meeting_date ASC LIMIT 5
+            """, (pid, today))
+            upcoming_meetings = [dict(r) for r in cur.fetchall()]
+
+    # Build narrative summary
+    log_days = len(logs_this_week)
+    risk_count = len(open_risks)
+    rfi_count = len(open_rfis)
+    overdue_rfis = sum(1 for r in open_rfis if r["overdue"])
+    critical_risks = [r for r in open_risks if r["severity"] in ("critical", "high")]
+
+    highlights = []
+    if log_days == 0:
+        highlights.append("No daily logs this week — superintendent needs to enter field notes")
+    elif log_days < 5:
+        highlights.append(f"{log_days} daily log(s) entered this week")
+    else:
+        highlights.append(f"All {log_days} daily logs on track")
+
+    if overdue_rfis:
+        highlights.append(f"{overdue_rfis} RFI(s) past response deadline — escalate to architect/client")
+    if critical_risks:
+        highlights.append(f"{len(critical_risks)} high/critical risk(s) require PM attention this week")
+    if active_bids:
+        bids_receiving = [b for b in active_bids if b["status"] == "bids_receiving"]
+        if bids_receiving:
+            highlights.append(f"{len(bids_receiving)} bid package(s) currently receiving bids — review incoming")
+
+    return {
+        "project": proj["name"],
+        "project_code": code,
+        "week_of": str(week_ago),
+        "through": str(today),
+        "next_week_end": str(week_ahead),
+        "summary": {
+            "log_days_this_week": log_days,
+            "open_risks": risk_count,
+            "open_rfis": rfi_count,
+            "overdue_rfis": overdue_rfis,
+            "active_bid_packages": len(active_bids),
+            "schedule_variance_items": len(variance_items),
+            "upcoming_meetings": len(upcoming_meetings),
+        },
+        "highlights": highlights,
+        "this_week_events": this_week_events,
+        "logs_this_week": logs_this_week,
+        "open_risks": open_risks,
+        "open_rfis": open_rfis,
+        "active_bids": active_bids,
+        "schedule_variance": variance_items,
+        "upcoming_meetings": upcoming_meetings,
+        "roi": {"baseline_minutes": 20, "ai_minutes": 1, "saved": 19},
     }
 
 

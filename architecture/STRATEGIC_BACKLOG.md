@@ -353,3 +353,280 @@ Parallel work directive from the owner: Continue developing the HCI AI OS Operat
 *Source: ChatGPT | 2026-06-28*
 
 Build ntfy.sh mobile approval system for HCI AI OS. n8n monitors approval queue, POSTs to ntfy topic hci-approvals. Each notification: title, priority, deep link to ChatGPT review. One-tap Approve/Deny/Request Info. No auto-approvals. Token expiration + replay protection + full audit logging. Sequence: starts after Gate 5 audits complete.
+
+
+### CYCLE 2 IMPROVEMENTS: Gap-15 Fixed + Procurement Risk Built + System Cleaned
+*Source: ChatGPT | 2026-06-28*
+
+# Claude Code: Cycle 2 Improvements — 2026-06-28
+
+## WHAT CHANGED
+
+### 1. GAP-15 FIXED: Health Score Now Includes Bid Coverage
+
+Previously: 64EW showed GREEN despite 94% of packages having zero bids.
+Now: Health scoring includes procurement as a first-class signal.
+
+Live project status (real, as of now):
+- 64EW: RED — only 6% bid coverage (2/35 packages have bids)
+- 101F: RED — only 4% bid coverage (1/26 packages)
+- 1355R: YELLOW — 38% bid coverage (23/61 packages)
+- 246GW: RED — 0% bid coverage (0/44 packages)
+
+Health logic: <25% coverage + 5+ packages = RED. 25-49% = YELLOW. This is the real state of procurement on these jobs.
+
+### 2. NEW ENDPOINT: Procurement Risk View
+
+GET /gateway/project/{code}/procurement-risk
+
+Buckets every package into: no_bids / single_bid / competitive / awarded.
+Returns: risk_score (red/yellow/green), bid_coverage_pct, spread analysis.
+MCP tool: GetProcurementRisk(project_code)
+
+1355R result: RED | 38% coverage | 38 packages with no bids, 23 single-bid, 0 c
+
+
+### SunnySide Full Test Results + Gap Updates
+*Source: ChatGPT | 2026-06-28*
+
+Subject: SunnySide Full Test Results + Gap Updates
+Priority: Critical
+From: Claude via Chief Architect GBT
+To: Code
+
+All 4 pilot projects tested. Results saved to Drive (HCI_AI_OS_SunnySide_PhaseA_Test_Results.md).
+
+KEY FINDINGS:
+1) GAP 3 CONFIRMED CRITICAL - getProjectState fails for 1355R, inconsistent routing by project code format. Fix immediately.
+2) GAP 8 CONFIRMED - Tool slot exhaustion after 3 gateway reads per session. Limit design: 3 calls per GBT session maximum.
+3) GAP 9 CONFIRMED SYSTEMIC - No Risk Register on any project.
+4) GAP 11 CONFIRMED SYSTEMIC - No RFIs on any project. Universal gap. RFI build is critical path.
+5) GAP 12 CONFIRMED SYSTEMIC - No Submittals tracker on any project. Universal gap.
+6) GAP 10 ACTIVE - 246GW superintendent still unassigned. Field pilot blocked.
+7) GAP 15 NEW - Health scoring logic incorrect. Projects show GREEN despite 90%+ bid packages with no bids. Procurement risk not factored into health score. Fix health scoring algorithm.
+8) 1355R h
+
+
+### CODE-1 through CODE-5 Project Data Corrections
+*Source: ChatGPT | 2026-06-28*
+
+Implement the following project data corrections:
+
+CODE-1: 246GW Gateway daily log sync is broken. Houzz contains 6 daily logs but Gateway returns 0. Investigate sync pipeline and restore Gateway ingestion.
+
+CODE-2: Update 64EW owner from Adnan Rawjee to Anthony Greene in the project database.
+
+CODE-3: Update 1355R budget ROM from $75K to $3.541M in the project database.
+
+CODE-4: Add the following 246GW vendors to the vendor registry: Poss Architecture, Premier Landworks, Keller North America, TJ Concrete.
+
+CODE-5: Assign Buck Adams as both Project Manager and Superintendent for 101F in the project table.
+
+Please implement, validate, and report completion with any migration or data integrity notes.
+
+
+### 1355R Bid Import Complete + Real-World Test Readiness — 2026-06-29
+*Source: ChatGPT | 2026-06-29*
+
+22 real bid entries imported from Drive. Bid coverage 37.7% → 62%. 5 real risks added (0→5). Health: RED. RFI-001 Axis B beam pocket DUE TOMORROW (June 30). Field test READY. Full detail in Architecture/Agent_Handoff/Inbox/CLAUDE_HANDOFF_2026-06-29_1355R_BidImport.md
+
+
+### Field Interface — System Prompt + Test Suite
+*Source: Claude Code | 2026-06-28*
+
+# GBT Field Interface — Setup + Test Request
+
+Buck wants SS and PM using GBT as the one field contact point before Gate 5 (July 1).
+Claude Code has built the backend. GBT needs to run the field test suite and confirm it works.
+
+---
+
+## ARCHITECTURE DECISION: One Contact Point = Hendrickson GPT
+
+Recommend creating a Custom GPT called **"Hendrickson AI"** with:
+- The system prompt below
+- MCP server connected at: `https://speculate-armband-retinal.ngrok-free.dev/mcp`
+- Simple, field-friendly response format
+
+For the pilot, Buck and GBT both test it using the EXISTING GBT session (no separate GPT needed yet).
+
+---
+
+## SYSTEM PROMPT (for Hendrickson AI Custom GPT or GBT session start)
+
+```
+You are Hendrickson Construction's AI field assistant.
+
+You help two types of users:
+- SUPERINTENDENT (SS): Jim Hendrickson (1355R), field supers on 64EW/101F
+- PROJECT MANAGER (PM): Buck Adams (all projects)
+
+PROJECT CODES: 64EW (64 Eastwood), 101F (101 Francis), 1355R (1355 Riverside), 246GW (246 Gallo
+
+
+### READY: SunnySide Test — All Field Endpoints Built + Tested 2026-06-28
+*Source: ChatGPT | 2026-06-28*
+
+# Claude Code -> GBT: SunnySide Directive Acknowledged + System Ready
+
+**Date:** 2026-06-28 14:30 UTC
+**From:** Claude Code (Lead Implementation Engineer)
+**To:** GBT (Chief Architect)
+**Re:** SunnySide_DummyJob_Directive.md — Response + System Status
+
+---
+
+## DIRECTIVE RECEIVED AND EXECUTED
+
+Read your SunnySide directive. All pre-conditions are now met. System is ready for your 14-call test sequence.
+
+---
+
+## FIELD ENDPOINTS — ALL BUILT + TESTED (5/5)
+
+| Endpoint | Path | Status |
+|----------|------|--------|
+| submitFieldNote | POST /gateway/field/note | LIVE |
+| submitRFI (Gap11) | POST /gateway/field/rfi | LIVE |
+| submitDailyReport | POST /gateway/field/daily-report | LIVE |
+| getOpenItems | GET /gateway/field/open-items?code= | LIVE |
+| getDailyLogFormatted | GET /gateway/field/daily-log-formatted?code= | BUILT THIS SESSION |
+
+getDailyLogFormatted was the only missing endpoint from your directive. Built, tested, and confirmed working 2026-06-28 14:20 UTC.
+
+---
+
+## ALL GAPS FROM Y
+
+
+### Fix GBT session tool call limit — business blocker
+*Source: ChatGPT | 2026-06-28*
+
+Priority: CRITICAL — HIGHEST PRIORITY IN SYSTEM.
+
+The current effective limit of approximately 3 gateway tool calls per GBT session makes the system unusable for field operations. Superintendents are expected to check status at least 5 times per day and PMs 10+ times per day. Requiring a new GBT session after only a few interactions is a major adoption risk.
+
+Required implementation:
+- Increase supported gateway interactions to a minimum of 15 consecutive tool calls per session.
+- Implement server-side session persistence so tool slots do not degrade during normal field use.
+- Prioritize this work before Adam and Traff go live.
+
+Business impact: This is a release-blocking UX issue. Without this change, field adoption is at significant risk.
+
+
+### SYSTEM UPGRADE REPORT 2026-06-28: Deep Mine + Intelligence Build
+*Source: ChatGPT | 2026-06-28*
+
+# Claude Code to GBT: Full System Upgrade
+
+## WHAT CHANGED
+
+### Projects: 20 real (was 10), 0 test (deleted TSNB/TSREM)
+
+Live ops (4): 64EW, 101F, 1355R, 246GW
+Reference/monitoring (13): 655G, 275SS, 574J, 212CL, 825CL, 675M, 370G, 843CML, 349DD, 1762R, 606SW, 813MS, 83SB
+Design/scenario (3): ASPN-NEW, ASPN-REM, ASPN-MC
+
+Buck confirmed: only the 4 live ops are operationally managed. All others = monitoring + learning.
+
+### Data Corrections
+64EW owner: Anthony Greene (was Adnan Rawjee)
+1355R owner: Tobin and Oakleigh Ryan (was Tahoe Property Trust)
+1355R HubSpot deal ID corrected to 321351275221
+813MS owner: Ray and Kelly Spitzley
+
+### New Gateway Endpoints (33 services, was 29)
+- GET /gateway/knowledge/market-rates: Real Aspen sub pricing from 323 actual bids, 22 CSI divisions
+- GET /gateway/knowledge/rom-estimate?sf=X&project_type=Y: ROM calibrated from real HCI projects
+- GET /gateway/project/{code}/bid-level: Bid leveling ranked low-to-high per package
+- GET /gateway/projects: Full 
+
+
+### FULL BRAIN REPORT Part1 — ALL Systems Deep Mine 2026-06-28
+*Source: ChatGPT | 2026-06-28*
+
+HCI AI OS Full Portfolio Brain Report — Part 1 of 2
+
+Date: 2026-06-28 | From: Claude Code | To: GBT Chief Architect
+
+Full report written to Drive: HCI_AI_OS_FULL_BRAIN_REPORT_2026-06-28_Part1.md
+
+HEADLINE: 18 HCI Shared Drives exist. Only 3 are in the OS. 15 real projects unmapped.
+
+TOP 5 GAPS:
+GAP-A: 15 real HCI projects with Shared Drives NOT in OS — CRITICAL
+GAP-B: 813 Mcskimming Spitzley — active (Jun 26 activity), zero OS coverage — CRITICAL  
+GAP-C: $0 bid amounts on 64EW/101F/1355R — real data in Drive bid tracking sheets — HIGH
+GAP-D: 986 HubSpot vendor candidates pending approval — HIGH
+GAP-E: Houzz not synced for real pilot projects — HIGH
+
+ACRs NEEDED FROM GBT:
+ACR-IMPORT-001: Priority order for onboarding 15 unmapped projects
+ACR-IMPORT-002: Vendor approval protocol for 986 pending candidates
+ACR-IMPORT-003: Bid amount importer — read Google Sheets, populate bid_entries
+ACR-IMPORT-004: Houzz sync scope for pilot projects
+ACR-IMPORT-005: Auto-extract answered RFIs to lessons
+
+
+### CLAUDE_HANDOFF_2026-06-29_1355R_BidImport_and_RealWorldReadiness
+*Source: claude_code | 2026-06-29*
+
+**From:** Claude Code
+**To:** GBT (Chief Architect)
+**Date:** 2026-06-29
+**Priority:** HIGH — URGENT RFI DUE TOMORROW
+
+---
+
+## WHAT HAPPENED THIS SESSION
+
+### 1355R Bid Leveling Sheet Imported (Drive → DB)
+Read "1355 Riverside - HCI 16 Division Bid Leveling FINAL LEVELED 2026-06-16" from Google Drive.
+Imported ALL real bid amounts into the system:
+
+- **22 new bid entries added** — real vendor prices from the leveling audit
+- **12 new bid packages created** — Div 9 finishes (missing: NuVision, InStone, Ragged Mtn, Mark Williams), Div 15 HVAC/Plumbing, Div 16 Electrical (3 bidders + Performance)
+- **9 new vendors added** — American PHCE, Garcia Welding, Pinnacle Constructors, CR Drywall, NuVision Drywall, InStone LLC, Cabplex, American Electric, Green Point Roofing
+
+**Bid Coverage: 37.7% → 62% (73 packages, 45 with bids)**
+
+### Daily Logs Committed
+3 real daily logs approved and committed to DB:
+- 2026-06-26: Concrete pour north wall, pump truck delay 2hr
+- 2026-06-27: Framing inspection
+
+
+### CLAUDE_HANDOFF_2026-06-28_Gap9_Gap12_Complete
+*Source: claude_code | 2026-06-29*
+
+**From:** Claude Code
+**To:** GBT (Chief Architect)
+**Date:** 2026-06-28 09:20 UTC
+**Re:** Gap9 (Risk Register) + Gap12 (Submittals Tracker) — BUILT + TESTED
+
+---
+
+## GAP9: Risk Register — COMPLETE ✅
+
+3 gateway endpoints + 3 MCP tools now live:
+
+| Endpoint | MCP Tool | Status |
+|----------|----------|--------|
+| GET /gateway/project/{code}/risks | GetRisks(project_code, status?) | ✅ |
+| POST /gateway/risks/create | CreateRisk(project_code, risk_type, description, severity, mitigation) | ✅ |
+| PATCH /gateway/risks/{id}/status | UpdateRiskStatus(risk_id, status, notes?) | ✅ |
+
+**Severity values:** low | medium | high | critical
+**Status flow:** open → mitigated → closed
+**Risk types:** schedule | budget | quality | safety | procurement | weather | subcontractor
+**Auto-writes to:** risks table + project_events (risk_flagged)
+
+---
+
+## GAP12: Submittals Tracker — COMPLETE ✅
+
+3 gateway endpoints + 3 MCP tools now live:
+
+| Endpoint | MCP Tool | Status |
+|----------|----------|--------|
+| GET 

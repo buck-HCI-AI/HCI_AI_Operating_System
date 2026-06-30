@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Query
 from datetime import datetime, timezone
 from drive_client import (
     walk_folder_tree, list_folder_all, get_file_metadata,
-    search_files, get_about, HCI_MASTER_FOLDER, MIME_LABELS
+    search_files, get_about, get_file_content, HCI_MASTER_FOLDER, MIME_LABELS
 )
 from classifier import classify_file, classify, get_routing, detect_project
 
@@ -121,6 +121,15 @@ def get_file(file_id: str):
     except Exception as e:
         raise HTTPException(404, f"File not found or inaccessible: {e}")
     return _enrich(raw)
+
+
+@router.get("/file/{file_id}/content")
+def get_file_text(file_id: str):
+    """Export text content of a Drive file. Works for Google Docs, Sheets, Slides, DOCX, XLSX."""
+    try:
+        return get_file_content(file_id)
+    except Exception as e:
+        raise HTTPException(500, f"Drive content export error: {e}")
 
 
 @router.get("/search")

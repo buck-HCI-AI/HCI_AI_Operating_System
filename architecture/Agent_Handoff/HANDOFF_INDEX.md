@@ -42,3 +42,22 @@
 | 2026-06-28 04:35 | GBT_HANDOFF_2026-06-28_Overnight_Operational_Build_Continuation_ea5d3913.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-06-28 04:35 | GBT_HANDOFF_2026-06-28_PARALLEL_WORK_DIRECTIVE_—_HCI_AI_OS_Oper_9f64749e.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-06-28 04:35 | GBT_HANDOFF_2026-06-28_ntfy_Mobile_Approval_System_Build_7f3ac877.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-28_Field_Test_Results_Baseline.md | executive_brief | Claude Code | PROCESSED | → Architecture/Handbook/Published/CLAUDE_HANDOFF_2026-06-28_Field_Test_Results_Baseline.md |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-28_Gap_Fixes_Complete.md | executive_brief | Claude Code | PROCESSED | → Architecture/Handbook/Published/CLAUDE_HANDOFF_2026-06-28_Gap_Fixes_Complete.md |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_CYCLE_2_IMPROVEMENTS:_Gap-15_Fixed_+_Pro_a2ce9a09.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-29_1355R_BidImport_and_RealWorldReadiness.md | unknown | unknown | FAILED | Empty header — cannot parse handoff |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_SunnySide_Full_Test_Results_+_Gap_Update_5c1dcdf7.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_CODE-1_through_CODE-5_Project_Data_Corre_68d3335c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-29_1355R_Bid_Import_Complete_+_Real-World_T_a9e0c72c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-28_GBT_Field_Interface_Test.md | implementation_request | Claude Code | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_READY:_SunnySide_Test_—_All_Field_Endpoi_9b586caf.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_Fix_GBT_session_tool_call_limit_—_busine_198ce99f.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_SYSTEM_UPGRADE_REPORT_2026-06-28:_Deep_M_5b616770.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-28_Gap9_Gap12_Complete.md | unknown | unknown | FAILED | Empty header — cannot parse handoff |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-28_Field_Operations_Design.md | design_request | Claude Code | FAILED | Unknown document_type 'design_request'. Valid: browser_discovery, platform_watch, houzz_export, hubspot_export, platform_opportunity_report, business_process_architecture, chief_architect_directive, architecture_chapter, implementation_request, approval_request, executive_brief |
+| 2026-06-29 15:19 | GBT_HANDOFF_2026-06-28_FULL_BRAIN_REPORT_Part1_—_ALL_Systems_De_448098e2.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:19 | CLAUDE_HANDOFF_2026-06-28_FullPortfolioImport.md | unknown | unknown | FAILED | Empty header — cannot parse handoff |
+| 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-29_1355R_BidImport_and_RealWorldReadiness.md | implementation_request | claude_code | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-28_Gap9_Gap12_Complete.md | implementation_request | claude_code | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-28_Field_Operations_Design.md | architecture_chapter | claude_code | PROCESSED | → Architecture/Handbook/Drafts/CLAUDE_HANDOFF_2026-06-28_Field_Operations_Design.md |
+| 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-28_FullPortfolioImport.md | executive_brief | claude_code | PROCESSED | → Architecture/Handbook/Published/CLAUDE_HANDOFF_2026-06-28_FullPortfolioImport.md |

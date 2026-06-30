@@ -6,6 +6,48 @@ Format: [Agent] Description — Date
 
 ---
 
+## [Aspen Full PM/SS Lifecycle — Complete End-to-End Build] — 2026-06-28 — Full Preconstruction through Job Running
+
+### Claude Code — Complete PM/SS Lifecycle for All 3 Aspen Hypothetical Projects (Buck directive: "did you do all hypothetical plan reads, rfis from that, rom creation, prelim ms schedule, bids sows and packages sent, leveling and approval, awards and contracts, new budget, new schedule, then run the job as pm and ss? if not that is the directive")
+
+**REPRICED TO ASPEN 2026 ULTRA-LUXURY MARKET:**
+- ASPN-NEW: $28,263,000 ($3,072/SF for 9,200 SF) — was $14.2M
+- ASPN-REM: $11,760,000 ($2,100/SF for 5,600 SF equiv) — was $6.8M  
+- ASPN-MC: $85,460,000 ($1,257/GSF for 68,000 GSF) — was $42M
+- Validated against 275 Sunnyside ($47.6M deal) and 655 Garmisch historical comps
+
+**PRECONSTRUCTION LIFECYCLE (all 3 projects):**
+- 50 plan-read RFIs (20 / 15 / 15) — AI architectural analysis driving real Aspen construction issues
+- ROM at correct market rates with CSI breakdown, $/SF analysis, comp check vs mined data
+- 287 competitive bid entries — 3 bids per package, full bid leveling analysis
+- All 106 bid packages advanced to 'awarded' status with winning vendor assigned
+- SOP chain advanced: SOP-09 Approved, SOP-12 Completed, SOP-15 Awarded, SOP-16 Contracts Executed
+- 14 long-lead procurement items + 7 purchase orders issued
+- 13 submittals tracked with approval status
+
+**CONSTRUCTION PM PHASE (running the job):**
+- 110 daily Super logs (40 / 30 / 40 — 6-8 weeks per project) with weather, crew, work, safety, lookahead
+- 20 OAC weekly meeting minutes with attendees, action items, decisions
+- 12 change orders (CO-001 through CO-004 per project) — code requirements, unforeseen conditions, owner changes
+- 9 monthly pay applications with line-item detail and billing status
+- 13 risks tracked with mitigation plans (status fixed 'active'→'open' for gateway compatibility)
+- GMP budgets updated in houzz_projects table for all 3 Aspen records
+
+**GAPS FOUND AND FIXED:**
+- Risk status 'active' vs 'open' mismatch in gateway query → fixed
+- SOP instances stuck in 'In Progress' → advanced through full lifecycle
+- Bid packages with no competitive bids → 287 bid entries created
+- Exec report excluding design-status projects → fixed (prior session)
+- Project intelligence endpoint requires integer ID → fixed (prior session)
+
+**MORNING REPORT PACKAGE:**
+- GBT handoff written to Architecture/Agent_Handoff/Inbox/ with full task list
+- Morning executive report generated: Architecture/Agent_Handoff/Processed/2026-06-28-MORNING-EXEC-REPORT.md
+- Gate 5 pilot readiness assessment included
+- 246 Gallo Way pilot analysis included
+
+---
+
 ## [3 Aspen Luxury Projects + Full System Test] — 2026-06-28 — Plans to Handoff with All Mined Data
 
 ### Claude Code — 3 Complex High-End Aspen Builds (Buck directive: "create 3 complex highend residential builds — new, remodel, multifamily 25 unit condo — use all mined data — start to finish real test")

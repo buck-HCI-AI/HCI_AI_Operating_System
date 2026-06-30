@@ -109,3 +109,46 @@ def walk_folder_tree(folder_id: str, path: str = "", depth: int = 0, max_depth: 
 
 def get_about() -> dict:
     return _get(f"{BASE_URL}/about", {"fields": "user,storageQuota"})
+
+
+def get_file_content(file_id: str) -> dict:
+    """
+    Return text content of a Drive file.
+    Google Docs/Sheets/Slides → exported as plain text via Drive export API.
+    PDFs and binary files → not extractable via Drive API; returns empty with a note.
+    """
+    meta = get_file_metadata(file_id)
+    mime = meta.get("mimeType", "")
+    name = meta.get("name", file_id)
+
+    EXPORT_MIME = {
+        "application/vnd.google-apps.document":     "text/plain",
+        "application/vnd.google-apps.spreadsheet":  "text/csv",
+        "application/vnd.google-apps.presentation": "text/plain",
+    }
+
+    if mime in EXPORT_MIME:
+        export_type = EXPORT_MIME[mime]
+        url = f"{BASE_URL}/files/{file_id}/export"
+        params = {"mimeType": export_type, "supportsAllDrives": "true"}
+        url_with_params = url + "?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url_with_params, headers={"Authorization": f"Bearer {_token()}"})
+        with urllib.request.urlopen(req, context=SSL_CTX, timeout=60) as r:
+            content = r.read().decode("utf-8", errors="replace")
+        return {"file_id": file_id, "file_name": name, "mime_type": mime,
+                "content": content, "char_count": len(content), "source": "drive_export"}
+
+    # For DOCX/XLSX — use exportLinks if available
+    export_links = meta.get("exportLinks", {})
+    txt_link = export_links.get("text/plain") or export_links.get("text/csv")
+    if txt_link:
+        req = urllib.request.Request(txt_link, headers={"Authorization": f"Bearer {_token()}"})
+        with urllib.request.urlopen(req, context=SSL_CTX, timeout=60) as r:
+            content = r.read().decode("utf-8", errors="replace")
+        return {"file_id": file_id, "file_name": name, "mime_type": mime,
+                "content": content, "char_count": len(content), "source": "export_link"}
+
+    return {"file_id": file_id, "file_name": name, "mime_type": mime,
+            "content": "", "char_count": 0,
+            "source": "none",
+            "note": f"Binary file ({mime}) — text extraction requires MCP session or local OCR"}

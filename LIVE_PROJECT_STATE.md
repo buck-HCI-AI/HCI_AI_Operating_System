@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-28T06:32 MST
-**Updated By:** Claude Code v3.0 — 🔒 ARCHITECTURE FREEZE v1.0 DECLARED. Foundation locked: 427 endpoints, 47 tables, 40 workflows, GBT Gateway Bridge. Sprint 3 ready.
+**Last Updated:** 2026-06-29T22:40 MST
+**Updated By:** Claude Code v3.5 — BTW-4/5/6/8/9/10 all complete. 5 new role consoles (Owner/Office/Accounting/Client/Trade Partner). 1355R SOW drafts (Concrete/Steel/Framing). 101F schedule variance fixed (-5d YELLOW). 204 duplicate approvals voided. External drive backup configured. 373 project events, 13 collections Qdrant, 63 n8n workflows (55 active).
 **Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -18,22 +18,29 @@
 
 | Service | Status | Last Verified | Agent | Notes |
 |---|---|---|---|---|
-| FastAPI | 🟢 HEALTHY | 2026-06-26 | Claude Code | localhost:8000 — 427 endpoints, 18 services |
-| PostgreSQL | 🟢 OK | 2026-06-26 | Claude Code | 4 projects, 47 tables, all seeded |
-| Qdrant | 🟢 OK | 2026-06-26 | Claude Code | 13 collections indexed |
+| FastAPI | 🟢 HEALTHY | 2026-06-29 | Claude Code | localhost:8000 — 96/100 HEALTHY, Constitution 100/100 COMPLIANT |
+| PostgreSQL | 🟢 OK | 2026-06-29 | Claude Code | 50 tables (added: drive_file_log, pending_approvals, constitution_compliance column) |
+| Qdrant | 🟢 POPULATED | 2026-06-29 | Claude Code | 13 collections — vendor_memory(2880), drive_memory(2347), project_memory(2690), hci_project_docs(5360) + more |
 | Redis | 🟢 OK | 2026-06-26 | Claude Code | Running |
-| n8n | 🟢 RUNNING | 2026-06-27 | Claude Code | 18 workflows, 10 active (incl. AUTO-001/002/003) |
-| MCP Server | 🟢 RUNNING | 2026-06-27 | Claude Code | 35 tools (ACR-001 + ACR-002 + ACR-004 mining tools) |
+| n8n | 🟢 RUNNING | 2026-06-29 | Claude Code | 61 workflows (55 active) — +10 activated this session: AUTO-010/011/012/013, GATE-E/F/G/H, EVENT-HEALTH-CHECK, EVENT-DRIVE-SCAN |
+| MCP Server | 🟢 RUNNING | 2026-06-28 | Claude Code | 43 tools |
 | GitHub Repo | 🟢 LIVE | 2026-06-26 | Browser Claude | main branch + merged feature branch |
 | HubSpot CRM | 🟢 LIVE | 2026-06-26 | Claude Code | 3 active deals connected |
-| Google Drive | 🟢 LIVE | 2026-06-26 | Claude Code | API + OAuth active |
+| Google Drive | 🟢 LIVE | 2026-06-29 | Claude Code | API + OAuth active. Drive scan watcher running (15-min). Registered in connector_sync_state. |
 | Google Sheets | 🟢 LIVE | 2026-06-26 | Claude Code | Bid trackers active |
-| Microsoft 365 | 🟢 LIVE | 2026-06-26 | Claude Code | Graph API — email read/send |
-| Mining Engine | 🟢 LIVE | 2026-06-27 | Claude Code | 8 agents, 03:00 daily, authorized by Buck 2026-06-27 |
-| Integration Registry | 🟢 LIVE | 2026-06-27 | Claude Code | 8 integrations seeded (05_Database/integration_registry.sql) |
-| Houzz Ingestion | 🟢 LIVE | 2026-06-28 | Claude Code | 995 schedule items loaded from Drive xlsx — 64EW(336), 101F(259), 1355R(400) |
-| Houzz Miner | 🟢 ACTIVE | 2026-06-28 | Claude Code | houzz_miner running — was paused, now activated with data in DB |
-| Schedule Intelligence | 🟢 LIVE | 2026-06-28 | Claude Code | WF-009 unblocked — /mvp/projects/{code}/schedule-status returning health |
+| Microsoft 365 | 🟢 LIVE | 2026-06-29 | Claude Code | Graph API — email read/send. Registered in connector_sync_state. |
+| Mining Engine | 🟢 LIVE | 2026-06-27 | Claude Code | 8 agents, 03:00 daily |
+| Integration Registry | 🟢 LIVE | 2026-06-27 | Claude Code | 8 integrations seeded |
+| Houzz Ingestion | 🟢 LIVE | 2026-06-28 | Claude Code | 995 schedule items loaded |
+| Houzz Miner | 🟢 ACTIVE | 2026-06-28 | Claude Code | Running with DB data |
+| Schedule Intelligence | 🟢 LIVE | 2026-06-28 | Claude Code | /mvp/projects/{code}/schedule-status active |
+| Approval Loop | 🟢 LIVE | 2026-06-29 | Claude Code | POST /gateway/approvals → ntfy push → Buck approve/reject |
+| Event Triggers | 🟢 LIVE | 2026-06-29 | Claude Code | /events/health-check (30min), /events/new-bid, /events/drive-scan (15min) |
+| Constitution Checker | 🟢 LIVE | 2026-06-29 | Claude Code | GET /api/v1/services/system-auditor/constitution — runs nightly |
+| Role Intelligence | 🟢 LIVE | 2026-06-29 | Claude Code | 9 role consoles: Owner/Office/Accounting/Client/Trade Partner (5 new) + SS/PM/Leadership/Exec (pre-built) |
+| Knowledge Graph | 🟢 LIVE | 2026-06-29 | Claude Code | /api/v1/services/knowledge-graph/ — graph/vendor/issues/product traversal |
+| Continuous Discovery | 🟢 LIVE | 2026-06-29 | Claude Code | /services/continuous-discovery + AUTO-CONTINUOUS-DISCOVERY n8n (HubSpot hourly, Houzz nightly) |
+| External Drive Backup | 🟢 CONFIGURED | 2026-06-29 | Claude Code | HCI_AI_DEV 931GB drive — daily 2AM rsync + pg_dump. Run SETUP_DAILY_BACKUP.command to activate. |
 
 ---
 
@@ -62,13 +69,14 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 | ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
 |---|---|---|---|---|---|---|---|---|
 | 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | 0 days |
-| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 2 | 0 days |
+| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 2 | -5 days (steel delay) |
 | 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🟢 GREEN | 58 | 0 | 0 days |
 | 4 | 83SB | 83 Sagebrusch | TBD |  | 🟢 GREEN | 0 | 0 | 0 days |
 | 8 | 246GW | 246 Gallo Way | New Construction — Chaparral Lot 7 | 321358358216 | 🟢 GREEN | 44 | 0 | 0 days |
-| 11 | ASPN-NEW | 842 Ridge Road | New Construction 9,200 SF Ultra-Luxury |  | 🟢 GREEN | 39 | 0 | 0 days |
-| 12 | ASPN-REM | 710 Cemetery Lane | Full Remodel 4,800 SF Victorian Conversion |  | 🟢 GREEN | 26 | 0 | 0 days |
-| 13 | ASPN-MC | 200 E Hopkins | 25-Unit Luxury Condo 68,000 GSF |  | 🟢 GREEN | 41 | 0 | 0 days |
+| 11 | ASPN-NEW | 842 Ridge Road | New Construction 9,200 SF Ultra-Luxury |  | 🔴 RED | 39 | 4 | 0 days |
+| 12 | ASPN-REM | 710 Cemetery Lane | Full Remodel 4,800 SF Victorian Conversion |  | 🟡 YELLOW | 26 | 3 | 0 days |
+| 13 | ASPN-MC | 200 E Hopkins | 25-Unit Luxury Condo 68,000 GSF |  | 🔴 RED | 41 | 4 | 0 days |
+| 14 | 14 |  |  |  | 🟢 GREEN | 0 | 0 | 0 days |
 
 **Projects at risk:** 64EW (2 open risks), 101F (4 open risks, schedule slipping)
 **Total open risks:** 6 | **Open RFIs:** 0
@@ -293,3 +301,28 @@ Auth: X-API-Key header (hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6) fo
 - **GitHub URL:** https://github.com/buck-HCI-AI/HCI_AI_Operating_System
 - **GitHub raw (LIVE_PROJECT_STATE):** https://raw.githubusercontent.com/buck-HCI-AI/HCI_AI_Operating_System/main/LIVE_PROJECT_STATE.md
 - **Last Commit:** Merge: Implementation + Program Repository unified
+
+---
+
+## [STATE CHANGE] 2026-06-28 — BTW-4/8/6/9 Build Sprint (Claude Code)
+
+### Built This Session
+| Item | Status | Details |
+|------|--------|---------|
+| BTW-4: Event Timeline | COMPLETE | 379 project events backfilled (daily logs, risks, RFIs, meetings, awards, COs). Gateway endpoint live: `/gateway/project/{code}/timeline` |
+| BTW-8: PM Weekly Digest | COMPLETE | New endpoint `/mvp/projects/{code}/weekly-digest` — last 7 days summary, open items, highlights. Gateway route added. |
+| BTW-8: Gateway exposure | COMPLETE | 4 BTW-8 endpoints now in gateway: weekly-digest, client-comms, action-list, timeline |
+| BTW-6: Pilot Weekly n8n | COMPLETE | AUTO-PILOT-WEEKLY — Monday 07:30 Gate5 Digest (ID: MtJBXUpT8hZX6SvV) pulling from all 3 pilot projects |
+| BTW-9: Qdrant Foundation | COMPLETE | 5 collections populated: vendor_intelligence(200), project_memory(2690+), hci_sops(386), lessons_learned(88), hci_historical_costs(300) |
+| Field Interface | COMPLETE | 6 field MCP tools (43 total), system prompt designed, 8/8 tests PASS, sent to GBT for parallel testing |
+
+### Decisions Pending Buck
+1. **Gate 5 go-live** — authorize before July 1
+2. **SS daily log auto-write** — bypass approval queue for field log submissions? (Currently queued_for_approval)
+3. **Hendrickson GPT** — create separate Custom GPT for Jim/Buck field access? GBT to advise
+4. **1355R** — Jim Hendrickson to enter first daily log before July 1
+5. **246GW** — superintendent name needed to activate
+
+### Waiting For GBT
+- Field interface test results (8 tests sent)
+- Field operations architecture design (SS/PM daily workflows, Hendrickson GPT vs GBT)

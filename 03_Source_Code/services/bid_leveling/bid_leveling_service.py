@@ -129,11 +129,13 @@ def _try_sheet(sheet_id: str, name_key: str, token: str, range_suffix: str = "A1
 
 
 def _drive_list(folder_id: str, token: str) -> list:
-    """Lists files/folders in a Drive folder."""
+    """Lists files/folders in a Drive folder (supports Shared/Team Drives)."""
     params = urllib.parse.urlencode({
         "q": f"'{folder_id}' in parents and trashed=false",
         "fields": "files(id,name,mimeType)",
         "pageSize": 200,
+        "supportsAllDrives": "true",
+        "includeItemsFromAllDrives": "true",
     })
     url = f"https://www.googleapis.com/drive/v3/files?{params}"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
@@ -209,7 +211,7 @@ class BidLevelingService:
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, name, drive_folder_id, gsheet_bid_tracker FROM projects WHERE id=%s",
+                    "SELECT id, name, drive_folder_id, gsheet_bid_tracker, bid_folder_id FROM projects WHERE id=%s",
                     (project_id,)
                 )
                 row = cur.fetchone()
@@ -219,14 +221,14 @@ class BidLevelingService:
 
     @classmethod
     def get_all_configured_projects(cls) -> list:
-        """Returns all projects with both gsheet_bid_tracker and drive_folder_id set."""
+        """Returns all active projects with a gsheet_bid_tracker configured."""
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT id, name, drive_folder_id, gsheet_bid_tracker
                     FROM projects
                     WHERE gsheet_bid_tracker IS NOT NULL
-                      AND drive_folder_id IS NOT NULL
+                      AND status IN ('active', 'pilot')
                     ORDER BY id
                 """)
                 return [dict(r) for r in cur.fetchall()]
@@ -692,13 +694,25 @@ class BidLevelingService:
         return result
 
     @classmethod
+    def scan_drive_bids(cls, project_id: int, dry_run: bool = True) -> dict:
+        """
+        Scan a project's Drive bid folders for new vendor PDFs and extract bid data.
+        Delegates to drive_bid_reader.scan_project_bids().
+        """
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from drive_bid_reader import scan_project_bids
+        return scan_project_bids(project_id, dry_run=dry_run)
+
+    @classmethod
     def run_bid_leveling(cls, project_id: int, dry_run: bool = True,
-                          divisions_filter: list = None) -> dict:
+                          divisions_filter: list = None,
+                          scan_drive: bool = True) -> dict:
         """
         Main orchestrator for one project.
         dry_run=True: reads everything, returns analysis with no Drive writes.
         dry_run=False: generates Excel files and queues all Drive creates/uploads.
         divisions_filter: optional list of div_nums to process (e.g. ["06", "07"])
+        scan_drive: if True (default), scan Drive folders for new bids before leveling.
         """
         config = cls.get_project_config(project_id)
         project_name = config["name"]
@@ -707,12 +721,25 @@ class BidLevelingService:
 
         if not sheet_id:
             return {"error": f"Project {project_name} has no gsheet_bid_tracker configured"}
-        if not drive_folder:
-            return {"error": f"Project {project_name} has no drive_folder_id configured"}
+        if not drive_folder and not dry_run:
+            return {"error": f"Project {project_name} has no drive_folder_id configured — required for Excel upload (dry_run=True works without it)"}
 
         token_sheets = get_google_token("sheets")
         token_drive  = get_google_token("drive")
 
+        # ── Step 1: Scan Drive for new bids ──────────────────────────────────
+        drive_scan_result = None
+        drive_bids_by_div = {}
+        if config.get("bid_folder_id") and scan_drive:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from drive_bid_reader import scan_project_bids, read_drive_bids, get_leveling_summary
+            drive_scan_result  = scan_project_bids(project_id, dry_run=dry_run)
+            drive_bids_by_div  = read_drive_bids(project_id, latest_only=True)
+            leveling_summary   = get_leveling_summary(project_id)
+        else:
+            leveling_summary = {}
+
+        # ── Step 2: Read Google Sheet data ───────────────────────────────────
         # Read all data sources
         bid_data   = cls.read_bid_tracking(sheet_id, token_sheets)
         div_summary = cls.read_division_summary(sheet_id, token_sheets)
@@ -723,35 +750,72 @@ class BidLevelingService:
             div_summary = {k: v for k, v in div_summary.items() if k in divisions_filter}
             pkg_detail  = {k: v for k, v in pkg_detail.items() if k in divisions_filter}
 
-        all_divs = sorted(set(list(bid_data.keys()) + list(div_summary.keys())))
+        # Include Drive-sourced divisions even if not in Sheet
+        drive_div_keys = list(drive_bids_by_div.keys()) if drive_bids_by_div else []
+        all_divs = sorted(set(list(bid_data.keys()) + list(div_summary.keys()) + drive_div_keys))
         total_bids = sum(len(d["bids"]) for d in bid_data.values())
 
         # Merge bid data + summary for all known divisions
+        # Drive bids are preferred over Sheet bids when both exist for the same division
         divisions_merged = {}
         for div in all_divs:
             summary = div_summary.get(div, {})
-            bids    = bid_data.get(div, {}).get("bids", [])
+            sheet_bids = bid_data.get(div, {}).get("bids", [])
             pkgs    = pkg_detail.get(div, [])
             name    = summary.get("name") or (bid_data.get(div, {}).get("name") or
                        CSI_DIVISIONS.get(div, f"Division {div}"))
+
+            # Use Drive bids as primary if available for this division
+            drive_div = drive_bids_by_div.get(div, {})
+            if drive_div and drive_div.get("bids"):
+                drive_bids_list = drive_div["bids"]
+                name = drive_div.get("division_name") or name
+                bids = [
+                    {
+                        "vendor":        b["vendor"],
+                        "date_sent":     "",
+                        "date_received": b["bid_date"],
+                        "amount":        b["amount_fmt"] or "",
+                        "status":        "bid_received",
+                        "contact":       "",
+                        "notes":         b.get("scope", ""),
+                        "source":        "drive",
+                    }
+                    for b in drive_bids_list
+                ]
+                # Update summary with Drive leveling data if available
+                lev = leveling_summary.get(div, {})
+                if lev and not summary.get("recommended"):
+                    summary = {**summary,
+                               "recommended": f"{lev['low_vendor']} ${lev['low_bid']:,.0f}",
+                               "leveling_status": "Bids Received (Drive)",
+                               "outstanding": f"Spread: ${lev['spread']:,.0f} ({lev['spread_pct']}%)"}
+            else:
+                bids = sheet_bids
+
             divisions_merged[div] = {
-                "div_num":  div,
-                "name":     name,
-                "summary":  summary,
-                "bids":     bids,
-                "packages": pkgs,
+                "div_num":   div,
+                "name":      name,
+                "summary":   summary,
+                "bids":      bids,
+                "packages":  pkgs,
                 "bid_count": len(bids),
+                "source":    "drive" if drive_div and drive_div.get("bids") else "sheet",
             }
 
-        # Folder setup
-        bids_folder_result = cls.ensure_bids_folder(
-            project_id, drive_folder, project_name, token_drive, dry_run
-        )
-        bids_folder_id = bids_folder_result["folder_id"]
-
-        div_folders = cls.ensure_division_folders(
-            bids_folder_id, divisions_merged, token_drive, dry_run
-        )
+        # Folder setup — skip if no drive_folder (dry_run only)
+        if drive_folder:
+            bids_folder_result = cls.ensure_bids_folder(
+                project_id, drive_folder, project_name, token_drive, dry_run
+            )
+            bids_folder_id = bids_folder_result["folder_id"]
+            div_folders = cls.ensure_division_folders(
+                bids_folder_id, divisions_merged, token_drive, dry_run
+            )
+        else:
+            bids_folder_result = {"folder_id": None, "action": "skipped_no_drive_folder"}
+            bids_folder_id = None
+            div_folders = {}
 
         # Generate Excel files per division
         excel_actions = []
@@ -828,18 +892,22 @@ class BidLevelingService:
             _log_roi(project_id, project_name, len(divisions_merged), total_bids, files_generated)
 
         return {
-            "project":       project_name,
-            "project_id":    project_id,
-            "mode":          "dry_run" if dry_run else "live",
-            "sheet_id":      sheet_id,
-            "drive_folder":  drive_folder,
-            "divisions_found": len(all_divs),
-            "total_bids":    total_bids,
-            "bids_folder":   bids_folder_result,
-            "division_folders": div_folders,
-            "excel_actions": excel_actions,
-            "queued_items":  queued_items,
-            "divisions":     divisions_merged if dry_run else None,
+            "project":            project_name,
+            "project_id":         project_id,
+            "mode":               "dry_run" if dry_run else "live",
+            "sheet_id":           sheet_id,
+            "drive_folder":       drive_folder,
+            "bid_folder_id":      config.get("bid_folder_id"),
+            "drive_scan":         drive_scan_result,
+            "drive_bids_by_div":  {k: len(v["bids"]) for k, v in drive_bids_by_div.items()} if drive_bids_by_div else {},
+            "leveling_summary":   leveling_summary,
+            "divisions_found":    len(all_divs),
+            "total_bids":         total_bids,
+            "bids_folder":        bids_folder_result,
+            "division_folders":   div_folders,
+            "excel_actions":      excel_actions,
+            "queued_items":       queued_items,
+            "divisions":          divisions_merged if dry_run else None,
         }
 
     @classmethod

@@ -130,6 +130,35 @@ def run_all_projects(req: RunRequest):
         raise HTTPException(500, str(e))
 
 
+@router.post("/projects/{project_id}/scan-drive")
+def scan_drive_bids(project_id: int, dry_run: bool = True):
+    """
+    Scan a project's Drive bid folders for new vendor PDFs.
+    Extracts bid amounts via Gemini and upserts to drive_bids table.
+    dry_run=True (default): preview without writing.
+    """
+    try:
+        return BidLevelingService.scan_drive_bids(project_id, dry_run=dry_run)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.get("/projects/{project_id}/drive-bids")
+def get_drive_bids(project_id: int, latest_only: bool = True):
+    """Read all Drive-sourced bids from the drive_bids table for a project."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from drive_bid_reader import read_drive_bids, get_leveling_summary
+        bids    = read_drive_bids(project_id, latest_only=latest_only)
+        summary = get_leveling_summary(project_id)
+        return {"project_id": project_id, "divisions": bids,
+                "leveling_summary": summary, "division_count": len(bids)}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
 @router.post("/projects/{project_id}/execute-upload/{queue_id}")
 def execute_queued_upload(project_id: int, queue_id: int):
     """

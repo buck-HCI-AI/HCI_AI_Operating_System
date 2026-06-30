@@ -836,6 +836,342 @@ def GetMiningLog(limit: int = 20) -> dict:
     return _api("GET", f"/api/v1/services/mining/log?limit={limit}")
 
 
+@mcp.tool()
+def CheckAgentInbox() -> dict:
+    """
+    CRITICAL — Call this at the START of every GBT session before doing anything else.
+
+    Returns all pending handoffs from Claude Code waiting in the Agent Handoff Inbox.
+    Each item has: title, priority, source_agent, document_type, body (full content).
+
+    After reading each item, execute it and POST a completion handoff back via SendHandoffToClaude.
+    This is the primary mechanism for Claude Code ↔ GBT communication without Buck's intervention.
+
+    Workflow:
+    1. Call CheckAgentInbox() — get all pending items
+    2. Read and execute each item in priority order (high → medium → low)
+    3. Call SendHandoffToClaude() with results when done
+    """
+    return _api("GET", "/gateway/agent/inbox")
+
+
+@mcp.tool()
+def SendHandoffToClaude(title: str, body: str, priority: str = "high",
+                        document_type: str = "implementation_request") -> dict:
+    """
+    Send a handoff message from GBT to Claude Code.
+    Use this to: return audit results, share analysis, request builds, report completion.
+    Claude Code picks this up from Agent_Handoff/Inbox at its next session start.
+    Also triggers an ntfy push notification to hci-executive topic.
+
+    title: Short descriptive title (shown in ntfy notification)
+    body: Full content — be detailed, Claude Code acts on this
+    priority: high | medium | low
+    document_type: implementation_request | executive_brief | architecture_chapter | approval_request
+    """
+    return _api("POST", "/gateway/agent/handoff", {
+        "title": title,
+        "body": body,
+        "priority": priority,
+        "document_type": document_type,
+        "source": "chief_architect",
+    })
+
+
+# ── Field Operations Tools ─────────────────────────────────────────────────────
+
+@mcp.tool()
+def SubmitFieldLog(project_code: str, notes: str, manpower: int = 0,
+                   weather: str = "", date: str = "", actor: str = "superintendent") -> dict:
+    """
+    Submit a daily field log from the superintendent.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    notes: What was done today (work performed, progress, issues)
+    manpower: Number of workers on site
+    weather: Weather conditions
+    date: YYYY-MM-DD (defaults to today)
+    actor: Name of person submitting (default: superintendent)
+
+    Always dry_run=True first so the PM can review intelligence analysis.
+    For immediate write (no approval needed for daily logs), set dry_run=False.
+    """
+    return _api("POST", f"/mvp/projects/{project_code}/daily-log", {
+        "notes": notes,
+        "manpower": manpower,
+        "weather": weather,
+        "date": date,
+        "actor": actor,
+        "dry_run": False,
+        "quality_notes": "",
+        "safety_notes": "",
+        "constraints": "",
+        "lookahead": "",
+    })
+
+
+@mcp.tool()
+def GetFieldStatus(project_code: str) -> dict:
+    """
+    Quick field status for SS morning check-in.
+    Returns: project health, today's priorities, open risks, recent logs.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    """
+    return _api("GET", f"/gateway/project/{project_code}/pm")
+
+
+@mcp.tool()
+def FlagRisk(project_code: str, description: str,
+             severity: str = "medium", risk_type: str = "schedule") -> dict:
+    """
+    Flag a new risk or issue from the field. One-touch escalation to PM.
+    Logs the risk as a project event so PM sees it immediately in their timeline and digest.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    description: What is the risk or issue (be specific)
+    severity: low | medium | high | critical
+    risk_type: schedule | budget | safety | quality | subcontractor | weather
+    """
+    import datetime
+    # Look up project ID from gateway
+    brain = _api("GET", f"/gateway/project/{project_code}/brain")
+    pid = brain.get("payload", {}).get("snapshot", {}).get("project_id")
+    if not pid:
+        return {"error": f"Could not resolve project_id for {project_code}"}
+    return _api("POST", f"/services/project-brain/{pid}/events", {
+        "event_type": "risk_flagged",
+        "event_date": str(datetime.date.today()),
+        "title": f"{severity.upper()} {risk_type} Risk: {description[:80]}",
+        "description": description,
+        "source_table": "field_flag",
+        "created_by": "field",
+        "metadata": {"severity": severity, "risk_type": risk_type, "flagged_via": "GBT_field_interface"},
+    })
+
+
+@mcp.tool()
+def GetWeeklyDigest(project_code: str) -> dict:
+    """
+    PM weekly digest — what happened last 7 days, open items, next week priorities.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    """
+    return _api("GET", f"/gateway/project/{project_code}/weekly-digest")
+
+
+@mcp.tool()
+def GetTimeline(project_code: str, days: int = 30) -> dict:
+    """
+    Chronological project event timeline — daily logs, risks, RFIs, awards, meetings.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    days: How many days back to look (default 30, max 365)
+    """
+    return _api("GET", f"/gateway/project/{project_code}/timeline?days={days}")
+
+
+@mcp.tool()
+def GetActionList(project_code: str) -> dict:
+    """
+    AI-ranked top 10 actions for the PM today.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    """
+    return _api("GET", f"/gateway/project/{project_code}/action-list")
+
+
+# ── Gap9: Risk Register ────────────────────────────────────────────────────────
+
+@mcp.tool()
+def GetRisks(project_code: str, status: str = "") -> dict:
+    """
+    Gap9 — Get the risk register for a project.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    status: (optional) open | mitigated | closed — omit for all
+    """
+    path = f"/gateway/project/{project_code}/risks"
+    if status:
+        path += f"?status={status}"
+    return _api("GET", path)
+
+
+@mcp.tool()
+def CreateRisk(project_code: str, risk_type: str, description: str,
+               severity: str = "medium", mitigation: str = "") -> dict:
+    """
+    Gap9 — Log a new risk to the risk register.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    risk_type: schedule | budget | quality | safety | procurement | weather | subcontractor
+    severity: low | medium | high | critical
+    """
+    return _api("POST", "/gateway/risks/create", {
+        "project_code": project_code,
+        "risk_type": risk_type,
+        "severity": severity,
+        "description": description,
+        "mitigation": mitigation,
+    })
+
+
+@mcp.tool()
+def UpdateRiskStatus(risk_id: int, status: str, notes: str = "") -> dict:
+    """
+    Gap9 — Update a risk's status.
+
+    risk_id: integer ID from GetRisks
+    status: open | mitigated | closed
+    notes: optional note appended to mitigation field
+    """
+    return _api("PATCH", f"/gateway/risks/{risk_id}/status", {
+        "status": status, "notes": notes
+    })
+
+
+# ── Gap12: Submittals Tracker ──────────────────────────────────────────────────
+
+@mcp.tool()
+def GetSubmittals(project_code: str, status: str = "") -> dict:
+    """
+    Gap12 — Get the submittals log for a project.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    status: (optional) pending | under_review | approved | rejected | revise_and_resubmit
+    """
+    path = f"/gateway/project/{project_code}/submittals"
+    if status:
+        path += f"?status={status}"
+    return _api("GET", path)
+
+
+@mcp.tool()
+def CreateSubmittal(project_code: str, spec_section: str, description: str,
+                    submitted_by: str, required_approval_date: str = "") -> dict:
+    """
+    Gap12 — Log a new submittal. Auto-assigns submittal number.
+
+    project_code: 64EW | 101F | 1355R | 246GW
+    spec_section: CSI spec section (e.g. '09 23 00')
+    required_approval_date: YYYY-MM-DD or blank
+    """
+    body = {
+        "project_code": project_code,
+        "spec_section": spec_section,
+        "description": description,
+        "submitted_by": submitted_by,
+    }
+    if required_approval_date:
+        body["required_approval_date"] = required_approval_date
+    return _api("POST", "/gateway/submittals/create", body)
+
+
+@mcp.tool()
+def UpdateSubmittalStatus(submittal_id: int, status: str) -> dict:
+    """
+    Gap12 — Update a submittal's status.
+
+    submittal_id: integer ID from GetSubmittals
+    status: pending | under_review | approved | rejected | revise_and_resubmit
+    """
+    return _api("PATCH", f"/gateway/submittals/{submittal_id}/status", {"status": status})
+
+
+@mcp.tool()
+def GetMarketRates(division: str = "", months_back: int = 24, project_type: str = "") -> dict:
+    """
+    Aspen market rates from real HCI bid data.
+
+    division: CSI division code e.g. '15' for HVAC, '06' for wood/carpentry, '09' for finishes.
+              Leave blank to get all divisions.
+    months_back: how far back to look (default 24 months).
+    project_type: 'new', 'renovation', or leave blank for all.
+
+    Returns low/avg/high/median bid amounts per division with vendor names and project count.
+    Use this before estimating or bid leveling to understand current Aspen market pricing.
+    """
+    path = "/gateway/knowledge/market-rates"
+    qs = []
+    if division:
+        qs.append(f"division={division}")
+    if months_back != 24:
+        qs.append(f"months_back={months_back}")
+    if project_type:
+        qs.append(f"project_type={project_type}")
+    if qs:
+        path += "?" + "&".join(qs)
+    return _api("GET", path)
+
+
+@mcp.tool()
+def GetROMEstimate(sf: int, project_type: str = "new") -> dict:
+    """
+    ROM cost estimate for a project, calibrated from real HCI historical data.
+
+    sf: square footage of the project (conditioned area).
+    project_type: 'new' | 'renovation' | 'remodel'
+
+    Returns: low/mid/high ROM range, cost per SF, division-level breakdown,
+    benchmarks used (real HCI projects), and overrun warnings.
+
+    Based on: 574 Johnson Drive ($1,202/SF new, 2026), 675 Meadowood ($992/SF reno),
+    370 Gerbaz Way (96% overrun actual), 275 Sunnyside ($54M GMP, 2026).
+    """
+    return _api("GET", f"/gateway/knowledge/rom-estimate?sf={sf}&project_type={project_type}")
+
+
+@mcp.tool()
+def GetBidLevel(project_code: str, division: str = "") -> dict:
+    """
+    Bid leveling view for a project — all packages with all bids ranked low to high.
+
+    project_code: e.g. '64EW', '1355R', '574J'
+    division: filter to a specific CSI division (optional, e.g. '15' for HVAC)
+
+    Returns each bid package with: all vendor bids ranked 1=low, spread from low,
+    bid count, low/high range. Shows which packages have no bids yet.
+    Use this for bid leveling meetings and procurement gap analysis.
+    """
+    path = f"/gateway/project/{project_code}/bid-level"
+    if division:
+        path += f"?division={division}"
+    return _api("GET", path)
+
+
+@mcp.tool()
+def GetProcurementRisk(project_code: str) -> dict:
+    """
+    Procurement risk analysis for a project.
+
+    project_code: e.g. '64EW', '1355R', '101F'
+
+    Returns packages bucketed into: no_bids (critical risk), single_bid (moderate risk),
+    competitive (2+ bids), and awarded. Includes risk_score (red/yellow/green),
+    bid coverage %, and spread analysis on competitive packages.
+    Use this to find procurement gaps before buyout deadline.
+    """
+    return _api("GET", f"/gateway/project/{project_code}/procurement-risk")
+
+
+@mcp.tool()
+def GetProjectRegistry(status: str = "") -> dict:
+    """
+    Full HCI project registry — all real projects with status, team, and bid counts.
+
+    status: filter by status — 'active' (live ops), 'reference' (learning only),
+            'bidding', 'preconstruction', 'completed', 'closeout', 'design'.
+            Leave blank for all projects.
+
+    Live/operated projects: 64EW, 101F, 1355R, 246GW.
+    Reference projects (monitoring + learning only): all others.
+    """
+    path = "/gateway/projects"
+    if status:
+        path += f"?status={status}"
+    return _api("GET", path)
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def get_asgi_app():

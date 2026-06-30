@@ -232,6 +232,40 @@ def get_project_state(fmt: str = "json"):
         return {"status": "not_found", "message": "LIVE_PROJECT_STATE.md not found at repo root"}
 
 
+# ── Admin: model updater trigger ─────────────────────────────────────────────
+import subprocess as _subprocess
+
+@app.post("/admin/run-model-updater", tags=["admin"])
+def run_model_updater():
+    """Update Gemini model IDs in .env if newer versions are available. Called by n8n weekly."""
+    import importlib.util as _ilu, json as _json
+    script = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "ai_model_updater.py"))
+    try:
+        spec = _ilu.spec_from_file_location("ai_model_updater", script)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        models = mod.fetch_gemini_models()
+        flash_best = mod.best_model(models, "flash")
+        pro_best   = mod.best_model(models, "pro")
+        current_flash = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+        current_pro   = os.environ.get("GEMINI_PRO_MODEL", "gemini-3.1-pro-preview")
+        changes = []
+        if flash_best and flash_best != current_flash:
+            changes.append({"key": "GEMINI_MODEL", "from": current_flash, "to": flash_best})
+            mod.update_env("GEMINI_MODEL", flash_best)
+        if pro_best and pro_best != current_pro:
+            changes.append({"key": "GEMINI_PRO_MODEL", "from": current_pro, "to": pro_best})
+            mod.update_env("GEMINI_PRO_MODEL", pro_best)
+        return {"status": "ok", "result": {
+            "models_available": len(models),
+            "current": {"GEMINI_MODEL": current_flash, "GEMINI_PRO_MODEL": current_pro},
+            "available": {"flash": flash_best, "pro": pro_best},
+            "changes": changes
+        }}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
 # ── Dashboard + static files ──────────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):

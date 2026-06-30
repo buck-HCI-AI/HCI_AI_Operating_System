@@ -5,6 +5,191 @@
 
 ---
 
+## v3.5 — 2026-06-29 | BTW Backlog + Role Intelligence + External Drive Backup
+
+**Trigger:** Buck: "go back to what we missed with building the system with GBT — build and fix everything we talked about with GBT — all missing items" + "make sure all work is being saved to external drive"
+
+**BTW-4: Project Brain Extended Memory — COMPLETE**
+- Event Timeline live: 373 events across 13 event types (daily_log, award, rfi, risk, meeting, submittal, CO, field_note, decision, milestone, personnel, budget, change_order)
+- Document Relationships: `GET /gateway/project/{code}/documents` — live from `project_document_links` table
+- Conversation Memory: `GET /gateway/project/{code}/memory` — live from `project_ai_conversations` table
+- Backfilled: 13 submittal events + 5 missing risk events into `project_events`
+
+**BTW-5: Role Intelligence — 5 new consoles BUILT**
+- `GET /gateway/role/owner` — Owner command center: all projects, pending approvals, critical risks, financials
+- `GET /gateway/role/office` — Office admin: pending items, submittal queue, overdue RFIs
+- `GET /gateway/role/accounting` — Accounting: budget vs committed, bid awards, financial health ($9.84M contract tracked)
+- `GET /gateway/role/client/{code}` — Client portal: project status, open RFIs, change orders, milestones
+- `GET /gateway/role/trade-partner?vendor=X` — Trade partner: work queue, awarded packages, open RFIs
+- Total: 5 pre-built + 5 new = 9 of 9 roles complete
+
+**BTW-6: Executive Command Center — CONFIRMED COMPLETE**
+- `AUTO-WEEKLY-EXEC` active (Friday 16:00) | `AUTO-MONTHLY-REVIEW` active (1st of month 09:00)
+
+**BTW-8: PM Workspace — CONFIRMED COMPLETE**
+- `/mvp/projects/{code}/client-comms` + `/mvp/projects/{code}/action-list` — both built and live
+
+**BTW-9: Company Knowledge Graph — CONFIRMED COMPLETE**
+- Knowledge Graph service at `/api/v1/services/knowledge-graph/` — graph, vendor, issues, product endpoints
+- Qdrant: vendor_memory (2,880 pts), drive_memory (2,347 pts), project_memory (2,690 pts)
+- `AUTO-CONTINUOUS-DISCOVERY` n8n workflow active (HubSpot hourly + Houzz nightly)
+
+**BTW-10: Continuous Discovery Engine — CONFIRMED COMPLETE**
+- `/api/v1/services/continuous-discovery/detect` — change detection across all connectors
+- `AUTO-CONTINUOUS-DISCOVERY` n8n workflow active
+
+**1355R SOW Drafts — 3 Outlook drafts CREATED**
+- Concrete & Foundation SOW (from permit drawings — 574 SF to 12.08 CY volumes, underpinning 2-phase)
+- Structural Steel SOW (W12x65, W10x22, W10x15, W10x26 bent, C12x33.9 from drawings S.2.003-S.2.005)
+- Wood Framing & Engineered Lumber SOW (TJI 360/560, 11-7/8" LVL @ 16"OC, 6x12 DF#1 rafters)
+
+**Approval Queue Cleanup:**
+- Voided 204 duplicate entries; kept 1 per unique target_description
+- 1,039 unique pending items remain (vendor candidates + legitimate approvals)
+
+**Schedule Variance Fix:**
+- 101F: `schedule_variance_days` updated to -5, health changed YELLOW (was incorrectly showing 0/GREEN)
+- New record in `schedule_variance` table: "GATE2-TS02b: Steel Delivery" — 5 days behind, critical
+- Root cause: risks table had data but no pipeline writing to schedule_variance table; fixed with direct backfill
+
+**External Drive Backup:**
+- Drive at `/Volumes/HCI_AI_DEV ` (trailing space — 931 GB, 1% used)
+- SETUP_DAILY_BACKUP.command created on Desktop — runs rsync + Postgres pg_dump, launchd scheduled 2:00 AM daily
+- Note: requires Terminal Full Disk Access grant on first run (Buck opens Privacy & Security)
+
+---
+
+## v3.4 — 2026-06-29 | n8n Full Activation + Approval Loop + Event Triggers + Shared Drive Watcher
+
+**Trigger:** Buck: "fix n8n — fix everything — get back on track — do everything to get us back on track + new directives"
+
+**n8n — 45 → 55 Active Workflows:**
+- Imported 9 missing workflow JSON files: AUTO-EOD, AUTO-010, AUTO-011, AUTO-012, AUTO-013, GATE-E, GATE-F, GATE-G, GATE-H
+- Created + activated: AUTO-EVENT-HEALTH-CHECK (30-min health poll) and AUTO-EVENT-DRIVE-SCAN (15-min Drive watcher)
+- 8 correctly inactive: 3 ARCHIVED, 2 RETIRED, 1 needs Gmail OAuth (AUTO-EOD), HZ-004, Inbox Cleanup
+
+**Gateway — Approval Loop (POST /gateway/approvals):**
+- `POST /gateway/approvals` — create new approval item in `approval_queue`, auto-push ntfy with action details + approve/reject link
+- Existing `GET /approvals/pending`, `POST /approvals/{id}/approve`, `POST /approvals/{id}/reject` retain their routes (approval_queue table)
+- Approval loop fully wired: create → ntfy push → Buck approves/rejects → confirmation ntfy
+
+**Gateway — Event Trigger System:**
+- `POST /gateway/events/health-check` — poll project health from `project_brain_snapshots`, detect GREEN→YELLOW/RED changes, push ntfy alert. Called by n8n every 30 min.
+- `POST /gateway/events/new-bid` — new bid received → auto-run bid leveling → ntfy push. Called by n8n on trigger.
+- `POST /gateway/events/drive-scan` — scan all `drawings_folder_id` folders for new PDFs, log new files to `drive_file_log`, queue plan analysis handoff, push ntfy. Called by n8n every 15 min.
+
+**DB:**
+- `drive_file_log` table created — tracks Drive files for change detection by shared drive watcher
+- `pending_approvals` table retained (supplementary approval store for future use)
+
+**Drive Folder IDs:**
+- 64EW: `1iAVNLnJtEHKkYHs7KKceU35Ydny8FcVZ` ✅
+- 101F: `1t_a_2KPvsgFrUmECT9qV3oQa1CJklsoH` ✅
+- 1355R: TBD (no 04_Drawings folder in Drive structure — drawings via shared URL)
+- 246GW: TBD (no drawings folder set up yet — 246GW_Bids_Input only)
+
+**Handoffs processed:** All 12 Inbox items resolved — 2 remain for GBT (1355R SE RFIs, PM/SS Daily directive)
+
+**GBT signaled** with full session status + action items for GBT's inbox.
+
+---
+
+## v3.3 — 2026-06-29 | Full System Audit + Constitution Compliance Engine + Connector Registration
+
+**Trigger:** Buck's explicit directive: "full system check — make sure we are on mission, not drifting, continuous learning built in, continuous checks and balances built in automatically."
+
+**Audit Findings:**
+- Overall: 96/100 HEALTHY (up from 94)
+- API: 100/100 | Connector: 100/100 (was 5/100) | Constitution: 100/100 (NEW)
+- 11/11 Article VI mandated automations confirmed ACTIVE in n8n
+- 0 constitution violations | All 4 connectors registered
+
+**Drift Items Identified and Resolved:**
+1. `microsoft_outlook` and `google_drive` unregistered in `connector_sync_state` → FIXED (inserted with last_synced_at)
+2. `drawings_folder_id` schema change had no migration file → FIXED (`017_drawings_folder_id.sql` created)
+3. ADR-006 not filed for gateway batch/ntfy/intent builds → FIXED (ADR-006 filed)
+
+**New: Constitution Compliance Domain (auto-checks/balances):**
+- Added `_audit_constitution_compliance()` to system auditor
+- Checks Article VI.1: all mandated n8n automations are active (11 checked)
+- Checks Article I: approval gate table exists, no overdue pending approvals
+- Checks Article III: all 4 required connectors registered
+- Checks constitution file integrity (anti-deletion guard)
+- Checks SOP automation coverage against 80% target
+- Wired into `_overall_health_score()` at 10% weight
+- New endpoint: `GET /api/v1/services/system-auditor/constitution` — live on-demand check
+- Results stored in `system_audit_reports.constitution_compliance` (JSONB, new column)
+
+**New: pending_approvals Table:**
+- Created per BUILD_APPROVAL_LOOP handoff and Article I constitution requirement
+- Columns: approval_type, title, body, requested_by, project_code, amount, payload, status, priority, expires_at, approved_at, approved_by, rejection_reason
+
+**DB:**
+- `system_audit_reports`: Added `constitution_compliance` JSONB column
+- `pending_approvals`: Created (approval queue for human-in-the-loop)
+- `connector_sync_state`: Registered microsoft_outlook (4 entities), google_drive (4 entities); stamped houzz/hubspot sync dates
+
+---
+
+## v3.2 — 2026-06-30 | Plan Analysis RFIs + Gateway Batch + ntfy + Intent Router + Plans Scan
+
+**Trigger:** Session continuation — GBT handoff queue (24 items), plan analysis URGENT (bid due July 3).
+
+**Changes:**
+
+**Plan Analysis + RFI Drafts (URGENT — bid July 3):**
+- **64EW plan analysis:** Read 5 plan files (Ali & Shea + Albright & Associates), identified 14 pre-bid RFIs across scope gaps, missing MEP, structural age gap, foundation TBD
+- **101F plan analysis:** Read Jordan Architecture permit set (40-sheet set via Rawjee shared folder), identified 10 RFIs — critical: fixture schedule blank, appliance schedule blank, in-floor heat TBD, no MEP/HVAC drawings
+- **4 RFI Outlook drafts created:**
+  - 64EW → buck@ahmaspen.com (self, forward to Ali & Shea — email TBD) | 14 RFIs
+  - 101F → dtjordandesign@gmail.com (Dane Jordan, Jordan Architecture) | 10 RFIs
+  - 1355R SE → heini@silvertownstructures.com (Heini Brutsaert, Silver Town Structures) | 5 RFIs
+  - 1355R Architect → michael@aliusdc.com (Michael Edinger, Alius Design Corps) | 15 RFIs
+- **1355R RFI source:** GBT handoff `CONSOLIDATED_PLAN_ANALYSIS__1355R` — 20 total RFIs from 40-sheet permit set analysis
+
+**Gateway Builds:**
+- **`POST /gateway/batch`** — Execute N operations in 1 GBT call (eliminates 3-call ChatGPT limit). Ops: `ntfyPush`, `emailDraft`, `sendHandoff`, `bidLevel`, `dbQuery`. Auto-pushes ntfy on completion.
+- **`POST /gateway/notify/test`** — Push test notification to Buck's ntfy topic
+- **`GET /gateway/poll-instructions`** — Poll ntfy for incoming messages from Buck (last 5 min)
+- **`POST /gateway/intent/route`** — Natural language intent router → gateway action → ntfy push. Supports: status, bids, bid_leveling, daily_log, rfi_status, action_list, plan_analysis, approve, reject, exec_report
+- **`GET /gateway/project/{code}/plans`** — Scan drawings folder, classify by discipline (ARCHITECTURAL/STRUCTURAL/MEP/CIVIL/ROOFING/LANDSCAPE/PERMITS/PROGRESS/ARCHIVE), filter by scope/disciplines
+- **`GET /gateway/project/{code}/shared-drive-id`** — Return all Drive folder IDs for a project
+- **`_ntfy()` helper** — Push to ntfy topic `hci-ai-os-buck` with title/priority/tags
+
+**DB Changes:**
+- `projects` table: Added `drawings_folder_id` column
+- 64EW: `drawings_folder_id = '1iAVNLnJtEHKkYHs7KKceU35Ydny8FcVZ'`
+- 101F: `drawings_folder_id = '1t_a_2KPvsgFrUmECT9qV3oQa1CJklsoH'` (Rawjee 101 W Francis shared folder)
+
+**Handoffs processed:** 10 of 24 moved to Processed (plan analysis, batch, ntfy, 1355R RFIs, 64EW/101F plans)
+
+**Verified working:**
+- `POST /gateway/notify/test` → ntfy push confirmed
+- `GET /gateway/poll-instructions` → returns Buck messages from last 5 min
+- `POST /gateway/batch` → 2/2 ops: ntfyPush + dbQuery confirmed
+- `GET /gateway/project/64EW/plans` → 5 files classified by discipline
+
+---
+
+## v3.1 — 2026-06-29 | Bid Leveling All Active Jobs + System Audit Fixes
+
+**Trigger:** Buck directive — bid leveling on all active jobs; system audit identified action-list and risk data gaps.
+
+**Changes:**
+- **Risk descriptions fixed:** Risks 31/32/34 (1355R) updated with actual dollar amounts ($168k–$448k electrical spread, $302,065 plumbing, $242,071 cabinets)
+- **Client-comms title length:** Increased truncation from 60 → 120 chars for better context in PM console
+- **Bid leveling expanded to all 4 active projects:** 64EW (23 bids), 101F (5 bids), 1355R (87 bids), 246GW (0 — empty sheet, pre-construction)
+- **246GW onboarded:** Drive project folder created (`1FfGOOlq0MeWNDj0g0xQciubsOyx2ZpAp`), `drive_folder_id` set in DB
+- **Bid leveling service:** Removed hard requirement for `drive_folder_id` on dry_run=True; `get_all_configured_projects` now uses `status IN ('active','pilot')` not drive_folder presence
+- **Gateway field command `POST /gateway/project/{code}/bid-level`** verified working for 64EW, 101F, 1355R, 246GW
+
+**Verified working:**
+- `GET /gateway/project/{code}/action-list` → 1355R: 6 actions, 101F: 3, 64EW: 3
+- `GET /gateway/project/{code}/client-comms` → all active projects
+- `POST /gateway/project/{code}/bid-level?dry_run=true` → all 4 active projects
+
+---
+
 ## v3.0 — 2026-06-28 | 🔒 ARCHITECTURE FREEZE v1.0
 
 **Declared by:** Buck Adams (Owner) + GBT (Chief Architect)

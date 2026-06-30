@@ -79,6 +79,7 @@ class SystemAuditor(BaseIntelligenceService):
         results["technical_debt"] = self._audit_technical_debt()
         results["data_freshness"] = self._audit_data_freshness()
         results["security_review"] = self._audit_security()
+        results["constitution_compliance"] = self._audit_constitution_compliance()
         results["recommendations"] = self._compile_recommendations(results)
         results["next_milestones"] = self._next_milestones()
         results["auto_fixes_applied"] = self._auto_fixes_applied
@@ -543,6 +544,158 @@ class SystemAuditor(BaseIntelligenceService):
             "suspicious_files": suspicious_files[:5],
         }
 
+    # ── Constitution Compliance Check ──────────────────────────────────────────
+
+    def _audit_constitution_compliance(self) -> dict:
+        """
+        Verify system behavior matches HCI_AI_CONSTITUTION.md mandates.
+        Checks Article VI recurring automations, approval gate integrity,
+        connector registration, and drift from architecture freeze.
+        """
+        passed = []
+        violations = []
+        warnings = []
+
+        # Article VI.1 — Mandated recurring automations (must be active in n8n)
+        MANDATED_WORKFLOWS = {
+            "daily_repo_report":       ["AUTO-001", "AUTO-DAILY-REPO", "daily-repo"],
+            "workflow_health_check":   ["AUTO-002", "AUTO-WORKFLOW-HEALTH"],
+            "sprint_self_status":      ["AUTO-003", "AUTO-SPRINT"],
+            "daily_mining_0300":       ["AUTO-004", "AUTO-MINING"],
+            "morning_brief":           ["AUTO-019", "AUTO-SS-MORNING", "morning-brief"],
+            "eod_brief":               ["AUTO-020", "AUTO-EOD"],
+            "escalation_engine":       ["AUTO-021", "AUTO-ESCALATION"],
+            "nightly_audit":           ["AUTO-NIGHTLY-AUDIT", "nightly-audit"],
+            "handoff_processor":       ["AUTO-HANDOFF-PROCESSOR", "handoff-processor"],
+            "continuous_discovery":    ["AUTO-CONTINUOUS-DISCOVERY", "continuous-discovery"],
+            "weekly_exec_report":      ["AUTO-WEEKLY-EXEC", "AUTO-PM-WEEKLY", "weekly-exec"],
+        }
+
+        try:
+            import urllib.request as _ur
+            n8n_key = os.environ.get("N8N_API_KEY", "")
+            req = _ur.Request(
+                f"{N8N_BASE}/workflows?limit=250&active=true",
+                headers={"X-N8N-API-KEY": n8n_key}
+            )
+            with _ur.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            active_names = {w.get("name", "").upper() for w in data.get("data", [])}
+
+            for mandate, aliases in MANDATED_WORKFLOWS.items():
+                found = any(
+                    any(alias.upper() in name for name in active_names)
+                    for alias in aliases
+                )
+                if found:
+                    passed.append(f"Article VI: {mandate} automation ACTIVE")
+                else:
+                    violations.append({
+                        "article": "VI.1",
+                        "mandate": mandate,
+                        "severity": "HIGH",
+                        "detail": f"Required automation not found/active. Expected one of: {aliases}",
+                    })
+        except Exception as e:
+            warnings.append(f"Could not verify n8n mandated workflows: {e}")
+
+        # Article I — Buck's approval gates must exist (pending_approvals table)
+        try:
+            rows = self.pg_query("SELECT COUNT(*) AS cnt FROM pending_approvals WHERE status='pending'")
+            pending_count = rows[0].get("cnt", 0) if rows else 0
+            passed.append(f"Article I: Approval gate table live ({pending_count} pending)")
+
+            overdue = self.pg_query("""
+                SELECT COUNT(*) AS cnt FROM pending_approvals
+                WHERE status='pending' AND created_at < NOW() - INTERVAL '72 hours'
+            """)
+            overdue_count = overdue[0].get("cnt", 0) if overdue else 0
+            if overdue_count > 0:
+                violations.append({
+                    "article": "I.3",
+                    "mandate": "approval_timeliness",
+                    "severity": "MEDIUM",
+                    "detail": f"{overdue_count} approvals pending >72 hours — Buck's review required",
+                })
+            else:
+                passed.append("Article I: No stale pending approvals (>72h)")
+        except Exception as e:
+            warnings.append(f"Could not verify approval gate: {e}")
+
+        # Article III — All 4 connectors registered (no missing)
+        try:
+            rows = self.pg_query("""
+                SELECT DISTINCT connector_name FROM connector_sync_state
+                WHERE last_synced_at IS NOT NULL
+            """)
+            registered = {r["connector_name"] for r in rows}
+            required = {"hubspot", "houzz", "microsoft_outlook", "google_drive"}
+            missing = required - registered
+            if missing:
+                violations.append({
+                    "article": "III.2",
+                    "mandate": "connector_registration",
+                    "severity": "MEDIUM",
+                    "detail": f"Unregistered connectors: {missing}",
+                })
+            else:
+                passed.append("Article III: All required connectors registered")
+        except Exception as e:
+            warnings.append(f"Could not verify connector registration: {e}")
+
+        # Architecture Freeze drift check — count ADRs vs. recent gateway additions
+        adr_count = len(list((_ROOT / "architecture" / "ADRs").glob("ADR-*.md"))) if (_ROOT / "architecture" / "ADRs").exists() else 0
+        passed.append(f"ADR registry: {adr_count} architectural decisions documented")
+
+        # Check that Constitution file itself is present (anti-deletion guard)
+        constitution_path = _ROOT / "HCI_AI_CONSTITUTION.md"
+        if constitution_path.exists():
+            passed.append("HCI_AI_CONSTITUTION.md present and intact")
+        else:
+            violations.append({
+                "article": "Preamble",
+                "mandate": "constitution_file_integrity",
+                "severity": "CRITICAL",
+                "detail": "HCI_AI_CONSTITUTION.md is MISSING — this is the governing document",
+            })
+
+        # SOP automation coverage check
+        try:
+            sop_rows = self.pg_query("""
+                SELECT
+                    COUNT(*) FILTER (WHERE automation_status='full') AS full_auto,
+                    COUNT(*) FILTER (WHERE automation_status='partial') AS partial_auto,
+                    COUNT(*) FILTER (WHERE automation_status='none') AS no_auto,
+                    COUNT(*) AS total
+                FROM sop_workflow_map
+            """)
+            if sop_rows:
+                r = sop_rows[0]
+                total = r.get("total", 0) or 1
+                full = r.get("full_auto", 0) or 0
+                coverage_pct = round(full / total * 100)
+                if coverage_pct < 80:
+                    warnings.append(
+                        f"SOP automation coverage {coverage_pct}% ({full}/{total} fully automated) "
+                        f"— target 80% before Phase 7 go-live"
+                    )
+                else:
+                    passed.append(f"SOP automation coverage {coverage_pct}% — on target")
+        except Exception:
+            pass
+
+        n_violations = len(violations)
+        n_warnings = len(warnings)
+        score = max(0, 100 - (n_violations * 15) - (n_warnings * 5))
+
+        return {
+            "score": score,
+            "violations": violations,
+            "warnings": warnings,
+            "passed_checks": passed,
+            "verdict": "COMPLIANT" if n_violations == 0 else f"NON-COMPLIANT ({n_violations} violations)",
+        }
+
     # ── Recommendations ────────────────────────────────────────────────────────
 
     def _compile_recommendations(self, results: dict) -> list:
@@ -654,6 +807,26 @@ class SystemAuditor(BaseIntelligenceService):
                 "auto_fixable": False,
             })
 
+        # From constitution compliance
+        const = results.get("constitution_compliance", {})
+        for v in const.get("violations", []):
+            recs.append({
+                "priority": {"CRITICAL": "CRITICAL", "HIGH": "HIGH", "MEDIUM": "MEDIUM"}.get(v["severity"], "MEDIUM"),
+                "category": "constitution",
+                "title": f"Article {v['article']} violation: {v['mandate']}",
+                "action": v.get("detail", "Review HCI_AI_CONSTITUTION.md and remediate"),
+                "auto_fixable": False,
+                "requires_human": True,
+            })
+        for w in const.get("warnings", []):
+            recs.append({
+                "priority": "LOW",
+                "category": "constitution",
+                "title": "Constitution compliance warning",
+                "action": w,
+                "auto_fixable": False,
+            })
+
         # From autonomy_opportunities DB
         try:
             opps = self.pg_query("""
@@ -722,14 +895,15 @@ class SystemAuditor(BaseIntelligenceService):
 
     def _overall_health_score(self, results: dict) -> int:
         weights = {
-            "api_health": 0.30,
-            "connector_health": 0.10,
-            "workflow_health": 0.10,
-            "test_coverage": 0.15,
-            "documentation_coverage": 0.10,
-            "technical_debt": 0.10,
-            "data_freshness": 0.10,
-            "security_review": 0.15,
+            "api_health": 0.25,
+            "connector_health": 0.08,
+            "workflow_health": 0.08,
+            "test_coverage": 0.12,
+            "documentation_coverage": 0.08,
+            "technical_debt": 0.08,
+            "data_freshness": 0.08,
+            "security_review": 0.13,
+            "constitution_compliance": 0.10,
         }
         total = 0
         for key, weight in weights.items():
@@ -768,9 +942,9 @@ class SystemAuditor(BaseIntelligenceService):
                     (audit_date, overall_health_score, overall_health_label,
                      api_health, connector_health, workflow_health,
                      test_coverage, documentation_coverage, technical_debt,
-                     data_freshness, security_review, recommendations,
-                     next_milestones, auto_fixes_applied, elapsed_seconds)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                     data_freshness, security_review, constitution_compliance,
+                     recommendations, next_milestones, auto_fixes_applied, elapsed_seconds)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (audit_date) DO UPDATE SET
                     overall_health_score = EXCLUDED.overall_health_score,
                     overall_health_label = EXCLUDED.overall_health_label,
@@ -782,6 +956,7 @@ class SystemAuditor(BaseIntelligenceService):
                     technical_debt = EXCLUDED.technical_debt,
                     data_freshness = EXCLUDED.data_freshness,
                     security_review = EXCLUDED.security_review,
+                    constitution_compliance = EXCLUDED.constitution_compliance,
                     recommendations = EXCLUDED.recommendations,
                     next_milestones = EXCLUDED.next_milestones,
                     auto_fixes_applied = EXCLUDED.auto_fixes_applied,
@@ -796,6 +971,7 @@ class SystemAuditor(BaseIntelligenceService):
                 json.dumps(report.get("technical_debt", {})),
                 json.dumps(report.get("data_freshness", {})),
                 json.dumps(report.get("security_review", {})),
+                json.dumps(report.get("constitution_compliance", {})),
                 json.dumps(report.get("recommendations", [])),
                 json.dumps(report.get("next_milestones", [])),
                 json.dumps(report.get("auto_fixes_applied", [])),
@@ -814,7 +990,7 @@ def service_info():
         "service": "system_auditor",
         "status": "active",
         "phase": 3,
-        "description": "Autonomous nightly system auditor — APIs, connectors, workflows, tests, docs, security, data freshness",
+        "description": "Autonomous nightly system auditor — APIs, connectors, workflows, tests, docs, security, data freshness, constitution compliance",
         "endpoints": [
             "GET /run — trigger full audit now",
             "GET /latest — most recent audit report",
@@ -844,7 +1020,8 @@ def latest_audit():
     result = dict(row)
     for col in ["api_health","connector_health","workflow_health","test_coverage",
                 "documentation_coverage","technical_debt","data_freshness",
-                "security_review","recommendations","next_milestones","auto_fixes_applied"]:
+                "security_review","constitution_compliance",
+                "recommendations","next_milestones","auto_fixes_applied"]:
         if col in result and isinstance(result[col], str):
             try:
                 result[col] = json.loads(result[col])
@@ -889,4 +1066,15 @@ def recommendations():
         "overall_health_score": row.get("overall_health_score"),
         "recommendations": recs,
         "next_milestones": milestones,
+    }
+
+
+@router.get("/constitution")
+def constitution_check():
+    """Live constitution compliance check — runs immediately, not from stored report."""
+    auditor = SystemAuditor()
+    result = auditor._audit_constitution_compliance()
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        **result,
     }

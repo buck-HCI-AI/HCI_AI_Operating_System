@@ -34,17 +34,58 @@ DB = dict(
 )
 
 SERVICE_REGISTRY = [
+    # BTW-4: Project Brain Extended Memory
+    {"name": "project-documents",   "path": "/gateway/project/{code}/documents",  "description": "BTW-4: Document relationships — docs linked to decisions/risks/COs"},
+    {"name": "project-memory",      "path": "/gateway/project/{code}/memory",     "description": "BTW-4: Conversation memory — AI interaction history per project"},
+    # BTW-5: Role Intelligence
+    {"name": "role-owner",          "path": "/gateway/role/owner",                "description": "BTW-5: Owner command center — all projects, approvals, critical risks"},
+    {"name": "role-office",         "path": "/gateway/role/office",               "description": "BTW-5: Office admin console — pending items, submittals, AP/AR"},
+    {"name": "role-accounting",     "path": "/gateway/role/accounting",           "description": "BTW-5: Accounting — budget vs committed, bid awards, financial health"},
+    {"name": "role-client",         "path": "/gateway/role/client/{code}",        "description": "BTW-5: Client portal — project status, RFIs, change orders"},
+    {"name": "role-trade-partner",  "path": "/gateway/role/trade-partner",        "description": "BTW-5: Trade partner — work queue, bids, open RFIs (?vendor=X&code=Y)"},
     {"name": "project-brain",       "path": "/gateway/project/{code}/brain",      "description": "Full project intelligence snapshot"},
     {"name": "project-schedule",    "path": "/gateway/project/{code}/schedule",   "description": "Schedule status and variances"},
     {"name": "project-bids",        "path": "/gateway/project/{code}/bids",       "description": "Bid packages and procurement status"},
+    {"name": "bid-leveling",        "path": "/gateway/project/{code}/bid-level",  "description": "GET: leveling view from bid_packages/entries. POST: full Drive scan + Gemini extraction + Excel generation"},
+    {"name": "drive-bids",         "path": "/gateway/project/{code}/drive-bids", "description": "GET: actual bids extracted from Drive vendor PDF files (source of truth)"},
     {"name": "pm-weekly",           "path": "/gateway/project/{code}/pm",         "description": "PM weekly console"},
+    {"name": "project-timeline",     "path": "/gateway/project/{code}/timeline",       "description": "Chronological event timeline — logs, risks, RFIs, awards"},
+    {"name": "weekly-digest",        "path": "/gateway/project/{code}/weekly-digest",  "description": "PM weekly digest — last 7 days + next week priorities"},
+    {"name": "client-comms",         "path": "/gateway/project/{code}/client-comms",   "description": "Outstanding items needing client/owner communication"},
+    {"name": "action-list",          "path": "/gateway/project/{code}/action-list",    "description": "AI-ranked top 10 PM actions for the day"},
     {"name": "project-state",       "path": "/gateway/project-state",             "description": "Full live system state (all projects, health, AI team)"},
     {"name": "executive-report",    "path": "/gateway/executive/report",          "description": "Executive morning brief across all projects"},
-    {"name": "knowledge-graph",     "path": "/gateway/knowledge/vendor",         "description": "Vendor cross-project lookup"},
+    {"name": "knowledge-graph",     "path": "/gateway/knowledge/vendor",         "description": "Vendor cross-project lookup by name"},
+    {"name": "knowledge-vendors",   "path": "/gateway/knowledge/vendors",        "description": "Paginated vendor list with CSI + search filters (Gap5)"},
+    {"name": "knowledge-lessons",   "path": "/gateway/knowledge/lessons",        "description": "Lessons learned from past projects (Gap6)"},
     {"name": "drive-search",        "path": "/gateway/drive/search",             "description": "Search Google Drive files"},
     {"name": "agent-handoff",       "path": "/gateway/agent/handoff",            "description": "POST a platform intelligence document"},
+    {"name": "field-note",          "path": "/gateway/field/note",               "description": "POST quick field note from SS/PM (direct write, no approval)"},
+    {"name": "field-rfi",           "path": "/gateway/field/rfi",                "description": "POST new RFI from field (Gap11)"},
+    {"name": "field-daily-report",  "path": "/gateway/field/daily-report",       "description": "POST daily field report from SS (direct write)"},
+    {"name": "field-open-items",    "path": "/gateway/field/open-items",         "description": "GET all open items for a project (RFIs+risks+flags)"},
+    {"name": "field-daily-log-fmt", "path": "/gateway/field/daily-log-formatted","description": "GET Houzz-ready formatted daily log for a project+date"},
+    {"name": "project-create",      "path": "/gateway/project/create",           "description": "POST create new project (Gap1)"},
+    {"name": "risks-list",          "path": "/gateway/project/{code}/risks",     "description": "GET risk register for a project (Gap9)"},
+    {"name": "risks-create",        "path": "/gateway/risks/create",             "description": "POST create a new risk (Gap9)"},
+    {"name": "risks-update",        "path": "/gateway/risks/{id}/status",        "description": "PATCH update risk status open→mitigated→closed (Gap9)"},
+    {"name": "submittals-list",     "path": "/gateway/project/{code}/submittals","description": "GET submittals tracker for a project (Gap12)"},
+    {"name": "submittals-create",   "path": "/gateway/submittals/create",        "description": "POST create a new submittal (Gap12)"},
+    {"name": "submittals-update",   "path": "/gateway/submittals/{id}/status",   "description": "PATCH update submittal status (Gap12)"},
+    {"name": "market-rates",        "path": "/gateway/knowledge/market-rates",   "description": "GET Aspen market rates by CSI division from real bid data"},
+    {"name": "rom-estimate",        "path": "/gateway/knowledge/rom-estimate",   "description": "GET ROM cost estimate by project type + SF, calibrated from historical records"},
+    {"name": "bid-level",           "path": "/gateway/project/{code}/bid-level", "description": "GET bid leveling view — all packages with all bids sorted low-to-high"},
+    {"name": "project-list",        "path": "/gateway/projects",                 "description": "GET full project registry — all real projects with status, scope, team"},
+    {"name": "procurement-risk",    "path": "/gateway/project/{code}/procurement-risk", "description": "GET procurement risk analysis — gaps, single bids, awarded, coverage %"},
     {"name": "health",              "path": "/gateway/health",                   "description": "Gateway health check"},
     {"name": "services",            "path": "/gateway/services",                 "description": "This service registry"},
+    {"name": "plan-read",           "path": "/gateway/plan/read",                "description": "POST: Vision AI plan reader — Drive PDF → page images → Sonnet/Opus gap analysis"},
+    {"name": "batch",              "path": "/gateway/batch",                    "description": "POST: Execute N operations in 1 GBT call — ops: ntfyPush, emailDraft, sendHandoff, bidLevel, dbQuery"},
+    {"name": "notify-test",        "path": "/gateway/notify/test",              "description": "POST: Push test notification to Buck's ntfy topic (hci-ai-os-buck)"},
+    {"name": "poll-instructions",  "path": "/gateway/poll-instructions",        "description": "GET: Poll ntfy topic for incoming messages from Buck (last 5 min)"},
+    {"name": "intent-route",       "path": "/gateway/intent/route",             "description": "POST: Natural language intent router — message → execute → ntfy push"},
+    {"name": "project-plans",      "path": "/gateway/project/{code}/plans",     "description": "GET: Scan drawings folder, classify by discipline, filter by scope/type"},
+    {"name": "shared-drive-id",    "path": "/gateway/project/{code}/shared-drive-id", "description": "GET: Return all Drive folder IDs configured for a project"},
 ]
 
 
@@ -87,9 +128,11 @@ def _require_key(request: Request):
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
 
-def _proxy(endpoint: str, params: dict = None) -> dict:
-    r = requests.get(f"{_INTERNAL_BASE}{endpoint}", headers=_INTERNAL_H,
-                     params=params, timeout=30)
+def _proxy(endpoint: str, params: dict = None, method: str = "GET",
+           json: dict = None, timeout: int = 60) -> dict:
+    fn = requests.post if method.upper() == "POST" else requests.get
+    r  = fn(f"{_INTERNAL_BASE}{endpoint}", headers=_INTERNAL_H,
+             params=params, json=json, timeout=timeout)
     if not r.ok:
         raise HTTPException(r.status_code, f"Upstream error: {r.text[:200]}")
     return r.json()
@@ -206,11 +249,145 @@ def project_pm(code: str):
         return _response(f"/project/{code}/pm", {}, errors=[str(e.detail)], start=t0)
 
 
+@router.get("/project/{code}/weekly-digest")
+def project_weekly_digest(code: str):
+    """PM weekly digest — last 7 days summary, open items, next week priorities."""
+    t0 = time.time()
+    try:
+        data = _proxy(f"/mvp/projects/{code}/weekly-digest")
+        return _response(f"/project/{code}/weekly-digest", data, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/weekly-digest", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/project/{code}/client-comms")
+def project_client_comms(code: str):
+    """Outstanding items requiring client/owner communication, ranked by urgency."""
+    t0 = time.time()
+    try:
+        data = _proxy(f"/mvp/projects/{code}/client-comms")
+        return _response(f"/project/{code}/client-comms", data, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/client-comms", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/project/{code}/action-list")
+def project_action_list(code: str):
+    """AI-ranked top 10 PM actions for the day."""
+    t0 = time.time()
+    try:
+        data = _proxy(f"/mvp/projects/{code}/action-list")
+        return _response(f"/project/{code}/action-list", data, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/action-list", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/project/{code}/timeline")
+def project_timeline(code: str, days: int = 90, event_type: str = None):
+    """Chronological project event timeline — daily logs, risks, RFIs, awards, meetings, COs."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            params = [pid, f"{days} days"]
+            type_filter = ""
+            if event_type:
+                type_filter = " AND event_type = %s"
+                params.append(event_type)
+            cur.execute(f"""
+                SELECT event_type, event_date, title, description,
+                       source_table, source_id, created_by, metadata
+                FROM project_events
+                WHERE project_id = %s
+                  AND event_date >= CURRENT_DATE - %s::interval
+                  {type_filter}
+                ORDER BY event_date DESC, created_at DESC
+                LIMIT 200
+            """, tuple(params))
+            events = [dict(r) for r in cur.fetchall()]
+            # Type summary
+            from collections import Counter
+            summary = dict(Counter(e["event_type"] for e in events))
+        conn.close()
+        payload = {
+            "project_code": code,
+            "project_id": pid,
+            "days": days,
+            "event_count": len(events),
+            "event_type_summary": summary,
+            "events": events,
+        }
+        return _response(f"/project/{code}/timeline", payload, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/timeline", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/project/{code}/documents")
+def project_documents(code: str):
+    """BTW-4: Document relationships — docs linked to decisions, risks, and change orders."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT document_type, document_id, document_name, document_date,
+                       linked_entity_type, linked_entity_id, linked_entity_name,
+                       relationship, notes, linked_at
+                FROM project_document_links
+                WHERE project_id = %s
+                ORDER BY linked_at DESC
+                LIMIT 100
+            """, (pid,))
+            links = [dict(r) for r in cur.fetchall()]
+            from collections import Counter
+            by_type = dict(Counter(l["document_type"] for l in links))
+        conn.close()
+        return _response(f"/project/{code}/documents", {
+            "project_code": code,
+            "total_links": len(links),
+            "by_document_type": by_type,
+            "links": links,
+        }, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/documents", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/project/{code}/memory")
+def project_memory(code: str, limit: int = 20):
+    """BTW-4: Conversation memory — AI interaction history for the project."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT question, answer_summary, context_used, model_used, queried_at
+                FROM project_ai_conversations
+                WHERE project_id = %s
+                ORDER BY queried_at DESC
+                LIMIT %s
+            """, (pid, limit))
+            conversations = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return _response(f"/project/{code}/memory", {
+            "project_code": code,
+            "conversation_count": len(conversations),
+            "conversations": conversations,
+        }, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/memory", {}, errors=[str(e.detail)], start=t0)
+
+
 # ── Executive ─────────────────────────────────────────────────────────────────
 
 @router.get("/executive/report")
 def executive_report():
-    """Executive morning brief — real data from DB, not kpi_snapshots cache."""
+    """Executive morning brief — real data from DB. Health score includes bid coverage (Gap-15 fix)."""
     t0 = time.time()
     try:
         conn = _pg()
@@ -218,30 +395,76 @@ def executive_report():
         projects = []
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT p.id, p.name,
+                SELECT p.id, p.name, p.project_code,
+                    p.contract_value,
                     (SELECT COUNT(*) FROM schedule_variance sv WHERE sv.project_id = p.id AND sv.risk_level IN ('high','critical')) AS high_variance,
                     (SELECT COUNT(*) FROM schedule_variance sv WHERE sv.project_id = p.id) AS total_variance,
                     (SELECT COUNT(*) FROM risks r WHERE r.project_id = p.id AND r.status = 'open') AS open_risks,
                     (SELECT COUNT(*) FROM project_schedule_items psi WHERE psi.project_id = p.id::text) AS schedule_items,
                     (SELECT MAX(ABS(sv.variance_days)) FROM schedule_variance sv WHERE sv.project_id = p.id) AS max_variance_days,
-                    (SELECT COUNT(*) FROM daily_logs dl WHERE dl.project_id = p.id) AS daily_logs
-                FROM projects p WHERE p.status IN ('active','design') AND p.name NOT LIKE 'TEST-%' ORDER BY p.id
+                    (SELECT COUNT(*) FROM daily_logs dl WHERE dl.project_id = p.id) AS daily_logs,
+                    (SELECT COUNT(*) FROM bid_packages bp WHERE bp.project_id = p.id) AS total_packages,
+                    (SELECT COUNT(*) FROM bid_packages bp WHERE bp.project_id = p.id
+                         AND EXISTS (SELECT 1 FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0)
+                    ) AS packages_with_bids,
+                    (SELECT COALESCE(SUM(be.bid_amount),0) FROM bid_entries be
+                         JOIN bid_packages bp ON bp.id = be.bid_package_id
+                         WHERE bp.project_id = p.id AND be.status = 'awarded'
+                    ) AS committed_amount,
+                    (SELECT COUNT(*) FROM rfis r WHERE r.project_id = p.id AND r.status = 'open') AS open_rfis,
+                    (SELECT COUNT(*) FROM rfis r WHERE r.project_id = p.id AND r.status = 'open'
+                         AND r.required_response_date < CURRENT_DATE
+                    ) AS overdue_rfis
+                FROM projects p WHERE p.status IN ('active','design','bidding','preconstruction')
+                  AND p.name NOT LIKE 'TEST-%%' ORDER BY p.id
             """)
             rows = cur.fetchall()
         conn.close()
         for row in rows:
-            max_var = row["max_variance_days"] or 0
-            high_var = row["high_variance"] or 0
+            max_var   = row["max_variance_days"] or 0
+            high_var  = row["high_variance"] or 0
             open_risks = row["open_risks"] or 0
-            if high_var > 0 or open_risks > 0 or max_var >= 3:
-                health = "YELLOW" if max_var < 7 and open_risks < 3 else "RED"
-                icon = "🟡" if health == "YELLOW" else "🔴"
+            total_pkgs = row["total_packages"] or 0
+            bid_pkgs   = row["packages_with_bids"] or 0
+            open_rfis  = row["open_rfis"] or 0
+            overdue_rfis = row["overdue_rfis"] or 0
+            committed  = float(row["committed_amount"] or 0)
+            budget     = float(row["contract_value"] or 0)
+            bid_coverage_pct = round((bid_pkgs / total_pkgs * 100) if total_pkgs > 0 else 100)
+            budget_pct = round((committed / budget * 100) if budget > 0 else 0)
+
+            # Risk factors — each flag can push health down
+            risk_flags = []
+            if overdue_rfis > 0:
+                risk_flags.append(f"OVERDUE RFI: {overdue_rfis} RFI(s) past response date — framing/schedule risk")
+            if high_var > 0:
+                risk_flags.append(f"{high_var} high-risk schedule items")
+            if max_var >= 7:
+                risk_flags.append(f"+{max_var}d schedule variance")
+            if open_risks >= 3:
+                risk_flags.append(f"{open_risks} open risks")
+            # Gap-15 fix: bid coverage below threshold is a procurement risk
+            if total_pkgs >= 5 and bid_coverage_pct < 25:
+                risk_flags.append(f"PROCUREMENT: only {bid_coverage_pct}% of {total_pkgs} packages have bids")
+            elif total_pkgs >= 5 and bid_coverage_pct < 50:
+                risk_flags.append(f"PROCUREMENT: {bid_coverage_pct}% bid coverage ({bid_pkgs}/{total_pkgs} pkgs)")
+            if open_risks >= 1 and not any("open risks" in f for f in risk_flags):
+                risk_flags.append(f"{open_risks} open risk")
+            if max_var >= 3 and max_var < 7:
+                risk_flags.append(f"+{max_var}d behind schedule")
+
+            # Determine health from worst flag
+            if overdue_rfis > 0 or high_var > 0 or open_risks >= 3 or max_var >= 7 or (total_pkgs >= 5 and bid_coverage_pct < 25):
+                health, icon = "red", "🔴"
+            elif open_risks >= 1 or max_var >= 3 or (total_pkgs >= 5 and bid_coverage_pct < 50):
+                health, icon = "yellow", "🟡"
             else:
-                health = "GREEN"
-                icon = "🟢"
+                health, icon = "green", "🟢"
+
             sched = f"+{max_var}d behind" if max_var > 0 else "On track"
             projects.append({
                 "name": row["name"],
+                "project_code": row["project_code"] or "",
                 "health": health,
                 "icon": icon,
                 "schedule": sched,
@@ -249,15 +472,25 @@ def executive_report():
                 "high_variance_items": high_var,
                 "total_variance_items": row["total_variance"] or 0,
                 "open_risks": open_risks,
+                "open_rfis": open_rfis,
+                "overdue_rfis": overdue_rfis,
                 "schedule_items": row["schedule_items"] or 0,
                 "daily_logs": row["daily_logs"] or 0,
-                "summary": f"{icon} {row['name']}: {sched}, {open_risks} risks, {row['schedule_items'] or 0} activities"
+                "budget": {"contract_value": budget, "committed": committed, "pct_committed": budget_pct},
+                "procurement": {
+                    "total_packages": total_pkgs,
+                    "packages_with_bids": bid_pkgs,
+                    "packages_no_bids": total_pkgs - bid_pkgs,
+                    "bid_coverage_pct": bid_coverage_pct,
+                },
+                "risk_flags": risk_flags,
+                "summary": f"{icon} {row['name']}: {sched}, {open_risks} risks, {bid_coverage_pct}% bid coverage"
+                           + (f", {overdue_rfis} OVERDUE RFI" if overdue_rfis else "")
             })
         return _response("/executive/report", {
             "date": datetime.now(timezone.utc).date().isoformat(),
             "source": "live_db",
             "projects": projects,
-            "warnings": ["kpi_snapshots not populated — data pulled directly from schedule_variance and risks tables"] if not any(p["open_risks"] for p in projects) else []
         }, start=t0)
     except Exception as e:
         return _response("/executive/report", {}, errors=[str(e)], start=t0)
@@ -274,6 +507,328 @@ def mission_control():
         return _response("/executive/mission-control", {}, errors=[str(e.detail)], start=t0)
 
 
+# ── BTW-5: Role Intelligence Consoles ─────────────────────────────────────────
+
+@router.get("/role/owner")
+def role_owner():
+    """BTW-5: Owner (Buck) company-wide command — all projects, pending approvals, critical risks, financials."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            # Pending approvals by priority
+            cur.execute("""
+                SELECT priority, COUNT(*) as cnt,
+                       SUM(COALESCE((proposed_payload->>'amount')::numeric, 0)) as total_amount
+                FROM approval_queue WHERE status = 'pending'
+                GROUP BY priority ORDER BY CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END
+            """)
+            approvals = [dict(r) for r in cur.fetchall()]
+
+            # Critical risks across all active projects
+            cur.execute("""
+                SELECT p.project_code, r.risk_type, LEFT(r.description,100) as description,
+                       r.severity, r.status, r.identified_date
+                FROM risks r JOIN projects p ON p.id = r.project_id
+                WHERE r.status = 'open' AND r.severity IN ('critical','high')
+                ORDER BY CASE r.severity WHEN 'critical' THEN 1 ELSE 2 END, r.identified_date ASC
+                LIMIT 10
+            """)
+            critical_risks = [dict(r) for r in cur.fetchall()]
+
+            # Project financial summary
+            cur.execute("""
+                SELECT p.project_code, p.name, p.contract_value,
+                    COALESCE((SELECT SUM(be.bid_amount) FROM bid_entries be
+                        JOIN bid_packages bp ON bp.id = be.bid_package_id
+                        WHERE bp.project_id = p.id AND be.status = 'awarded'), 0) as committed,
+                    COALESCE((SELECT COUNT(*) FROM risks r WHERE r.project_id = p.id AND r.status='open'),0) as open_risks,
+                    pb.health, pb.schedule_variance_days
+                FROM projects p
+                LEFT JOIN project_brain_snapshots pb ON pb.project_id = p.id AND pb.snapshot_date = CURRENT_DATE
+                WHERE p.status IN ('active','design','bidding','preconstruction')
+                ORDER BY p.contract_value DESC NULLS LAST
+            """)
+            project_summary = [dict(r) for r in cur.fetchall()]
+
+            # Total pending approval value
+            cur.execute("""SELECT COUNT(*) as cnt,
+                COALESCE(SUM((proposed_payload->>'amount')::numeric),0) as val
+                FROM approval_queue WHERE status='pending'
+                AND proposed_payload->>'amount' IS NOT NULL""")
+            approval_totals = dict(cur.fetchone())
+        conn.close()
+
+        total_contract = sum(float(p.get("contract_value") or 0) for p in project_summary)
+        total_committed = sum(float(p.get("committed") or 0) for p in project_summary)
+
+        return _response("/role/owner", {
+            "role": "Owner",
+            "user": "Buck Adams",
+            "as_of": time.strftime("%Y-%m-%d"),
+            "pending_approvals": {
+                "total": sum(a["cnt"] for a in approvals),
+                "pending_value": float(approval_totals.get("val", 0)),
+                "by_priority": approvals,
+            },
+            "company_financials": {
+                "total_contract_value": total_contract,
+                "total_committed": total_committed,
+                "commitment_pct": round(total_committed / total_contract * 100, 1) if total_contract > 0 else 0,
+                "project_count": len(project_summary),
+            },
+            "critical_risks": critical_risks,
+            "projects": project_summary,
+        }, start=t0)
+    except Exception as e:
+        return _response("/role/owner", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/role/office")
+def role_office():
+    """BTW-5: Office admin console — pending items, AP/AR, submittal queue, approval requests."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            # Pending approvals needing admin action
+            cur.execute("""
+                SELECT action_type, target_description, priority, created_at,
+                       COALESCE((proposed_payload->>'amount')::numeric, 0) as amount
+                FROM approval_queue WHERE status='pending'
+                ORDER BY CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 ELSE 3 END, created_at ASC
+                LIMIT 20
+            """)
+            pending = [dict(r) for r in cur.fetchall()]
+
+            # Open submittals requiring action
+            cur.execute("""
+                SELECT p.project_code, s.description, s.spec_section, s.status, s.submitted_date, s.required_approval_date
+                FROM submittals s JOIN projects p ON p.id = s.project_id
+                WHERE s.status NOT IN ('approved','rejected','closed')
+                ORDER BY s.required_approval_date ASC NULLS LAST
+                LIMIT 15
+            """)
+            submittals = [dict(r) for r in cur.fetchall()]
+
+            # Overdue RFIs
+            cur.execute("""
+                SELECT p.project_code, r.subject, r.status, r.required_response_date, r.submitted_date
+                FROM rfis r JOIN projects p ON p.id = r.project_id
+                WHERE r.status = 'open' AND r.required_response_date < CURRENT_DATE
+                ORDER BY r.required_response_date ASC
+                LIMIT 10
+            """)
+            overdue_rfis = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        return _response("/role/office", {
+            "role": "Office Manager",
+            "as_of": time.strftime("%Y-%m-%d"),
+            "pending_approvals": {"count": len(pending), "items": pending},
+            "submittal_queue": {"count": len(submittals), "items": submittals},
+            "overdue_rfis": {"count": len(overdue_rfis), "items": overdue_rfis},
+            "action_summary": {
+                "total_items": len(pending) + len(submittals) + len(overdue_rfis),
+                "critical_count": sum(1 for p in pending if p.get("priority") in ("critical","high")),
+            }
+        }, start=t0)
+    except Exception as e:
+        return _response("/role/office", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/role/accounting")
+def role_accounting():
+    """BTW-5: Accounting console — financial health, budget vs committed, bid awards by project."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT p.project_code, p.name, COALESCE(p.contract_value,0) as contract_value,
+                    COALESCE((SELECT SUM(be.bid_amount) FROM bid_entries be
+                        JOIN bid_packages bp ON bp.id = be.bid_package_id
+                        WHERE bp.project_id = p.id AND be.status='awarded'), 0) as awarded,
+                    COALESCE((SELECT SUM(be.bid_amount) FROM bid_entries be
+                        JOIN bid_packages bp ON bp.id = be.bid_package_id
+                        WHERE bp.project_id = p.id AND be.status='pending'), 0) as pending_bids,
+                    (SELECT COUNT(*) FROM bid_packages bp2 WHERE bp2.project_id = p.id) as total_packages,
+                    (SELECT COUNT(*) FROM bid_packages bp2 WHERE bp2.project_id = p.id AND bp2.status='awarded') as awarded_packages
+                FROM projects p
+                WHERE p.status IN ('active','design','bidding','preconstruction')
+                ORDER BY p.contract_value DESC NULLS LAST
+            """)
+            projects = [dict(r) for r in cur.fetchall()]
+
+            # Pending approval amounts
+            cur.execute("""
+                SELECT action_type, COUNT(*) as cnt,
+                       SUM(COALESCE((proposed_payload->>'amount')::numeric,0)) as total
+                FROM approval_queue WHERE status='pending'
+                  AND proposed_payload->>'amount' IS NOT NULL
+                GROUP BY action_type ORDER BY SUM(COALESCE((proposed_payload->>'amount')::numeric,0)) DESC
+            """)
+            pending_amounts = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        total_contract = sum(float(p["contract_value"]) for p in projects)
+        total_awarded = sum(float(p["awarded"]) for p in projects)
+        total_pending = sum(float(p["pending_bids"]) for p in projects)
+
+        return _response("/role/accounting", {
+            "role": "Accounting",
+            "as_of": time.strftime("%Y-%m-%d"),
+            "company_totals": {
+                "total_contract_value": total_contract,
+                "total_awarded": total_awarded,
+                "total_pending_bids": total_pending,
+                "commitment_pct": round(total_awarded / total_contract * 100, 1) if total_contract > 0 else 0,
+                "remaining_budget": total_contract - total_awarded,
+            },
+            "by_project": projects,
+            "pending_financial_approvals": pending_amounts,
+        }, start=t0)
+    except Exception as e:
+        return _response("/role/accounting", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/role/client/{code}")
+def role_client(code: str):
+    """BTW-5: Client portal — project status, milestones, open RFIs, change orders awaiting approval."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT project_code, name, status, contract_value FROM projects WHERE id = %s", (pid,))
+            proj = dict(cur.fetchone())
+
+            cur.execute("SELECT health, schedule_variance_days, risk_count, budget_exposure, open_decisions, ai_summary FROM project_brain_snapshots WHERE project_id = %s ORDER BY snapshot_date DESC LIMIT 1", (pid,))
+            brain_row = cur.fetchone()
+            brain = dict(brain_row) if brain_row else {}
+
+            # Open RFIs needing client action
+            cur.execute("""
+                SELECT id, subject, status, required_response_date, submitted_date
+                FROM rfis WHERE project_id = %s AND status = 'open'
+                ORDER BY required_response_date ASC NULLS LAST LIMIT 10
+            """, (pid,))
+            rfis = [dict(r) for r in cur.fetchall()]
+
+            # Change orders pending client approval (from approval_queue)
+            cur.execute("""
+                SELECT id, target_description as description, priority as status, created_at as submitted_date,
+                       COALESCE((proposed_payload->>'amount')::numeric, 0) as amount
+                FROM approval_queue
+                WHERE project_id = %s AND status='pending'
+                  AND action_type ILIKE '%%change_order%%'
+                ORDER BY created_at DESC LIMIT 10
+            """, (pid,))
+            change_orders = [dict(r) for r in cur.fetchall()]
+
+            # Recent milestones
+            cur.execute("""
+                SELECT event_type, event_date, title, description
+                FROM project_events WHERE project_id = %s
+                  AND event_type IN ('milestone','award','meeting','decision')
+                ORDER BY event_date DESC LIMIT 10
+            """, (pid,))
+            milestones = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        co_value = sum(float(c.get("amount") or 0) for c in change_orders)
+        return _response(f"/role/client/{code}", {
+            "role": "Client",
+            "project_code": code,
+            "project_name": proj.get("name"),
+            "project_status": proj.get("status"),
+            "health": brain.get("health", "UNKNOWN"),
+            "schedule_variance_days": brain.get("schedule_variance_days", 0),
+            "ai_summary": brain.get("ai_summary"),
+            "open_rfis": {"count": len(rfis), "items": rfis},
+            "pending_change_orders": {"count": len(change_orders), "total_value": co_value, "items": change_orders},
+            "recent_milestones": milestones,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/role/client/{code}", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/role/trade-partner")
+def role_trade_partner(vendor: str = Query(..., description="Vendor or company name"),
+                        code: str = Query(None, description="Optional project code filter")):
+    """BTW-5: Trade partner console — work queue, open RFIs, bid packages, inspection holds."""
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            # Find vendor ID by name
+            cur.execute("""
+                SELECT id, company_name, csi_divisions FROM vendors
+                WHERE company_name ILIKE %s LIMIT 1
+            """, (f"%{vendor}%",))
+            vendor_row = cur.fetchone()
+            vendor_id = vendor_row["id"] if vendor_row else None
+            company_name = vendor_row["company_name"] if vendor_row else vendor
+
+            # Awarded bid packages for this vendor
+            proj_filter = "AND bp.project_id = (SELECT id FROM projects WHERE project_code=%s)" if code else ""
+            params = [vendor_id] + ([code] if code else [])
+            if vendor_id:
+                cur.execute(f"""
+                    SELECT p.project_code, bp.package_name, bp.csi_division,
+                           be.bid_amount, be.status, be.date_received
+                    FROM bid_entries be
+                    JOIN bid_packages bp ON bp.id = be.bid_package_id
+                    JOIN projects p ON p.id = bp.project_id
+                    WHERE be.vendor_id = %s {proj_filter}
+                    ORDER BY be.status, be.date_received DESC
+                    LIMIT 20
+                """, tuple(params))
+                packages = [dict(r) for r in cur.fetchall()]
+            else:
+                packages = []
+
+            # Open RFIs that may relate to vendor's CSI division
+            csi_filter = ""
+            if vendor_row and vendor_row.get("csi_divisions"):
+                csi_divs = vendor_row["csi_divisions"]
+                if isinstance(csi_divs, list) and csi_divs:
+                    csi_filter = f"AND csi_division IN ({','.join(['%s']*len(csi_divs))})"
+            open_rfis = []
+            if code:
+                cur.execute("""
+                    SELECT r.id, r.subject, r.status, r.required_response_date
+                    FROM rfis r
+                    JOIN projects p ON p.id = r.project_id
+                    WHERE p.project_code = %s AND r.status = 'open'
+                    ORDER BY r.required_response_date ASC NULLS LAST
+                    LIMIT 10
+                """, (code,))
+                open_rfis = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        awarded = [p for p in packages if p.get("status") == "awarded"]
+        return _response("/role/trade-partner", {
+            "role": "Trade Partner",
+            "vendor": company_name,
+            "vendor_found": vendor_row is not None,
+            "awarded_packages": {"count": len(awarded), "items": awarded},
+            "all_bids": {"count": len(packages), "items": packages},
+            "open_rfis": {"count": len(open_rfis), "items": open_rfis},
+            "action_summary": {
+                "awarded_contracts": len(awarded),
+                "open_rfis_needing_response": len([r for r in open_rfis if r.get("required_response_date")]),
+            }
+        }, start=t0)
+    except Exception as e:
+        return _response("/role/trade-partner", {}, errors=[str(e)], start=t0)
+
+
 # ── Knowledge Graph ───────────────────────────────────────────────────────────
 
 @router.get("/knowledge/vendor")
@@ -285,6 +840,87 @@ def knowledge_vendor(name: str = Query(..., description="Vendor or subcontractor
         return _response("/knowledge/vendor", data, start=t0)
     except HTTPException as e:
         return _response("/knowledge/vendor", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/knowledge/vendors")
+def knowledge_vendors(search: str = None, csi: str = None, limit: int = 50, offset: int = 0):
+    """
+    Gap5 FIX — Paginated vendor list with optional search + CSI filter.
+    search: company name or contact name substring
+    csi: CSI division code (e.g. "03000", "16000")
+    limit/offset: pagination (default 50 per page)
+    """
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            where, params = [], []
+            if search:
+                where.append("(company_name ILIKE %s OR contact_name ILIKE %s OR trade ILIKE %s)")
+                params += [f"%{search}%", f"%{search}%", f"%{search}%"]
+            if csi:
+                where.append("%s = ANY(csi_divisions)")
+                params.append(csi)
+            sql = "SELECT id, company_name, trade, csi_divisions, city, state, contact_name, email, phone FROM vendors"
+            if where:
+                sql += " WHERE " + " AND ".join(where)
+            sql += " ORDER BY company_name LIMIT %s OFFSET %s"
+            params += [min(limit, 200), offset]
+            cur.execute(sql, params)
+            vendors = [dict(r) for r in cur.fetchall()]
+            count_params = params[:-2]  # strip the limit+offset
+            cur.execute("SELECT COUNT(*) as total FROM vendors" + (" WHERE " + " AND ".join(where) if where else ""), count_params)
+            total = cur.fetchone()["total"]
+        conn.close()
+        return _response("/knowledge/vendors", {
+            "vendors": vendors, "total": total,
+            "limit": limit, "offset": offset,
+            "returned": len(vendors),
+            "has_more": (offset + len(vendors)) < total,
+        }, start=t0)
+    except Exception as e:
+        return _response("/knowledge/vendors", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/knowledge/lessons")
+def knowledge_lessons(category: str = None, csi: str = None, search: str = None, limit: int = 50):
+    """
+    Gap6 FIX — Lessons learned from past projects.
+    category: schedule | budget | safety | quality | subcontractor | rfi | risk
+    csi: CSI division filter
+    search: keyword search across title + description
+    """
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            where, params = [], []
+            if category:
+                where.append("category = %s")
+                params.append(category)
+            if csi:
+                where.append("csi_division = %s")
+                params.append(csi)
+            if search:
+                where.append("(title ILIKE %s OR description ILIKE %s OR future_recommendation ILIKE %s)")
+                params += [f"%{search}%", f"%{search}%", f"%{search}%"]
+            sql = "SELECT id, title, description, category, csi_division, project_id, outcome, future_recommendation, recorded_at FROM lessons_learned"
+            if where:
+                sql += " WHERE " + " AND ".join(where)
+            sql += " ORDER BY id DESC LIMIT %s"
+            params.append(min(limit, 200))
+            cur.execute(sql, params)
+            lessons = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return _response("/knowledge/lessons", {
+            "lessons": lessons,
+            "count": len(lessons),
+            "filters": {"category": category, "csi": csi, "search": search},
+        }, start=t0)
+    except Exception as e:
+        return _response("/knowledge/lessons", {}, errors=[str(e)], start=t0)
 
 
 @router.get("/knowledge/issues")
@@ -309,6 +945,92 @@ def drive_search(q: str = Query(..., description="Search term for Drive files"))
         return _response("/drive/search", data, start=t0)
     except HTTPException as e:
         return _response("/drive/search", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/drive/file/{file_id}/content")
+def drive_file_content(file_id: str):
+    """
+    Read text content of any Drive file by ID.
+    Supports PDF, Docs, Sheets, Slides, DOCX, XLSX.
+    Used by the plan analysis pipeline and project_plan_analysis.py tool.
+    Returns extracted text in payload.content — same envelope as all gateway endpoints.
+    """
+    t0 = time.time()
+    try:
+        meta   = _proxy(f"/services/drive-intelligence/file/{file_id}")
+        name   = meta.get("name", file_id)
+        mime   = meta.get("mime_type", "")
+
+        # Export text content via drive-intelligence service (Google Docs, Sheets, DOCX, XLSX)
+        content_data = _proxy(f"/services/drive-intelligence/file/{file_id}/content")
+        content      = content_data.get("content", "")
+        source       = content_data.get("source", "unknown")
+        note         = content_data.get("note", "ok")
+
+        return _response("/drive/file/content", {
+            "file_id":    file_id,
+            "file_name":  name,
+            "mime_type":  mime,
+            "char_count": len(content),
+            "content":    content,
+            "source":     source,
+            "note":       note if note != "ok" else ("ok" if content else "empty — binary file requires MCP session or local OCR"),
+        }, start=t0)
+
+    except HTTPException as e:
+        return _response("/drive/file/content", {"file_id": file_id, "content": ""},
+                         errors=[str(e.detail)], start=t0)
+
+
+@router.get("/drive/folder/{folder_id}/files")
+def drive_folder_files(folder_id: str):
+    """
+    List all files in a Drive folder by folder ID.
+    Used by bid leveling pipeline to enumerate division folders.
+    """
+    t0 = time.time()
+    try:
+        data = _proxy(f"/services/bid-leveling/drive/list/{folder_id}")
+        return _response("/drive/folder/files", data, start=t0)
+    except HTTPException as e:
+        return _response("/drive/folder/files", {}, errors=[str(e.detail)], start=t0)
+
+
+# ── Email ─────────────────────────────────────────────────────────────────────
+
+class EmailDraftRequest(BaseModel):
+    to_name: str
+    to_email: str
+    subject: str
+    body_html: str
+    reply_to_message_id: Optional[str] = None
+
+@router.post("/email/draft")
+def create_email_draft(req: EmailDraftRequest):
+    """
+    Create an Outlook draft email (does NOT send). GBT calls this to stage a client/vendor email.
+    Buck reviews and sends manually from Outlook, or calls /email/draft/{id}/send to send via API.
+    Returns the draft message ID so Buck or GBT can track or update it.
+    """
+    t0 = time.time()
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import create_draft, create_reply_draft
+        if req.reply_to_message_id:
+            draft = create_reply_draft(req.reply_to_message_id, req.body_html)
+        else:
+            draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)])
+        draft_id = draft.get("id", "")
+        return _response("/email/draft", {
+            "draft_id":   draft_id,
+            "subject":    req.subject,
+            "to_email":   req.to_email,
+            "status":     "draft_created",
+            "note":       "Draft saved to Outlook Drafts folder. Review in Outlook before sending.",
+            "outlook_url": f"https://outlook.office.com/mail/deeplink/compose/{draft_id}" if draft_id else "",
+        }, start=t0)
+    except Exception as e:
+        return _response("/email/draft", {}, errors=[str(e)], start=t0)
 
 
 # ── Agent Handoff ─────────────────────────────────────────────────────────────
@@ -357,7 +1079,8 @@ async def agent_handoff(req: HandoffPayload):
     ))
     os.makedirs(inbox, exist_ok=True)
 
-    slug = (req.title or req.document_type or "handoff").replace(" ", "_")[:40]
+    import re as _re
+    slug = _re.sub(r"[^A-Za-z0-9_\-]", "_", (req.title or req.document_type or "handoff"))[:40]
     fname = f"GBT_HANDOFF_{ts}_{slug}_{rid}.md"
     fpath = os.path.join(inbox, fname)
 
@@ -388,6 +1111,20 @@ summary: {req.summary or f'Handoff from {req.source_agent} via GBT Gateway'}
         )
     threading.Thread(target=_run, daemon=True).start()
 
+    # Push ntfy notification so GBT/Buck know a handoff arrived
+    try:
+        import requests as _req
+        _req.post(
+            "https://ntfy.sh/hci-executive",
+            data=f"[{req.source_agent}→{req.destination_agent}] {req.title or 'New handoff'}: {(req.body or '')[:120]}",
+            headers={"Title": f"HCI Handoff: {req.title or req.document_type}",
+                     "Priority": "high" if req.priority == "high" else "default",
+                     "Tags": "inbox"},
+            timeout=3
+        )
+    except Exception:
+        pass  # ntfy is best-effort
+
     _log("/agent/handoff", req.source_agent, "Agent_Handoff/Inbox",
          "queued", round((time.time()-t0)*1000), rid, f"queued {fname}")
 
@@ -395,6 +1132,58 @@ summary: {req.summary or f'Handoff from {req.source_agent} via GBT Gateway'}
         "queued": True, "filename": fname, "request_id": rid,
         "document_type": req.document_type,
         "message": "Handoff written to Inbox — processor will route within 60s",
+    }, start=t0)
+
+
+@router.get("/agent/inbox")
+def agent_inbox():
+    """
+    GBT polls this at the start of every session to check for pending handoffs from Claude Code.
+    Returns all unread files in Agent_Handoff/Inbox/ with their title, priority, and body.
+    GBT should call this endpoint FIRST, read all items, then POST back to /agent/handoff when done.
+    """
+    t0 = time.time()
+    inbox = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), "..", "..", "..",
+        "Architecture", "Agent_Handoff", "Inbox"
+    ))
+    items = []
+    if os.path.isdir(inbox):
+        for fname in sorted(os.listdir(inbox)):
+            if not fname.endswith(".md"):
+                continue
+            fpath = os.path.join(inbox, fname)
+            try:
+                with open(fpath) as f:
+                    raw = f.read()
+                # Parse frontmatter
+                lines = raw.split("\n")
+                meta = {}
+                body_start = 0
+                if lines[0].strip() == "---":
+                    for i, line in enumerate(lines[1:], 1):
+                        if line.strip() == "---":
+                            body_start = i + 1
+                            break
+                        if ":" in line:
+                            k, v = line.split(":", 1)
+                            meta[k.strip()] = v.strip()
+                body = "\n".join(lines[body_start:]).strip()
+                items.append({
+                    "filename": fname,
+                    "title": meta.get("title", fname),
+                    "priority": meta.get("priority", "medium"),
+                    "source_agent": meta.get("source_agent", "unknown"),
+                    "document_type": meta.get("document_type", "unknown"),
+                    "created_at": meta.get("created_at", ""),
+                    "body": body,
+                })
+            except Exception as e:
+                items.append({"filename": fname, "error": str(e)})
+    return _response("/agent/inbox", {
+        "pending_count": len(items),
+        "items": items,
+        "instruction": "Read all items above, execute them, then POST completion handoff back to /gateway/agent/handoff",
     }, start=t0)
 
 
@@ -441,11 +1230,15 @@ async def drive_write(req: DriveWritePayload):
         token = get_google_token("drive")
         folder_id = req.folder_id or os.environ.get("HCI_AI_DRIVE_FOLDER", "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI")
 
+        # Gap14 FIX: explicit timeouts on all Google API calls prevent ERR_NGROK_3004
+        DRIVE_TIMEOUT = 20
+
         # Check if file already exists in folder
         search_resp = requests.get(
             "https://www.googleapis.com/drive/v3/files",
             headers={"Authorization": f"Bearer {token}"},
-            params={"q": f"name='{req.filename}' and '{folder_id}' in parents and trashed=false", "fields": "files(id,name)"}
+            params={"q": f"name='{req.filename}' and '{folder_id}' in parents and trashed=false", "fields": "files(id,name)"},
+            timeout=DRIVE_TIMEOUT
         )
         existing = search_resp.json().get("files", [])
 
@@ -459,7 +1252,8 @@ async def drive_write(req: DriveWritePayload):
                 f"https://www.googleapis.com/upload/drive/v3/files/{file_id}",
                 headers={"Authorization": f"Bearer {token}", "Content-Type": mime},
                 params={"uploadType": "media", "fields": "id,name,webViewLink"},
-                data=content_bytes
+                data=content_bytes,
+                timeout=DRIVE_TIMEOUT
             )
             result = update_resp.json()
             action = "updated"
@@ -482,7 +1276,8 @@ async def drive_write(req: DriveWritePayload):
                     "Content-Type": f"multipart/related; boundary={boundary}"
                 },
                 params={"uploadType": "multipart", "fields": "id,name,webViewLink"},
-                data=body
+                data=body,
+                timeout=DRIVE_TIMEOUT
             )
             result = create_resp.json()
             action = "created"
@@ -499,6 +1294,330 @@ async def drive_write(req: DriveWritePayload):
 
     except Exception as e:
         return _response("/drive/write", {}, errors=[str(e)], start=t0)
+
+
+# ── Field Endpoints (GBT Field GPT) ──────────────────────────────────────────
+
+class FieldNotePayload(BaseModel):
+    project_code: str
+    note: str
+    submitted_by: str = "field"
+    note_type: str = "general"
+
+class FieldRFIPayload(BaseModel):
+    project_code: str
+    question: str
+    submitted_by: str = "superintendent"
+    subject: str = ""
+    submitted_to: str = ""
+
+class FieldDailyReportPayload(BaseModel):
+    project_code: str
+    work_performed: str
+    crew: int = 0
+    weather: str = ""
+    submitted_by: str = "superintendent"
+    field_risks: str = ""
+    lookahead: str = ""
+
+class CreateProjectPayload(BaseModel):
+    name: str
+    address: str
+    pm_name: str = "Buck Adams"
+    super_name: str = ""
+    owner_name: str = ""
+    status: str = "active"
+    project_type: str = "remodel"
+
+
+@router.post("/field/note")
+def field_submit_note(req: FieldNotePayload):
+    """
+    submitFieldNote — SS or PM logs a quick field note.
+    Writes to project_events timeline immediately. No approval needed.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(req.project_code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO project_events
+                    (project_id, event_type, event_date, title, description, source_table, created_by, metadata)
+                VALUES (%s, 'field_note', CURRENT_DATE, %s, %s, 'field_note', %s, %s)
+                RETURNING id, event_type, event_date, title
+            """, (pid, f"Field Note: {req.note[:80]}", req.note,
+                  req.submitted_by, f'{{"note_type":"{req.note_type}"}}'))
+            row = dict(cur.fetchone())
+        conn.close()
+        try:
+            requests.post("https://ntfy.sh/hci-executive",
+                data=f"[{req.project_code}] Field note from {req.submitted_by}: {req.note[:100]}",
+                headers={"Title": f"Field Note — {req.project_code}", "Priority": "default", "Tags": "memo"},
+                timeout=3)
+        except Exception:
+            pass
+        _log("/field/note", "field", req.project_code, "logged", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response("/field/note", {"logged": True, "event": row, "project_code": req.project_code}, start=t0)
+    except HTTPException as e:
+        return _response("/field/note", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/field/note", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/field/rfi")
+def field_submit_rfi(req: FieldRFIPayload):
+    """
+    submitRFI (Gap11) — Field submits an RFI from the job site.
+    Creates RFI in database with status=open. Returns RFI number for tracking.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(req.project_code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT COALESCE(MAX(CAST(NULLIF(rfi_number, '') AS INTEGER)), 0) + 1 AS next_num FROM rfis WHERE project_id = %s AND rfi_number ~ '^[0-9]+$'", (pid,))
+            next_num = cur.fetchone()["next_num"]
+            subject = req.subject or req.question[:80]
+            cur.execute("""
+                INSERT INTO rfis (project_id, rfi_number, subject, question, submitted_by, status, submitted_date)
+                VALUES (%s, %s, %s, %s, %s, 'open', CURRENT_DATE)
+                RETURNING id, rfi_number, subject, status, submitted_date
+            """, (pid, str(next_num), subject, req.question, req.submitted_by))
+            rfi = dict(cur.fetchone())
+            # Also log to event timeline
+            cur.execute("""
+                INSERT INTO project_events (project_id, event_type, event_date, title, description, source_table, source_id, created_by)
+                VALUES (%s, 'rfi_submitted', CURRENT_DATE, %s, %s, 'rfis', %s, %s)
+            """, (pid, f"RFI {next_num}: {subject}", req.question, rfi["id"], req.submitted_by))
+        conn.close()
+        try:
+            requests.post("https://ntfy.sh/hci-executive",
+                data=f"[{req.project_code}] RFI #{next_num} submitted by {req.submitted_by}: {subject}",
+                headers={"Title": f"New RFI — {req.project_code}", "Priority": "high", "Tags": "question"},
+                timeout=3)
+        except Exception:
+            pass
+        _log("/field/rfi", "field", req.project_code, "rfi_created", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response("/field/rfi", {"logged": True, "rfi": rfi, "project_code": req.project_code}, start=t0)
+    except HTTPException as e:
+        return _response("/field/rfi", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/field/rfi", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/field/daily-report")
+def field_submit_daily_report(req: FieldDailyReportPayload):
+    """
+    submitDailyReport — SS submits end-of-day field report.
+    Writes directly to daily_logs (no approval queue for field pilot).
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(req.project_code)
+        conn = _pg()
+        conn.autocommit = True
+        import json as _json
+        with conn.cursor() as cur:
+            crew_json = _json.dumps({"count": req.crew}) if req.crew else None
+            cur.execute("""
+                INSERT INTO daily_logs
+                    (project_id, log_date, work_performed, crew_on_site, weather,
+                     logged_by, field_risks, lookahead)
+                VALUES (%s, CURRENT_DATE, %s, %s::jsonb, %s, %s, %s, %s)
+                RETURNING id, log_date, logged_by
+            """, (pid, req.work_performed, crew_json, req.weather,
+                  req.submitted_by, req.field_risks or None, req.lookahead or None))
+            log = dict(cur.fetchone())
+            # Also log to event timeline
+            cur.execute("""
+                INSERT INTO project_events (project_id, event_type, event_date, title, description, source_table, source_id, created_by)
+                VALUES (%s, 'daily_log', CURRENT_DATE, %s, %s, 'daily_logs', %s, %s)
+            """, (pid, f"Daily Log — {log['log_date']}", req.work_performed[:200], log["id"], req.submitted_by))
+        conn.close()
+        try:
+            requests.post("https://ntfy.sh/hci-executive",
+                data=f"[{req.project_code}] Daily report from {req.submitted_by}: {req.crew} crew, {req.weather}. {req.work_performed[:80]}",
+                headers={"Title": f"Daily Report — {req.project_code}", "Priority": "default", "Tags": "construction"},
+                timeout=3)
+        except Exception:
+            pass
+        _log("/field/daily-report", "field", req.project_code, "log_written", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response("/field/daily-report", {"logged": True, "log": log, "project_code": req.project_code}, start=t0)
+    except HTTPException as e:
+        return _response("/field/daily-report", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/field/daily-report", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/field/open-items")
+def field_open_items(code: str):
+    """
+    getOpenItems — Returns everything open that needs attention on a project.
+    Open RFIs + approval queue + open risks + recent field flags.
+    Field-safe format: plain language, no technical IDs exposed.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        items = []
+        with conn.cursor() as cur:
+            cur.execute("""SELECT rfi_number, subject, submitted_by, submitted_date, status
+                FROM rfis WHERE project_id=%s AND status='open' ORDER BY submitted_date ASC""", (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                items.append({"type": "RFI", "id": f"RFI-{d['rfi_number']}",
+                    "description": d["subject"], "from": d["submitted_by"],
+                    "date": str(d["submitted_date"]), "urgency": "HIGH"})
+
+            cur.execute("""SELECT risk_type, severity, description, status
+                FROM risks WHERE project_id=%s AND status='open'
+                ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 ELSE 3 END""", (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                items.append({"type": "Risk", "id": d["risk_type"],
+                    "description": d["description"][:120], "from": "system",
+                    "date": None,
+                    "urgency": "HIGH" if d["severity"] in ("critical","high") else "MEDIUM"})
+
+            cur.execute("""SELECT event_type, title, event_date, created_by
+                FROM project_events WHERE project_id=%s AND event_type IN ('risk_flagged','field_note')
+                AND event_date >= CURRENT_DATE - '7 days'::interval
+                ORDER BY event_date DESC LIMIT 5""", (pid,))
+            for r in cur.fetchall():
+                d = dict(r)
+                items.append({"type": "Field Flag", "id": d["event_type"],
+                    "description": d["title"], "from": d["created_by"],
+                    "date": str(d["event_date"]), "urgency": "MEDIUM"})
+
+        conn.close()
+        high = sum(1 for i in items if i["urgency"] == "HIGH")
+        return _response("/field/open-items", {
+            "project_code": code, "total_open": len(items),
+            "high_urgency": high, "items": items,
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/field/open-items", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/field/open-items", {}, errors=[str(e)], start=t0)
+
+
+# ── getDailyLogFormatted ─────────────────────────────────────────────────────
+
+@router.get("/field/daily-log-formatted")
+def field_daily_log_formatted(code: str, date: str = None):
+    """
+    getDailyLogFormatted — Returns a Houzz-ready formatted daily log for a project and date.
+    If date omitted, returns the most recent log.
+    Field-safe: plain English, no internal IDs.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            if date:
+                cur.execute("""
+                    SELECT dl.id, dl.log_date, dl.logged_by, dl.weather, dl.work_performed,
+                           dl.issues, dl.crew_on_site, dl.safety_notes, dl.subcontractor_progress,
+                           p.name AS project_name, p.address
+                    FROM daily_logs dl JOIN projects p ON p.id = dl.project_id
+                    WHERE dl.project_id = %s AND dl.log_date = %s
+                    ORDER BY dl.id DESC LIMIT 1
+                """, (pid, date))
+            else:
+                cur.execute("""
+                    SELECT dl.id, dl.log_date, dl.logged_by, dl.weather, dl.work_performed,
+                           dl.issues, dl.crew_on_site, dl.safety_notes, dl.subcontractor_progress,
+                           p.name AS project_name, p.address
+                    FROM daily_logs dl JOIN projects p ON p.id = dl.project_id
+                    WHERE dl.project_id = %s
+                    ORDER BY dl.log_date DESC, dl.id DESC LIMIT 1
+                """, (pid,))
+            row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            return _response("/field/daily-log-formatted", {
+                "project_code": code, "log_found": False,
+                "message": "No daily logs found for this project/date"
+            }, start=t0)
+
+        d = dict(row)
+        crew_info = d["crew_on_site"]
+        if isinstance(crew_info, dict):
+            crew_count = crew_info.get("count", 0)
+        elif isinstance(crew_info, int):
+            crew_count = crew_info
+        else:
+            crew_count = 0
+
+        formatted = {
+            "project": d["project_name"],
+            "address": d["address"],
+            "date": str(d["log_date"]),
+            "superintendent": d["logged_by"] or "Not specified",
+            "crew_on_site": crew_count,
+            "weather": (d["weather"] or "").replace("_", " ").title(),
+            "work_performed": d["work_performed"] or "No notes recorded",
+            "issues_delays": d["issues"] or "None",
+            "safety_notes": d["safety_notes"] or "No safety items",
+            "subcontractor_progress": d["subcontractor_progress"] or "None reported",
+            "houzz_ready": True,
+        }
+        houzz_text = (
+            f"Daily Log — {d['project_name']}\n"
+            f"Date: {d['log_date']}\n"
+            f"Superintendent: {formatted['superintendent']}\n"
+            f"Crew on Site: {crew_count}\n"
+            f"Weather: {formatted['weather']}\n"
+            f"Work Performed: {formatted['work_performed']}\n"
+            f"Issues/Delays: {formatted['issues_delays']}\n"
+            f"Safety Notes: {formatted['safety_notes']}\n"
+            f"Subcontractor Progress: {formatted['subcontractor_progress']}"
+        )
+        _log("/field/daily-log-formatted", "field", code, "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response("/field/daily-log-formatted", {
+            "project_code": code, "log_found": True,
+            "formatted_log": formatted,
+            "houzz_paste_text": houzz_text,
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/field/daily-log-formatted", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/field/daily-log-formatted", {}, errors=[str(e)], start=t0)
+
+
+# ── Gap1: createProject ───────────────────────────────────────────────────────
+
+@router.post("/project/create")
+def create_project(req: CreateProjectPayload):
+    """
+    Gap1 FIX — createProject endpoint.
+    Creates a new project in the HCI OS database. Buck's auth required (API key on header).
+    """
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO projects (name, address, pm_name, super_name, owner_name, status)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, name, address, status
+            """, (req.name, req.address, req.pm_name, req.super_name, req.owner_name, req.status))
+            proj = dict(cur.fetchone())
+        conn.close()
+        _log("/project/create", "gbt", req.name, "created", round((time.time()-t0)*1000))
+        return _response("/project/create", {"created": True, "project": proj}, start=t0)
+    except Exception as e:
+        return _response("/project/create", {}, errors=[str(e)], start=t0)
 
 
 # ── Admin: Process Inbox ─────────────────────────────────────────────────────
@@ -727,10 +1846,16 @@ async def sync_live_state(request: Request):
                 """)
                 rows = [dict(r) for r in cur.fetchall()]
 
-        CODE_MAP  = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM", 11: "ASPN-NEW", 12: "ASPN-REM", 13: "ASPN-MC"}
-        NAME_MAP  = {1: "64 Eastwood", 2: "101 Francis", 3: "1355 Riverside", 4: "83 Sagebrusch", 8: "246 Gallo Way", 9: "TEST-Alpine Modern", 10: "TEST-Canyon Remodel", 11: "842 Ridge Road", 12: "710 Cemetery Lane", 13: "200 E Hopkins"}
-        HS_MAP    = {1: "331240861419", 2: "321401932527", 3: "321351275210", 4: "", 8: "321358358216", 9: "", 10: "", 11: "", 12: "", 13: ""}
-        SCOPE_MAP = {1: "Exterior & Site", 2: "Full Interior Remodel", 3: "Full Remodel", 4: "TBD", 8: "New Construction — Chaparral Lot 7", 9: "New Construction 4,800 SF", 10: "Full Interior Remodel 2,800 SF", 11: "New Construction 9,200 SF Ultra-Luxury", 12: "Full Remodel 4,800 SF Victorian Conversion", 13: "25-Unit Luxury Condo 68,000 GSF"}
+        # Build code/name/hubspot maps from DB (no hardcoding)
+        CODE_MAP, NAME_MAP, HS_MAP, SCOPE_MAP = {}, {}, {}, {}
+        with _pg() as conn_m:
+            with conn_m.cursor() as cur_m:
+                cur_m.execute("SELECT id, project_code, name, hubspot_deal_id, scope FROM projects WHERE project_code IS NOT NULL")
+                for pm in cur_m.fetchall():
+                    CODE_MAP[pm["id"]] = pm["project_code"] or ""
+                    NAME_MAP[pm["id"]] = pm["name"] or ""
+                    HS_MAP[pm["id"]] = pm["hubspot_deal_id"] or ""
+                    SCOPE_MAP[pm["id"]] = pm["scope"] or "TBD"
 
         # Build updated table rows
         table_lines = [
@@ -832,7 +1957,6 @@ async def export_schedule_csv(request: Request,
     try:
         import csv, io
         pid = _get_pid(project_code)
-        CODE_MAP = {1: "64EW", 2: "101F", 3: "1355R", 4: "83SB", 8: "246GW", 9: "TSNB", 10: "TSREM", 11: "ASPN-NEW", 12: "ASPN-REM", 13: "ASPN-MC"}
         HCI_FOLDER = os.environ.get("HCI_AI_DRIVE_FOLDER", "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI")
         FOLDER_MAP = {1: HCI_FOLDER, 2: HCI_FOLDER, 3: HCI_FOLDER, 11: HCI_FOLDER, 12: HCI_FOLDER, 13: HCI_FOLDER}
 
@@ -921,12 +2045,18 @@ async def export_schedule_csv(request: Request,
 
 
 def _get_pid(code: str) -> int:
-    PILOT = {
-        "64EW": 1, "101F": 2, "1355R": 3, "246GW": 8, "83SB": 4,
-        "TSNB": 9, "TSREM": 10,
-        "ASPN-NEW": 11, "ASPN-REM": 12, "ASPN-MC": 13,
-    }
-    return PILOT.get(code.upper(), 1)
+    """Resolve project code → DB id. Queries projects.project_code column (DB-driven)."""
+    try:
+        conn = _pg()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM projects WHERE project_code = %s", (code.upper(),))
+            row = cur.fetchone()
+        conn.close()
+        if row:
+            return row["id"]
+    except Exception:
+        pass
+    return 1
 
 
 # ── Permitting Research (Claude AI) ─────────────────────────────────────────
@@ -1070,3 +2200,1698 @@ Keep response under 500 words."""
         }, start=t0)
     except Exception as e:
         return _response(f"/houzz/design-intel/{code}", {}, errors=[str(e)], start=t0)
+
+
+# ── Gap9: Risk Register ───────────────────────────────────────────────────────
+
+class CreateRiskPayload(BaseModel):
+    project_code: str
+    risk_type: str
+    severity: str = "medium"  # low|medium|high|critical
+    description: str
+    mitigation: Optional[str] = None
+
+class UpdateRiskStatusPayload(BaseModel):
+    status: str  # open|mitigated|closed
+    notes: Optional[str] = None
+
+
+@router.get("/project/{code}/risks")
+def get_risks(code: str, status: str = None):
+    """Gap9 — Risk register for a project. Filter by status=open|mitigated|closed."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            if status:
+                cur.execute("""
+                    SELECT id, risk_type, severity, description, mitigation, status, identified_date
+                    FROM risks WHERE project_id=%s AND status=%s
+                    ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2
+                             WHEN 'medium' THEN 3 ELSE 4 END, identified_date DESC
+                """, (pid, status))
+            else:
+                cur.execute("""
+                    SELECT id, risk_type, severity, description, mitigation, status, identified_date
+                    FROM risks WHERE project_id=%s
+                    ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2
+                             WHEN 'medium' THEN 3 ELSE 4 END, identified_date DESC
+                """, (pid,))
+            rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        open_count = sum(1 for r in rows if r["status"] == "open")
+        critical = sum(1 for r in rows if r["severity"] in ("critical", "high") and r["status"] == "open")
+        return _response(f"/project/{code}/risks", {
+            "project_code": code, "total": len(rows),
+            "open": open_count, "critical_or_high_open": critical,
+            "risks": rows,
+        }, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/risks", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/risks", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/risks/create")
+def create_risk(req: CreateRiskPayload):
+    """Gap9 — Create a new risk. Writes to risks table and logs a project_event."""
+    t0 = time.time()
+    rid = str(uuid.uuid4())[:8]
+    try:
+        pid = _get_pid(req.project_code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO risks (project_id, risk_type, severity, description, mitigation, status)
+                VALUES (%s, %s, %s, %s, %s, 'open')
+                RETURNING id, risk_type, severity, description, status, identified_date
+            """, (pid, req.risk_type, req.severity, req.description, req.mitigation or ""))
+            risk = dict(cur.fetchone())
+            cur.execute("""
+                INSERT INTO project_events (project_id, event_type, title, description, created_by, event_date)
+                VALUES (%s, 'risk_flagged', %s, %s, 'gateway', CURRENT_DATE)
+            """, (pid, f"Risk: {req.risk_type}", req.description[:200]))
+        conn.close()
+        _log("/risks/create", "gbt", req.project_code, "created", round((time.time()-t0)*1000), rid)
+        return _response("/risks/create", {"created": True, "risk": risk, "project_code": req.project_code}, start=t0)
+    except HTTPException as e:
+        return _response("/risks/create", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/risks/create", {}, errors=[str(e)], start=t0)
+
+
+@router.patch("/risks/{risk_id}/status")
+def update_risk_status(risk_id: int, req: UpdateRiskStatusPayload):
+    """Gap9 — Update risk status: open → mitigated → closed."""
+    t0 = time.time()
+    rid = str(uuid.uuid4())[:8]
+    valid = {"open", "mitigated", "closed"}
+    if req.status not in valid:
+        return _response(f"/risks/{risk_id}/status", {},
+                         errors=[f"Invalid status '{req.status}'. Use: {valid}"])
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            if req.notes:
+                cur.execute("""
+                    UPDATE risks SET status=%s, mitigation=COALESCE(mitigation,'') || ' | ' || %s
+                    WHERE id=%s RETURNING id, risk_type, severity, status, mitigation
+                """, (req.status, req.notes, risk_id))
+            else:
+                cur.execute("""
+                    UPDATE risks SET status=%s WHERE id=%s
+                    RETURNING id, risk_type, severity, status, mitigation
+                """, (req.status, risk_id))
+            row = cur.fetchone()
+        conn.close()
+        if not row:
+            return _response(f"/risks/{risk_id}/status", {}, errors=["Risk not found"], start=t0)
+        _log(f"/risks/{risk_id}/status", "gbt", str(risk_id), req.status, round((time.time()-t0)*1000), rid)
+        return _response(f"/risks/{risk_id}/status", {"updated": True, "risk": dict(row)}, start=t0)
+    except Exception as e:
+        return _response(f"/risks/{risk_id}/status", {}, errors=[str(e)], start=t0)
+
+
+# ── Gap12: Submittals Tracker ─────────────────────────────────────────────────
+
+class CreateSubmittalPayload(BaseModel):
+    project_code: str
+    spec_section: str
+    description: str
+    submitted_by: str
+    required_approval_date: Optional[str] = None  # YYYY-MM-DD
+
+class UpdateSubmittalStatusPayload(BaseModel):
+    status: str  # pending|under_review|approved|rejected|revise_and_resubmit
+    notes: Optional[str] = None
+
+
+@router.get("/project/{code}/submittals")
+def get_submittals(code: str, status: str = None):
+    """Gap12 — Submittals tracker for a project. Filter by status."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            if status:
+                cur.execute("""
+                    SELECT id, submittal_number, spec_section, description, submitted_by,
+                           status, submitted_date, required_approval_date, approved_date
+                    FROM submittals WHERE project_id=%s AND status=%s
+                    ORDER BY required_approval_date ASC NULLS LAST, id DESC
+                """, (pid, status))
+            else:
+                cur.execute("""
+                    SELECT id, submittal_number, spec_section, description, submitted_by,
+                           status, submitted_date, required_approval_date, approved_date
+                    FROM submittals WHERE project_id=%s
+                    ORDER BY required_approval_date ASC NULLS LAST, id DESC
+                """, (pid,))
+            rows = [dict(r) for r in cur.fetchall()]
+            cur.execute("""
+                SELECT COUNT(*) AS overdue FROM submittals
+                WHERE project_id=%s AND status NOT IN ('approved','rejected')
+                AND required_approval_date < CURRENT_DATE
+            """, (pid,))
+            overdue = cur.fetchone()["overdue"]
+        conn.close()
+        pending = sum(1 for r in rows if r["status"] in ("pending", "under_review"))
+        return _response(f"/project/{code}/submittals", {
+            "project_code": code, "total": len(rows),
+            "pending_or_review": pending, "overdue": overdue,
+            "submittals": rows,
+        }, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/submittals", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/submittals", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/submittals/create")
+def create_submittal(req: CreateSubmittalPayload):
+    """Gap12 — Log a new submittal. Auto-assigns next submittal number for project."""
+    t0 = time.time()
+    rid = str(uuid.uuid4())[:8]
+    try:
+        pid = _get_pid(req.project_code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT COALESCE(MAX(CAST(NULLIF(submittal_number, '') AS INTEGER)), 0) + 1 AS next_num
+                FROM submittals WHERE project_id=%s AND submittal_number ~ '^[0-9]+'
+            """, (pid,))
+            next_num = cur.fetchone()["next_num"]
+            req_date = req.required_approval_date or None
+            cur.execute("""
+                INSERT INTO submittals
+                    (project_id, submittal_number, spec_section, description, submitted_by,
+                     status, submitted_date, required_approval_date)
+                VALUES (%s, %s, %s, %s, %s, 'pending', CURRENT_DATE, %s)
+                RETURNING id, submittal_number, spec_section, description, status, submitted_date
+            """, (pid, str(next_num), req.spec_section, req.description,
+                  req.submitted_by, req_date))
+            sub = dict(cur.fetchone())
+        conn.close()
+        _log("/submittals/create", "gbt", req.project_code, "created", round((time.time()-t0)*1000), rid)
+        return _response("/submittals/create", {
+            "created": True, "submittal": sub, "project_code": req.project_code
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/submittals/create", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/submittals/create", {}, errors=[str(e)], start=t0)
+
+
+@router.patch("/submittals/{sub_id}/status")
+def update_submittal_status(sub_id: int, req: UpdateSubmittalStatusPayload):
+    """Gap12 — Update submittal status: pending→under_review→approved|rejected|revise_and_resubmit."""
+    t0 = time.time()
+    rid = str(uuid.uuid4())[:8]
+    valid = {"pending", "under_review", "approved", "rejected", "revise_and_resubmit"}
+    if req.status not in valid:
+        return _response(f"/submittals/{sub_id}/status", {},
+                         errors=[f"Invalid status '{req.status}'. Use: {valid}"])
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            approved_date_sql = "CURRENT_DATE" if req.status == "approved" else "approved_date"
+            cur.execute(f"""
+                UPDATE submittals
+                SET status=%s, approved_date={approved_date_sql}
+                WHERE id=%s
+                RETURNING id, submittal_number, spec_section, status, approved_date
+            """, (req.status, sub_id))
+            row = cur.fetchone()
+        conn.close()
+        if not row:
+            return _response(f"/submittals/{sub_id}/status", {}, errors=["Submittal not found"], start=t0)
+        _log(f"/submittals/{sub_id}/status", "gbt", str(sub_id), req.status, round((time.time()-t0)*1000), rid)
+        return _response(f"/submittals/{sub_id}/status", {"updated": True, "submittal": dict(row)}, start=t0)
+    except Exception as e:
+        return _response(f"/submittals/{sub_id}/status", {}, errors=[str(e)], start=t0)
+
+
+# ── Market Rate Intelligence ──────────────────────────────────────────────────
+@router.get("/knowledge/market-rates")
+def market_rates(division: str = None, months_back: int = Query(24, ge=1, le=60),
+                 project_type: str = None):
+    """Real Aspen sub-contractor market rates from actual bid data.
+    division: CSI division code (e.g. '15', '06', '09'). Omit for all divisions.
+    months_back: only include bids received within this many months (default 24).
+    project_type: 'new', 'renovation', or 'remodel' — filters by project status if set.
+    """
+    t0 = time.time()
+    try:
+        conn = _pg()
+        with conn.cursor() as cur:
+            where_clauses = ["be.bid_amount > 0",
+                             "be.date_received >= CURRENT_DATE - (%s * INTERVAL '1 month')"]
+            params: list = [months_back]
+            if division:
+                where_clauses.append("be.csi_division = %s")
+                params.append(division.upper())
+            if project_type:
+                status_map = {"new": "active", "renovation": "active", "remodel": "active",
+                              "completed": "completed", "reference": "reference"}
+                mapped = status_map.get(project_type.lower(), project_type.lower())
+                where_clauses.append("p.status = %s")
+                params.append(mapped)
+            where_sql = " AND ".join(where_clauses)
+            cur.execute(f"""
+                SELECT be.csi_division,
+                       COUNT(*) AS bid_count,
+                       COUNT(DISTINCT be.vendor_id) AS vendor_count,
+                       COUNT(DISTINCT be.project_id) AS project_count,
+                       MIN(be.bid_amount) AS low_bid,
+                       MAX(be.bid_amount) AS high_bid,
+                       ROUND(AVG(be.bid_amount), 0) AS avg_bid,
+                       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY be.bid_amount)::numeric, 0) AS median_bid,
+                       MIN(be.date_received) AS earliest_bid,
+                       MAX(be.date_received) AS latest_bid,
+                       JSON_AGG(DISTINCT v.company_name) FILTER (WHERE v.company_name IS NOT NULL) AS known_vendors
+                FROM bid_entries be
+                LEFT JOIN vendors v ON v.id = be.vendor_id
+                LEFT JOIN projects p ON p.id = be.project_id
+                WHERE {where_sql}
+                GROUP BY be.csi_division
+                ORDER BY bid_count DESC
+            """, params)
+            rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        # Clean up vendor lists
+        for r in rows:
+            if r["known_vendors"]:
+                vendors = [v for v in r["known_vendors"] if v]
+                r["known_vendors"] = sorted(vendors)[:10]  # top 10 only
+            for k in ["low_bid", "high_bid", "avg_bid", "median_bid"]:
+                r[k] = float(r[k]) if r[k] is not None else None
+        summary = {
+            "divisions_with_data": len(rows),
+            "total_bids_analyzed": sum(r["bid_count"] for r in rows),
+            "date_range": f"last {months_back} months",
+            "market": "Aspen CO",
+            "source": "HCI bid_entries — real subcontractor quotes",
+        }
+        return _response("/knowledge/market-rates", {"summary": summary, "by_division": rows}, start=t0)
+    except Exception as e:
+        return _response("/knowledge/market-rates", {}, errors=[str(e)], start=t0)
+
+
+# ── ROM Estimator ─────────────────────────────────────────────────────────────
+@router.get("/knowledge/rom-estimate")
+def rom_estimate(sf: int = Query(..., description="Project square footage"),
+                 project_type: str = Query("new", description="new | renovation | remodel")):
+    """ROM cost estimate calibrated from real HCI historical cost records.
+    Returns division-level breakdown with low/mid/high ranges and confidence.
+    """
+    t0 = time.time()
+    try:
+        # Known benchmarks from real project data
+        BENCHMARKS = {
+            "new": [
+                {"project": "574 Johnson Drive", "sf": 6696, "total": 8045318, "cost_per_sf": 1202,
+                 "confidence": "high", "date": "2026-06"},
+                {"project": "275 Sunnyside Lane", "sf": None, "total": 54175191,
+                 "confidence": "medium", "note": "Luxury compound — main house + pool + external works + barn"},
+                {"project": "212 Cleveland", "sf": None, "total": 7614844, "cost_per_sf": None,
+                 "confidence": "high", "date": "2026-04", "note": "Completed actuals"},
+            ],
+            "renovation": [
+                {"project": "675 Meadowood", "sf": 2827, "total": 2804710, "cost_per_sf": 992,
+                 "confidence": "medium", "date": "2026-03", "note": "ROM only — pre-construction"},
+                {"project": "370 Gerbaz Way", "sf": None, "total": 831010, "cost_per_sf": None,
+                 "confidence": "high", "date": "2026-04", "note": "Final actuals — budget ran 96% over submitted"},
+                {"project": "1355 Riverside", "sf": 3855, "total": 5693297, "cost_per_sf": 1477,
+                 "confidence": "medium", "date": "2026-06", "note": "ROM target; 3,855 SF combined"},
+            ],
+            "remodel": [
+                {"project": "675 Meadowood", "sf": 2827, "total": 2804710, "cost_per_sf": 992,
+                 "confidence": "medium", "date": "2026-03"},
+                {"project": "370 Gerbaz Way", "sf": None, "total": 831010,
+                 "confidence": "high", "date": "2026-04", "note": "Final actuals"},
+            ],
+        }
+
+        ptype = project_type.lower()
+        benchmarks = BENCHMARKS.get(ptype, BENCHMARKS["new"])
+
+        # Cost per SF range from benchmarks that have SF data
+        sf_benchmarks = [b for b in benchmarks if b.get("cost_per_sf")]
+        cost_per_sf_low = min(b["cost_per_sf"] for b in sf_benchmarks) if sf_benchmarks else 900
+        cost_per_sf_high = max(b["cost_per_sf"] for b in sf_benchmarks) if sf_benchmarks else 1600
+        cost_per_sf_mid = round(sum(b["cost_per_sf"] for b in sf_benchmarks) / len(sf_benchmarks)) if sf_benchmarks else 1200
+
+        # ROM ranges
+        rom_low = round(sf * cost_per_sf_low * 0.90)
+        rom_mid = round(sf * cost_per_sf_mid)
+        rom_high = round(sf * cost_per_sf_high * 1.15)
+
+        # Division breakdown (from historical data — renovation uses 370 Gerbaz ratios, new uses 574 Johnson)
+        if ptype in ("renovation", "remodel"):
+            # 370 Gerbaz division ratios (from final actual costs)
+            div_ratios = {
+                "01 - General Requirements": 0.185,  # ran very high — use actual ratio
+                "09 - Finishes": 0.238,
+                "15 - Mechanical": 0.087,
+                "06 - Wood and Plastics": 0.079,
+                "16 - Electrical": 0.070,
+                "04 - Masonry": 0.086,
+                "02 - Site Construction": 0.038,
+                "08 - Doors and Windows": 0.027,
+                "Contractor Fee + Insurance": 0.150,
+                "Other Divisions": 0.040,
+            }
+            overrun_note = "WARNING: Renovation GR historically runs 3-4x submitted budget. Electrical runs 2-3x. Budget these divisions conservatively."
+        else:
+            # 574 Johnson + 275 Sunnyside division ratios
+            div_ratios = {
+                "06 - Wood and Plastics": 0.22,
+                "15 - Mechanical": 0.14,
+                "16 - Electrical": 0.09,
+                "08 - Doors and Windows": 0.08,
+                "09 - Finishes": 0.07,
+                "02 - Sitework and Excavation": 0.11,
+                "07 - Thermal and Moisture": 0.04,
+                "05 - Metals": 0.03,
+                "04 - Masonry": 0.02,
+                "01 - General Requirements": 0.10,
+                "Contractor Fee + Insurance": 0.10,
+            }
+            overrun_note = "New construction estimates based on 574 Johnson Drive ($1,202/SF, 2026) and 275 Sunnyside ($54M GMP, 2026)."
+
+        division_breakdown = []
+        for div, ratio in div_ratios.items():
+            division_breakdown.append({
+                "division": div,
+                "rom_low": round(rom_low * ratio),
+                "rom_mid": round(rom_mid * ratio),
+                "rom_high": round(rom_high * ratio),
+                "pct_of_total": f"{round(ratio * 100)}%",
+            })
+
+        return _response("/knowledge/rom-estimate", {
+            "inputs": {"sf": sf, "project_type": ptype, "market": "Aspen CO"},
+            "rom": {
+                "low": rom_low, "mid": rom_mid, "high": rom_high,
+                "cost_per_sf_low": cost_per_sf_low,
+                "cost_per_sf_mid": cost_per_sf_mid,
+                "cost_per_sf_high": cost_per_sf_high,
+            },
+            "division_breakdown": division_breakdown,
+            "benchmarks_used": benchmarks,
+            "methodology_note": overrun_note,
+            "data_confidence": "medium" if not sf_benchmarks else "high",
+        }, start=t0)
+    except Exception as e:
+        return _response("/knowledge/rom-estimate", {}, errors=[str(e)], start=t0)
+
+
+# ── Bid Level View ────────────────────────────────────────────────────────────
+@router.get("/project/{code}/bid-level")
+def bid_level_view(code: str, division: str = None, status: str = None):
+    """Bid leveling view for a project — all packages with all bids, sorted low to high.
+    division: filter to a specific CSI division (optional).
+    status: filter packages by status (optional).
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        with conn.cursor() as cur:
+            pkg_where = "bp.project_id = %s"
+            pkg_params: list = [pid]
+            if division:
+                pkg_where += " AND bp.csi_division = %s"
+                pkg_params.append(division)
+            if status:
+                pkg_where += " AND bp.status = %s"
+                pkg_params.append(status)
+            cur.execute(f"""
+                SELECT bp.id, bp.package_name, bp.csi_division, bp.status,
+                       bp.awarded_amount, bp.hubspot_deal_id,
+                       (SELECT COUNT(*) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS bid_count,
+                       (SELECT MIN(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS low_bid,
+                       (SELECT MAX(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS high_bid
+                FROM bid_packages bp
+                WHERE {pkg_where}
+                ORDER BY bp.csi_division, bp.package_name
+            """, pkg_params)
+            packages = [dict(r) for r in cur.fetchall()]
+
+            # For each package, get the ranked bid list + historical intelligence
+            leveled = []
+            for pkg in packages:
+                cur.execute("""
+                    SELECT be.id, be.bid_amount, be.status AS bid_status,
+                           be.date_received, be.notes, be.quote_ref,
+                           be.vendor_id,
+                           v.company_name, v.contact_name, v.phone, v.email,
+                           v.bid_count AS vendor_total_bids, v.win_rate_pct
+                    FROM bid_entries be
+                    LEFT JOIN vendors v ON v.id = be.vendor_id
+                    WHERE be.bid_package_id = %s AND be.bid_amount > 0
+                    ORDER BY be.bid_amount ASC
+                """, (pkg["id"],))
+                bids = [dict(b) for b in cur.fetchall()]
+
+                # Portfolio ROM benchmark for this CSI division
+                # Only real vendor bids from active/bidding/preconstruction projects — not ASPN aggregated reference data
+                csi = pkg.get("csi_division")
+                rom = {"division": csi, "sample_count": 0, "avg": None, "median": None, "min": None, "max": None}
+                if csi:
+                    cur.execute("""
+                        SELECT COUNT(*) AS n,
+                               ROUND(AVG(be.bid_amount)) AS avg_bid,
+                               ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY be.bid_amount)) AS median_bid,
+                               ROUND(MIN(be.bid_amount)) AS min_bid,
+                               ROUND(MAX(be.bid_amount)) AS max_bid
+                        FROM bid_entries be
+                        JOIN bid_packages bp ON bp.id = be.bid_package_id
+                        JOIN projects p ON p.id = bp.project_id
+                        WHERE be.csi_division = %s AND be.bid_amount > 0
+                          AND p.project_code NOT LIKE 'ASPN-%%'
+                          AND p.status != 'test'
+                    """, (csi,))
+                    row = cur.fetchone()
+                    if row and row["n"] and row["n"] > 0:
+                        rom = {
+                            "division": csi, "sample_count": int(row["n"]),
+                            "avg": float(row["avg_bid"]) if row["avg_bid"] else None,
+                            "median": float(row["median_bid"]) if row["median_bid"] else None,
+                            "min": float(row["min_bid"]) if row["min_bid"] else None,
+                            "max": float(row["max_bid"]) if row["max_bid"] else None,
+                        }
+
+                for i, b in enumerate(bids):
+                    b["rank"] = i + 1
+                    amt = float(b["bid_amount"]) if b["bid_amount"] else None
+                    b["bid_amount"] = amt
+                    if i > 0 and bids[0]["bid_amount"]:
+                        spread = amt - float(bids[0]["bid_amount"])
+                        b["spread_from_low"] = round(spread)
+                        b["spread_pct"] = round((spread / float(bids[0]["bid_amount"])) * 100, 1)
+                    # Price flag vs portfolio ROM
+                    if amt and rom["avg"]:
+                        ratio = amt / rom["avg"]
+                        b["vs_portfolio_avg_pct"] = round((ratio - 1) * 100, 1)
+                        if ratio < 0.80:   b["price_flag"] = "low"
+                        elif ratio < 0.95: b["price_flag"] = "competitive"
+                        elif ratio < 1.10: b["price_flag"] = "normal"
+                        elif ratio < 1.30: b["price_flag"] = "high"
+                        else:              b["price_flag"] = "very_high"
+                    else:
+                        b["vs_portfolio_avg_pct"] = None
+                        b["price_flag"] = "no_benchmark"
+                    # Vendor cross-project history (most recent 5 bids on other HCI projects)
+                    vendor_id = b.get("vendor_id")
+                    b["vendor_history"] = []
+                    if vendor_id:
+                        cur.execute("""
+                            SELECT p.name AS project_name, p.project_code,
+                                   bp2.package_name, be2.bid_amount, be2.status,
+                                   be2.date_received
+                            FROM bid_entries be2
+                            JOIN bid_packages bp2 ON bp2.id = be2.bid_package_id
+                            JOIN projects p ON p.id = bp2.project_id
+                            WHERE be2.vendor_id = %s AND be2.bid_amount > 0
+                              AND be2.bid_package_id != %s
+                              AND p.project_code NOT LIKE 'ASPN-%%'
+                            ORDER BY be2.date_received DESC NULLS LAST
+                            LIMIT 5
+                        """, (vendor_id, pkg["id"]))
+                        hist = [dict(h) for h in cur.fetchall()]
+                        for h in hist:
+                            h["bid_amount"] = float(h["bid_amount"]) if h["bid_amount"] else None
+                        b["vendor_history"] = hist
+
+                pkg["bids"] = bids
+                pkg["rom_context"] = rom
+                pkg["low_bid"] = float(pkg["low_bid"]) if pkg["low_bid"] else None
+                pkg["high_bid"] = float(pkg["high_bid"]) if pkg["high_bid"] else None
+                pkg["spread"] = round(float(pkg["high_bid"]) - float(pkg["low_bid"])) if pkg["low_bid"] and pkg["high_bid"] else None
+                leveled.append(pkg)
+
+        conn.close()
+        total_pkgs = len(leveled)
+        pkgs_with_bids = sum(1 for p in leveled if p["bid_count"] > 0)
+        pkgs_no_bids = total_pkgs - pkgs_with_bids
+        return _response(f"/project/{code}/bid-level", {
+            "project_code": code,
+            "summary": {
+                "total_packages": total_pkgs,
+                "packages_with_bids": pkgs_with_bids,
+                "packages_no_bids": pkgs_no_bids,
+                "pct_covered": round((pkgs_with_bids / total_pkgs * 100) if total_pkgs else 0, 1),
+            },
+            "packages": leveled,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/bid-level", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/project/{code}/bid-level")
+def run_bid_leveling_for_project(code: str, dry_run: bool = True):
+    """
+    Run the full bid leveling workflow for a project.
+    Scans Drive vendor folders, extracts bids from PDFs via Gemini, reads the
+    Google Sheet tracker, merges both sources, and returns a leveled comparison
+    per division with low bid, spread, and recommended vendor.
+
+    dry_run=True (default): analysis only, no Drive writes.
+    dry_run=False: generates Excel leveling files and queues them for upload.
+
+    Usage examples:
+      POST /gateway/project/1355R/bid-level          → level 1355 Riverside
+      POST /gateway/project/101F/bid-level           → level 101 Francis
+      POST /gateway/project/101F/bid-level?dry_run=false  → level + generate Excel
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        data = _proxy(f"/services/bid-leveling/projects/{pid}/run",
+                      method="POST",
+                      json={"dry_run": dry_run, "divisions": None})
+        return _response(f"/project/{code}/bid-level", data, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/bid-level", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/project/{code}/drive-bids")
+def get_drive_bids_for_project(code: str):
+    """
+    Return all Drive-sourced bids for a project from the drive_bids table.
+    Shows actual bid amounts extracted from vendor PDF files, with leveling summary
+    (low bid, high bid, spread per division). More accurate than the Sheet tracker.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        data = _proxy(f"/services/bid-leveling/projects/{pid}/drive-bids")
+        return _response(f"/project/{code}/drive-bids", data, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/drive-bids", {}, errors=[str(e)], start=t0)
+
+
+# ── Project Registry ──────────────────────────────────────────────────────────
+@router.get("/projects")
+def project_registry(status: str = None):
+    """Full project registry — all real projects with status, scope, team.
+    status: filter by status (active, reference, design, completed, bidding, preconstruction, closeout).
+    Excludes test projects automatically.
+    """
+    t0 = time.time()
+    try:
+        conn = _pg()
+        with conn.cursor() as cur:
+            where = "status != 'test'"
+            params: list = []
+            if status:
+                where += " AND status = %s"
+                params.append(status)
+            cur.execute(f"""
+                SELECT id, project_code, name, address, status, pm_name, super_name,
+                       owner_name, hubspot_deal_id, scope,
+                       (SELECT COUNT(*) FROM bid_packages bp WHERE bp.project_id = projects.id) AS bid_packages,
+                       (SELECT COUNT(*) FROM bid_entries be JOIN bid_packages bp ON bp.id = be.bid_package_id
+                        WHERE bp.project_id = projects.id AND be.bid_amount > 0) AS bids_received,
+                       (SELECT COUNT(*) FROM risks r WHERE r.project_id = projects.id AND r.status = 'open') AS open_risks,
+                       (SELECT COUNT(*) FROM daily_logs dl WHERE dl.project_id = projects.id) AS daily_logs
+                FROM projects
+                WHERE {where}
+                ORDER BY CASE status
+                    WHEN 'active' THEN 1 WHEN 'bidding' THEN 2
+                    WHEN 'preconstruction' THEN 3 WHEN 'closeout' THEN 4
+                    WHEN 'design' THEN 5 WHEN 'reference' THEN 6
+                    WHEN 'completed' THEN 7 ELSE 8 END, id
+            """, params)
+            rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        live = [r for r in rows if r["status"] == "active"]
+        ref  = [r for r in rows if r["status"] == "reference"]
+        return _response("/projects", {
+            "total": len(rows),
+            "live_count": len(live),
+            "reference_count": len(ref),
+            "projects": rows,
+        }, start=t0)
+    except Exception as e:
+        return _response("/projects", {}, errors=[str(e)], start=t0)
+
+
+# ── Procurement Risk ──────────────────────────────────────────────────────────
+@router.get("/project/{code}/procurement-risk")
+def procurement_risk(code: str):
+    """Procurement risk analysis — gaps, single bids, overdue packages, cost exposure.
+    Shows which packages need attention before buyout is complete.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT bp.id, bp.package_name, bp.csi_division, bp.status,
+                       bp.awarded_amount, bp.hubspot_deal_id,
+                       COUNT(be.id) FILTER (WHERE be.bid_amount > 0) AS bid_count,
+                       MIN(be.bid_amount) FILTER (WHERE be.bid_amount > 0) AS low_bid,
+                       MAX(be.bid_amount) FILTER (WHERE be.bid_amount > 0) AS high_bid,
+                       STRING_AGG(v.company_name, ', ' ORDER BY be.bid_amount)
+                           FILTER (WHERE be.bid_amount > 0) AS bidders
+                FROM bid_packages bp
+                LEFT JOIN bid_entries be ON be.bid_package_id = bp.id
+                LEFT JOIN vendors v ON v.id = be.vendor_id
+                WHERE bp.project_id = %s
+                GROUP BY bp.id, bp.package_name, bp.csi_division, bp.status,
+                         bp.awarded_amount, bp.hubspot_deal_id
+                ORDER BY bp.csi_division, bp.package_name
+            """, (pid,))
+            packages = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        no_bids, single_bid, multi_bid, awarded = [], [], [], []
+        for p in packages:
+            bc = p["bid_count"] or 0
+            p["bid_count"] = bc
+            p["low_bid"]  = float(p["low_bid"])  if p["low_bid"]  else None
+            p["high_bid"] = float(p["high_bid"]) if p["high_bid"] else None
+            p["spread"]   = round(float(p["high_bid"]) - float(p["low_bid"])) if p["low_bid"] and p["high_bid"] else None
+            p["spread_pct"] = round((p["spread"] / float(p["low_bid"])) * 100, 1) if p["spread"] and p["low_bid"] else None
+            if p["awarded_amount"]:
+                awarded.append(p)
+            elif bc == 0:
+                no_bids.append(p)
+            elif bc == 1:
+                single_bid.append(p)
+            else:
+                multi_bid.append(p)
+
+        total = len(packages)
+        risk_score = "green"
+        if len(no_bids) > total * 0.5:
+            risk_score = "red"
+        elif len(no_bids) > total * 0.25 or len(single_bid) > total * 0.4:
+            risk_score = "yellow"
+
+        return _response(f"/project/{code}/procurement-risk", {
+            "project_code": code,
+            "risk_score": risk_score,
+            "summary": {
+                "total_packages": total,
+                "no_bids": len(no_bids),
+                "single_bid_only": len(single_bid),
+                "competitive_bids": len(multi_bid),
+                "awarded": len(awarded),
+                "bid_coverage_pct": round(((total - len(no_bids)) / total * 100) if total else 0, 1),
+            },
+            "no_bids": no_bids,
+            "single_bid": single_bid,
+            "competitive": multi_bid,
+            "awarded": awarded,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/procurement-risk", {}, errors=[str(e)], start=t0)
+
+
+# ── Plan Reader — Vision AI Analysis of Construction Documents ────────────────
+# Model routing: sonnet=default (no rate limit risk), opus=deep review on request
+# Gemini Flash will be added here when GEMINI_API_KEY is available (free tier)
+
+class PlanReadRequest(BaseModel):
+    file_id: str                      # Google Drive file ID of the PDF
+    project_code: Optional[str] = None
+    scope: Optional[str] = "full"     # "full" | "structural" | "roofing" | "finishes"
+    model: Optional[str] = "sonnet"   # "sonnet" | "opus" — opus is on-demand only
+    pages: Optional[str] = None       # e.g. "1-3" to limit pages; None = all
+
+
+@router.post("/plan/read")
+async def plan_read(req: PlanReadRequest, request: Request):
+    """
+    Download a PDF from Drive, convert each page to an image, and run vision AI
+    analysis to extract specifications, open items, RFI candidates, and scope gaps.
+
+    Model routing:
+      sonnet  — fast, cheap, good for routine reads (default)
+      opus    — deep forensic read, on-demand only, not for automation loops
+    """
+    import base64, subprocess, tempfile, glob
+    from pathlib import Path
+
+    t0 = time.time()
+    _require_key(request)
+
+    MODEL_MAP = {
+        "sonnet": "claude-sonnet-4-6",
+        "opus":   "claude-opus-4-8",
+    }
+    model_id = MODEL_MAP.get(req.model, "claude-sonnet-4-6")
+
+    PLAN_SYSTEM = """You are a licensed structural engineer and construction document reviewer analyzing drawings for a luxury residential project in Aspen, CO.
+
+For each drawing sheet, extract and report:
+1. SHEET INFO: Sheet number, title, scale, date, engineer/firm, revision status
+2. SPECIFICATIONS FOUND: All material specs, dimensions, grades, loads, connection requirements — quote verbatim
+3. OPEN ITEMS: Any notes saying "confirm", "verify", "TBD", "by others", "field verify", plus any markup flags
+4. RFI CANDIDATES: Specific questions requiring SE/architect response before bidding or construction
+5. SCOPE GAPS: What should be on this drawing that is absent or underspecified
+
+Be exhaustive and forensic. Quote exact callouts, dimensions, and notes verbatim. Flag anything with a question mark as unresolved."""
+
+    try:
+        # 1. Download PDF from Drive via MCP token (reuse existing Drive credential)
+        import anthropic as _anthropic
+        drive_resp = requests.get(
+            f"https://www.googleapis.com/drive/v3/files/{req.file_id}?alt=media",
+            headers={"Authorization": f"Bearer {os.environ.get('GOOGLE_ACCESS_TOKEN','')}"},
+            timeout=60,
+        )
+        if drive_resp.status_code != 200:
+            # Fallback: try via gateway drive endpoint which uses MCP session
+            return _response("/plan/read", {
+                "status": "credential_required",
+                "message": "Direct Drive API token not available in gateway context. "
+                           "Run plan_reader.py locally or provide GOOGLE_ACCESS_TOKEN in env.",
+                "file_id": req.file_id,
+                "model_requested": req.model,
+            }, warnings=["Use plan_reader.py locally for full Drive access"], start=t0)
+
+        # 2. Save PDF to temp dir
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdf_path = os.path.join(tmpdir, "plan.pdf")
+            with open(pdf_path, "wb") as f:
+                f.write(drive_resp.content)
+
+            # 3. Convert to images (pdftoppm)
+            page_filter = []
+            if req.pages:
+                parts = req.pages.split("-")
+                if len(parts) == 2:
+                    page_filter = ["-f", parts[0], "-l", parts[1]]
+
+            subprocess.run(
+                ["pdftoppm", "-r", "150", *page_filter, pdf_path, os.path.join(tmpdir, "page")],
+                capture_output=True, check=False
+            )
+
+            # Convert PPM to PNG
+            from PIL import Image as _Image
+            ppm_files = sorted(glob.glob(os.path.join(tmpdir, "page-*.ppm")))
+            if not ppm_files:
+                return _response("/plan/read", {}, errors=["PDF conversion produced no images"], start=t0)
+
+            client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+            findings = []
+
+            for i, ppm in enumerate(ppm_files, 1):
+                png = ppm.replace(".ppm", ".png")
+                _Image.open(ppm).save(png, "PNG", optimize=True)
+
+                with open(png, "rb") as f:
+                    img_b64 = base64.standard_b64encode(f.read()).decode()
+
+                resp = client.messages.create(
+                    model=model_id,
+                    max_tokens=2000,
+                    system=PLAN_SYSTEM,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
+                            {"type": "text", "text": f"Sheet {i} of {len(ppm_files)}. Project: {req.project_code or 'unknown'}. Scope focus: {req.scope}. Analyze completely."}
+                        ]
+                    }]
+                )
+                findings.append({"page": i, "analysis": resp.content[0].text})
+
+        # 4. Log and return
+        _log("/plan/read", "gateway", "vision-ai", "ok",
+             round((time.time() - t0) * 1000), str(uuid.uuid4()),
+             f"{len(findings)} pages analyzed via {model_id}")
+
+        return _response("/plan/read", {
+            "file_id": req.file_id,
+            "project_code": req.project_code,
+            "model_used": model_id,
+            "pages_analyzed": len(findings),
+            "scope": req.scope,
+            "findings": findings,
+        }, start=t0)
+
+    except Exception as e:
+        return _response("/plan/read", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/plan/read-local")
+async def plan_read_local_status():
+    """Quick status — returns instructions for running the local plan reader script."""
+    return _response("/plan/read/local", {
+        "local_script": "python3 /tmp/opus_plan_reader.py",
+        "last_output": "/tmp/1355R_opus_structural_analysis.json",
+        "models": {
+            "sonnet": "claude-sonnet-4-6 — default, no rate limit risk",
+            "opus":   "claude-opus-4-8 — deep read, on-demand only",
+            "gemini": "gemini-2.5-flash — free tier, vision-capable, add GEMINI_API_KEY to .env",
+            "gemini-pro": "gemini-2.5-pro — free tier (lower rate limits), deepest Gemini read",
+        },
+        "usage": {
+            "POST /gateway/plan/read": {
+                "file_id": "<drive_file_id>",
+                "project_code": "1355R",
+                "scope": "structural | roofing | finishes | full",
+                "model": "sonnet (default) | opus",
+                "pages": "1-3 (optional, limit pages)"
+            }
+        }
+    })
+
+
+# ── ntfy Push Notification Helper ─────────────────────────────────────────────
+
+NTFY_TOPIC = "hci-ai-os-buck"
+NTFY_BASE  = f"https://ntfy.sh/{NTFY_TOPIC}"
+
+
+def _ntfy(title: str, body: str, priority: str = "default", tags: str = "") -> dict:
+    """Push a notification to ntfy. priority: min|low|default|high|urgent"""
+    try:
+        # ntfy headers must be ASCII — encode title/body as UTF-8 percent encoding fallback
+        safe_title = title.encode("ascii", errors="replace").decode("ascii")
+        headers = {
+            "Title":    safe_title,
+            "Priority": priority,
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        if tags:
+            headers["Tags"] = tags
+        r = requests.post(NTFY_BASE, data=body.encode("utf-8"), headers=headers, timeout=10)
+        return {"status": "sent" if r.ok else "failed", "http": r.status_code}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
+@router.post("/notify/test")
+async def notify_test(request: Request):
+    """Push a test notification to Buck's ntfy topic (no auth required)."""
+    t0 = time.time()
+    result = _ntfy(
+        title="HCI AI OS — Test Notification",
+        body="Gateway push is working. ntfy channel confirmed live.",
+        priority="default",
+        tags="white_check_mark",
+    )
+    return _response("/notify/test", result, start=t0)
+
+
+@router.get("/poll-instructions")
+async def poll_instructions():
+    """
+    Poll ntfy topic for incoming messages from Buck.
+    Returns any messages posted to hci-ai-os-buck in the last 5 minutes.
+    """
+    t0 = time.time()
+    try:
+        r = requests.get(
+            f"{NTFY_BASE}/json",
+            params={"poll": "1", "since": "5m"},
+            timeout=15,
+        )
+        messages = []
+        for line in r.text.strip().splitlines():
+            if not line:
+                continue
+            try:
+                import json as _json
+                msg = _json.loads(line)
+                if msg.get("event") == "message":
+                    messages.append({
+                        "id":      msg.get("id"),
+                        "time":    msg.get("time"),
+                        "title":   msg.get("title", ""),
+                        "message": msg.get("message", ""),
+                    })
+            except Exception:
+                pass
+        return _response("/poll-instructions", {
+            "topic":    NTFY_TOPIC,
+            "window":   "last 5 minutes",
+            "count":    len(messages),
+            "messages": messages,
+        }, start=t0)
+    except Exception as e:
+        return _response("/poll-instructions", {}, errors=[str(e)], start=t0)
+
+
+# ── Batch Endpoint ─────────────────────────────────────────────────────────────
+
+class BatchOperation(BaseModel):
+    op: str
+    params: Dict[str, Any] = {}
+
+class BatchRequest(BaseModel):
+    session_id: Optional[str] = None
+    operations: list[BatchOperation]
+
+
+def _exec_op(op: str, params: dict) -> dict:
+    """Execute a single batch operation. Returns {op, status, ...result}."""
+    base = {"op": op}
+
+    if op == "ntfyPush":
+        r = _ntfy(
+            title=params.get("title", "HCI Notification"),
+            body=params.get("body", ""),
+            priority=params.get("priority", "default"),
+            tags=params.get("tags", ""),
+        )
+        return {**base, **r}
+
+    if op == "emailDraft":
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+            from microsoft_graph import create_draft
+            to_name  = params.get("to_name", "")
+            to_email = params.get("to_email", "")
+            r = create_draft(
+                subject=params.get("subject", "(no subject)"),
+                html_body=params.get("body_html", params.get("body", "")),
+                to=[(to_name, to_email)],
+            )
+            return {**base, "status": "ok", "draft_id": r.get("id", "")[:30]}
+        except Exception as e:
+            return {**base, "status": "error", "detail": str(e)[:200]}
+
+    if op == "sendHandoff":
+        try:
+            r = requests.post(
+                f"{_INTERNAL_BASE.replace('/api/v1','')}/gateway/agent/handoff",
+                headers={"X-API-Key": _INTERNAL_KEY},
+                json={
+                    "title":             params.get("title", "Batch Handoff"),
+                    "body":              params.get("body", ""),
+                    "priority":          params.get("priority", "medium"),
+                    "source":            params.get("source", "batch"),
+                    "destination_agent": params.get("destination_agent", "claude_code"),
+                },
+                timeout=20,
+            )
+            data = r.json()
+            return {**base, "status": "queued" if r.ok else "error",
+                    "file": data.get("payload", {}).get("file", "")}
+        except Exception as e:
+            return {**base, "status": "error", "detail": str(e)[:200]}
+
+    if op == "bidLevel":
+        try:
+            project_id  = params.get("project_id")
+            project_code = params.get("project_code", "")
+            dry_run = params.get("dry_run", True)
+            code = project_code or str(project_id)
+            r = requests.post(
+                f"{_INTERNAL_BASE.replace('/api/v1','')}/gateway/project/{code}/bid-level",
+                headers={"X-API-Key": _INTERNAL_KEY},
+                params={"dry_run": dry_run},
+                timeout=60,
+            )
+            data = r.json()
+            return {**base, "status": "ok" if r.ok else "error",
+                    "summary": str(data.get("payload", {}).get("summary", ""))[:100]}
+        except Exception as e:
+            return {**base, "status": "error", "detail": str(e)[:200]}
+
+    if op == "driveWrite":
+        return {**base, "status": "not_implemented",
+                "detail": "driveWrite via batch pending Drive write service"}
+
+    if op == "dbQuery":
+        try:
+            sql   = params.get("sql", "")
+            args  = params.get("args", [])
+            if not sql.strip().upper().startswith("SELECT"):
+                return {**base, "status": "rejected", "detail": "Only SELECT allowed via batch"}
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, args)
+                    rows = [dict(r) for r in cur.fetchall()]
+            return {**base, "status": "ok", "rows": rows[:50]}
+        except Exception as e:
+            return {**base, "status": "error", "detail": str(e)[:200]}
+
+    return {**base, "status": "unknown_op", "detail": f"Op '{op}' not recognized"}
+
+
+@router.post("/batch")
+async def gateway_batch(req: BatchRequest, request: Request):
+    """
+    Execute multiple gateway operations in a single call.
+    GBT makes 1 tool call → N operations run server-side → 1 result returned.
+    Auto-sends ntfy push on completion.
+    """
+    _require_key(request)
+    t0 = time.time()
+    rid = str(uuid.uuid4())
+    session = req.session_id or rid[:8]
+
+    results  = []
+    ok_count = 0
+
+    for op_item in req.operations:
+        result = _exec_op(op_item.op, op_item.params)
+        results.append(result)
+        if result.get("status") in ("ok", "queued", "sent"):
+            ok_count += 1
+
+    total = len(results)
+    failed = total - ok_count
+    summary = f"{ok_count}/{total} operations completed"
+    if failed:
+        summary += f" ({failed} failed)"
+
+    # Auto-push ntfy summary
+    _ntfy(
+        title=f"Batch Complete [{session}]",
+        body=summary,
+        priority="default",
+        tags="white_check_mark" if not failed else "warning",
+    )
+
+    _log("/batch", "gbt-batch", "multi-op", "ok",
+         round((time.time() - t0) * 1000), rid, summary)
+
+    return _response("/batch", {
+        "session_id":  session,
+        "request_id":  rid,
+        "operations":  total,
+        "ok":          ok_count,
+        "failed":      failed,
+        "summary":     summary,
+        "results":     results,
+    }, start=t0)
+
+
+# ── Intent Router ─────────────────────────────────────────────────────────────
+
+import re as _re
+
+class IntentRequest(BaseModel):
+    message: str
+    source: Optional[str] = "api"
+    user: Optional[str] = "buck"
+
+_INTENT_PATTERNS = [
+    # bid leveling
+    (r"level\s+bids?\s+(?:for\s+)?(\w+)",           "bid_leveling"),
+    (r"(\w+)\s+bid\s+level",                          "bid_leveling"),
+    # bids / procurement
+    (r"bids?\s+(?:for\s+)?(\w+)",                    "bids"),
+    (r"(\w+)\s+bids?",                                "bids"),
+    # status / health
+    (r"\bstatus\b|\bhealth\b|\bwhat.s up\b",         "status"),
+    # daily log
+    (r"daily\s+(?:log|report)\s+(?:for\s+)?(\w+)",   "daily_log"),
+    # rfi
+    (r"rfi\s+(?:status\s+)?(?:for\s+)?(\w+)",        "rfi_status"),
+    (r"(\w+)\s+rfi",                                  "rfi_status"),
+    # action list
+    (r"actions?\s+(?:for\s+)?(\w+)",                  "action_list"),
+    # plan analysis
+    (r"(?:run\s+)?plans?\s+(?:for\s+)?(\w+)",         "plan_analysis"),
+    (r"review\s+plans?\s+(?:for\s+)?(\w+)",           "plan_analysis"),
+    # approve / reject
+    (r"^(?:approve|yes|confirm)\b",                   "approve"),
+    (r"^(?:reject|no|deny)\b",                        "reject"),
+    # report
+    (r"\b(?:morning\s+)?(?:brief|report|exec)\b",    "exec_report"),
+]
+
+PROJECT_CODES = {"64ew", "101f", "1355r", "246gw", "64eastwood", "101francis", "1355riverside"}
+
+def _extract_project(msg: str) -> Optional[str]:
+    for code in ["64EW", "101F", "1355R", "246GW"]:
+        if code.lower() in msg.lower():
+            return code
+    return None
+
+def _route_intent(intent: str, project: Optional[str], message: str) -> dict:
+    base_url = "http://localhost:8000"
+    headers  = {"X-API-Key": _INTERNAL_KEY}
+
+    if intent == "status" or intent == "exec_report":
+        r = requests.get(f"{base_url}/gateway/executive/report", timeout=30)
+        data = r.json()
+        payload = data.get("payload", {})
+        brief = str(payload)[:300]
+        _ntfy("HCI Status", brief[:200], "default", "chart_with_upwards_trend")
+        return {"intent": intent, "result": payload}
+
+    if intent == "bids" and project:
+        r = requests.get(f"{base_url}/gateway/project/{project}/bids",
+                         headers=headers, timeout=30)
+        data = r.json().get("payload", {})
+        summary = f"{project} bids: {len(data.get('bids',[]))} packages"
+        _ntfy(f"Bids: {project}", summary, "default", "money_bag")
+        return {"intent": intent, "project": project, "result": data}
+
+    if intent == "bid_leveling" and project:
+        r = requests.post(f"{base_url}/gateway/project/{project}/bid-level",
+                          headers=headers, params={"dry_run": True}, timeout=60)
+        data = r.json().get("payload", {})
+        summary = str(data.get("summary", "leveling run"))[:150]
+        _ntfy(f"Bid Level: {project}", summary, "default", "bar_chart")
+        return {"intent": intent, "project": project, "dry_run": True, "result": data}
+
+    if intent == "daily_log" and project:
+        r = requests.get(f"{base_url}/gateway/project/{project}/weekly-digest",
+                         headers=headers, timeout=30)
+        data = r.json().get("payload", {})
+        _ntfy(f"Log: {project}", str(data)[:200], "default", "memo")
+        return {"intent": intent, "project": project, "result": data}
+
+    if intent == "rfi_status" and project:
+        r = requests.get(f"{base_url}/gateway/project/{project}/risks",
+                         headers=headers, timeout=30)
+        data = r.json().get("payload", {})
+        _ntfy(f"RFIs: {project}", str(data)[:200], "default", "pencil")
+        return {"intent": intent, "project": project, "result": data}
+
+    if intent == "action_list" and project:
+        r = requests.get(f"{base_url}/gateway/project/{project}/action-list",
+                         headers=headers, timeout=30)
+        data = r.json().get("payload", {})
+        _ntfy(f"Actions: {project}", str(data)[:200], "default", "pushpin")
+        return {"intent": intent, "project": project, "result": data}
+
+    if intent == "plan_analysis" and project:
+        _ntfy(f"Plans queued: {project}", "Plan analysis requested — Claude Code will run on next session", "high", "blueprints")
+        return {"intent": intent, "project": project,
+                "result": "Plan analysis queued — requires handoff to Claude Code"}
+
+    if intent in ("approve", "reject"):
+        return {"intent": intent, "result": "Approval queue not yet implemented — use /gateway/batch"}
+
+    return {"intent": "unknown", "message": message,
+            "result": "Intent not recognized — forwarding to manual review",
+            "suggestion": "Try: 'level bids 1355R', 'status', 'bids for 64EW', 'daily log 101F'"}
+
+
+@router.post("/intent/route")
+async def intent_route(req: IntentRequest, request: Request):
+    """
+    Natural language → gateway action.
+    Buck or Field GPT sends a message, this routes it and executes the right service.
+    """
+    _require_key(request)
+    t0 = time.time()
+    msg = req.message.strip()
+
+    intent = None
+    for pattern, name in _INTENT_PATTERNS:
+        if _re.search(pattern, msg, _re.IGNORECASE):
+            intent = name
+            break
+
+    project = _extract_project(msg)
+
+    try:
+        result = _route_intent(intent or "unknown", project, msg)
+    except Exception as e:
+        result = {"intent": intent, "error": str(e)[:200]}
+
+    _log("/intent/route", req.source or "api", f"intent:{intent}", "ok",
+         round((time.time() - t0) * 1000), str(uuid.uuid4()), f"intent={intent} project={project}")
+
+    return _response("/intent/route", {
+        "message":  msg,
+        "source":   req.source,
+        "intent":   intent,
+        "project":  project,
+        **result,
+    }, start=t0)
+
+
+# ── Plans Folder Smart Scan ───────────────────────────────────────────────────
+
+_DISCIPLINE_PATTERNS = {
+    "ARCHITECTURAL": _re.compile(r"arch|A-\d|floor.?plan|elevation|section|architectural", _re.IGNORECASE),
+    "STRUCTURAL":    _re.compile(r"struct|S-\d|S\.\d|beam|foundation|framing|structural", _re.IGNORECASE),
+    "MEP":           _re.compile(r"mech|M-\d|plumb|P-\d|electric|E-\d|HVAC|mechanical|plumbing", _re.IGNORECASE),
+    "CIVIL":         _re.compile(r"civil|C-\d|site|grading|utility", _re.IGNORECASE),
+    "INTERIOR":      _re.compile(r"interior|ID-\d|finish|FF.E|interior.design", _re.IGNORECASE),
+    "ROOFING":       _re.compile(r"roof|R-\d", _re.IGNORECASE),
+    "LANDSCAPE":     _re.compile(r"landscape|L-\d|planting", _re.IGNORECASE),
+    "PERMITS":       _re.compile(r"permit|approved", _re.IGNORECASE),
+    "PROGRESS":      _re.compile(r"progress|WIP|draft|\d+%", _re.IGNORECASE),
+    "ARCHIVE":       _re.compile(r"archive|superseded|old|prior|void", _re.IGNORECASE),
+}
+
+def _classify_discipline(filename: str) -> str:
+    for disc, pat in _DISCIPLINE_PATTERNS.items():
+        if pat.search(filename):
+            return disc
+    return "GENERAL"
+
+
+@router.get("/project/{code}/plans")
+async def project_plans(
+    code: str,
+    scope: str = Query("current", description="current | archived | all"),
+    disciplines: Optional[str] = Query(None, description="Comma-separated: structural,architectural,mep"),
+):
+    """
+    Scan project drawings folder and return classified file list.
+    scope=current excludes archived files. disciplines filters by type.
+    """
+    t0 = time.time()
+    code = code.upper()
+
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT drawings_folder_id, drive_folder_id, name FROM projects WHERE project_code = %s",
+                    (code,)
+                )
+                row = cur.fetchone()
+
+        if not row:
+            return _response(f"/project/{code}/plans", {}, errors=[f"Project {code} not found"])
+
+        folder_id = row["drawings_folder_id"] or row["drive_folder_id"]
+        if not folder_id:
+            return _response(f"/project/{code}/plans", {}, errors=[f"No drawings folder configured for {code}"])
+
+        # Pull files via Drive API directly (avoids self-referential HTTP deadlock)
+        from integrations.credentials import get_google_token as _gtoken
+        import ssl as _ssl, certifi as _certifi, urllib.request as _ur, urllib.parse as _up
+        _DBASE = "https://www.googleapis.com/drive/v3"
+        _SSL = _ssl.create_default_context(cafile=_certifi.where())
+
+        def _drive_list_folder(fid):
+            token = _gtoken("drive")
+            params = _up.urlencode({
+                "q": f"'{fid}' in parents and trashed=false",
+                "fields": "files(id,name,mimeType,modifiedTime,size)",
+                "pageSize": "200",
+                "supportsAllDrives": "true",
+                "includeItemsFromAllDrives": "true",
+            })
+            req = _ur.Request(f"{_DBASE}/files?{params}",
+                              headers={"Authorization": f"Bearer {token}"})
+            with _ur.urlopen(req, context=_SSL, timeout=30) as r:
+                import json as _j
+                return _j.loads(r.read()).get("files", [])
+
+        drive_raw = _drive_list_folder(folder_id)
+        raw_files = []
+        for f in drive_raw:
+            raw_files.append({
+                "id":        f.get("id", ""),
+                "name":      f.get("name", ""),
+                "mime_type": f.get("mimeType", ""),
+                "modified":  f.get("modifiedTime", ""),
+                "size":      f.get("size", 0),
+            })
+
+        disc_filter = {d.strip().upper() for d in disciplines.split(",")} if disciplines else None
+        results = []
+
+        for f in raw_files:
+            name = f.get("name", "")
+            mime = f.get("mime_type", f.get("mimeType", ""))
+            # Include PDFs and folders (folders may contain PDFs)
+            if "pdf" not in mime.lower() and "folder" not in mime.lower():
+                continue
+
+            disc = _classify_discipline(name)
+            is_archive = bool(_DISCIPLINE_PATTERNS["ARCHIVE"].search(name))
+            version_status = "archived" if is_archive else "current"
+
+            if scope == "current" and is_archive:
+                continue
+            if scope == "archived" and not is_archive:
+                continue
+            if disc_filter and disc not in disc_filter:
+                continue
+
+            results.append({
+                "file_id":        f.get("id", ""),
+                "filename":       name,
+                "discipline":     disc,
+                "version_status": version_status,
+                "modified_date":  f.get("modified", f.get("modifiedTime", "")),
+                "size_bytes":     f.get("size", f.get("fileSize", 0)),
+            })
+
+        return _response(f"/project/{code}/plans", {
+            "project":          code,
+            "drawings_folder":  folder_id,
+            "scope":            scope,
+            "disciplines":      list(disc_filter) if disc_filter else "all",
+            "file_count":       len(results),
+            "files":            results,
+        }, start=t0)
+
+    except Exception as e:
+        return _response(f"/project/{code}/plans", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/project/{code}/shared-drive-id")
+async def project_shared_drive_id(code: str):
+    """Return configured Drive folder IDs for a project."""
+    t0 = time.time()
+    code = code.upper()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT project_code, drive_folder_id, drawings_folder_id, bid_folder_id, gsheet_bid_tracker FROM projects WHERE project_code = %s",
+                    (code,)
+                )
+                row = cur.fetchone()
+        if not row:
+            return _response(f"/project/{code}/shared-drive-id", {}, errors=["Project not found"])
+        return _response(f"/project/{code}/shared-drive-id", dict(row), start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/shared-drive-id", {}, errors=[str(e)], start=t0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# APPROVAL LOOP — ntfy-aware approval creation (approve/reject/list use
+# existing endpoints at /approvals/pending, /approvals/{id}/approve|reject)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ApprovalCreateRequest(BaseModel):
+    action_type: str
+    target_description: str
+    reason: Optional[str] = None
+    project_code: Optional[str] = None
+    amount: Optional[float] = None
+    proposed_payload: Optional[Dict[str, Any]] = {}
+    priority: Optional[str] = "normal"
+    workflow: Optional[str] = "manual"
+
+
+@router.post("/approvals")
+async def create_approval(req: ApprovalCreateRequest, request: Request):
+    """
+    Queue an action for Buck's approval via the approval_queue table.
+    Automatically pushes ntfy so Buck gets a phone notification.
+    Use GET /approvals/pending to see queue, POST /approvals/{id}/approve|reject to act.
+    """
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO approval_queue
+                        (workflow, action_type, target_system, target_description,
+                         reason, project_id, proposed_payload, priority, actor)
+                    SELECT %s, %s, %s, %s, %s, p.id, %s, %s, 'gateway'
+                    FROM projects p WHERE p.project_code = %s
+                    RETURNING id
+                """, (
+                    req.workflow, req.action_type,
+                    req.project_code or "system",
+                    req.target_description,
+                    req.reason,
+                    psycopg2.extras.Json(req.proposed_payload or {}),
+                    req.priority,
+                    req.project_code,
+                ))
+                row = cur.fetchone()
+                if not row:
+                    # Insert without project FK if project_code not found
+                    cur.execute("""
+                        INSERT INTO approval_queue
+                            (workflow, action_type, target_system, target_description,
+                             reason, proposed_payload, priority, actor)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,'gateway')
+                        RETURNING id
+                    """, (
+                        req.workflow, req.action_type,
+                        req.project_code or "system",
+                        req.target_description, req.reason,
+                        psycopg2.extras.Json(req.proposed_payload or {}),
+                        req.priority,
+                    ))
+                    row = cur.fetchone()
+            conn.commit()
+        approval_id = row["id"] if row else None
+        # Push ntfy
+        amt_str = f" ${req.amount:,.0f}" if req.amount else ""
+        proj_str = f" [{req.project_code}]" if req.project_code else ""
+        _ntfy(
+            f"Needs approval #{approval_id}{proj_str}",
+            f"{req.target_description}{amt_str}\n\n"
+            f"Type: {req.action_type}\n{req.reason or ''}\n\n"
+            f"Act at: GET /gateway/approvals/pending\n"
+            f"Approve: POST /gateway/approvals/{approval_id}/approve",
+            priority="high", tags="bell"
+        )
+        _log("/approvals", "gateway", "approval_queue", "created",
+             round((time.time()-t0)*1000), str(uuid.uuid4()), f"id={approval_id}")
+        return _response("/approvals", {"approval_id": approval_id, "status": "pending", "ntfy_sent": True}, start=t0)
+    except Exception as e:
+        return _response("/approvals", {}, errors=[str(e)], start=t0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EVENT TRIGGER SYSTEM — health change alerts, new bid leveling, drive watcher
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/events/health-check")
+async def event_health_check(request: Request):
+    """
+    Scheduled event: poll all project health scores. Push ntfy if any project
+    crossed a threshold (GREEN->YELLOW, YELLOW->RED, any->RED).
+    Called by n8n every 30 minutes.
+    """
+    t0 = time.time()
+    alerts = []
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                # Compare today's health vs yesterday's from project_brain_snapshots
+                cur.execute("""
+                    SELECT p.project_code,
+                           today.health AS current_health,
+                           yesterday.health AS prev_health
+                    FROM projects p
+                    LEFT JOIN LATERAL (
+                        SELECT health FROM project_brain_snapshots
+                        WHERE project_id = p.id
+                        ORDER BY snapshot_date DESC LIMIT 1
+                    ) today ON TRUE
+                    LEFT JOIN LATERAL (
+                        SELECT health FROM project_brain_snapshots
+                        WHERE project_id = p.id
+                        ORDER BY snapshot_date DESC OFFSET 1 LIMIT 1
+                    ) yesterday ON TRUE
+                    WHERE p.status = 'active' AND p.project_code IS NOT NULL
+                """)
+                rows = cur.fetchall()
+
+        SEVERITY = {"GREEN": 0, "YELLOW": 1, "RED": 2, "CRITICAL": 3}
+        for row in rows:
+            code = row["project_code"]
+            current = (row["current_health"] or "GREEN").upper()
+            previous = (row["prev_health"] or "GREEN").upper()
+            curr_sev = SEVERITY.get(current, 0)
+            prev_sev = SEVERITY.get(previous, 0)
+            if curr_sev > prev_sev:
+                alerts.append({
+                    "project": code,
+                    "from": previous,
+                    "to": current,
+                    "severity": "CRITICAL" if current == "RED" else "HIGH"
+                })
+
+        if alerts:
+            for alert in alerts:
+                priority = "urgent" if alert["to"] == "RED" else "high"
+                _ntfy(
+                    f"HEALTH ALERT: {alert['project']} {alert['from']}->{alert['to']}",
+                    f"Project {alert['project']} health changed: {alert['from']} -> {alert['to']}\n"
+                    f"Check /gateway/project/{alert['project']}/pm for top risks",
+                    priority=priority, tags="warning"
+                )
+        else:
+            pass  # No change — no push needed
+
+        _log("/events/health-check", "n8n", "projects", "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4()), f"{len(alerts)} alerts")
+        return _response("/events/health-check", {
+            "projects_checked": len(rows),
+            "alerts_fired": len(alerts),
+            "alerts": alerts
+        }, start=t0)
+    except Exception as e:
+        return _response("/events/health-check", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/events/new-bid")
+async def event_new_bid(request: Request):
+    """
+    Event: called when a new bid PDF lands in Drive vendor folder.
+    Auto-runs bid leveling and pushes ntfy.
+    """
+    t0 = time.time()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    code = (body.get("project_code") or "").upper()
+    vendor = body.get("vendor_name", "unknown vendor")
+    amount = body.get("amount")
+    division = body.get("division", "")
+    filename = body.get("filename", "")
+
+    if not code:
+        return _response("/events/new-bid", {}, errors=["project_code required"], start=t0)
+
+    # Push ntfy about new bid
+    amt_str = f" ${float(amount):,.0f}" if amount else ""
+    _ntfy(
+        f"New bid: {code} {division}",
+        f"New bid received: {vendor}{amt_str}\nProject: {code} {division}\nFile: {filename}\n"
+        f"Bid leveling running automatically...",
+        priority="default", tags="incoming_envelope"
+    )
+
+    # Auto-queue bid leveling for this project (dry_run by default for safety)
+    leveling_result = {}
+    try:
+        import urllib.request as _ur2
+        req2 = _ur2.Request(
+            f"http://localhost:8000/gateway/project/{code}/bid-level?dry_run=true",
+            headers={"X-API-Key": os.environ.get("HCI_API_KEY", "")},
+            method="POST"
+        )
+        with _ur2.urlopen(req2, timeout=20) as r:
+            leveling_result = json.loads(r.read()).get("payload", {})
+    except Exception as le:
+        leveling_result = {"error": str(le)}
+
+    # Push leveling result
+    summary = leveling_result.get("summary", "Leveling complete — check /gateway/project/{code}/bid-level")
+    _ntfy(
+        f"Bid leveling updated: {code}",
+        f"Auto-leveling complete for {code}\n{summary}\nFull results: GET /gateway/project/{code}/bid-level",
+        priority="default", tags="bar_chart"
+    )
+
+    _log("/events/new-bid", "gateway", code, "ok",
+         round((time.time()-t0)*1000), str(uuid.uuid4()), f"{vendor} ${amount or 0:,.0f}")
+    return _response("/events/new-bid", {
+        "project": code,
+        "vendor": vendor,
+        "amount": amount,
+        "bid_leveling": leveling_result,
+        "ntfy_sent": True,
+    }, start=t0)
+
+
+@router.post("/events/drive-scan")
+async def event_drive_scan(request: Request):
+    """
+    Scheduled event (every 15 min): scan 04_Drawings folders for new files.
+    Compare against known file list in DB. Auto-queue plan analysis on new PDFs.
+    Called by n8n cron.
+    """
+    t0 = time.time()
+    new_files = []
+
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT project_code, drawings_folder_id
+                    FROM projects
+                    WHERE drawings_folder_id IS NOT NULL AND is_active = TRUE
+                """)
+                projects = cur.fetchall()
+    except Exception as e:
+        return _response("/events/drive-scan", {}, errors=[str(e)], start=t0)
+
+    import ssl as _ssl2, certifi as _certif2, urllib.request as _ur3, urllib.parse as _up3
+    _SSL2 = _ssl2.create_default_context(cafile=_certif2.where())
+
+    def _drive_files(folder_id: str, token: str) -> list:
+        params = _up3.urlencode({
+            "q": f"'{folder_id}' in parents and trashed=false and mimeType='application/pdf'",
+            "fields": "files(id,name,modifiedTime,size)",
+            "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
+            "pageSize": "200"
+        })
+        req3 = _ur3.Request(
+            f"https://www.googleapis.com/drive/v3/files?{params}",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        with _ur3.urlopen(req3, context=_SSL2, timeout=20) as r:
+            return json.loads(r.read()).get("files", [])
+
+    try:
+        from integrations.credentials import get_google_token as _gtoken2
+        token = _gtoken2("drive")
+    except Exception as e:
+        return _response("/events/drive-scan", {}, errors=[f"Drive auth failed: {e}"], start=t0)
+
+    for project in projects:
+        code = project["project_code"]
+        folder_id = project["drawings_folder_id"]
+        try:
+            drive_files = _drive_files(folder_id, token)
+        except Exception:
+            continue
+
+        # Check each file against known_files log
+        for f in drive_files:
+            file_id = f["id"]
+            fname = f["name"]
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT 1 FROM drive_file_log
+                        WHERE file_id = %s AND project_code = %s
+                    """, (file_id, code))
+                    known = cur.fetchone()
+                    if not known:
+                        # New file — log it
+                        cur.execute("""
+                            INSERT INTO drive_file_log (file_id, project_code, filename, folder_id, discovered_at)
+                            VALUES (%s,%s,%s,%s,NOW())
+                            ON CONFLICT (file_id) DO NOTHING
+                        """, (file_id, code, fname, folder_id))
+                        new_files.append({"project": code, "filename": fname, "file_id": file_id})
+
+    if new_files:
+        for nf in new_files:
+            _ntfy(
+                f"New plan: {nf['project']}",
+                f"New drawing uploaded to {nf['project']}:\n{nf['filename']}\n"
+                f"Plan analysis auto-queued. Run GET /gateway/project/{nf['project']}/plans to see all files.",
+                priority="default", tags="page_facing_up"
+            )
+            # Queue plan analysis handoff
+            _ntfy(
+                f"Analysis queued: {nf['filename'][:40]}",
+                f"Queued for analysis: {nf['filename']}\nProject: {nf['project']}\n"
+                f"Claude Code will process next session.",
+                priority="low", tags="mag"
+            )
+
+    _log("/events/drive-scan", "n8n", "google_drive", "ok",
+         round((time.time()-t0)*1000), str(uuid.uuid4()), f"{len(new_files)} new files")
+    return _response("/events/drive-scan", {
+        "projects_scanned": len(projects),
+        "new_files_found": len(new_files),
+        "new_files": new_files,
+    }, start=t0)
