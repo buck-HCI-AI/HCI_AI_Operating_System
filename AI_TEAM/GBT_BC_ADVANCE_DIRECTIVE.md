@@ -78,10 +78,16 @@ X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 - RFI-001 open: Axis B Beam Pocket structural review (sent to Michael@aliusdc.com — awaiting response)
 - Next: track SOW responses, level received bids, follow up RFI-001
 
-### 246 Gallo Way — GREEN
-- Active, 75% data completeness
-- Drive integration not yet built (BTW-6)
-- Next: BTW-6 will connect this project fully
+### 246 Gallo Way — GREEN / BUDGET RISK
+- 44 bid packages | 19 awarded | 18 still collecting | 7 not started
+- Contract value: $6,300,000
+- Actually committed (awarded): $6,314,913 — already $14,913 over contract
+- Open estimates (TBD packages): $2,745,600
+- Total projected: $9,060,513 — **144% of contract value**
+- Biggest open TBDs: Landscape $350K, Flooring $333K, Tile $320K, Finish Carp $310K, Spa $280K, AV $500K
+- Drive folder linked: `1FfGOOlq0MeWNDj0g0xQciubsOyx2ZpAp`
+- Budget alert sent to Buck 2026-06-30 — awaiting his review
+- GET /gateway/project/246GW/budget for live financial picture
 
 ---
 
@@ -139,13 +145,13 @@ X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 
 | # | Item | What | Why |
 |---|------|------|-----|
-| **BTW-4** | Bid stale-detection | Flag bids that haven't moved in X days | Aspen + Clemmer situation — we almost missed expiry |
-| **BTW-8** | Vendor performance scoring | Score subs across all projects | Need data-driven award decisions |
-| **BTW-6** | 246GW Drive integration | Connect 246 Gallo Way data | Project at 75% completeness, missing Drive link |
-| **BTW-5** | Auto-schedule variance alerts | Flag when schedule drifts | 101F already showing variance |
-| **BTW-7** | Houzz → DB auto-sync | Replace manual BC extraction | BC currently does this manually |
-| **BTW-9** | Executive dashboard v2 | Visual KPI board | Mission control is API-only right now |
-| **BTW-10** | Full bid leveling engine | Side-by-side bid comparison + award recommendation | Manual today |
+| ~~BTW-4~~ | ~~Bid stale-detection~~ | **DONE 2026-06-30** — GET /gateway/bids/stale + daily alert; Aspen Welding expiry tracked |
+| ~~BTW-8~~ | ~~Vendor scoring~~ | **DONE 2026-06-30** — 31 vendors scored A-D; GET /gateway/vendors/scores |
+| ~~BTW-6~~ | ~~246GW budget + Drive~~ | **DONE 2026-06-30** — GET /gateway/project/246GW/budget; OVER_BUDGET flag sent Buck |
+| **BTW-5** | Schedule variance alerts | Flag when schedule drifts — 101F already showing variance | **NEXT** |
+| **BTW-7** | Houzz → DB auto-sync | Replace manual BC extraction with scheduled pull | After BTW-5 |
+| **BTW-9** | Executive dashboard v2 | Visual KPI board — mission control is API-only now | After BTW-7 |
+| **BTW-10** | Bid leveling engine | Side-by-side comparison + award recommendation | After BTW-9 |
 
 ---
 
