@@ -91,6 +91,18 @@ SERVICE_REGISTRY = [
     {"name": "intent-route",       "path": "/gateway/intent/route",             "description": "POST: Natural language intent router — message → execute → ntfy push"},
     {"name": "project-plans",      "path": "/gateway/project/{code}/plans",     "description": "GET: Scan drawings folder, classify by discipline, filter by scope/type"},
     {"name": "shared-drive-id",    "path": "/gateway/project/{code}/shared-drive-id", "description": "GET: Return all Drive folder IDs configured for a project"},
+    # AI Operations Control Plane — Durable Comms Patch (2026-06-30)
+    {"name": "ai-messages-create", "path": "/gateway/ai/messages",              "description": "POST: Create a durable agent message/task — DB is source of truth, auto-notifies Telegram+ntfy"},
+    {"name": "ai-queue",           "path": "/gateway/ai/queue",                 "description": "GET: Fallback polling queue — works even if Telegram is down"},
+    {"name": "ai-approvals",       "path": "/gateway/approvals",                "description": "GET: Pending Buck approvals from the durable queue"},
+    {"name": "ai-message-status",  "path": "/gateway/ai/messages/{id}/status",  "description": "PATCH: Agent self-report — ACKNOWLEDGED/IN_PROGRESS/BLOCKED/COMPLETE/etc"},
+    {"name": "ai-heartbeat",       "path": "/gateway/ai/heartbeat",             "description": "POST: Agent heartbeat ping (chatgpt/claude_code/browser_claude/n8n)"},
+    {"name": "ai-escalation-check","path": "/gateway/ai/escalation-check",      "description": "POST: Retry/escalate stale unacknowledged approvals — call from n8n on a schedule"},
+    {"name": "telegram-health",    "path": "/gateway/telegram/health",          "description": "GET: Telegram webhook registration state + 24h send health"},
+    {"name": "telegram-register",  "path": "/gateway/telegram/register-webhook","description": "POST: (Re)register Telegram webhook against the live ngrok URL"},
+    # Warm Start Recovery Patch (2026-06-30)
+    {"name": "ai-events",          "path": "/gateway/ai/events",                "description": "GET: Last N AI events/handoffs — merged ai_messages + Buck incoming messages feed"},
+    {"name": "ai-warm-start",      "path": "/gateway/ai/warm-start",            "description": "GET: Single-call restart recovery snapshot — projects, risks, approvals, tasks, blockers, telegram health, next action"},
 ]
 
 
@@ -773,12 +785,15 @@ async def bids_stale_alert(request: Request):
         conn.close()
         msg = _format_stale_alert(results)
         sent = False
+        ai_msg_id = None
         if msg:
-            tg = _tg_send(msg)
-            sent = tg.get("status") == "sent"
+            res = _notify_agents("system", "buck", "risk_alert", "Bid Stale Alert", msg)
+            ai_msg_id = res["id"]
+            sent = res["delivery"].get("status") == "sent" or res["delivery"].get("fallback", {}).get("status") == "sent"
         return _response("/bids/stale/alert", {
             "summary": results["summary"],
             "alert_sent": sent,
+            "ai_message_id": ai_msg_id,
             "message_preview": msg[:200] if msg else None,
         }, start=t0)
     except Exception as e:
@@ -1094,10 +1109,13 @@ async def schedule_variance_alert(request: Request):
                 for item in top:
                     lines.append(f"  {item['project']} | {item['title']} | {item['days_overdue']}d overdue")
             msg = "\n".join(lines)
-            tg = _tg_send(msg)
-            sent = tg.get("status") == "sent"
+            res = _notify_agents("system", "buck", "risk_alert", "Schedule Variance Alert", msg)
+            ai_msg_id = res["id"]
+            sent = res["delivery"].get("status") == "sent" or res["delivery"].get("fallback", {}).get("status") == "sent"
+        else:
+            ai_msg_id = None
         return _response("/schedule/variance/alert", {
-            "total_overdue": total_overdue, "alert_sent": sent,
+            "total_overdue": total_overdue, "alert_sent": sent, "ai_message_id": ai_msg_id,
         }, start=t0)
     except Exception as e:
         return _response("/schedule/variance/alert", {}, errors=[str(e)], start=t0)
@@ -1105,10 +1123,17 @@ async def schedule_variance_alert(request: Request):
 
 @router.get("/executive/mission-control")
 def mission_control():
-    """Mission control — cross-project command center."""
+    """Mission control — cross-project command center. `comms` block (patched 2026-06-30)
+    adds agent-coordination state: pending approvals, unacked messages, stale items,
+    blocked missions, per-agent heartbeat, Telegram health — separate from project KPIs."""
     t0 = time.time()
     try:
         data = _proxy("/executive/mission-control")
+        comms = _comms_snapshot()
+        if isinstance(data, dict) and isinstance(data.get("payload"), dict):
+            data["payload"]["comms"] = comms
+        elif isinstance(data, dict):
+            data["comms"] = comms
         return _response("/executive/mission-control", data, start=t0)
     except HTTPException as e:
         return _response("/executive/mission-control", {}, errors=[str(e.detail)], start=t0)
@@ -1780,6 +1805,8 @@ summary: {req.summary or f'Handoff from {req.source_agent} via GBT Gateway'}
 
     with open(fpath, "w") as f:
         f.write(content)
+
+    _touch_heartbeat(req.source_agent, f"handoff: {req.title or req.document_type}")
 
     # Trigger processor async (best-effort)
     import subprocess, threading
@@ -4282,7 +4309,7 @@ async def telegram_webhook(request: Request):
         if "message" in update:
             msg     = update["message"]
             chat_id = str(msg["chat"]["id"])
-            text    = msg.get("text", "")
+            text    = (msg.get("text") or "").strip()
             msg_id  = msg["message_id"]
             result["type"] = "message"
             result["text"] = text
@@ -4298,8 +4325,9 @@ async def telegram_webhook(request: Request):
             )
             conn.commit(); cur.close(); conn.close()
 
-            # Auto-acknowledge with a simple receipt
-            ack = f"✅ Got it: _{text[:80]}_" if text else "✅ Received"
+            # APPROVE/REJECT/HOLD/STATUS/QUEUE against the durable queue; else plain ack
+            cmd_reply = _handle_buck_command(text)
+            ack = cmd_reply or (f"✅ Got it: _{text[:80]}_" if text else "✅ Received")
             _tg_send(ack)
 
         elif "callback_query" in update:
@@ -4308,6 +4336,14 @@ async def telegram_webhook(request: Request):
             cb_data = cb.get("data", "")
             result["type"] = "callback"
             result["data"] = cb_data
+            # Inline button taps (approve:<id> / reject:<id> / hold:<id>) hit the same command handler
+            if ":" in cb_data:
+                action, _, mid = cb_data.partition(":")
+                cmd_map = {"approve": "APPROVE", "reject": "REJECT", "hold": "HOLD"}
+                if action in cmd_map and mid.isdigit():
+                    reply_text = _handle_buck_command(f"{cmd_map[action]} {mid}")
+                    if reply_text:
+                        _tg_send(reply_text)
             # Acknowledge the button tap immediately
             try:
                 requests.post(f"{TG_BASE}/answerCallbackQuery",
@@ -4348,6 +4384,609 @@ async def poll_instructions():
         }, start=t0)
     except Exception as e:
         return _response("/poll-instructions", {}, errors=[str(e)], start=t0)
+
+
+# ── AI Operations Control Plane — Durable Comms Patch (2026-06-30) ────────────
+# DB (ai_messages) is the source of truth. Telegram is a notification layer only —
+# if it's down, /gateway/ai/queue and /gateway/approvals still show everything.
+
+AI_MESSAGE_AGENTS  = {"buck", "chatgpt", "claude_code", "browser_claude", "n8n", "system"}
+AI_HEARTBEAT_AGENTS = {"chatgpt", "claude_code", "browser_claude", "n8n"}
+NOTIFY_MESSAGE_TYPES = {
+    "approval_request", "risk_alert", "blocked_mission",
+    "handoff_waiting", "work_complete", "review_required",
+}
+STALE_APPROVAL_MINUTES = int(os.environ.get("AI_APPROVAL_STALE_MINUTES", "30"))
+HEARTBEAT_STALE_MINUTES = int(os.environ.get("AI_HEARTBEAT_STALE_MINUTES", "120"))
+_AGENT_ALIASES = {
+    "buck": "buck", "buck adams": "buck",
+    "chatgpt": "chatgpt", "gbt": "chatgpt", "chief_architect": "chatgpt", "chief architect": "chatgpt",
+    "claude_code": "claude_code", "claude code": "claude_code",
+    "browser_claude": "browser_claude", "browser claude": "browser_claude", "bc": "browser_claude",
+    "n8n": "n8n", "system": "system",
+}
+
+
+def _touch_heartbeat(agent: str, action: str = ""):
+    key = _AGENT_ALIASES.get((agent or "").strip().lower())
+    if key not in AI_HEARTBEAT_AGENTS:
+        return
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO ai_agent_heartbeat (agent, last_seen_at, last_action, status)
+                    VALUES (%s, NOW(), %s, 'ONLINE')
+                    ON CONFLICT (agent) DO UPDATE
+                        SET last_seen_at = NOW(), last_action = EXCLUDED.last_action, status = 'ONLINE'
+                """, (key, (action or "")[:200]))
+            conn.commit()
+    except Exception:
+        pass
+
+
+def _create_ai_message(source, target, message_type, title, body, project_code=None,
+                        requires_buck_approval=False, approval_type=None,
+                        related_file=None, related_handoff_id=None) -> int:
+    status = "NEEDS_BUCK_APPROVAL" if requires_buck_approval else "NEW"
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO ai_messages
+                    (source, target, project_code, message_type, title, body, status,
+                     requires_buck_approval, approval_type, related_file, related_handoff_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (source, target, project_code, message_type, title, body, status,
+                  requires_buck_approval, approval_type, related_file, related_handoff_id))
+            mid = cur.fetchone()["id"]
+        conn.commit()
+    return mid
+
+
+def _mark_telegram_sent(msg_id: int, tg_result: dict, retry: bool = False):
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                if tg_result.get("status") == "sent":
+                    cur.execute("""
+                        UPDATE ai_messages SET telegram_sent_at = NOW(),
+                            telegram_message_id = %s, last_error = NULL,
+                            retry_count = retry_count + %s, updated_at = NOW()
+                        WHERE id = %s
+                    """, (tg_result.get("message_id"), 1 if retry else 0, msg_id))
+                else:
+                    cur.execute("""
+                        UPDATE ai_messages SET last_error = %s,
+                            retry_count = retry_count + %s, updated_at = NOW()
+                        WHERE id = %s
+                    """, (str(tg_result.get("detail") or tg_result.get("http") or "send_failed")[:500],
+                          1 if retry else 0, msg_id))
+            conn.commit()
+    except Exception:
+        pass
+
+
+def _tg_send_with_id(text: str, reply_markup: dict = None) -> dict:
+    """Like _tg_send but captures the Telegram message_id (confirmation loop) and
+    retries once without Markdown — covers the recurring parse_mode 400 failure mode
+    (see commit ab14e29) instead of dropping the message."""
+    import re as _re
+    parse_mode = "Markdown" if _re.search(r"[*_`\[]", text) else None
+    payload = {"chat_id": TG_CHAT_ID, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    try:
+        r = requests.post(f"{TG_BASE}/sendMessage", json=payload, timeout=10)
+        if r.ok:
+            return {"status": "sent", "http": r.status_code,
+                     "message_id": r.json().get("result", {}).get("message_id")}
+        if parse_mode:
+            payload.pop("parse_mode", None)
+            r2 = requests.post(f"{TG_BASE}/sendMessage", json=payload, timeout=10)
+            if r2.ok:
+                return {"status": "sent", "http": r2.status_code,
+                         "message_id": r2.json().get("result", {}).get("message_id"),
+                         "retried_plain": True}
+        return {"status": "failed", "http": r.status_code, "detail": r.text[:300]}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
+def _notify_agents(source: str, target: str, message_type: str, title: str, body: str,
+                    project_code: str = None, requires_buck_approval: bool = False,
+                    approval_type: str = None, related_file: str = None,
+                    related_handoff_id: str = None) -> dict:
+    """Single entry point for agent-to-agent / agent-to-Buck notices: DB row first
+    (source of truth, survives Telegram outages), then Telegram with automatic ntfy
+    fallback on failure. Replaces bare _tg_send() at alert sites — audit 2026-06-30
+    confirmed two production alerts were silently dropped with no fallback."""
+    msg_id = _create_ai_message(source, target, message_type, title, body, project_code,
+                                 requires_buck_approval, approval_type, related_file, related_handoff_id)
+    sent = {"status": "skipped"}
+    if message_type in NOTIFY_MESSAGE_TYPES or requires_buck_approval:
+        icons = {"approval_request": "✅", "risk_alert": "🚨", "blocked_mission": "⛔",
+                  "handoff_waiting": "📥", "work_complete": "🏁", "review_required": "🔎"}
+        icon = icons.get(message_type, "📋")
+        text = f"{icon} *{title}*\n\n{body}"
+        markup = None
+        if requires_buck_approval:
+            text += f"\n\nReply: APPROVE {msg_id} / REJECT {msg_id} / HOLD {msg_id}"
+            markup = {"inline_keyboard": [[
+                {"text": "✅ Approve", "callback_data": f"approve:{msg_id}"},
+                {"text": "❌ Reject",  "callback_data": f"reject:{msg_id}"},
+                {"text": "⏸ Hold",    "callback_data": f"hold:{msg_id}"},
+            ]]}
+        sent = _tg_send_with_id(text, reply_markup=markup)
+        _mark_telegram_sent(msg_id, sent)
+        if sent.get("status") != "sent":
+            sent["fallback"] = _ntfy(title, body, priority="urgent" if requires_buck_approval else "high")
+    return {"id": msg_id, "delivery": sent}
+
+
+def _handle_buck_command(text: str) -> Optional[str]:
+    """Parse Buck's Telegram replies against the durable queue:
+    APPROVE <id> / REJECT <id> / HOLD <id> / STATUS / QUEUE.
+    Returns a reply string if recognized, else None (falls through to plain ack)."""
+    if not text:
+        return None
+    parts = text.strip().split()
+    cmd = parts[0].upper()
+    if cmd in ("APPROVE", "REJECT", "HOLD") and len(parts) >= 2 and parts[1].isdigit():
+        msg_id = int(parts[1])
+        new_status = {"APPROVE": "ACKNOWLEDGED", "REJECT": "REJECTED", "HOLD": "BLOCKED"}[cmd]
+        try:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE ai_messages SET status=%s, telegram_acknowledged_at=NOW(), updated_at=NOW()
+                        WHERE id=%s RETURNING title
+                    """, (new_status, msg_id))
+                    row = cur.fetchone()
+                conn.commit()
+            if not row:
+                return f"⚠️ No message #{msg_id} found."
+            verb = {"APPROVE": "Approved", "REJECT": "Rejected", "HOLD": "Held"}[cmd]
+            icon = {"APPROVE": "✅", "REJECT": "❌", "HOLD": "⏸"}[cmd]
+            return f"{icon} {verb} #{msg_id}: {row['title']}"
+        except Exception as e:
+            return f"⚠️ Error updating #{msg_id}: {e}"
+    if cmd == "STATUS":
+        try:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT status, COUNT(*) AS n FROM ai_messages
+                        WHERE status NOT IN ('COMPLETE','REJECTED') GROUP BY status
+                    """)
+                    counts = {r["status"]: r["n"] for r in cur.fetchall()}
+            lines = [f"{k}: {v}" for k, v in counts.items()] or ["Nothing pending."]
+            return "📊 *Status*\n" + "\n".join(lines)
+        except Exception as e:
+            return f"⚠️ Error: {e}"
+    if cmd == "QUEUE":
+        try:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, title, status FROM ai_messages
+                        WHERE status IN ('NEW','NEEDS_BUCK_APPROVAL','STALE')
+                        ORDER BY created_at ASC LIMIT 8
+                    """)
+                    rows = cur.fetchall()
+            if not rows:
+                return "📭 Queue is empty."
+            return "📥 *Queue*\n" + "\n".join(f"#{r['id']} [{r['status']}] {r['title']}" for r in rows)
+        except Exception as e:
+            return f"⚠️ Error: {e}"
+    return None
+
+
+def _classify_heartbeats(rows: list) -> list:
+    """Apply dynamic STALE classification on top of stored ONLINE/OFFLINE/RECOVERING/BLOCKED
+    — a row can go stale just by the clock, without anyone writing a new status."""
+    out = []
+    for r in rows:
+        h = dict(r)
+        last_seen = h.get("last_seen_at")
+        if last_seen:
+            age_min = (datetime.now(timezone.utc) - last_seen).total_seconds() / 60
+            if h.get("status") not in ("BLOCKED",) and age_min > HEARTBEAT_STALE_MINUTES:
+                h["status"] = "STALE"
+            h["last_seen_at"] = last_seen.isoformat()
+        out.append(h)
+    return out
+
+
+def _comms_snapshot() -> dict:
+    """Agent-coordination view for Mission Control — separate from business/project KPIs."""
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT COUNT(*) n FROM ai_messages
+                    WHERE requires_buck_approval AND status IN ('NEEDS_BUCK_APPROVAL','STALE')""")
+                pending_approvals = cur.fetchone()["n"]
+                cur.execute("SELECT COUNT(*) n FROM ai_messages WHERE status = 'NEW'")
+                unacked = cur.fetchone()["n"]
+                cur.execute("SELECT COUNT(*) n FROM ai_messages WHERE status = 'STALE'")
+                stale = cur.fetchone()["n"]
+                cur.execute("""SELECT
+                        (SELECT COUNT(*) FROM ai_messages WHERE status = 'BLOCKED') +
+                        (SELECT COUNT(*) FROM missions WHERE status = 'BLOCKED') AS n""")
+                blocked = cur.fetchone()["n"]
+                cur.execute("SELECT agent, last_seen_at, last_action, status FROM ai_agent_heartbeat ORDER BY agent")
+                heartbeats = _classify_heartbeats(cur.fetchall())
+                cur.execute("SELECT MAX(published_at) t FROM platform_events WHERE event_type='buck_message'")
+                row = cur.fetchone()
+                last_buck = row["t"].isoformat() if row and row["t"] else None
+                cur.execute("""SELECT
+                        COUNT(*) FILTER (WHERE telegram_sent_at IS NOT NULL AND last_error IS NULL) AS sent_ok,
+                        COUNT(*) FILTER (WHERE last_error IS NOT NULL) AS send_failed
+                    FROM ai_messages WHERE created_at > NOW() - INTERVAL '24 hours'""")
+                tg24 = dict(cur.fetchone())
+        return {
+            "pending_buck_approvals": pending_approvals,
+            "unacknowledged_ai_messages": unacked,
+            "stale_handoffs_or_approvals": stale,
+            "blocked_missions": blocked,
+            "agent_heartbeats": heartbeats,
+            "last_buck_message_received_at": last_buck,
+            "telegram_health_last_24h": tg24,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+class AIMessageCreate(BaseModel):
+    source: str
+    target: str
+    message_type: str
+    title: str
+    body: str
+    project_code: Optional[str] = None
+    requires_buck_approval: bool = False
+    approval_type: Optional[str] = None
+    related_file: Optional[str] = None
+    related_handoff_id: Optional[str] = None
+
+
+@router.post("/ai/messages")
+async def ai_messages_create(req: AIMessageCreate):
+    """Create a durable agent message/task. DB row is the source of truth; Telegram
+    notification (with ntfy fallback) is sent automatically for notify-worthy types
+    (approval_request, risk_alert, blocked_mission, handoff_waiting, work_complete,
+    review_required) or whenever requires_buck_approval is true."""
+    t0 = time.time()
+    _touch_heartbeat(req.source, f"sent {req.message_type}: {req.title[:60]}")
+    result = _notify_agents(req.source, req.target, req.message_type, req.title, req.body,
+                             req.project_code, req.requires_buck_approval, req.approval_type,
+                             req.related_file, req.related_handoff_id)
+    _log("/ai/messages", req.source, "ai_messages", "ok", int((time.time()-t0)*1000),
+         str(result["id"]), req.title[:60])
+    return _response("/ai/messages", result, start=t0)
+
+
+@router.get("/ai/queue")
+def ai_queue(status: Optional[str] = None, target: Optional[str] = None, limit: int = 50):
+    """Fallback polling — works even if Telegram is fully down, since DB is source of truth."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                q = "SELECT * FROM ai_messages WHERE 1=1"
+                params: list = []
+                if status:
+                    q += " AND status = %s"; params.append(status)
+                if target:
+                    q += " AND target = %s"; params.append(target)
+                q += " ORDER BY created_at DESC LIMIT %s"; params.append(limit)
+                cur.execute(q, params)
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            for k in ("created_at", "updated_at", "telegram_sent_at", "telegram_acknowledged_at"):
+                if r.get(k):
+                    r[k] = r[k].isoformat()
+        return _response("/ai/queue", {"count": len(rows), "messages": rows}, start=t0)
+    except Exception as e:
+        return _response("/ai/queue", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/approvals")
+def ai_approvals():
+    """Pending Buck approvals from the durable queue — visible even if Telegram missed it."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT * FROM ai_messages
+                    WHERE requires_buck_approval = TRUE AND status IN ('NEEDS_BUCK_APPROVAL','STALE')
+                    ORDER BY created_at ASC
+                """)
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            for k in ("created_at", "updated_at", "telegram_sent_at", "telegram_acknowledged_at"):
+                if r.get(k):
+                    r[k] = r[k].isoformat()
+        return _response("/approvals", {"count": len(rows), "approvals": rows}, start=t0)
+    except Exception as e:
+        return _response("/approvals", {}, errors=[str(e)], start=t0)
+
+
+class AIMessageStatusUpdate(BaseModel):
+    status: str
+    agent: Optional[str] = "system"
+
+
+@router.patch("/ai/messages/{msg_id}/status")
+async def ai_message_status(msg_id: int, req: AIMessageStatusUpdate):
+    """Agent self-report: ACKNOWLEDGED / IN_PROGRESS / BLOCKED / COMPLETE / etc."""
+    t0 = time.time()
+    valid = {"NEW", "ACKNOWLEDGED", "IN_PROGRESS", "BLOCKED", "COMPLETE",
+              "NEEDS_BUCK_APPROVAL", "REJECTED", "STALE"}
+    if req.status not in valid:
+        return _response(f"/ai/messages/{msg_id}/status", {},
+                          errors=[f"invalid status, must be one of {sorted(valid)}"], start=t0)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE ai_messages SET status=%s, updated_at=NOW() WHERE id=%s RETURNING id",
+                            (req.status, msg_id))
+                row = cur.fetchone()
+            conn.commit()
+        if not row:
+            return _response(f"/ai/messages/{msg_id}/status", {}, errors=["not found"], start=t0)
+        _touch_heartbeat(req.agent, f"set #{msg_id} -> {req.status}")
+        return _response(f"/ai/messages/{msg_id}/status", {"id": msg_id, "status": req.status}, start=t0)
+    except Exception as e:
+        return _response(f"/ai/messages/{msg_id}/status", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/ai/heartbeat")
+async def ai_heartbeat(request: Request):
+    """Explicit agent ping — also touched implicitly by /ai/messages and /agent/handoff."""
+    t0 = time.time()
+    body = await request.json()
+    agent = (body.get("agent") or "").strip().lower()
+    action = body.get("action", "ping")
+    if _AGENT_ALIASES.get(agent) not in AI_HEARTBEAT_AGENTS:
+        return _response("/ai/heartbeat", {}, errors=[f"unknown agent, must be one of {sorted(AI_HEARTBEAT_AGENTS)}"], start=t0)
+    _touch_heartbeat(agent, action)
+    return _response("/ai/heartbeat", {"agent": _AGENT_ALIASES[agent], "status": "alive"}, start=t0)
+
+
+@router.post("/ai/escalation-check")
+def ai_escalation_check():
+    """Retry/escalate approvals that have sat unacknowledged past the stale threshold.
+    Call from n8n on a schedule (e.g. every 15 min) — fills the gap confirmed by audit:
+    no retry/escalation path existed anywhere in the system."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT * FROM ai_messages
+                    WHERE requires_buck_approval = TRUE
+                      AND status = 'NEEDS_BUCK_APPROVAL'
+                      AND telegram_acknowledged_at IS NULL
+                      AND (telegram_sent_at IS NULL OR telegram_sent_at < NOW() - (%s || ' minutes')::interval)
+                """, (STALE_APPROVAL_MINUTES,))
+                stale = [dict(r) for r in cur.fetchall()]
+        escalated = []
+        for item in stale:
+            text = (f"⏰ STILL PENDING (retry {item['retry_count']+1}) *{item['title']}*\n\n{item['body']}"
+                     f"\n\nReply: APPROVE {item['id']} / REJECT {item['id']} / HOLD {item['id']}")
+            tg = _tg_send_with_id(text)
+            _mark_telegram_sent(item["id"], tg, retry=True)
+            if tg.get("status") != "sent":
+                _ntfy(f"STALE APPROVAL #{item['id']}: {item['title']}", item["body"], priority="urgent")
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE ai_messages SET status='STALE', updated_at=NOW() WHERE id=%s", (item["id"],))
+                conn.commit()
+            escalated.append({"id": item["id"], "title": item["title"], "telegram_retry": tg.get("status")})
+        return _response("/ai/escalation-check", {
+            "checked_threshold_minutes": STALE_APPROVAL_MINUTES,
+            "escalated_count": len(escalated), "escalated": escalated,
+        }, start=t0)
+    except Exception as e:
+        return _response("/ai/escalation-check", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/telegram/health")
+def telegram_health():
+    """Diagnose Telegram reliability — webhook registration state + recent send health.
+    Addresses the confirmed root cause: webhook registration only existed in dead code
+    (integrations/telegram_bot.py), never called, so there was no way to verify or
+    re-establish it if the ngrok URL rotated."""
+    t0 = time.time()
+    out: Dict[str, Any] = {}
+    try:
+        r = requests.get(f"{TG_BASE}/getWebhookInfo", timeout=10)
+        info = r.json().get("result", {})
+        expected = "https://speculate-armband-retinal.ngrok-free.dev/gateway/telegram/webhook"
+        out["webhook_url"] = info.get("url")
+        out["webhook_matches_expected"] = info.get("url") == expected
+        out["pending_update_count"] = info.get("pending_update_count")
+        out["last_error_message"] = info.get("last_error_message")
+        out["last_error_date"] = info.get("last_error_date")
+    except Exception as e:
+        out["telegram_api_error"] = str(e)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT status, COUNT(*) AS n FROM ai_messages
+                    WHERE created_at > NOW() - INTERVAL '24 hours' GROUP BY status
+                """)
+                out["last_24h_message_status"] = {r["status"]: r["n"] for r in cur.fetchall()}
+                cur.execute("SELECT MAX(published_at) t FROM platform_events WHERE event_type='buck_message'")
+                row = cur.fetchone()
+                out["last_buck_message_received_at"] = row["t"].isoformat() if row and row["t"] else None
+    except Exception as e:
+        out["db_error"] = str(e)
+    return _response("/telegram/health", out, start=t0)
+
+
+@router.post("/telegram/register-webhook")
+def telegram_register_webhook():
+    """(Re)register the Telegram webhook against the live ngrok URL — makes webhook
+    registration reproducible/callable instead of a manual, undocumented step."""
+    t0 = time.time()
+    url = "https://speculate-armband-retinal.ngrok-free.dev/gateway/telegram/webhook"
+    try:
+        r = requests.post(f"{TG_BASE}/setWebhook", json={"url": url}, timeout=10)
+        body = r.json()
+        return _response("/telegram/register-webhook", {
+            "webhook_url": url, "registered": bool(r.ok and body.get("ok")), "telegram_response": body,
+        }, start=t0)
+    except Exception as e:
+        return _response("/telegram/register-webhook", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/ai/events")
+def ai_events(limit: int = 20):
+    """Last N AI events/handoffs — merges ai_messages with Buck's incoming Telegram/phone
+    messages (platform_events) into one combined recent-activity feed for warm-start."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    (SELECT 'ai_message' AS kind, id::text AS ref, source, target, message_type AS type,
+                            title, status, created_at AS ts
+                     FROM ai_messages ORDER BY created_at DESC LIMIT %s)
+                    UNION ALL
+                    (SELECT 'buck_message' AS kind, id::text AS ref, 'buck' AS source, 'system' AS target,
+                            event_type AS type, LEFT(payload->>'text', 80) AS title, NULL AS status,
+                            published_at AS ts
+                     FROM platform_events WHERE event_type = 'buck_message' ORDER BY published_at DESC LIMIT %s)
+                    ORDER BY ts DESC LIMIT %s
+                """, (limit, limit, limit))
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            if r.get("ts"):
+                r["ts"] = r["ts"].isoformat()
+        return _response("/ai/events", {"count": len(rows), "events": rows}, start=t0)
+    except Exception as e:
+        return _response("/ai/events", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/ai/warm-start")
+def ai_warm_start():
+    """Single-call recovery snapshot — Claude Code, Browser Claude, ChatGPT, n8n, or Buck
+    should all be able to reorient from this one endpoint after any restart. Extends
+    existing infra (projects, risks, missions, ai_messages, Agent_Handoff Inbox, Telegram)
+    rather than duplicating any of it — see AI_TEAM/WARM_START.md for the full sequence."""
+    t0 = time.time()
+    out: Dict[str, Any] = {}
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT project_code, name, status FROM projects
+                    WHERE status IN ('active','design','bidding','preconstruction')
+                    ORDER BY project_code
+                """)
+                out["active_projects"] = [dict(r) for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT p.project_code, r.risk_type, LEFT(r.description,100) AS description, r.severity
+                    FROM risks r JOIN projects p ON p.id = r.project_id
+                    WHERE r.status = 'open' AND r.severity IN ('critical','high')
+                    ORDER BY CASE r.severity WHEN 'critical' THEN 1 ELSE 2 END LIMIT 5
+                """)
+                out["top_risks"] = [dict(r) for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT id, title, message_type, created_at FROM ai_messages
+                    WHERE requires_buck_approval AND status IN ('NEEDS_BUCK_APPROVAL','STALE')
+                    ORDER BY created_at ASC
+                """)
+                pending_buck = [dict(r) for r in cur.fetchall()]
+                for r in pending_buck:
+                    r["created_at"] = r["created_at"].isoformat()
+                out["pending_buck_approvals"] = pending_buck
+
+                cur.execute("""
+                    SELECT id, title, status, created_at FROM ai_messages
+                    WHERE target = 'chatgpt' AND status NOT IN ('COMPLETE','REJECTED')
+                    ORDER BY created_at ASC
+                """)
+                pending_gbt = [dict(r) for r in cur.fetchall()]
+                for r in pending_gbt:
+                    r["created_at"] = r["created_at"].isoformat()
+                out["pending_chief_architect_reviews"] = pending_gbt
+
+                cur.execute("""
+                    SELECT mission_id, title, status, priority FROM missions
+                    WHERE assigned_to = 'claude_code' AND status IN ('OPEN','IN_PROGRESS','BLOCKED')
+                    ORDER BY CASE priority WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END LIMIT 10
+                """)
+                out["pending_code_tasks"] = [dict(r) for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT mission_id, title, status, priority FROM missions
+                    WHERE assigned_to = 'browser_claude' AND status IN ('OPEN','IN_PROGRESS','BLOCKED')
+                    ORDER BY CASE priority WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END LIMIT 10
+                """)
+                out["pending_bc_tasks"] = [dict(r) for r in cur.fetchall()]
+
+                cur.execute("SELECT mission_id, title, blocker FROM missions WHERE status = 'BLOCKED'")
+                blocked_missions = [dict(r) for r in cur.fetchall()]
+                cur.execute("SELECT id, title FROM ai_messages WHERE status = 'BLOCKED'")
+                blocked_missions += [dict(r) for r in cur.fetchall()]
+                out["blocked_missions"] = blocked_missions
+
+                cur.execute("""
+                    SELECT id, title, created_at FROM ai_messages WHERE status = 'STALE'
+                    ORDER BY created_at ASC
+                """)
+                stale = [dict(r) for r in cur.fetchall()]
+                for r in stale:
+                    r["created_at"] = r["created_at"].isoformat()
+                out["stale_handoffs"] = stale
+
+                cur.execute("SELECT agent, last_seen_at, last_action, status FROM ai_agent_heartbeat ORDER BY agent")
+                out["agent_heartbeats"] = _classify_heartbeats(cur.fetchall())
+
+                cur.execute("""SELECT MAX(telegram_sent_at) t FROM ai_messages
+                    WHERE telegram_sent_at IS NOT NULL AND last_error IS NULL""")
+                row = cur.fetchone()
+                out["last_successful_telegram_send"] = row["t"].isoformat() if row and row["t"] else None
+                cur.execute("SELECT MAX(published_at) t FROM platform_events WHERE event_type='buck_message'")
+                row = cur.fetchone()
+                out["last_successful_telegram_receive"] = row["t"].isoformat() if row and row["t"] else None
+    except Exception as e:
+        out["db_error"] = str(e)
+
+    try:
+        inbox = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..",
+                                               "Architecture", "Agent_Handoff", "Inbox"))
+        out["architecture_inbox_pending"] = (
+            len([f for f in os.listdir(inbox) if f.endswith(".md")]) if os.path.isdir(inbox) else 0
+        )
+    except Exception:
+        out["architecture_inbox_pending"] = None
+
+    if out.get("pending_buck_approvals"):
+        out["next_recommended_action"] = (
+            f"Buck: {len(out['pending_buck_approvals'])} approval(s) pending — "
+            f"oldest is '{out['pending_buck_approvals'][0]['title']}'"
+        )
+    elif out.get("blocked_missions"):
+        out["next_recommended_action"] = f"Unblock: {len(out['blocked_missions'])} blocked mission(s)/message(s)"
+    elif out.get("stale_handoffs"):
+        out["next_recommended_action"] = (
+            f"Escalate: {len(out['stale_handoffs'])} stale item(s) — run /gateway/ai/escalation-check"
+        )
+    elif out.get("pending_code_tasks"):
+        out["next_recommended_action"] = f"Claude Code: pick up '{out['pending_code_tasks'][0]['title']}'"
+    else:
+        out["next_recommended_action"] = "No blockers — continue with next roadmap item."
+
+    return _response("/ai/warm-start", out, start=t0)
 
 
 # ── Buck Phone → System Messaging ──────────────────────────────────────────────

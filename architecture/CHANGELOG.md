@@ -5,6 +5,46 @@
 
 ---
 
+## v3.6 — 2026-06-30 | AI Operations Control Plane — Durable Comms + Warm Start Recovery
+
+**Trigger:** Three directives (Code Directive, Claude Dode V2, Code recovery ai plan) — resume after machine
+restart, audit-first retrospective, then build durable AI-team comms + Telegram approval bridge + warm-start
+recovery sequence. See ADR-007 and `Architecture/Reviews/2026-06-30_Collaboration_Retrospective_and_Audit.md`.
+
+**Audit first — cleared backlog, no duplication:**
+- Processed 19-item backlog in `Architecture/Agent_Handoff/Inbox/` via existing `handoff_processor.py` (the
+  Architecture Inbox already existed — not rebuilt).
+- Confirmed `missions` table (migration 008, 15 live rows) already serves as the implementation queue —
+  wired into warm-start instead of duplicating.
+- Confirmed AD-12.1–12.7 ratified decisions are still unimplemented (no `decisions`/`allowances`/
+  `bid_invitations` tables; `change_orders` still derived ad hoc in two places) — flagged, not addressed here.
+
+**Built — migration 018 (`ai_messages`, `ai_agent_heartbeat`):**
+- `ai_messages`: durable source-of-truth queue. Status: `NEW/ACKNOWLEDGED/IN_PROGRESS/BLOCKED/COMPLETE/
+  NEEDS_BUCK_APPROVAL/REJECTED/STALE`. Telegram/ntfy are notification layers only.
+- `ai_agent_heartbeat`: per-agent liveness, `ONLINE/OFFLINE/STALE/RECOVERING/BLOCKED`.
+- New endpoints: `POST /gateway/ai/messages`, `GET /gateway/ai/queue`, `GET /gateway/approvals`,
+  `PATCH /gateway/ai/messages/{id}/status`, `POST /gateway/ai/heartbeat`, `POST /gateway/ai/escalation-check`,
+  `GET /gateway/telegram/health`, `POST /gateway/telegram/register-webhook`, `GET /gateway/ai/events`,
+  `GET /gateway/ai/warm-start`. Service registry: 55 → 65.
+- Telegram webhook now parses `APPROVE <id>/REJECT <id>/HOLD <id>/STATUS/QUEUE` replies and inline-keyboard
+  taps against the durable queue.
+- Root-caused Telegram unreliability: webhook registration only existed in unused code
+  (`integrations/telegram_bot.py`, never imported) — added `telegram/register-webhook` to make it callable;
+  patched the two alert sites (`bids/stale/alert`, `schedule/variance/alert`) confirmed silently dropping
+  messages that day to use fallback-aware `_notify_agents()`.
+- `executive/mission-control` gained a `comms` block (pending approvals, unacked messages, stale items,
+  blocked missions, agent heartbeats, Telegram 24h health) without changing its existing payload shape.
+- `AI_TEAM/WARM_START.md` — restart recovery sequence for Claude Code, Browser Claude, ChatGPT, n8n, Buck.
+- Tests: `03_Source_Code/tests/test_ai_control_plane.py`, 32/32 passing, including a live Telegram
+  approve/reject/hold round-trip with Buck during the session.
+
+**Remaining gaps (next session):** n8n schedule for `ai/escalation-check` not yet wired; two directives
+specified slightly different ack-state vocabularies (`ACKNOWLEDGED`/`REJECTED` vs. `RECEIVED`/`FAILED`) —
+flagged for Chief Architect reconciliation, not silently merged.
+
+---
+
 ## v3.5 — 2026-06-29 | BTW Backlog + Role Intelligence + External Drive Backup
 
 **Trigger:** Buck: "go back to what we missed with building the system with GBT — build and fix everything we talked about with GBT — all missing items" + "make sure all work is being saved to external drive"

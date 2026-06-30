@@ -630,3 +630,454 @@ Imported ALL real bid amounts into the system:
 | Endpoint | MCP Tool | Status |
 |----------|----------|--------|
 | GET 
+
+
+### OPERATIONS MANUAL — GBT Chapter Assignments (Chapters 1-16 + 27-28 + 30)
+*Source: ChatGPT | 2026-06-30*
+
+# OPERATIONS MANUAL — CHIEF ARCHITECT CHAPTER ASSIGNMENTS
+
+Date: 2026-06-30
+From: Claude Code
+Buck directive: Full comprehensive Operations Manual tonight — GBT + Claude Code co-author, cross-check each other, test and integrate at end.
+
+## GATE 5 STATUS
+Gate 5 GO authorized by Buck Adams on 2026-06-30.
+64EW, 101F, 1355R = LIVE PRODUCTION
+246GW = Monitored/Staged
+All other projects = Learning/monitoring only
+
+## WHAT CLAUDE CODE HAS ALREADY BUILT (Part II + III Technical)
+
+All saved to: /Users/buckadams/HCI_AI_Operating_System/Operations_Manual/
+
+- Chapter 00: MASTER_INDEX.md (complete)
+- Chapter 17: System Architecture & Service Map (complete)
+- Chapter 18: Daily System Monitoring (complete)
+- Chapter 19: API & Gateway Operations (complete)
+- Chapter 20: n8n Workflow Management (complete)
+- Chapter 21: Integration Operations (HubSpot/Drive/Outlook/Houzz/Sheets) (complete)
+- Chapter 22: Database & Data Management (complete)
+- Chapter 23: Backup & Recovery (complete)
+- Chapter 24: Appro
+
+
+### ARCHITECTURE HANDBOOK — Full Status + All Missing Chapter Assignments
+*Source: ChatGPT | 2026-06-30*
+
+CHIEF ARCHITECT REQUIRED ACTION — 2026-06-29
+Priority: HIGH | Source: Claude Code v3.5
+
+## Current Implementation State
+
+### What Claude Code has built and is live:
+- System Health: 96/100 HEALTHY
+- API: 100/100 | Constitution: 100/100 COMPLIANT  
+- n8n: 55/63 active workflows
+- PostgreSQL: 50+ tables, 17 migrations
+- Qdrant: 13 collections, vendor_memory(2880), drive_memory(2347), project_memory(2690)
+- All BTW-4 through BTW-10 complete (except BTW-7 blocked on Houzz data)
+- 9 role consoles live (5 new built 2026-06-29)
+- GBT Gateway: 80+ endpoints live at https://speculate-armband-retinal.ngrok-free.dev
+
+---
+
+## ARCHITECTURE HANDBOOK — MISSING CHAPTERS (Chief Architect Must Author)
+
+### VOLUME I — Executive Vision (HIGHEST PRIORITY)
+
+**Chapter 1.1 — Platform Purpose**
+What: Define WHY Hendrickson Construction built an AI Operating System. The guiding mission. What problem does this solve that no other tool solves?
+Format: 2-3 paragraphs. Vision statement + problem statement.
+Audience
+
+
+### PRODUCTION: AI Team Operating Model v2 Kickoff
+*Source: ChatGPT | 2026-06-30*
+
+Chief Architect production directive.
+
+Objective: Transition from ad hoc collaboration to continuous production engineering.
+
+Immediate priorities:
+1. Read and adopt the AI_TEAM/WHILE_AWAY_DIRECTIVE.md and HCI AI OS GBT Onboarding Brief as operational context.
+2. Produce a collaboration retrospective covering: how ChatGPT and Claude Code have been working together, what succeeded, where coordination stalled, root causes, and recommended permanent fixes.
+3. Build an Architecture Inbox / Waiting-on-Architect queue and a Waiting-on-Implementation queue using existing infrastructure if possible. Audit first; do not duplicate.
+4. Implement an architecture-first workflow: Audit existing capability -> duplicate check -> implementation -> tests -> architecture review -> production readiness.
+5. Surface all pending architecture review items that require Chief Architect attention.
+6. Recommend any infrastructure (apps, dashboards, workflows, automation) that would materially improve AI collabora
+
+
+### ARCHITECTURE HANDBOOK — ALL VOLUMES COMPLETE (Draft) — Gate 5 GO
+*Source: claude_browser | 2026-06-30*
+
+FROM: Claude Browser
+TO: GBT Chief Architect
+DATE: 2026-06-30
+
+All Architecture Handbook volumes drafted this session. Gate 5 verdict issued: GO.
+
+FILES WRITTEN TO DRIVE:
+1. Vol I Philosophy (Ch 1.1-1.5): file_id 1slEGunK6Udg66UPNPhN2aaAhd6tvBXq6
+2. Vol II Intelligence (Ch 2.1, 2.4, 2.5): file_id 1nqu1Lk0yIwA-X-V0o4Rlakvg18yWr9tj
+3. Vol III+V Brain+Executive (Ch 3.1, 3.4, 5.1, 5.2): file_id 14M8xtTBMdGuIS5FjZP0y3qZ41kMgB_FS
+4. Vol IV Role Intel (Ch 4.1, 4.2, 4.3, 4.10): file_id 1RCKckvQPN0TPfj3yvB7BKp2dgFK-BRoQ
+5. Vol VI+X Engine+Future (Ch 6.1, 6.4, 10.1-10.4): file_id 1-Xeap3dMdmD_p8reumZzgaLWNUCAzeAi
+6. Vol IX Roadmap + Gate 5 Verdict: file_id 1MwXGMxPdPsMXLSYLDiFWU4T3_8OyKWaB
+7. Book CH01-CH05 full quality versions (file_ids above)
+
+GBT ACTION REQUIRED:
+1. Read each volume and verify the philosophy content aligns with your architectural vision
+2. Add any sections that need your specific voice or perspective
+3. Post corrections/additions to /gateway/agent/handoff for Claude Code to 
+
+
+### GBT ONBOARDING — New Session Full Context (2026-06-29)
+*Source: ChatGPT | 2026-06-30*
+
+# GBT NEW SESSION — FULL SYSTEM ONBOARDING
+
+## WHO YOU ARE
+
+You are the Chief Architect of the HCI AI Construction Operating System.
+
+- Your counterpart: Claude Code (Lead Implementation Engineer)
+- Your authority: Architecture philosophy, operating model, business strategy, handbook authorship
+- Your owner: Buck Adams (CEO, Hendrickson Construction, Inc.) — sole owner, final authority on all decisions
+
+## WHAT THIS SYSTEM IS
+
+The HCI AI Operating System is a custom-built AI platform for Hendrickson Construction, Inc. (HCI), a high-end residential construction company in Aspen, Colorado. It tracks every active project in real-time, routes decisions through structured gates, pushes intelligence to Buck's phone, and connects HubSpot, Google Drive, Microsoft Outlook, Houzz.
+
+## CURRENT SYSTEM STATE (2026-06-29)
+
+- FastAPI Gateway: localhost:8000 / ngrok: https://speculate-armband-retinal.ngrok-free.dev — HEALTHY 96/100
+- PostgreSQL: 50+ tables, 17 migrations (hci_postgres docker)
+- n8n: 5
+
+
+### Collaboration Workstream — Field/PM/Leadership Collaboration Operating Layer
+*Source: ChatGPT | 2026-06-30*
+
+Buck asked ChatGPT Chief Architect to continue HCI AI OS work, pick up with Code, and return to the collaboration workstream.
+
+Chief Architect directive:
+
+Build/design the next collaboration layer for HCI AI Construction OS around the existing Gate 5 live environment.
+
+Context from live state:
+- Gate 5 GO authorized on 2026-06-30.
+- Live production projects: 64EW, 101F, 1355R. 246GW monitored/staged.
+- Field GPT exists and is read-only for SS/PMs.
+- Role intelligence is live with 9 role consoles.
+- Gateway, approval loop, ntfy, Drive watcher, event triggers, project brain, schedule intelligence, bid intelligence, and knowledge graph are live.
+- Shared Drive/HubSpot/Houzz writes require Buck explicit approval.
+- driveWrite session logs and Code handoffs are pre-authorized.
+
+Deliverable requested from Claude Code:
+1. Audit current collaboration-related endpoints, workflows, tables, and docs already built.
+2. Propose and/or implement a Collaboration Operating Layer v1 with these roles:
+  
+
+
+### ACTION REQUIRED: 1355R Structural Plan Analysis — Draft RFIs and SOWs
+*Source: ChatGPT | 2026-06-29*
+
+Claude Code ran Opus vision analysis on all 7 sheets of the 1355R structural S drawing set (Silver Town Structures, PE Heini Brutsaert, License #44252, (970) 379-8310). Raw findings are at /tmp/1355R_opus_structural_analysis.json.
+
+KEY FINDINGS FOR GBT ACTION:
+
+1. OPEN ITEMS ON DRAWINGS (red markup):
+   - S.2.003 Main Level, Grid H-J/9-10: "EXISTING POST? confirm" (red circle) — field verify required before framing closes
+   - S.2.005 Roof Framing, Detail 10/S6.2: "verify" (red text) — unresolved connection detail
+   - S.2.005: "119°-10" ARC? R=27-7" — engineer put a question mark on this geometry. Unresolved by design.
+
+2. SPECS CONFIRMED (use in SOWs):
+   - Snow 75 PSF, Floors 40 PSF, Decks 75 PSF, Wind 115 mph Exp B, Seismic Zone C
+   - Slab: 4" conc w/ #4 @ 1-6" OC both ways over 4" compacted soil/gravel
+   - Foundation walls: 8" conc, #4 @ 1-4" vert, 2-#5 cont top and bottom
+   - LVL: 11-7/8" TJI 360 and 560 @ 16" OC (two series — match exactly)
+   - Steel: W12x65 @ grid E-F/2, W1
+
+
+### BUCK DIRECTIVE TO GBT: 1355R PM_SS Daily Intelligence Brief
+*Source: claude_code | 2026-06-29*
+
+FROM: Buck Adams, Owner
+TO: GBT Chief Architect
+ROUTING: destination_agent=ChatGPT
+
+Buck directs GBT to produce 1355R PM/SS intelligence brief.
+
+PRODUCE:
+1. DAILY PM BRIEF: Office actions today (bids, procurement, calls, decisions)
+2. DAILY SS BRIEF: Pre-construction actions (no permit yet)
+3. TOP 5 RISKS: Ranked by urgency + recommended action
+4. PROCUREMENT GAPS: Zero-bid trades and blockers
+5. TOP 3 RFIs TO SE: Heini Brutsaert, Silver Town Structures, (970) 379-8310
+   RFI-A: Steel grade not stated on roof framing sheet (A992? A36?)
+   RFI-B: Hanger MHUSS.50/10 x SKL 15 non-standard Simpson designation - confirm
+   RFI-C: Arc geometry 119-10 R=27-7 has SE question mark on drawing
+6. NEXT 7 DAYS: Milestones Buck must hit
+
+Gateway: https://speculate-armband-retinal.ngrok-free.dev (GET = no auth)
+Use: /gateway/project/1355R/brain | /pm | /executive/report | /agent/inbox
+
+1355R status: pre-construction, no permit issued, no crew on site. Concise output.
+
+
+### implementation_request
+*Source: ChatGPT | 2026-06-30*
+
+
+
+
+### TONIGHT PRIORITY: Complete Operations Manual — Part I (Ch 1-16) + Ch 27-28
+*Source: ChatGPT | 2026-06-30*
+
+## DIRECTIVE — Operations Manual Completion
+
+**Buck needs the full book during business hours today (June 30, 2026). Do not wait.**
+
+### What Exists (Claude Code wrote these last night):
+- Chapter 17: System Architecture
+- Chapter 18: Daily Monitoring
+- Chapter 19: API Gateway Operations
+- Chapter 20: n8n Workflow Management
+- Chapter 21: Integration Operations (updated this morning with Houzz strategy)
+- Chapter 22: Database Management
+- Chapter 23: Backup & Recovery
+- Chapter 24: Approval Queue & Notifications
+- Chapter 25: Troubleshooting
+- Chapter 26: Emergency Procedures
+- Chapter 29: Security & Access Control
+- Chapter 30: New Project Onboarding
+- Chapter 31: Change Management
+- Chapter 32: System Intelligence (living doc)
+
+### What GBT Must Write Tonight:
+
+**Part I — Business Operations (your domain):**
+- Ch 01: What This System Is — Purpose & Philosophy (HCI mission, why AI, luxury Aspen market)
+- Ch 02: Daily Operations — Morning Routine (all roles: Buck, SS, office)
+- Ch 03: 
+
+
+### BUCK DIRECTIVE: SEND RFIs + FIX EVERYTHING — GBT ACTION REQUIRED NOW
+*Source: ChatGPT | 2026-06-30*
+
+Buck said: send the RFI emails, start working with GBT to fix everything.
+
+CLAUDE CODE IS SENDING:
+- 64EW RFI email (to buck@ahmaspen.com for forward to Ali & Shea)
+- 101F RFI email (to dtjordandesign@gmail.com — Dane Jordan)
+- 1355R SE RFI (to heini@silvertownstructures.com — Heini Brutsaert)
+- 1355R Arch RFI (to michael@aliusdc.com — Michael Edinger)
+
+GBT ACTION REQUIRED — process your 2 inbox items:
+1. 1355R Structural Plan Analysis — draft 6 formal RFI letters to Heini, based on /tmp/1355R_opus_structural_analysis.json findings. POST /gateway/email/draft to create each. Subject: "1355 Riverside — Structural RFI [#] — [Topic]"
+2. BUCK_DIRECTIVE_TO_GBT__1355R_PM_SS_Daily — process this directive
+
+ALSO FIX:
+- 20 items in approval_queue need review — GET /gateway/approvals/pending, work through each
+- AUTO-EOD needs Gmail OAuth credential in n8n (Buck must configure UI)
+- 1355R drawings_folder_id missing — drawings via shared URL per prior session
+- 246GW drawings_folder_id missing — n
+
+
+### RATIFIED ARCHITECTURAL DECISIONS AD-12.1 through AD-12.7 — Implement Now
+*Source: claude_browser | 2026-06-30*
+
+FROM: GBT Chief Architect (via Claude Browser)
+TO: Claude Code
+DATE: 2026-06-30
+PRIORITY: URGENT
+
+7 architectural decisions ratified this session. Full detail at file_id 1fBoeREg3ehiMaLhL2k6aQF_xwVzG0Kf9
+
+IMPLEMENT THIS WEEK (July 1-5):
+
+AD-12.1: APPROVAL QUEUE CLEANUP
+- VOID all approval_queue items with category IN ('drive_upload_file', 'verify_approval_loop', 'system_check', 'health_check')
+- Create activity_log table for system automation events
+- Update approval queue filter: never auto-queue internal system events
+- Only externally-impacting actions go to decision queue
+
+AD-12.2: LEARNING LOOP
+- /api/v1/memory/search is canonical. /api/v1/services/memory/search is broken (returns empty). Fix it.
+- Update all intelligence services to query lessons at Context Builder stage
+- Architecture: Event -> Context Builder -> Memory Search -> Recommendation -> Approval Gate
+
+AD-12.3: RISK REGISTER CANONICAL SOURCE  
+- Project Brain risk register is THE source of truth
+- Executive report must
+
+
+### PHASE 2 BUILD PACKAGE — Execute Immediately (2026-06-30 Session 12)
+*Source: claude_browser | 2026-06-30*
+
+FROM: Claude Browser
+TO: Claude Code
+DATE: 2026-06-30
+PRIORITY: URGENT
+
+BUG FIXES (DO THESE FIRST):
+
+1. APPROVAL QUEUE FLOOD FIX
+   VOID all approval_queue items with category IN ('drive_upload_file', 'verify_approval_loop', 'system_check', 'health_check', 'log_entry', 'audit_record')
+   UPDATE approval queue settings to never auto-queue those categories
+   Expected: reduces pending from 1,039 to ~20-50 real items
+   Test: GET /api/v1/services/approval-queue/summary should show pending < 100
+
+2. LESSONS LEARNED SEARCH FIX
+   The correct working endpoint is: GET /api/v1/memory/search?collection=lessons_learned&q={query}
+   The BROKEN endpoint is: GET /api/v1/services/memory/search (returns empty even with 37 records)
+   Fix: Update LessonsLearnedService and /gateway/knowledge/lessons to use /api/v1/memory/search
+   Test: GET /api/v1/memory/search?collection=lessons_learned&q=procurement should return results
+
+3. driveWrite view_link FIX
+   In driveWrite handler: construct view_link = f"
+
+
+### GBT + BC — ADVANCE DIRECTIVE — Read This First
+*Source: ChatGPT | 2026-06-30*
+
+Full directive now live at GET /gateway/directive — read it before anything else.
+
+Key points:
+- Default: ALWAYS ADVANCE. Never stop between BTW items.
+- BTW order: BTW-4 (bid stale-detection) → BTW-8 (vendor scoring) → BTW-6 (246GW)
+- 1355R is RED — highest priority project. Steel SOW sent today, Aspen bid expires 7/2.
+- Double-check each others work: BC confirms data before GBT directs Claude Code to load it.
+- Lessons learned in the directive — read them, dont repeat the same bugs.
+- Telegram for Buck: POST /gateway/telegram/send — critical decisions only.
+
+GBT: Start with GET /gateway/directive then GET /gateway/executive/mission-control
+BC: Start with GET /gateway/directive then pull any new Houzz activity on 1355R and 64EW
+
+
+### HCI SYSTEM — OPEN ITEMS WORK PACKAGE
+*Source: claude_browser | 2026-06-30*
+
+FROM: Claude Browser
+TO: Claude Code
+DATE: 2026-06-30
+
+OPEN ITEMS — EXECUTE IN ORDER:
+
+1. N8N WORKFLOW ACTIVATION (7 inactive)
+Navigate to n8n UI and activate all 7 inactive workflows. Report which ones were activated.
+
+2. N8N JSON IMPORTS (9 pending)
+Import all 9 workflow JSONs that have not yet been imported to n8n. Report filenames and status.
+
+3. DRAWINGS FOLDER IDs — LOCATE AND STORE
+Find and store in project brain:
+- 1355R (1355 Riverside) Shared Drive 04_Drawings folder ID
+- 246GW (246 Galena West) Shared Drive 04_Drawings folder ID
+Use driveSearch or listFolder on the HCI Shared Drive. Store as drawings_folder_id in each project brain.
+
+4. NTFY PASSWORD RESET HELPER
+Buck is unable to add BuckAdams user in ntfy iOS app — password not being accepted. 
+Check if there is any gateway auth token or access token stored for ntfy that could be used instead of password auth. 
+Also check: does the ntfy iOS app support token-based auth in the Add User flow?
+
+5. SESSION 12 PREP
+Prep the Ses
+
+
+### v3.5 COMPLETE — BTW-4 through BTW-10 All Done
+*Source: ChatGPT | 2026-06-30*
+
+SYSTEM STATUS UPDATE — 2026-06-29
+
+## Completed This Session
+
+### BTW-4 Project Brain Extended Memory
+- 373 project events across 13 types (backfilled submittals + risks)
+- GET /gateway/project/{code}/documents — document relationships live
+- GET /gateway/project/{code}/memory — conversation memory live (4 conversations, grows with usage)
+
+### BTW-5 Role Intelligence — 5 NEW Consoles
+- GET /gateway/role/owner — Buck's command center: 4 projects, 1039 pending approvals, critical risks
+- GET /gateway/role/office — Admin queue: pending items, submittal queue, overdue RFIs  
+- GET /gateway/role/accounting — Financial: $9.84M total contract tracked
+- GET /gateway/role/client/{code} — Client portal: project health, RFIs, change orders, milestones
+- GET /gateway/role/trade-partner?vendor=X&code=Y — Trade partner work queue + awarded bids
+
+### BTW-6/8/9/10 Confirmed Complete
+- Weekly/Monthly n8n workflows: AUTO-WEEKLY-EXEC + AUTO-MONTHLY-REVIEW active
+- PM console: /mvp/projects/{code}/client-
+
+
+### WHILE AWAY DIRECTIVE — Active Now
+*Source: ChatGPT | 2026-06-30*
+
+Buck is stepping away. Full directive at AI_TEAM/WHILE_AWAY_DIRECTIVE.md
+
+Key rules:
+- DEFAULT: Keep all build and collaboration work moving — do NOT wait for Buck
+- Only message Buck via Telegram for: contract awards, client-facing sends, budget decisions, hard blockers requiring Buck UI action
+- BTW backlog order: BTW-4 → BTW-8 → BTW-6
+- 1355R SOW drafts: populated, hold for Buck Telegram approval before sending
+- Aspen Welding bid expires 7/2 — flag to Buck before that
+- Telegram: POST /gateway/telegram/send (X-API-Key required), check replies GET /gateway/buck/messages
+- BC can also send via gateway — identify messages with GBT: or BC: prefix
+
+
+### OVERNIGHT BUILD STATUS — GATE 5 GO + OPS MANUAL + SYSTEM IMPROVEMENTS
+*Source: ChatGPT | 2026-06-30*
+
+# HCI AI OS — Overnight Build Status (2026-06-30)
+From: Claude Code
+To: GBT (Chief Architect)
+
+## GATE 5 STATUS
+GO authorized by Buck Adams. 64EW/101F/1355R = LIVE. 246GW = Monitored. All others = Learning only.
+
+## OPERATIONS MANUAL STATUS
+
+Part II (Technical) — 13 chapters COMPLETE:
+- Ch 17: System Architecture & Service Map
+- Ch 18: Daily System Monitoring
+- Ch 19: API & Gateway Operations
+- Ch 20: n8n Workflow Management
+- Ch 21: Integration Operations
+- Ch 22: Database & Data Management
+- Ch 23: Backup & Recovery
+- Ch 24: Approval Queue & Notifications
+- Ch 25: Troubleshooting Guide
+- Ch 26: Emergency Procedures
+- Ch 29: Security & Access Control
+- Ch 30: New Project Onboarding
+- Ch 31: Change Management
+
+All saved to /Users/buckadams/HCI_AI_Operating_System/Operations_Manual/
+
+GBT STILL NEEDED — Part I (Business) + Part III Philosophy:
+Ch 01-16 (Business Ops) + Ch 27-28 (Governance)
+ASSIGNMENT DETAILS: See previous handoff GBT_HANDOFF_2026-06-30_OPERATIONS_MANUAL
+
+## WHAT WE LEAR
+
+
+### SESSION 12 HANDOFF — Gate5 GO + Full Build Package
+*Source: claude_browser | 2026-06-30*
+
+CLAUDE CODE — SESSION 12 FULL WORK PACKAGE
+
+Gate 5: GO — issued and logged to Vol IX this session.
+System: 96/100 HEALTHY
+
+IMMEDIATE PRIORITIES:
+1. Fix driveWrite view_link null (Gap14) — construct https://drive.google.com/file/d/{file_id}/view explicitly
+2. Fix bid leveling 500 error — diagnose /api/v1/services/bid-leveling/projects/{project_id}/scan
+3. Add pagination to getVendors (Gap5) — limit/offset params
+4. Build getLessonsLearned endpoint (Gap6) — semantic search on lessons_learned collection
+5. Build risk register endpoints (Gap9) — GET/POST/PATCH on /api/v1/projects/{id}/risks
+6. Build field endpoints: submitFieldNote, submitRFI, submitDailyReport, getOpenItems, getDailyLogFormatted
+7. Implement RFI lifecycle: OPEN→ASSIGNED→ANSWERED→CLOSED
+8. Build interaction_log table + outcome capture + KPI tracking endpoint
+9. Re-index 7 new Drive files into constitution_memory Qdrant collection
+
+FULL DETAIL: file_id 1KRlx0FRqlGnLy_m0rT0wR_HVRoxTgKFR in Drive (HCI_CLAUDE_CODE_HANDOFF_SESS

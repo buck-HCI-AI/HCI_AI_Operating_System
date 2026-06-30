@@ -61,3 +61,22 @@
 | 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-28_Gap9_Gap12_Complete.md | implementation_request | claude_code | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-28_Field_Operations_Design.md | architecture_chapter | claude_code | PROCESSED | → Architecture/Handbook/Drafts/CLAUDE_HANDOFF_2026-06-28_Field_Operations_Design.md |
 | 2026-06-29 15:21 | CLAUDE_HANDOFF_2026-06-28_FullPortfolioImport.md | executive_brief | claude_code | PROCESSED | → Architecture/Handbook/Published/CLAUDE_HANDOFF_2026-06-28_FullPortfolioImport.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_OPERATIONS_MANUAL___GBT_Chapter_Assignme_1bdfbb0c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_ARCHITECTURE_HANDBOOK___Full_Status___Al_169b827d.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_PRODUCTION__AI_Team_Operating_Model_v2_K_32adb663.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_ARCHITECTURE_HANDBOOK___ALL_VOLUMES_COMP_caef11d1.md | implementation_request | claude_browser | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_GBT_ONBOARDING___New_Session_Full_Contex_c87cc8a9.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_Collaboration_Workstream___Field_PM_Lead_082e8519.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-29_ACTION_REQUIRED:_1355R_Structural_Plan_A_eb3461a6.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-29_BUCK_DIRECTIVE_TO_GBT__1355R_PM_SS_Daily_30438ff2.md | implementation_request | claude_code | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_implementation_request_98d16cf8.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_TONIGHT_PRIORITY__Complete_Operations_Ma_fc24b7be.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_BUCK_DIRECTIVE__SEND_RFIs___FIX_EVERYTHI_87956b43.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_RATIFIED_ARCHITECTURAL_DECISIONS_AD-12_1_0a5bf803.md | implementation_request | claude_browser | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_PHASE_2_BUILD_PACKAGE___Execute_Immediat_d85ab6dd.md | implementation_request | claude_browser | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_GBT___BC___ADVANCE_DIRECTIVE___Read_This_03b6fc3f.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_HCI_SYSTEM___OPEN_ITEMS_WORK_PACKAGE_7ae788ee.md | implementation_request | claude_browser | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_v3_5_COMPLETE___BTW-4_through_BTW-10_All_db95d16f.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_WHILE_AWAY_DIRECTIVE___Active_Now_beb40703.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_OVERNIGHT_BUILD_STATUS___GATE_5_GO___OPS_a5f0e4b1.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_SESSION_12_HANDOFF___Gate5_GO___Full_Bui_4b50a764.md | implementation_request | claude_browser | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
