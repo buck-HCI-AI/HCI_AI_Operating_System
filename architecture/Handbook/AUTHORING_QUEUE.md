@@ -148,19 +148,40 @@ Chief Architect resolves authoring items.
 
 ---
 
-## Queue Summary
+## Implementation Additions (2026-06-29) — AUTHORING_QUEUE Updates
+
+| Volume | Chapter | New Status | Change |
+|--------|---------|-----------|--------|
+| III | 3.2 Extended Memory | ⚙️ IMPL ONLY ✅ | BTW-4: /gateway/project/{code}/timeline (373 events), /documents, /memory — all live |
+| III | 3.3.2 Events | ⚙️ IMPL ONLY ✅ | project_events table populated (13 types, 373 records) |
+| III | 3.3.4 Knowledge Graph | ⚙️ IMPL ONLY ✅ | BTW-9: /api/v1/services/knowledge-graph/ live; Qdrant 13 collections populated |
+| IV | 4.9-4.11 (NEW) | ⚙️ IMPL ONLY ✅ | BTW-5: 5 new role consoles (Owner/Office/Accounting/Client/Trade Partner) live at /gateway/role/* |
+| VII | 7.2 n8n Registry | ⚙️ IMPL ONLY ✅ | Updated: 55/63 active workflows (was 32); 21 workflows documented in Volume VII |
+| IX | 9.4 Current State | ⚙️ IMPL ONLY ✅ | Updated: all BTW complete, Phase 4 complete, Gate 5 verdict due July 1 |
+
+---
+
+## Queue Summary (Updated 2026-06-29)
 
 | Status | Count | Volumes Affected |
 |--------|-------|-----------------|
 | 🔴 NOT STARTED | 18 | I, II, III, IV, V, VI, IX, X |
-| ⚙️ IMPL ONLY | 20 | II, III, IV, V, VI, VII, VIII, IX |
+| ⚙️ IMPL ONLY | 26 | II, III, IV, V, VI, VII, VIII, IX |
 | 🟡 IN PROGRESS | 0 | — |
 | 🟠 DRAFT READY | 0 | — |
-| 🟢 PUBLISHED | 4 | — |
+| 🟢 PUBLISHED | 4 | I.A, I.B, I.C, I.D |
 | ⚠️ CONFLICT | 0 | — |
 
-**Volumes awaiting Chief Architect authorship before implementation can reference them:**
-Volume I (Executive Vision), Volume IX (Roadmap), Volume X (Future Vision)
+**Chief Architect authoring priority order (most urgent first):**
+1. Volume I (1.1-1.5) — Platform Purpose, Operating Philosophy, Intelligence Model Philosophy, Human+AI Model, Value Proposition
+2. Volume IX (9.1-9.2) — 2026 Roadmap + Gate 5 verdict (due July 1, 2026)
+3. Volume IV (4.1-4.3) — Role philosophy for 9 live consoles
+4. Volume V (5.1-5.2) — Executive philosophy + approval authority model
+5. Volume II (2.1, 2.4, 2.5) — Intelligence and data flow philosophy
+6. Volume III (3.1, 3.4) — Project Brain philosophy + risk detection methodology
+7. Volume VI (6.1, 6.4) — Intelligence engine philosophy + risk architecture
+8. Volume VIII (8.1) — Governance philosophy
+9. Volume X (10.1-10.5) — Future vision (2027-2028)
 
-**Implementation-ready volumes (no CA authorship required to use):**
-II, III, IV, V, VI, VII, VIII
+**Total chapters needing GBT authorship: 18 chapters across 8 volumes**
+**Full handbook completion ETA: depends on GBT authoring velocity**

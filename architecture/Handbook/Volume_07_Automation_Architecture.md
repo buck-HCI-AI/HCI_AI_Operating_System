@@ -8,7 +8,7 @@
 ```
 ┌─────────────────────────────────────────────────────┐
 │  n8n (port 5678) — Workflow Orchestration           │
-│  32 active workflows                                │
+│  55 active / 63 total workflows (2026-06-29)        │
 ├─────────────────────────────────────────────────────┤
 │  FastAPI (port 8000) — Intelligence API             │
 │  Managed by launchd (com.hci.api-server)            │
@@ -18,7 +18,7 @@
 │  Proxied via FastAPI at /mcp                        │
 ├─────────────────────────────────────────────────────┤
 │  PostgreSQL (hci_postgres docker) — Data Layer      │
-│  73 tables, 14 migrations applied                   │
+│  50+ tables, 17 migrations applied (2026-06-29)     │
 ├─────────────────────────────────────────────────────┤
 │  Redis — Caching Layer                              │
 │  TTL-based response caching                         │
@@ -41,10 +41,25 @@
 |----------|---------|--------|--------|
 | AUTO-SS-MORNING | Mon-Fri 06:00 | SS console → ntfy push | ✅ Active |
 | AUTO-PM-WEEKLY | Monday 07:00 | PM console → ntfy push | ✅ Active |
+| AUTO-PM | Daily 06:00 | AI Program Manager review | ✅ Active |
 | AUTO-WEEKLY-JOB | Friday 16:00 | Job reports → ntfy + disk | ✅ Active |
 | AUTO-WEEKLY-COMPANY | Friday 16:30 | Company report → ntfy + disk | ✅ Active |
+| AUTO-WEEKLY-EXEC | Friday 16:00 | Executive report (BTW-6) | ✅ Active |
+| AUTO-MONTHLY-REVIEW | 1st of month 09:00 | Business review (BTW-6) | ✅ Active |
 | AUTO-NIGHTLY-AUDIT | Nightly 02:00 | System audit → ntfy | ✅ Active |
 | AUTO-WEEKEND | Weekend 08:00 | Weekend summary → Outlook | ✅ Active |
+| AUTO-DAILY-PROJECT-SUMMARY | Daily | Per-project AI summaries (BTW-4) | ✅ Active |
+| AUTO-019 MORNING BRIEF | Daily 07:00 | Morning brief email | ✅ Active |
+| AUTO-020 EOD BRIEF | Daily 19:00 | End-of-day email | ✅ Active |
+| AUTO-CONTINUOUS-DISCOVERY | Hourly/Nightly | HubSpot+Houzz change detection (BTW-10) | ✅ Active |
+| AUTO-EVENT-HEALTH-CHECK | Every 30 min | Project health severity crossing detection | ✅ Active |
+| AUTO-EVENT-DRIVE-SCAN | Every 15 min | Shared drive new PDF detection | ✅ Active |
+| AUTO-COI-COMPLIANCE | Daily 07:00 | COI status refresh | ✅ Active |
+| AUTO-SCHEDULE-VARIANCE | Weekly | Schedule variance analysis | ✅ Active |
+| AUTO-PILOT-WEEKLY | Monday 07:30 | Gate5 pilot digest | ✅ Active |
+| WF-006 Executive Alerts | Event-driven | Cross-threshold risk alerts | ✅ Active |
+| WF-011 SS Daily Briefing | Daily 06:00 | Field superintendent daily brief | ✅ Active |
+| AUTO-EOD Email | Daily 19:00 | EOD email (⚠️ needs Gmail OAuth — Buck to configure) | ❌ Inactive |
 
 ### Gate Workflows (Approval Pattern)
 | Workflow | Trigger | Action |

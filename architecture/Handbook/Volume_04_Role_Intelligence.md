@@ -1,6 +1,7 @@
 # Volume IV — Role Intelligence
 *HCI AI Construction Operating System Architecture Handbook*
-**Covers: Superintendent Console / Project Manager Console / Leadership Dashboard**
+**Covers: All 9 Role Consoles — Superintendent / Project Manager / Leadership / Owner / Office / Accounting / Client / Trade Partner / Executive**
+**Last Updated: 2026-06-29 | Claude Code v3.5**
 
 ---
 
@@ -111,9 +112,102 @@ Auto-selected by active trade (from `houzz_subcontractors` + `houzz_schedule_ite
 
 ---
 
-## 4.9 Cross-References
+## 4.9 New BTW-5 Role Consoles — Implementation Reference (Added 2026-06-29)
 
-- Volume III (Project Brain) — per-project health feeding console data
+### 4.9.1 Owner Command Center
+
+**Endpoint:** `GET /gateway/role/owner`
+**User:** Buck Adams (sole owner)
+
+**Sections delivered:**
+1. Pending approvals by priority (critical/high/normal counts + financial exposure)
+2. Company financials: total contract value, total committed, commitment %, project count
+3. Critical/high severity risks across ALL active projects
+4. Per-project summary: health, schedule variance, open risks, committed vs contract
+
+**Live data as of 2026-06-29:**
+- $9.84M total contract value tracked across 4 active projects
+- 1,039 unique pending approvals
+- 1 critical risk: 101F steel delay (-5 days)
+
+---
+
+### 4.9.2 Office Admin Console
+
+**Endpoint:** `GET /gateway/role/office`
+**User:** Office Manager / Admin Staff
+
+**Sections delivered:**
+1. Pending approvals (action_type, description, priority, created_at)
+2. Submittal queue (open submittals across all projects with due dates)
+3. Overdue RFIs (past required_response_date)
+4. Action summary: total items, critical count
+
+---
+
+### 4.9.3 Accounting Console
+
+**Endpoint:** `GET /gateway/role/accounting`
+**User:** Controller / Accountant
+
+**Sections delivered:**
+1. Company totals: total contract, total awarded, pending bids, commitment %, remaining budget
+2. Per-project breakdown: contract_value, awarded, pending_bids, package counts
+3. Pending financial approvals by action type
+
+**Data sources:** `bid_entries` (awarded/pending), `bid_packages`, `projects.contract_value`, `approval_queue`
+
+---
+
+### 4.9.4 Client Portal
+
+**Endpoint:** `GET /gateway/role/client/{code}`
+**User:** Property owner / Client representative (read-only view)
+
+**Sections delivered:**
+1. Project health (RED/YELLOW/GREEN + schedule variance days)
+2. AI summary narrative
+3. Open RFIs requiring client response (with due dates)
+4. Pending change orders (from approval_queue, change_order action type)
+5. Recent milestones/events (awards, decisions, meetings)
+
+---
+
+### 4.9.5 Trade Partner Console
+
+**Endpoint:** `GET /gateway/role/trade-partner?vendor={name}&code={project_code}`
+**User:** Subcontractor / Trade Partner
+
+**Sections delivered:**
+1. Awarded bid packages for this vendor
+2. All bid submissions (awarded + pending)
+3. Open RFIs for the specified project
+4. Action summary: awarded contracts, RFIs needing response
+
+---
+
+## 4.10 Complete Role Console Map (9 Consoles)
+
+| Console | Endpoint | Role | Mobile | Auth |
+|---------|----------|------|--------|------|
+| Superintendent Daily | `/superintendent/{id}/today` | Field SS | ✅ | None |
+| PM Weekly | `/pm/{id}/weekly` | Project Manager | 🟡 | None |
+| PM Client Comms | `/mvp/projects/{code}/client-comms` | Project Manager | 🟡 | None |
+| PM Action List | `/mvp/projects/{code}/action-list` | Project Manager | 🟡 | None |
+| Leadership Dashboard | `/leadership/dashboard` | Leadership | ✅ | None |
+| Executive Morning Brief | `/executive/morning-brief` | Executive | ✅ Push | None |
+| Owner Command Center | `/gateway/role/owner` | Buck Adams | ✅ | Open |
+| Office Admin | `/gateway/role/office` | Office Manager | ✅ | Open |
+| Accounting | `/gateway/role/accounting` | Controller | ✅ | Open |
+| Client Portal | `/gateway/role/client/{code}` | Client | ✅ | Open |
+| Trade Partner | `/gateway/role/trade-partner?vendor=X` | Sub/Trade | ✅ | Open |
+
+---
+
+## 4.11 Cross-References
+
+- Volume III (Project Brain) — per-project health feeding all console data
 - Volume V (Executive Intelligence) — leadership escalation path
-- Volume VII (Automation Architecture) — n8n workflows delivering console reports
+- Volume VIII (Governance) — approval gates for client/trade partner write actions
+- Volume VII (Automation Architecture) — n8n workflows delivering console reports (6 daily push workflows)
 - ADR-002: Per-project intelligence model

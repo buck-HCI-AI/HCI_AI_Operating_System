@@ -83,14 +83,20 @@ TABLE project_brain_snapshots (
 - `project_risks_computed` — detected risk records with lifecycle
 - `background_learning_records` — documents processed per project
 
-### 3.3.2 Events
-⚠️ *Platform events table exists (`platform_events`) but not yet wired to Project Brain*
+### 3.3.2 Events (✅ BTW-4 Extended Memory — Added 2026-06-29)
+- `project_events` table — 373 events across 13 types (daily_log, award, rfi_submitted, meeting, risk_identified, submittal, change_order, field_note, decision, milestone, personnel, budget)
+- `GET /gateway/project/{code}/timeline` — returns chronological events with filters (`?days=N&event_type=X`)
+- Events auto-backfilled from: `daily_logs`, `rfis`, `risks`, `submittals`, `bid_entries`
 
 ### 3.3.3 Timeline
 ✅ `intelligence.py:_timeline()` — constructs timeline from schedule_variance, submittals, rfis, decisions
 
-### 3.3.4 Knowledge Graph
-⚠️ *[Chief Architect: Define the knowledge graph structure for cross-entity relationships]*
+### 3.3.4 Knowledge Graph (✅ BTW-9 — Implemented)
+- `services/knowledge_graph/graph.py` — entity nodes + relationship edges (in-memory, rebuilt on demand)
+- Nodes: projects, vendors, subcontractors, contacts, RFIs, change orders, purchase orders, bids
+- Edges: worked_on, supplied_to, submitted_on, raised_on, bid_on
+- Endpoints: `GET /api/v1/services/knowledge-graph/vendor`, `/issues`, `/product`, `/graph`, `/summary`
+- Qdrant semantic layer: vendor_memory (2,880 pts), drive_memory (2,347 pts), project_memory (2,690 pts)
 
 ### 3.3.5 Decisions
 ✅ `executive_inbox` table — pending decisions with approve/reject/defer tokens
@@ -150,6 +156,21 @@ BaseIntelligenceService
             ├── summary()
             └── _persist_snapshot()
 ```
+
+---
+
+---
+
+## 3.5 BTW-4 Extended Memory — Full Endpoint Map (Added 2026-06-29)
+
+| Endpoint | Table | Description |
+|----------|-------|-------------|
+| `GET /gateway/project/{code}/timeline` | `project_events` | 373 chronological events, 13 types |
+| `GET /gateway/project/{code}/documents` | `project_document_links` | Documents linked to decisions/risks/COs |
+| `GET /gateway/project/{code}/memory` | `project_ai_conversations` | AI conversation history per project |
+| `POST /api/v1/services/project-brain/{id}/query` | writes to conversations | Ask any question about the project |
+| `GET /gateway/project/{code}/brain` | `project_brain_snapshots` | Full daily snapshot |
+| `GET /api/v1/services/continuous-discovery/detect` | `connector_sync_state` | Change detection pipeline |
 
 ---
 
