@@ -854,6 +854,124 @@ def vendor_score_single(vendor_id: int):
         return _response(f"/vendors/scores/{vendor_id}", {}, errors=[str(e)], start=t0)
 
 
+# ── BTW-6: Project Budget & Drive Integration ─────────────────────────────────
+
+@router.get("/project/{code}/budget")
+def project_budget(code: str):
+    """BTW-6 — Full financial picture: awarded vs budget estimates vs contract value."""
+    t0 = time.time()
+    try:
+        conn = _pg_stale_conn()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT p.id, p.name, p.contract_value, p.drive_folder_id,
+                       p.gsheet_bid_tracker, p.bid_folder_id
+                FROM projects p WHERE UPPER(p.project_code) = UPPER(%s)
+            """, (code,))
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return _response(f"/project/{code}/budget", {}, errors=["Project not found"], start=t0)
+            pid, name, contract_val, drive_id, sheet_id, bid_folder = row
+
+            cur.execute("""
+                SELECT
+                  status,
+                  COUNT(*) as pkg_count,
+                  SUM(awarded_amount) as total_amount
+                FROM bid_packages
+                WHERE project_id = %s
+                GROUP BY status
+            """, (pid,))
+            rows = cur.fetchall()
+
+            awarded_total = 0.0
+            estimate_total = 0.0
+            pkg_counts = {}
+            for status, count, total in rows:
+                pkg_counts[status] = count
+                amt = float(total or 0)
+                if status == "awarded":
+                    awarded_total = amt
+                elif status in ("bids_receiving", "bidding", "not_started"):
+                    estimate_total += amt
+
+            total_projected = awarded_total + estimate_total
+            cv = float(contract_val or 0)
+            variance = cv - total_projected
+            pct_committed = round(awarded_total / cv * 100, 1) if cv else 0
+            pct_projected = round(total_projected / cv * 100, 1) if cv else 0
+
+            cur.execute("""
+                SELECT csi_division, package_name, status, awarded_amount
+                FROM bid_packages WHERE project_id = %s AND awarded_amount IS NOT NULL
+                ORDER BY CASE status WHEN 'awarded' THEN 0 ELSE 1 END, awarded_amount DESC
+            """, (pid,))
+            packages = [{"csi": r[0], "package": r[1], "status": r[2],
+                         "amount": float(r[3])} for r in cur.fetchall()]
+        conn.close()
+
+        budget_status = "OVER_BUDGET" if variance < 0 else "AT_RISK" if pct_projected > 95 else "OK"
+        return _response(f"/project/{code}/budget", {
+            "project": name,
+            "contract_value": cv,
+            "awarded_committed": awarded_total,
+            "open_estimates": estimate_total,
+            "total_projected": total_projected,
+            "variance": variance,
+            "pct_committed": pct_committed,
+            "pct_projected": pct_projected,
+            "budget_status": budget_status,
+            "package_counts": pkg_counts,
+            "drive_folder_id": drive_id,
+            "bid_tracker_sheet": sheet_id,
+            "line_items": packages,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/budget", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/project/{code}/drive")
+def project_drive(code: str):
+    """BTW-6 — List Drive files in the project's Drive folder."""
+    t0 = time.time()
+    try:
+        conn = _pg_stale_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT name, drive_folder_id FROM projects WHERE UPPER(project_code) = UPPER(%s)", (code,))
+            row = cur.fetchone()
+        conn.close()
+        if not row or not row[1]:
+            return _response(f"/project/{code}/drive", {}, errors=["No Drive folder linked"], start=t0)
+        name, folder_id = row
+
+        r = requests.get(
+            "https://www.googleapis.com/drive/v3/files",
+            params={"q": f"'{folder_id}' in parents and trashed=false",
+                    "fields": "files(id,name,mimeType,modifiedTime,size)",
+                    "pageSize": 50},
+            headers={"Authorization": f"Bearer {_drive_token()}"},
+            timeout=15,
+        )
+        if not r.ok:
+            return _response(f"/project/{code}/drive", {}, errors=[f"Drive API: {r.status_code}"], start=t0)
+        files = r.json().get("files", [])
+        return _response(f"/project/{code}/drive", {
+            "project": name, "folder_id": folder_id, "file_count": len(files), "files": files,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/drive", {}, errors=[str(e)], start=t0)
+
+
+def _drive_token() -> str:
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from credentials import get_drive_token
+        return get_drive_token()
+    except Exception:
+        return ""
+
+
 @router.get("/executive/mission-control")
 def mission_control():
     """Mission control — cross-project command center."""
