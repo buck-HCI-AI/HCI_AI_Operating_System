@@ -422,6 +422,16 @@ check("New RFI increments the pending-review count", p.get("total_pending_review
 check("Has all three category lists", all(k in p for k in
       ("rfis_from_plan_review", "bid_packages_from_plan_review", "schedule_items_from_plan_review")), p)
 
+# ── 25. Grounded permitting research (ADR-014 roadmap item 3) ──────────────────
+print("\n25. GET /gateway/permitting/research/{code} — grounded in cited sources")
+code, d = get("/permitting/research/101F")
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has sources list", isinstance(p.get("sources"), list) and len(p["sources"]) > 0, p)
+check("Sources are real aspen.gov/pitkincounty.com URLs",
+      all("aspen.gov" in s or "pitkincounty.com" in s for s in p.get("sources", [])), p.get("sources"))
+check("Has grounded_facts_note", bool(p.get("grounded_facts_note")), p)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:

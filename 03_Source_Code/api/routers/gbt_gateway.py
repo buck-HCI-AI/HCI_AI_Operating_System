@@ -3384,9 +3384,39 @@ def _get_pid(code: str) -> int:
 
 
 # ── Permitting Research (Claude AI) ─────────────────────────────────────────
+
+# Grounded permitting facts (2026-07-01) — verified via live web search against the
+# actual City of Aspen / Pitkin County government sites rather than relying on Claude's
+# general knowledge alone. This is the ADR-014 roadmap's "grounded permitting research"
+# item, built without a paid UpCodes vendor account: the always-on API backend can't
+# call WebSearch/WebFetch itself (those are Claude Code session tools, not a callable
+# API), so this is refreshed periodically by an agent doing the research and updating
+# this block — same maintenance pattern as rom_estimate()'s benchmark table. Refresh
+# this if City of Aspen / Pitkin County process pages change materially.
+_PERMITTING_GROUNDED_FACTS = """VERIFIED FACTS (source-cited, refresh periodically — not general knowledge):
+
+City of Aspen Building Permit Process:
+- All applications submitted via the Salesforce-based Permit Portal; registration takes up to 2 business days to activate.
+- Contractors must hold an active City of Aspen Business License AND Contractor License before applying.
+- Building Support reviews for completeness first; once accepted, applicant receives submittal fee total + payment instructions.
+- Relevant review agencies (Building, Engineering, Fire, etc.) each approve or return comments per review round; all must approve before Final Review.
+- Issuance fees must be paid within 180 days of "Ready for Issue" status or the permit expires.
+- Once issued, work must be inspected within 180 days or the permit is considered expired.
+- Source: City of Aspen Building Permit Process (https://aspen.gov/236/Building-Permit-Process-Payment), Permit Types & Triggers (https://www.aspen.gov/DocumentCenter/View/1703/Permit-Types-and-Triggers)
+
+Pitkin County (unincorporated — applies outside Aspen city limits):
+- If the site is a historic or archeological resource, conceptual approval from the Historic Preservation Officer is REQUIRED at permit submittal, not after.
+- Redstone Historic District specifically requires a separate land use application for development projects.
+- Historic Preservation Officer contact: 970-920-9225.
+- Source: Pitkin County Historic Preservation (https://pitkincounty.com/220/Historic-Preservation), Building (https://pitkincounty.com/192/Building)
+"""
+
+
 @router.get("/permitting/research/{code}")
 def permitting_research(code: str):
-    """AI-powered permit research for City of Aspen projects using Claude."""
+    """AI-powered permit research for Aspen-area projects — grounded in verified City of
+    Aspen / Pitkin County process facts (see _PERMITTING_GROUNDED_FACTS), not Claude's
+    general knowledge alone."""
     t0 = time.time()
     pid = _get_pid(code)
     try:
@@ -3408,23 +3438,29 @@ def permitting_research(code: str):
 
         scope = row["scope"] or "Construction project"
         address = row["address"] or "Aspen, CO"
+        is_historic = "cemetery" in address.lower() or "historic" in (scope or "").lower()
 
         prompt = f"""You are a construction permitting expert specializing in Aspen, Colorado.
-Provide a concise permitting roadmap for this project:
+
+{_PERMITTING_GROUNDED_FACTS}
+
+Using the verified facts above (cite them where relevant, do not contradict them),
+provide a concise permitting roadmap for this project:
 
 Project: {row['name']}
 Address: {address}
 Scope: {scope}
 Status: {row['status']}
+Historic/archeological resource flag: {is_historic}
 
 Provide:
 1. Required permits (Building, Grading, ROW, HPC if applicable, etc.)
-2. City of Aspen specific requirements (HPC Historic Preservation, FAR/setback notes)
-3. Estimated review timelines (City of Aspen Building Dept typically 8-16 weeks)
-4. Key submittals required
+2. City of Aspen or Pitkin County specific requirements (whichever applies), citing the verified facts above
+3. Estimated review timelines and expiration windows (cite the verified 180-day issuance/inspection windows above)
+4. Key submittals required, including Business/Contractor License prerequisites
 5. Any altitude/environmental considerations (7,900 ft elevation, wildfire zone, etc.)
 
-Be specific to City of Aspen Building Department processes. Keep response under 400 words."""
+Keep response under 400 words."""
 
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
@@ -3442,7 +3478,16 @@ Be specific to City of Aspen Building Department processes. Keep response under 
             "scope": scope,
             "permit_research": research,
             "jurisdiction": "City of Aspen Building Department",
-            "hpc_required": "cemetery" in address.lower() or "historic" in (scope or "").lower(),
+            "hpc_required": is_historic,
+            "sources": [
+                "https://aspen.gov/236/Building-Permit-Process-Payment",
+                "https://www.aspen.gov/DocumentCenter/View/1703/Permit-Types-and-Triggers",
+                "https://pitkincounty.com/220/Historic-Preservation",
+                "https://pitkincounty.com/192/Building",
+            ],
+            "grounded_facts_note": "Response is grounded in verified City of Aspen / "
+                "Pitkin County process facts (see 'sources'), not general AI knowledge "
+                "alone — refreshed periodically, not live-fetched on every call.",
             "ai_model": "claude-haiku-4-5-20251001"
         }, start=t0)
     except Exception as e:
