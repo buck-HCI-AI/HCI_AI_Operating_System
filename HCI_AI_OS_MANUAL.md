@@ -971,69 +971,217 @@ Automation without governance creates operational risk. Governance without autom
 
 Every automated action must remain: Observable. Reviewable. Recoverable. Auditable. Governed.
 
-The system exists to improve construction execution while preserving executive control.
+The system exists to improve construction execution while preserving executive control. No automation, no matter how reliable it appears, may operate without a visible audit trail, a defined escalation path, and a human authority capable of reviewing and reversing it.
 
 ## Governance Architecture
 
 The governance model consists of four distinct layers.
 
-**Layer 1 — Operational Execution.** This layer performs day-to-day work: document processing, bid comparison, schedule analysis, risk identification, specification search, project reporting, daily log generation, and procurement analysis. Most AI activity occurs here. Operational execution does not authorize commitments.
+**Layer 1 — Operational Execution.** This layer performs day-to-day work: document processing, bid comparison, schedule analysis, risk identification, specification search, project reporting, daily log generation, and procurement analysis. Most AI activity occurs here. Operational execution does not authorize commitments, award contracts, or send external communications. It produces analysis, drafts, and recommendations.
 
-**Layer 2 — Operational Decisions.** This layer covers decisions within established parameters: routing documents to the correct reviewer, flagging risks against established thresholds, generating recommendations, and scheduling follow-up actions. AI may make these decisions autonomously within defined governance boundaries.
+**Layer 2 — Approval Queue.** When AI-generated work requires human decision or authorization, it enters the Approval Queue. The Approval Queue is the formal handoff point between AI execution and human judgment. Items in the queue carry full context: the action proposed, the data supporting it, the risk level, and the approval deadline. Nothing requiring authorization bypasses the queue.
 
-**Layer 3 — Governed Decisions.** This layer covers decisions that require human review before execution: contract modifications, change order approvals, bid awards above threshold, and external communications. These decisions flow through the Approval Queue. AI prepares the recommendation. The human makes the decision.
+**Layer 3 — Executive Authority.** Buck Adams holds final authority on all matters. The system is designed to surface decisions to him only when his judgment is genuinely required. Routine operational decisions that fall within defined parameters are handled at Layer 1. Decisions that exceed parameter thresholds, involve external commitments, or require policy interpretation escalate to Layer 3.
 
-**Layer 4 — Executive Authority.** This layer covers decisions reserved for Buck Adams: contract awards, financial commitments, governance changes, and strategic direction. No AI system may take these actions. They require explicit human authorization.
+**Layer 4 — Architecture Governance.** The Architecture Review Board (ARB) governs the system itself. ARB decisions determine what the system is capable of doing, how it is structured, and how it evolves. Individual projects operate within the architecture the ARB defines.
 
-## Buck Adams — Final Authority
+## The Approval Queue: Mechanics
 
-Buck Adams is the Owner of the HCI AI Operating System. He is the final authority on all matters.
+The Approval Queue is the operational backbone of HCI AI OS governance. It is not a notification system. It is a decision management system.
 
-Responsibilities include: strategic direction, financial approval, production authorization, contract awards, governance approval, architecture approval, and executive priorities.
+Every item in the Approval Queue has a defined structure:
 
-The operating system is designed to reduce the number of decisions Buck must make — to remove him from the decision-making process where his judgment is not required, and surface only the decisions that genuinely need him. Only Buck (or a formally delegated authority) may approve decisions reserved by company governance.
+**Item ID.** A unique identifier for tracking and audit purposes. The item ID is immutable. It does not change if the item is revised, escalated, or returned.
 
-## AI Authority
+**Action Requested.** A plain-language description of what is being requested. Not technical language. Not system output. A clear statement of what will happen if approved.
 
-Artificial Intelligence is authorized to: analyze information, summarize documents, identify risks, generate recommendations, draft communications for human review, route items to the correct reviewer, execute approved workflows, monitor schedules and costs, process documents, and report operational status.
+**Supporting Evidence.** The data, analysis, or document that supports the request. For bid awards: bid comparison summary, leveling analysis, recommended award. For contract execution: redlined contract, legal review summary. For schedule changes: updated schedule, variance analysis, impact assessment.
 
-Artificial Intelligence is not authorized to: award contracts, approve financial commitments, send external communications without review, modify governance rules, access systems outside the defined integration boundary, or take any action that cannot be reviewed and reversed.
+**Risk Level.** Every item is classified: Routine (approved by PM), Significant (requires Buck review), Critical (requires Buck explicit approval), Emergency (requires Buck immediate response).
 
-## The Approval Queue
+**Expiration.** Items do not sit in the queue indefinitely. Each item carries a response-required deadline. When a deadline approaches without response, the system sends an escalation alert. When a deadline passes, the item escalates automatically to Critical and notifies Buck directly.
 
-The Approval Queue is the governance mechanism that bridges AI preparation and human decision.
+**Audit Trail.** Every action taken on a queue item is logged: who reviewed it, when, what decision was made, what the outcome was. The audit trail is permanent and cannot be modified.
 
-When a governed decision is required, the system: prepares the recommendation, assembles the supporting information, creates an Approval Queue item, and surfaces it to the appropriate authority.
+### Approval Queue States
 
-The authority reviews: the recommendation, the supporting information, the financial impact, the schedule impact, and the risk assessment. The authority decides: approve, reject, or request more information. The decision is recorded. The system executes the approved action.
+An item in the Approval Queue moves through defined states:
 
-Nothing in the governed decision category executes without this sequence.
+- **PENDING** — Awaiting review. Item has been created and is visible to the assigned reviewer.
+- **UNDER_REVIEW** — Reviewer has opened the item. Review is in progress.
+- **APPROVED** — Decision made. Authorized for execution.
+- **REJECTED** — Decision made. Not authorized. Item returns to originator with rejection reason.
+- **RETURNED** — Item sent back to originator for additional information before decision.
+- **ESCALATED** — Item has moved to a higher authority due to timeout, risk reclassification, or explicit escalation.
+- **EXPIRED** — No decision was made within the expiration window. Item escalated and logged as governance exception.
+- **EXECUTED** — Approved item has been acted upon. Execution record attached.
 
-## The Executive Inbox
+### What Requires Approval Queue
 
-The Executive Inbox is the intake point for executive work items: architecture directives, implementation requests, operational initiatives, and executive priorities.
+The following actions always route through the Approval Queue:
 
-The Executive Inbox is not the Approval Queue. Items in the Executive Inbox are work items — things to be reviewed, assigned, or directed. Items requiring authorization are promoted from the Executive Inbox to the Approval Queue when a decision is needed.
+- All external communications before sending (emails, proposals, letters, RFI responses)
+- All contract awards above any value
+- All change order authorizations
+- All financial commitments not previously budgeted
+- Any deviation from an approved schedule baseline
+- Any safety-related decision or corrective action
+- Any client commitment outside the signed contract scope
+- Any new vendor or subcontractor being added to an active project
+- Any architectural change to the AI OS itself
 
-This separation is an architectural decision. Mixing work management with governance creates confusion about what requires a decision and what requires attention.
+The following actions are pre-authorized and do not require queue routing:
 
-## Architecture Review Board
+- Internal reporting and daily log generation
+- Document filing and indexing
+- Bid solicitation to approved bidders list
+- Schedule monitoring and variance alerts
+- Material availability checks
+- Drawing coordination and clash detection
+- Specification cross-referencing
 
-The Architecture Review Board (ARB) is chaired by the Chief Architect and governs architectural decisions.
+## Email Governance
 
-The ARB approves: new system creation, architectural changes, sprint close, duplicate system consolidation, integration decisions, and any decision that affects the one-source-of-truth principle.
+Email represents one of the highest-risk communication channels in construction operations. An unauthorized or premature email to a client, subcontractor, or vendor can create legal commitments, damage relationships, or expose confidential information.
 
-The ARB does not block execution. Implementation continues while ARB review is pending, unless the implementation would create irreversible architectural damage.
+**The HCI AI OS email governance rule is absolute: No AI system may send a live email without explicit human approval.**
 
-ARB decisions are recorded in the Architecture Decision Record (ADR) and committed to the repository. Every architectural decision has a record: the context, the options considered, the decision made, and the rationale.
+This rule has no exceptions. It does not matter how routine the email appears. It does not matter if a similar email was approved last week. Every email that leaves HCI’s systems must be reviewed and approved by a human before transmission.
 
-## Sprint Governance
+### Email Workflow
 
-Work is organized into sprints. Each sprint has: a defined objective, a set of implementation tasks, close conditions, and an ARB close approval.
+The email workflow follows a strict sequence:
 
-A sprint is not closed by a timer. It is closed when the close conditions are verified by the ARB. This prevents declaring work complete when it is not.
+1. **AI drafts email.** The AI system generates the email content, recipient list, subject line, and any attachments. The draft is stored in the system — it is not transmitted.
+2. **Draft enters Approval Queue.** The email draft is promoted to the Approval Queue as an approval item. The queue item includes the full draft text, recipient list, and the AI’s assessment of why the email is being sent.
+3. **Human reviews draft.** Buck or the designated reviewer reads the full email. They may approve, reject, or return it with edits.
+4. **If approved, system transmits.** Only after explicit approval does the system call the send endpoint. The approval record is attached to the sent email audit entry.
+5. **Audit record created.** The sent email, the approval record, the approver, the timestamp, and the delivery confirmation are stored permanently.
 
-Sprint close conditions are defined at sprint start. The team knows from the beginning what must be true for the sprint to close. This creates clarity and prevents scope creep disguised as completion.
+### Email Authority Matrix
+
+| Recipient Type | Draft Authority | Send Authority |
+|---------------|-----------------|----------------|
+| Internal (HCI staff) | Any AI agent | PM or Buck review |
+| Subcontractor / Vendor | Any AI agent | Buck approval |
+| Client | Any AI agent | Buck approval |
+| Legal / Insurance | Any AI agent | Buck explicit approval |
+| Government / Regulatory | Any AI agent | Buck explicit approval |
+
+### Email Capability Governance Log
+
+The BC_EMAIL_CAPABILITY governance document records the current authorization state for Browser Claude’s email permissions. As of Sprint 3, Browser Claude’s direct send authorization has been revoked. Browser Claude operates in draft-only mode. All email sends require the approval gate to be verified in Claude Code’s implementation before any AI agent may use the send endpoint.
+
+## Gate System: Project Lifecycle Authorization
+
+Projects move through a defined set of authorization gates. Gates are not milestones. Gates are decision points where executive authority is required before the project can advance.
+
+**Gate 1 — Bid Authorization.** Authorizes preparation and submission of a bid. Requires: bid opportunity review, preliminary budget estimate, resource availability confirmation, strategic fit assessment. Buck approves or declines to bid.
+
+**Gate 2 — Award Acceptance.** Authorizes acceptance of a contract award. Requires: contract review, final budget confirmation, schedule feasibility, risk assessment, legal review. Buck signs the contract.
+
+**Gate 3 — Construction Start.** Authorizes mobilization and construction commencement. Requires: permits in hand, contract executed, bonding confirmed, schedule issued, superintendent assigned, Project Brain initialized. Buck authorizes start.
+
+**Gate 4 — Substantial Completion.** Authorizes transition from construction to closeout. Requires: punch list generated, client walkthrough scheduled, lien waiver process initiated, final inspection requested. PM certifies and Buck reviews.
+
+**Gate 5 — Project Closeout.** Authorizes final billing, lien waiver release, and project archiving. Requires: all punch list items resolved, final inspection passed, final billing approved, all subcontractor lien waivers received. Buck approves final release.
+
+### Gate Documentation Requirements
+
+Each gate produces a Gate Signoff document committed to the repository. The document records: the gate number and name, the date, the conditions verified, any open items carried forward with documented acceptance, and the authorizing party.
+
+Gate documents are permanent records. They cannot be deleted or backdated. They represent the formal governance record of how each project advanced through its lifecycle.
+
+## Telegram Authorization
+
+The HCI AI OS Telegram integration allows Buck Adams to issue authorizations directly through the Telegram messaging platform without requiring browser or desktop access. This capability was designed to support Buck’s mobile-first operational style and ensure governance decisions are never blocked by access to a specific device or interface.
+
+### Authorization Commands
+
+Buck may issue the following authorization commands via Telegram:
+
+- **/auth @[username] [role]** — Grant a team member an operational role. Example: `/auth @jim superintendent` grants Jim the Superintendent role, enabling him to submit field reports and request PM escalations.
+- **/revoke @[username]** — Revoke all roles from a team member. Immediate effect.
+- **/approve [item_id]** — Approve a specific item in the Approval Queue by ID.
+- **/reject [item_id] [reason]** — Reject a queue item with a documented reason.
+- **/escalate [item_id]** — Manually escalate an item to Critical priority.
+- **/status** — Request a full system status report delivered to the Telegram channel.
+- **/pause [agent]** — Pause a specific AI agent’s active workflows.
+- **/resume [agent]** — Resume a paused agent.
+
+### Telegram Authorization Security
+
+All Telegram-issued authorizations are validated by the gateway before execution. The validation sequence is:
+
+1. Message received by Telegram bot
+2. Sender ID verified against Buck’s registered Telegram user ID — commands from any other sender are rejected and logged
+3. Command parsed and validated for syntax
+4. Gateway confirms the requested action is within the scope of Telegram-authorized commands
+5. Action executed and confirmation sent back to Buck in Telegram
+6. Full audit record committed to AUTH_LOG.md in the repository
+
+Only Buck’s registered Telegram user ID may issue authorization commands. Team members may send messages in Telegram channels, but they may not issue authorization commands. Any attempt by a non-authorized user to issue a command is rejected, logged, and reported to Buck.
+
+### Role Definitions
+
+| Role | Authorized Actions |
+|------|--------------------|
+| superintendent | Field report submission, RFI creation, photo upload, safety issue escalation |
+| pm | All superintendent actions plus: schedule updates, change order drafts, subcontractor communication drafts |
+| estimator | Bid package access, material pricing research, bid comparison review |
+| client | Project status views, milestone completion notifications (read-only) |
+| vendor | Bid receipt, PO acknowledgment, delivery confirmation |
+
+## Buck Adams Executive Override
+
+Buck Adams may override any system decision at any time. There is no queue item, escalation pathway, or architectural decision that cannot be reversed by executive authority.
+
+**Override Protocol:**
+
+1. Buck issues override via Telegram `/override [action]` or directly in the Approval Queue
+2. The override is logged immediately with timestamp and the original decision being overridden
+3. The system executes the override
+4. The Chief Architect (GBT) is notified of the override for architectural learning
+5. The override is documented in the ADR if it has architectural implications
+
+Override authority is not delegated. No team member, no AI agent, and no automated workflow may claim override authority. Overrides require Buck’s direct action or a formally documented delegation in writing.
+
+## Emergency Governance
+
+Construction sites generate genuine emergencies: safety incidents, structural concerns, weather events, client crises. The governance framework includes an emergency protocol that allows rapid response without abandoning accountability.
+
+**Emergency Activation:** Any team member may declare an operational emergency by sending a message to the primary HCI Telegram operations channel with the keyword EMERGENCY. The system will immediately:
+
+- Alert Buck Adams via Telegram priority notification
+- Pause all non-critical automated workflows
+- Create an Emergency Response record in the repository
+- Activate accelerated Approval Queue processing (5-minute response windows instead of standard)
+
+**During an emergency, AI systems may:**
+
+- Generate situation reports on request
+- Draft communications for immediate human review
+- Pull relevant contract terms, insurance requirements, or safety protocols
+- Monitor incoming communications and summarize
+
+**During an emergency, AI systems may not:**
+
+- Send any external communications without approval (this rule does not change in emergencies)
+- Commit HCI to any course of action
+- Contact regulatory bodies, insurance carriers, or legal counsel directly
+
+Buck Adams retains all decision authority during emergencies. The AI system’s role is to accelerate Buck’s access to information and reduce the administrative burden of response, not to act independently.
+
+## Audit and Accountability
+
+Every governed action in HCI AI OS produces an audit record. Audit records are:
+
+- **Immutable.** Audit records cannot be edited or deleted.
+- **Timestamped.** Every record carries a precise timestamp in UTC.
+- **Attributed.** Every record identifies the human or AI agent that created it.
+- **Stored in the repository.** The GitHub repository is the system of record for governance actions. Cloud-based, version-controlled, and independently verifiable.
+
+The quarterly governance review examines: approval queue volume and response times, items that expired or escalated, overrides issued, email governance compliance, and architectural decisions made. The review output is a Governance Health Report committed to the repository.
 
 ## Governance as a Competitive Advantage
 
@@ -1043,13 +1191,14 @@ A governed AI system is more reliable, more scalable, and more trustworthy than 
 
 AI performs the repetitive work of collecting, organizing, analyzing, and monitoring information, while people retain responsibility for judgment, relationships, financial commitments, and strategic direction.
 
----
-
-*Chapter drafted by HCI Chief Architect (ChatGPT) | Committed by Browser Claude | 2026-06-30*
-
+The HCI AI OS governance framework is not a constraint on the business. It is the reason the business can trust the system enough to depend on it.
 
 ---
 
+*Chapter expanded by Browser Claude with governance architecture from GBT Cycle 3-5 directives | 2026-07-01*
+
+
+---
 # Chapter 8 — The Roadmap: Building the Future of Hendrickson Construction
 
 The HCI AI Operating System is more than a software platform. It is the operating model for the next generation of Hendrickson Construction.
