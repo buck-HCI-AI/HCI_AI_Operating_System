@@ -3227,3 +3227,316 @@ It will not simply help Hendrickson Construction complete projects more efficien
 It will help the company preserve its experience, strengthen its culture, and build a business that becomes wiser with every project it undertakes.
 
 That is the owner's operating manual—not for software, but for a company committed to combining craftsmanship, disciplined leadership, and continuously improving intelligence into a lasting competitive advantage.
+
+---
+
+## Chapter 18 — Appendix
+
+### Quick Reference Guide
+
+This appendix is designed to be the section you return to most often.
+
+It is not intended to teach the system.
+
+It is intended to help you operate it.
+
+Use it when you need a reminder, a checklist, or a quick definition.
+
+---
+
+### 1. Daily Quick Reference
+
+**Buck Adams — Owner**
+
+Every Morning:
+
+- Review the Morning Brief
+- Review company health
+- Review open approvals
+- Identify projects requiring attention
+- Act on time-sensitive decisions
+
+Throughout the Day:
+
+- Respond to approval queue items
+- Ask GBT for strategic analysis when needed
+- Issue directives that override AI recommendations when your judgment differs
+
+---
+
+**Project Manager**
+
+Every Morning:
+
+- Review Mission Control
+- Review open approvals in queue
+- Check RFI and submittal status
+- Review project health indicators
+- Identify schedule risks
+
+During the Week:
+
+- Prepare weekly PM review
+- Monitor bid activity
+- Follow up on overdue items
+- Escalate red indicators to Buck
+
+---
+
+**Superintendent**
+
+Every Morning:
+
+- Review Superintendent Dashboard
+- Review today's schedule
+- Review crew assignments
+- Review deliveries
+- Review safety items
+- Meet with foremen
+
+During the Day:
+
+- Walk the site
+- Coordinate trades
+- Record field observations
+- Photograph important work
+- Report issues immediately
+
+End of Day:
+
+- Complete Daily Field Log
+- Upload photographs
+- Verify manpower
+- Record completed work
+- Identify tomorrow's priorities
+
+---
+
+**Estimator**
+
+Every Morning:
+
+- Review Bid Dashboard
+- Review new bids
+- Review bid expirations
+- Review follow-ups
+- Review procurement risks
+
+Throughout the Week:
+
+- Monitor vendor responses
+- Level new bid packages
+- Prepare award recommendations
+- Update budget tracking
+- Report failures
+
+---
+
+**AI Team — Daily Checks**
+
+Browser Claude:
+
+- Monitor GitHub commits
+- Check Claude Code inbox
+- Verify email governance (no unauthorized sends)
+- Review directive completion status
+- Report blockers immediately
+
+Claude Code:
+
+- Process inbox directives
+- Commit all work to main branch
+- Run test suite after changes
+- Update status files after major work
+- Report completion to BC inbox
+
+GBT:
+
+- Answer operational queries
+- Draft RFIs, scopes, and analyses
+- Review architecture decisions
+- Maintain ARB ruling documentation
+- Collaborate with BC and Claude Code on directives
+
+---
+
+### 2. Glossary
+
+**Approval Queue**
+The authoritative queue of decisions requiring human approval before execution.
+
+**Architecture Review Board (ARB)**
+The governance body responsible for maintaining architectural consistency and long-term platform integrity.
+
+**Bid Package**
+A defined scope of work issued to subcontractors for competitive pricing.
+
+**Browser Claude (BC)**
+The AI participant responsible for repository governance, implementation audits, documentation review, and operational analysis.
+
+**Claude Code**
+The AI implementation engineer responsible for code, database operations, workflow development, and system integration.
+
+**CURRENT_SPRINT**
+The living document describing the current development sprint's objectives, active work, and completion status.
+
+**Email Governance**
+The HCI policy requiring all system-generated emails to be held as drafts until explicitly approved by Buck Adams.
+
+**FastAPI**
+The Python web framework serving the HCI AI OS API at localhost:8000.
+
+**Gate 5**
+The final production approval gate requiring Buck Adams' sign-off before the system transitions from pilot to full production.
+
+**Gateway**
+The GBT-facing API interface that allows AI agents to call HCI system functions through structured endpoints.
+
+**GBT**
+ChatGPT configured as the HCI Chief Architect. Responsible for strategic analysis, RFI drafting, ARB governance, and architectural decision-making.
+
+**LIVE_PROJECT_STATE**
+The canonical document describing the current operational state of all active projects.
+
+**Mission Control**
+The executive dashboard displaying cross-project health, approvals, risks, and AI system status.
+
+**Morning Brief**
+The executive summary prepared at the beginning of the day highlighting items requiring leadership attention.
+
+**n8n**
+The workflow automation platform used to orchestrate scheduled and event-driven processes.
+
+**Project Brain**
+The authoritative knowledge repository for an individual project, containing drawings, RFIs, submittals, schedules, procurement, risks, and project history.
+
+**Project State**
+The structured operational record describing a project's current condition, ownership, and health.
+
+**ROM**
+Rough Order of Magnitude. The initial budget estimate prepared before design development is complete.
+
+**SOP**
+Standard Operating Procedure. The documented process that governs a specific business function within HCI.
+
+**Sprint**
+A defined development cycle during which the AI team implements planned improvements to the HCI AI OS.
+
+---
+
+### 3. System Contacts and Endpoints
+
+| System | Location | Purpose |
+|---|---|---|
+| FastAPI | localhost:8000 / ngrok tunnel | Main API server |
+| API Docs | localhost:8000/docs | OpenAPI documentation |
+| Dashboard | localhost:8000/dashboard | System health dashboard |
+| n8n | localhost:5678 | Workflow automation |
+| ngrok | speculate-armband-retinal.ngrok-free.dev | External tunnel to FastAPI |
+| GitHub | github.com/buck-HCI-AI/HCI_AI_Operating_System | Source code and documentation |
+| GBT | chatgpt.com (HCI Chief Architect GPT) | Strategic analysis and ARB governance |
+| Claude Code | Terminal session on local Mac | Implementation and code |
+| Browser Claude | Chrome browser session | Operations intelligence and governance |
+
+**API Key:** hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
+
+Keep this key secure. Rotate immediately if compromised.
+
+---
+
+### 4. Emergency Procedures
+
+**Workflow Failure**
+
+Symptoms:
+
+- Scheduled workflow does not execute
+- Missing reports
+- Automation errors
+- Failed notifications
+
+Actions:
+
+1. Confirm the failure
+2. Review workflow logs
+3. Identify affected projects
+4. Notify the responsible owner
+5. Record the incident
+6. Restore normal operation
+7. Verify successful execution
+
+**Unauthorized Action**
+
+Examples:
+
+- Email sent to external recipient without approval
+- System write executed without approval queue entry
+- Commitment made without Buck's authorization
+
+Actions:
+
+1. Stop the action immediately if still possible
+2. Document exactly what happened
+3. Notify Buck Adams
+4. Identify root cause
+5. Implement preventive control
+6. Verify control is effective
+
+**AI Agent Offline**
+
+If Browser Claude is unavailable:
+
+- Directives queue in GitHub inbox
+- Resume processing at next available session
+- No operational data is lost
+
+If Claude Code is unavailable:
+
+- Implementation work pauses
+- Directives remain in inbox
+- Resume at next terminal session
+
+If GBT is unavailable:
+
+- Strategic analysis pauses
+- Operational workflows continue
+- Resume at next ChatGPT session
+
+**Data Appears Wrong**
+
+Actions:
+
+1. Do not overwrite until root cause is identified
+2. Compare affected systems
+3. Determine whether the issue is stale data, synchronization, or user input
+4. Correct the authoritative record first
+5. Validate downstream systems
+6. Document findings and preventive improvements
+
+---
+
+### 5. Version History
+
+| Version | Date | Summary |
+|---|---|---|
+| 0.1 | Initial drafting | Established manual structure and core operating principles |
+| 0.2 | Sprint 3 | Expanded governance, operational workflows, and role-based guidance |
+| 0.3 | Current working draft | Added implementation guidance, field operations, PM operations, estimating operations, owner's guide, and reference appendix |
+
+---
+
+**Operating Principles at a Glance**
+
+Before closing this manual, remember the principles that appear throughout every chapter:
+
+- Audit before building.
+- Extend before creating.
+- Maintain one source of truth.
+- Keep humans accountable for governed decisions.
+- Document what you build.
+- Preserve institutional knowledge.
+- Improve the system every sprint.
+- Solve root causes, not symptoms.
+- Build for continuity, recoverability, and trust.
+
+These principles are the foundation of the HCI AI Operating System. Every workflow, every project, every AI participant, and every future enhancement should reinforce them.
