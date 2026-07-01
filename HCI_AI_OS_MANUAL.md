@@ -17,37 +17,151 @@
 
 # Chapter 1 — Vision, Mission, and Operating Principles
 
-## Purpose
+---
 
-The HCI AI Operating System exists to transform Hendrickson Construction into an organization where information moves faster than problems, decisions are supported by evidence, and every project benefits from accumulated organizational knowledge.
+## Why This Operating System Exists
 
-The operating system is not a collection of AI tools. It is an operational platform. Its purpose is to coordinate people, software, data, and automation into a single, governed production environment.
+Hendrickson Construction builds some of the finest custom homes in the Aspen and Colorado high country.
+The work is complex, the clients are demanding, and the margins for error are narrow.
+Coordinating architects, engineers, subcontractors, inspectors, and suppliers across multiple simultaneous
+projects — while maintaining the quality and communication standards high-end clients expect — requires
+more than experience and hard work. It requires a system.
 
-The objective is not automation for its own sake. The objective is to improve construction execution while maintaining human accountability.
+The HCI AI Operating System is that system.
 
-## Vision
+It exists not to replace the judgment of Buck Adams, the expertise of the superintendents,
+or the relationships that define how Hendrickson Construction does business.
+It exists to make all of those things more effective.
 
-Create an AI Operations Control Plane capable of coordinating every project, every document, every workflow, and every AI participant from a single operational architecture.
-
-The system should allow Project Managers to manage projects, Superintendents to manage field work, Estimators to price work accurately, and Executives to see everything from a single dashboard.
-
-## Operating Principles
-
-**Audit before building.** Before creating any new system, component, or workflow, verify that an equivalent does not already exist. Duplication creates inconsistency, maintenance burden, and operational confusion.
-
-**Extend before creating.** When a gap is identified, extend the nearest existing system rather than building a parallel one. The existing system has history, tests, and integration context that a new one does not.
-
-**One source of truth.** Every piece of operational data has exactly one authoritative source. When the same data exists in multiple places, one of them is wrong. The system must be designed so that duplication is structurally prevented.
-
-**Human approval gates.** Certain actions require explicit human authorization before execution. These include contract awards, external communications, financial commitments, and governed integrations. No AI system may take these actions autonomously.
-
-**Continuous improvement.** Every sprint leaves the system more capable, more reliable, and more understandable than the sprint before. Improvement is not a phase. It is the operating mode.
-
-**Resilience by design.** The system must survive the failure of any single component. If an agent goes offline, the system continues operating. When the agent returns, it recovers full operational context within 60 seconds from GitHub alone.
+Information should reach the right person at the right time, automatically.
+Risks should surface before they become problems.
+Bids should be assembled, leveled, and analyzed faster than any competitor.
+Every decision should be informed by the full history of what Hendrickson has built.
 
 ---
 
-# Chapter 2 — The AI Team
+## Vision
+
+Create an AI Operations Control Plane capable of coordinating every project, every document,
+every workflow, and every AI participant from a single governed operational architecture.
+
+The vision has four pillars:
+
+**1. Intelligence on Every Project**
+Every active project — from pre-construction through closeout — has a real-time digital brain.
+Schedule intelligence tells the team where they are against the baseline and why.
+Procurement intelligence shows exactly where every bid package stands.
+Risk intelligence surfaces threats before they become change orders.
+The morning brief arrives in Buck's inbox before 7 AM, written by the system, covering every project.
+
+**2. Accumulated Knowledge**
+Every lesson learned, every historical cost, every vendor performance record, every RFI resolution
+becomes part of the organizational memory. The next project starts smarter than the last.
+A new estimator on day one has access to everything Hendrickson has learned over a decade.
+
+**3. Governed Autonomy**
+AI agents can analyze, recommend, draft, and coordinate — but they cannot commit.
+Every action that affects money, contracts, or client relationships requires human approval.
+The approval queue is the line between AI intelligence and human authority.
+Buck Adams is the final authority. Always.
+
+**4. Continuous Improvement**
+The system audits itself. Every sprint, the AI team asks: what did we learn? What can we do better?
+The architecture evolves. The team improves. The system gets stronger with every project.
+
+---
+
+## Mission
+
+The mission of HCI AI OS is to make Hendrickson Construction the most operationally capable
+custom home builder in the markets it serves.
+
+Operationally capable means:
+- Projects delivered on schedule, or ahead of it, with variance understood and managed
+- Bids assembled faster and more accurately than competitors
+- Subcontractors selected based on performance history, not familiarity
+- Clients experiencing the level of communication and transparency that earns referrals
+- Buck Adams spending his time on decisions and relationships, not administrative work
+
+The mission is not to become a technology company.
+The mission is to use technology to build better homes and run a better business.
+
+---
+
+## Operating Principles
+
+These principles govern every decision about what the system does and does not do.
+
+**Principle 1: Human Authority is Non-Delegable**
+No AI agent, no matter how capable, may make a commitment on behalf of Hendrickson Construction.
+Contracts are awarded by Buck Adams. Bids go out under his name. Clients hear from him.
+The system creates the draft. Buck creates the decision.
+
+**Principle 2: Governance Before Capability**
+Before any new capability is added, the governance question must be answered:
+Who authorized this? Who can see it? What happens if it goes wrong?
+A system that does more but is less controlled is not progress.
+
+**Principle 3: Evidence Before Action**
+Every recommendation is backed by data the team can inspect.
+If the system recommends awarding a bid to XYZ Electrical, it shows the historical performance,
+the current bid, the comparison to alternatives, and the risk factors.
+The recommendation is the start of a conversation, not the end of one.
+
+**Principle 4: Build for Longevity**
+The system should outlast any individual AI session, any software version, any team member.
+Every decision is documented. Every configuration is in version control.
+A new team member — human or AI — should be able to onboard from the repository.
+
+**Principle 5: Continuous Improvement is the Norm**
+The team does not wait for a problem to get better. Every stopping point is a retrospective.
+What did we learn? How can we improve? What did we miss?
+The answer drives the next sprint.
+
+**Principle 6: Safety is Non-Negotiable**
+Email governance. Approval queues. Audit logs. These are not optional.
+The P0 incident — an unauthorized email sent to a project contact — taught the team
+that AI capability without governance is a liability.
+Every email that leaves the system has been authorized by Buck Adams.
+Every financial action has been approved before execution.
+Every external commitment has a human name attached to it.
+
+---
+
+## The Platform in One Sentence
+
+HCI AI OS is the operating system that allows Hendrickson Construction to run multiple high-end
+custom home projects simultaneously — with greater intelligence, tighter governance, and more
+consistent quality than any manual process could achieve.
+
+---
+
+## How to Read This Manual
+
+This manual is organized into four sections:
+
+**Part I: Architecture (Chapters 1-5)**
+How the system is designed. The principles, the team, the control plane, the resilience model.
+Read this to understand why the system works the way it does.
+
+**Part II: Operations (Chapters 6-12)**
+How the system operates day to day. Construction workflows, governance, the roadmap, life in the system.
+Read this to understand what the system does.
+
+**Part III: Role Guides (Chapters 13-18)**
+How each person on the team uses the system.
+Read your chapter. It was written for you.
+
+**Part IV: Reference**
+The appendix. Quick reference. Glossary. Emergency procedures.
+Keep this accessible.
+
+---
+
+*Chapter 1 — Vision, Mission, and Operating Principles | HCI AI Operating System*
+*Version 1.0 — July 2026 | Hendrickson Construction, Inc. | Aspen, Colorado*
+
+Chapter 2 — The AI Team
 
 ## Buck Adams — Owner and Final Authority
 
