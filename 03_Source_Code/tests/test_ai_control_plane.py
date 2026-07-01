@@ -322,6 +322,23 @@ if p101:
     check("schedule_variance_days matches executive report sign convention",
           p101.get("schedule_variance_days") == -5, p101.get("schedule_variance_days"))
 
+# ── 19. Plan-review-to-RFI pipeline (2026-07-01: formalizes the RFI-batch incident) ─
+print("\n19. POST /gateway/plan-review/analyze — gaps become logged RFIs, never emailed")
+code, d = post("/plan-review/analyze", {
+    "project_code": "101F", "reviewed_by": "test_suite",
+    "sheet_text": "Sheet A1.1 Plumbing Fixture Schedule: Master Bath lavatory, toilet, tub - MFGR/MODEL/COLOR all BLANK, pending selection.",
+})
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has gaps_found as int", isinstance(p.get("gaps_found"), int), p)
+check("Has ready_for_rom bool", isinstance(p.get("ready_for_rom"), bool), p)
+check("Never sends an email itself — only logs RFIs", "email" not in str(p.get("note", "")).lower() or "requires" in str(p.get("note", "")).lower())
+if p.get("gaps_found", 0) > 0:
+    rfi = p["rfis_created"][0]
+    check("Created RFI has status=open (not sent anywhere)", rfi.get("status") == "open", rfi)
+    code, d2 = get("/project/101F/action-list")
+    check("Newly created RFI reflected in project action list", code == 200)
+
 # Restore real agent heartbeats clobbered by impersonating them as test agents above —
 # must run regardless of pass/fail so a real BC/GBT session never shows falsely ONLINE.
 for _agent, _snap in _hb_before.items():
