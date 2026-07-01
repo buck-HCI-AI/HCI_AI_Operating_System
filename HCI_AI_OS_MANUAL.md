@@ -1655,119 +1655,124 @@ No operating system is designed perfectly on the first attempt.
 
 Construction teaches through experience. Software teaches through production. The HCI AI Operating System teaches through both.
 
-This chapter documents a production incident that reshaped the platform and explains why incidents are not failures — they are the mechanism through which a system matures.
+This chapter documents the lessons that have shaped the platform. Some lessons came from production incidents. Some came from architectural decisions that proved incorrect in practice. Some came from team collaboration patterns that worked better than expected, and some from patterns that failed.
+
+Each lesson is recorded here not to assign blame, but to document what was learned and how the system was made better as a result.
 
 ---
 
-### The Email Incident
+### Lesson 1: The Email Incident
 
-One production incident reshaped the operating system.
+**What happened:** One production incident reshaped the operating system. An outbound email concerning Project 101F was sent without the level of human authorization required by company governance.
 
-An outbound email concerning Project 101F was sent without the level of human authorization required by company governance.
+**What it revealed:** The issue was not simply that an email was sent. The issue was that governance was not enforced uniformly across every path capable of sending an email. The system had become powerful enough that policy alone was no longer sufficient. The architecture itself had to enforce the governance rule. Seven separate email paths existed in the system. Only some of them had approval gates.
 
-The incident demonstrated that a technically functional workflow can still be architecturally incorrect.
+**What changed:** Every send path was converted to draft-only behavior. The `/gateway/email/send` endpoint was disabled for all AI agents. The `microsoft_graph.py send_email()` function was wrapped to create a draft and generate an Approval Queue item rather than sending directly. Every workflow default was changed from `send=True` to `send=False`. A hard enforcement gate was added requiring `email_approved=True` in the Approval Queue before any send operation can execute. A regression test was added: any attempt to send email without approval must fail, save a draft, and create an Approval Queue item. If this test fails, the system is not production-ready.
 
-The issue was not simply that an email was sent. The issue was that governance was not enforced uniformly across every path capable of sending an email. The operating system had become powerful enough that policy alone was no longer sufficient. The platform itself needed to enforce the policy.
-
----
-
-### What We Found
-
-A comprehensive repository audit identified seven separate code paths capable of sending live email:
-
-The gateway endpoint `/gateway/email/send` accepted any recipient address and required no approval gate. The `microsoft_graph.py` integration had a direct `send_email()` function callable from any workflow. The daily field report workflow defaulted to `send=True`. The Superintendent workflow triggered field report emails automatically on log submission. The morning brief workflow could send to external recipients without restriction. The weekly PM report defaulted to email delivery. An n8n workflow called AUTO-WEEKEND ran every Saturday at 8:00 AM and sent via Outlook.
-
-None of these paths had a consistent enforcement gate. Each was individually justifiable. Together, they represented a governance gap.
+**The principle established:** Every governance rule must be enforced architecturally. Policy documents are necessary but not sufficient. The code must make it impossible to violate the rule, not merely inadvisable.
 
 ---
 
-### What We Changed
+### Lesson 2: The System Shutdown
 
-The response was immediate.
+**What happened:** During an active operational period, the primary implementation agent (Claude Code) went offline and remained offline for an extended period. Work that was in progress was not committed. Context was not preserved. When the session ended, the state was lost.
 
-The team shifted from asking "How do we send emails more efficiently?" to asking "How do we ensure no email leaves the system without authorization?"
+**What it revealed:** The system had no auto-restart capability. There was no heartbeat monitor. There was no mechanism to detect that an agent had gone silent and alert the team. There was no way for a new session to automatically load the context needed to resume from where the previous session left off. The system was entirely dependent on humans noticing the outage and manually re-engaging.
 
-Every send path was converted to draft-only behavior. The `/gateway/email/send` endpoint was disabled. The `microsoft_graph.py send_email()` function was wrapped to create a draft and generate an Approval Queue item rather than sending directly. Every workflow default was changed from `send=True` to `send=False`. A hard enforcement gate was added requiring `email_approved=True` in the Approval Queue before any send operation can execute.
+**What changed:** Sprint 3 introduced three critical reliability capabilities. First, WF-AI-001 — the auto-restart workflow running on a 60-second heartbeat check. If no agent records activity, the workflow re-queues the last known active directive and sends a Telegram alert to Buck. Second, the Unified Operational State Model — a structured JSON document in the repository that any agent can read on session start to immediately understand the current state of all directives, projects, and system configuration. Third, the idle monitor (AUTO-IDLE-001) — a 30-minute timeout that triggers a check of Telegram channels and sends a message prompting the team to resume if no activity has been recorded.
 
-A regression test was added requiring that any attempt to send email without approval must fail, save a draft, and create an Approval Queue item. If this test fails, the system is not production-ready.
-
-The policy was committed to the repository as `AI_TEAM/EMAIL_GOVERNANCE_POLICY.md`, making the rule permanent, visible, and enforceable rather than implicit.
+**The principle established:** Operational continuity cannot rely on humans noticing outages. The system must detect its own failures and alert the responsible party. Every agent must be able to come online cold and immediately understand what work is in progress.
 
 ---
 
-### The Governance Principle
+### Lesson 3: Long Messages Get Truncated
 
-This incident clarified a principle that now governs every outbound action in the HCI AI Operating System.
+**What happened:** During early GBT directive cycles, the Operations Intelligence agent (Browser Claude) composed long, detailed directive messages to the Chief Architect. GBT received only the message title, not the body. Instructions were missed. Work was not executed.
 
-**Governance must be architectural, not procedural.**
+**What it revealed:** The ChatGPT interface has message length constraints that are not visible to the sender. Messages that appear complete in the compose window are silently truncated in delivery. The receiving agent has no way to know the message was truncated — it simply sees less content.
 
-A procedure says: do not send email without approval.
+**What changed:** All GBT directives are now structured as short, focused messages. When a directive requires substantial context, it is broken into numbered parts (Part 1 of 2, Part 2 of 2). Each part is self-contained. The receiving agent acknowledges each part before the next is sent.
 
-Architecture says: the system cannot send email without approval.
-
-The difference matters because procedures depend on every participant following them correctly every time. Architecture enforces the rule regardless of which participant, which workflow, or which code path is involved.
-
-When the operating system was small, procedures were sufficient. As the platform grew to include multiple agents, multiple workflows, and multiple integration paths, architecture became necessary.
-
-The email incident was the moment the operating system made that transition.
+**The principle established:** Communication architecture must account for platform constraints. Never assume a message was received as composed. Keep messages short. Use multi-part structure for complex instructions. Verify receipt.
 
 ---
 
-### How the AI Team Self-Corrects
+### Lesson 4: The One-Source-of-Truth Discipline
 
-When the incident was identified, the response followed the same pattern the operating system was designed to produce.
+**What happened:** Early in the build, information about the same subject existed in multiple places: sprint state was in GitHub, in Telegram messages, and in agent context. When these sources diverged, agents made decisions based on stale information. Work was duplicated. Decisions were reversed.
 
-Browser Claude identified the incident and immediately began the audit. Gateway directives were issued to Claude Code within minutes. The Chief Architect issued a formal ARB ruling. The governance policy was committed to the repository as a permanent record. Code changes were queued for immediate implementation.
+**What it revealed:** Multiple sources of truth create coordination problems that compound over time. Each agent that reads from a different source creates a consistency gap. The gaps accumulate until an inconsistency becomes a production error.
 
-No single agent waited for another to lead. Each participant acted within their role. The coordination happened through the same gateway and governance structure the team had built.
+**What changed:** The GitHub repository became the single authoritative source of truth for all operational state. The CURRENT_SPRINT.md file is the authoritative sprint record. AI_TEAM/ documents are the authoritative architecture and governance records. Every agent reads from GitHub at session start and writes to GitHub at session end. Telegram and direct agent communication are for real-time coordination only — they are not the record.
 
-This is the design working correctly. An AI team that can identify its own governance failures, route them through the proper channels, and implement fixes without human management of each step is a team that earns continued trust and expanded responsibility.
-
----
-
-### What Good Governance Looks Like Under Pressure
-
-When a production incident occurs, governance is not slowed down — it is the mechanism that allows the response to move quickly.
-
-Because the approval queue, directive system, and governance policy were already in place, the team could act immediately. There was no ambiguity about who had authority, what the fix required, or how to document the resolution.
-
-Governance under pressure is not bureaucracy. It is the absence of ambiguity.
-
-Every action is attributable. Every recommendation is traceable. Every approval is durable. Every decision has an owner. Every action leaves evidence. When people understand why the system behaved as it did, confidence grows.
+**The principle established:** Every piece of operational data must live in exactly one place. That place must be durable, version-controlled, and accessible to all agents. GitHub satisfies all three requirements.
 
 ---
 
-### Every Incident Strengthens the Platform
+### Lesson 5: Audit Before Building
 
-The operating system should become stronger because incidents occur.
+**What happened:** In Sprint 2, development work on new capabilities revealed that some of the capabilities being built already existed in a different form. Time was spent implementing features that were already partially implemented elsewhere. The duplication created maintenance problems.
 
-Each production issue identifies assumptions that were previously invisible. Each correction improves resilience. Each lesson becomes institutional knowledge.
+**What it revealed:** Without a systematic audit before each sprint, the team does not have a reliable inventory of what already exists. New work gets created without checking whether existing work can be extended. Duplication becomes a structural problem.
 
-The objective is not perfection. The objective is continuous improvement.
+**What changed:** The audit-before-building principle became a mandatory first step for every sprint. Sprint 3 began with a comprehensive audit of all existing capabilities, all committed documents, all gateway endpoints, and all n8n workflows. The audit results were committed as CONSTRUCTION_OS_COMPLETENESS_AUDIT.md before any new Sprint 3 development began.
 
-A platform that never encounters production issues either does not operate in production or has not grown to the point where its capabilities create real consequences. The HCI AI Operating System has reached the point where its actions have real effects on real projects and real relationships.
-
-That is not a problem. That is progress. The response to that reality is governance, not restraint.
+**The principle established:** Never build before auditing. The cost of discovering duplication after development is far higher than the cost of auditing before. A 30-minute audit at the start of a sprint can save days of rework.
 
 ---
 
-### Looking Forward
+### Lesson 6: Governance Through Telegram
 
-Every mature operating system carries the history of the lessons that shaped it.
+**What happened:** During a period when Buck was away from his desktop, governance decisions in the Approval Queue waited. Items expired. Work that required authorization stalled. The team had no way to reach Buck through the system — only through external communication channels.
 
-The HCI AI Operating System should do the same.
+**What it revealed:** Governance that requires desktop access is not operational governance. Construction business moves on job sites, in vehicles, and on phones. If Buck cannot make governance decisions from his phone, the governance system becomes a bottleneck.
 
-Future team members should understand not only what the platform does, but why it was built that way.
+**What changed:** Telegram-based governance was elevated to a primary Sprint 3 workstream. The Telegram bot will allow Buck to approve, reject, escalate, and authorize directly from his phone. The TELEGRAM_AUTH_SPEC.md and TELEGRAM_ARCHITECTURE_SPEC.md documents define the complete implementation. No approval should ever require a laptop.
 
-The email governance incident will be remembered not because it represented failure, but because it marked the moment when governance became an architectural feature instead of a policy document.
-
-From that point forward, the operating system became more disciplined, more trustworthy, and more resilient.
-
-That is the defining characteristic of a mature engineering organization: it does not hide its mistakes. It learns from them, documents them, and uses them to build a better system for everyone who follows.
-
+**The principle established:** Governance must be accessible wherever the executive is. Mobile-first approval is not a convenience feature — it is an operational requirement.
 
 ---
 
+### Lesson 7: The System Must Know It Is Idle
+
+**What happened:** Between operational sessions, the system sat idle without any awareness that time was passing and work was waiting. Buck would return to find that nothing had progressed. The system had no voice of its own — it could not reach out and say "We are idle. Should we resume?"
+
+**What it revealed:** A purely reactive system — one that only works when prompted — is not an operating system. An operating system has its own continuity. It knows its own state. When it detects that it has been idle, it acts.
+
+**What changed:** The IDLE_MONITOR_SPEC.md established AUTO-IDLE-001: if no agent records activity for 30 minutes, the system sends a Telegram message to Buck prompting the team to resume, checks the Telegram channels for any pending messages, and re-queues the last known directive. The system does not wait to be told to work.
+
+**The principle established:** An operating system has its own operational continuity. It detects its own idle state and takes appropriate action. Build systems that know when they are not working and have a defined protocol for restarting themselves.
+
+---
+
+### Lesson 8: The Chief Architect Is the Strategic Partner
+
+**What happened:** In early operating cycles, the Operations Intelligence agent (Browser Claude) attempted to make all architectural decisions independently — designing systems, specifying implementations, and committing architecture documents without GBT review.
+
+**What it revealed:** Browser Claude is an excellent execution coordinator but is not the right tool for architectural design. GBT — the designated Chief Architect — brings a more systematic architectural perspective and produces better-structured specifications when given the right directives.
+
+**What changed:** The collaboration model was established. Browser Claude fires directives to GBT at the end of every operational cycle. GBT designs architecture. Browser Claude captures GBT’s response and commits it to the repository. The cycle repeats. Every major architectural document in the AI_TEAM/ folder was designed by GBT and captured by Browser Claude through this process.
+
+**The principle established:** Use the right agent for the right task. Architect with the architect. Implement with the implementer. Coordinate with the coordinator. Collaboration is not optional — it is what makes the system stronger than any individual agent.
+
+---
+
+### The Defining Characteristic of a Mature System
+
+A mature engineering organization does not hide its mistakes. It learns from them, documents them, and uses them to build a better system for everyone who follows.
+
+Every incident in this chapter made the HCI AI OS more resilient, more trustworthy, and more capable. The email incident tightened governance. The shutdown built auto-restart. The truncation problem changed communication architecture. The one-source-of-truth discipline created consistency. The audit-before-building rule prevented duplication. The Telegram governance requirement made approval mobile. The idle monitor gave the system its own voice.
+
+Each lesson is permanent. The knowledge does not reset when a session ends. It lives in the architecture, in the code, in the governance documents, and in this manual.
+
+That is what it means to build a learning organization.
+
+---
+
+*Chapter expanded by Browser Claude | Historical audit from Sprint 1 through Sprint 3 | 2026-07-01*
+
+
+---
 ## Chapter 12 — The Future of HCI
 
 ### The Company We Are Building
@@ -1902,8 +1907,57 @@ Hendrickson Construction will continue to be built from something less visible b
 
 That is the future of HCI — not simply a company that uses AI, but a company whose collective intelligence grows every day, making each project safer, smarter, more predictable, and more successful than the last.
 
+
+### The Next Generation of Tools
+
+The HCI AI Operating System is architected to integrate new capabilities as they become available and proven. The following tools represent the next generation of additions under active evaluation.
+
+**Perplexity AI — Real-Time Research Intelligence.** Construction decisions require current market information: today's lumber prices, current lead times on mechanical equipment, the reputation of a subcontractor who just submitted a bid. Training data cutoffs mean that AI systems without web access cannot provide reliable answers to these questions. Perplexity AI brings real-time web search capability to the operating system. Use cases include: material cost benchmarking against current market rates, building code and energy code research for specific jurisdictions, subcontractor reputation research from online sources, manufacturer lead time verification, and competitive intelligence on project opportunities. Perplexity integrates as a research service layer that any AI agent can call when current-market information is required.
+
+**AI Plan Reader — Construction Document Intelligence.** The ability to read, interpret, and extract structured data from architectural and engineering drawings represents one of the highest-value opportunities in AI-integrated construction. Phase 1 deploys PDF parsing (PyMuPDF or pdfplumber) to extract keynotes, specifications cross-references, room schedules, door and window schedules, and equipment lists from drawing sets. Phase 2 adds computer vision analysis using a vision-capable AI model to identify elements not captured in text — structural grids, equipment layouts, accessibility paths, and site features. Phase 3 integrates Bluebeam or Procore APIs to pull live drawing sets directly into the operating system. Goal: the AI system reads the full drawing set on bid day and produces a structured scope extraction in hours, not days.
+
+**Critical Path Method (CPM) Scheduling Engine.** Current scheduling relies on manual superintendent input and PM oversight. The CPM engine adds a full network-aware scheduling layer in PostgreSQL. Every project activity has defined predecessors, successors, durations, and resource assignments. The engine calculates float, identifies the critical path, and updates automatically as field reports are received. When a critical path activity falls behind, the system alerts immediately — not at the end of the month when the schedule update is submitted.
+
+**Cost Forecasting — Earned Value Management.** A real-time cost-to-complete forecast that runs continuously as the project executes. Inputs include: original budget, committed costs, actual costs to date, earned value percentage by trade, and remaining scope based on the current schedule. Output is a projected final cost, projected variance, and a confidence interval. Alerts fire when any trade exceeds threshold variance. Buck sees the financial trajectory of every project, every week, without waiting for a monthly report.
+
+**Subcontractor Portal.** A secure, simple web interface where subcontractors submit structured bids, acknowledge purchase orders, confirm delivery commitments, and submit lien waivers. The portal eliminates email chains for routine procurement communications and creates a structured record of every sub interaction.
+
+**Photo AI and Field Documentation.** Superintendents photograph work in place. The AI system compares the photograph to the approved drawings, identifies work completed versus work remaining, flags potential safety concerns, and attaches a structured observation record to the Project Brain. Progress photography becomes operational data.
+
 ---
 
+### What HCI Looks Like in Five Years
+
+In five years, a Hendrickson Construction project operates like this:
+
+A bid invitation arrives. The AI system immediately retrieves comparable project history, generates a preliminary scope matrix from the project description, and assembles a list of qualified subcontractors from the vendor database with their performance history. By the time the estimator sits down to review the opportunity, they have two hours of research already completed.
+
+The estimator walks the site with a phone. Photos are automatically analyzed. Field observations are dictated and transcribed. The scope matrix is populated in real time. By the end of the site visit, the estimate is 60% complete.
+
+The bid is prepared and submitted. The system tracks the outcome. If HCI wins, the project is initialized in five minutes: Project Brain created, schedule loaded, budget distributed, subcontractor bid packages assembled. The superintendent receives a digital briefing before the first day on site.
+
+During construction, the project runs on its own rhythm. Field reports arrive each morning from the superintendent, recorded in under 10 minutes. The AI system processes each report: updating the schedule, flagging variance, drafting client updates, and identifying risks before they become problems. The PM reviews the exception report — not the raw data.
+
+When the project closes, every piece of data — costs, schedule, vendor performance, lessons learned — is captured automatically in the organizational knowledge base. The next project starts smarter because this project ran.
+
+That is not a technology story. It is an organizational capability story. And it is exactly what HCI AI OS is being built to enable.
+
+---
+
+### The Commitment
+
+Building this future requires sustained commitment. Not to specific tools or specific vendors — those will change. The commitment is to the principles: one source of truth, human authority remains final, governance enables rather than blocks, the system learns continuously, and the team never stops improving.
+
+Hendrickson Construction is not building this because it is fashionable. It is building this because the construction industry is changing, and the companies that build the operational infrastructure now will have capabilities in five years that their competitors cannot match regardless of how much money they spend later.
+
+The infrastructure takes time to build correctly. That is why HCI is building it now.
+
+---
+
+*Chapter expanded by Browser Claude | Future capabilities section added from GBT Cycle 5 recommendations | 2026-07-01*
+
+
+---
 ## Chapter 13 — Implementation Guide
 
 ### How to Build, Extend, and Maintain the HCI AI Operating System
