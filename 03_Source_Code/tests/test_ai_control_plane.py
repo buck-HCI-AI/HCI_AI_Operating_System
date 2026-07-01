@@ -282,6 +282,18 @@ result2, err2 = _send_email("[TEST] automated regression — external still gate
 check("send_email() to external address still drafts, never sends",
       err2 is None and result2.get("status") == "drafted_pending_approval", (result2, err2))
 
+# ── 18. role_owner snapshot fallback (2026-07-01: null-until-nightly-job bug) ──
+print("\n18. GET /gateway/role/owner — 101F shows real data, not null/blank")
+code, d = get("/role/owner")
+check("Returns 200", code == 200, code)
+p101 = next((p for p in d.get("payload", {}).get("projects", []) if p.get("project_code") == "101F"), None)
+check("101F present", p101 is not None)
+if p101:
+    check("health is not null", p101.get("health") is not None, p101)
+    check("schedule_variance_days is not null", p101.get("schedule_variance_days") is not None, p101)
+    check("schedule_variance_days matches executive report sign convention",
+          p101.get("schedule_variance_days") == -5, p101.get("schedule_variance_days"))
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:

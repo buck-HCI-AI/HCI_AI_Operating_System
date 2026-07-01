@@ -1199,7 +1199,12 @@ def role_owner():
             """)
             critical_risks = [dict(r) for r in cur.fetchall()]
 
-            # Project financial summary
+            # Project financial summary. pb pulls the MOST RECENT snapshot (not strictly
+            # today's) — fixed 2026-07-01: joining on snapshot_date = CURRENT_DATE went
+            # null/blank for every project until the nightly snapshot job ran for the
+            # day, which read as "101F shows 0/blank schedule variance" to anyone
+            # checking before that job ran. executive_report already had this fallback;
+            # role_owner did not.
             cur.execute("""
                 SELECT p.project_code, p.name, p.contract_value,
                     COALESCE((SELECT SUM(be.bid_amount) FROM bid_entries be
@@ -1208,7 +1213,10 @@ def role_owner():
                     COALESCE((SELECT COUNT(*) FROM risks r WHERE r.project_id = p.id AND r.status='open'),0) as open_risks,
                     pb.health, pb.schedule_variance_days
                 FROM projects p
-                LEFT JOIN project_brain_snapshots pb ON pb.project_id = p.id AND pb.snapshot_date = CURRENT_DATE
+                LEFT JOIN LATERAL (
+                    SELECT health, schedule_variance_days FROM project_brain_snapshots
+                    WHERE project_id = p.id ORDER BY snapshot_date DESC LIMIT 1
+                ) pb ON true
                 WHERE p.status IN ('active','design','bidding','preconstruction')
                 ORDER BY p.contract_value DESC NULLS LAST
             """)
