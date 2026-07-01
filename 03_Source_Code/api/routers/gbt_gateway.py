@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 import psycopg2, psycopg2.extras, requests
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, Any, Dict
 from datetime import datetime, timezone
@@ -2201,6 +2201,92 @@ class PlanReviewPayload(BaseModel):
     reviewed_by: str = "claude_code"
 
 
+_PLAN_REVIEW_CHECKLIST = """Standard completeness checklist:
+- Fixture schedules (plumbing, lighting) fully filled in
+- Finish schedules present for all rooms
+- Structural notes/steel grades specified
+- Dimensions complete, no unresolved "verify in field" on critical items
+- MEP coordination notes present
+- Door/window schedules complete
+
+Identify ONLY genuine gaps that would block bidding or construction — not stylistic nitpicks.
+
+Also assess: is this plan set complete enough to generate a preliminary ROM (rough order
+of magnitude) estimate and schedule — i.e. no CRITICAL gaps remain, even if some
+medium/low ones do? And if you can find square footage and project type (new
+construction / renovation / remodel) stated anywhere, extract them.
+
+Respond with a JSON object only, no other text, in this exact format:
+{"gaps": [{"item": "short title", "sheet_reference": "sheet number or section", "urgency": "critical|high|medium", "question": "the formal RFI question text"}],
+  "ready_for_rom": true or false,
+  "readiness_reason": "one sentence why",
+  "square_footage": integer or null,
+  "project_type": "new" or "renovation" or "remodel" or null}"""
+
+
+def _parse_plan_review_json(raw: str) -> dict:
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw)
+
+
+def _create_rfis_from_gaps(pid: int, gaps: list, reviewed_by: str) -> list:
+    """Logs each identified gap as a real, open RFI. Never sends anything — notifying
+    the design team is a separate, explicit, Buck-approved step (POST /email/send)."""
+    created = []
+    conn = _pg()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT COALESCE(MAX(CAST(NULLIF(rfi_number, '') AS INTEGER)), 0) AS max_num
+            FROM rfis WHERE project_id = %s AND rfi_number ~ '^[0-9]+$'
+        """, (pid,))
+        next_num = cur.fetchone()["max_num"] + 1
+        for gap in gaps:
+            subject = f"{gap.get('item','Gap')} ({gap.get('sheet_reference','')})"[:120]
+            cur.execute("""
+                INSERT INTO rfis (project_id, rfi_number, subject, question, submitted_by, status, submitted_date)
+                VALUES (%s, %s, %s, %s, %s, 'open', CURRENT_DATE)
+                RETURNING id, rfi_number, subject, status
+            """, (pid, str(next_num), subject, gap.get("question", ""), reviewed_by))
+            rfi = dict(cur.fetchone())
+            rfi["urgency"] = gap.get("urgency", "medium")
+            created.append(rfi)
+            next_num += 1
+    conn.close()
+    return created
+
+
+def _plan_review_finish(path: str, project_code: str, analysis: dict, created: list, t0: float, extra: dict = None):
+    prelim_rom = None
+    sf = analysis.get("square_footage")
+    ptype = analysis.get("project_type")
+    if analysis.get("ready_for_rom") and sf:
+        rom_response = rom_estimate(sf=sf, project_type=ptype or "new")
+        prelim_rom = rom_response.get("payload") if isinstance(rom_response, dict) else None
+
+    payload = {
+        "project_code": project_code,
+        "gaps_found": len(created),
+        "rfis_created": created,
+        "ready_for_rom": analysis.get("ready_for_rom", False),
+        "readiness_reason": analysis.get("readiness_reason"),
+        "extracted_square_footage": sf,
+        "extracted_project_type": ptype,
+        "preliminary_rom": prelim_rom,
+        "note": "RFIs logged as open — NOT sent to anyone. Review, then use POST "
+                "/email/draft + /email/send (requires Buck's Telegram approval) to "
+                "actually notify the design team. preliminary_rom is a rough order of "
+                "magnitude only, not a bid — sub package/SOW generation is the next phase.",
+    }
+    if extra:
+        payload.update(extra)
+    return _response(path, payload, start=t0)
+
+
 @router.post("/plan-review/analyze")
 def plan_review_analyze(req: PlanReviewPayload):
     """
@@ -2211,99 +2297,96 @@ def plan_review_analyze(req: PlanReviewPayload):
     review (the incident behind ADR-010/011). Gaps become RFI records — logged `open`,
     NEVER auto-emailed; notifying the design team is a separate, explicit step through
     POST /email/draft + /email/send, which already requires Buck's Telegram approval.
-    V1 takes extracted sheet text directly; PDF/image ingestion, and generating an
-    actual sub package/SOWs off the plans, are the next phases — not done here yet.
+    This variant takes extracted sheet text directly; for real PDF/drawing uploads see
+    POST /plan-review/upload.
     """
     t0 = time.time()
     try:
         pid = _get_pid(req.project_code)
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        prompt = f"""You are a construction plan reviewer checking a permit set for gaps that would block bidding or construction. Standard completeness checklist:
-- Fixture schedules (plumbing, lighting) fully filled in
-- Finish schedules present for all rooms
-- Structural notes/steel grades specified
-- Dimensions complete, no unresolved "verify in field" on critical items
-- MEP coordination notes present
-- Door/window schedules complete
+        prompt = f"""You are a construction plan reviewer checking a permit set for gaps that would block bidding or construction.
 
 Plan set excerpt:
 {req.sheet_text[:8000]}
 
-Identify ONLY genuine gaps that would block bidding or construction — not stylistic nitpicks.
-
-Also assess: is this plan set complete enough to generate a preliminary ROM (rough order
-of magnitude) estimate and schedule — i.e. no CRITICAL gaps remain, even if some
-medium/low ones do? And if you can find square footage and project type (new
-construction / renovation / remodel) stated anywhere in the excerpt, extract them.
-
-Respond with a JSON object only, no other text, in this exact format:
-{{"gaps": [{{"item": "short title", "sheet_reference": "sheet number or section", "urgency": "critical|high|medium", "question": "the formal RFI question text"}}],
-  "ready_for_rom": true or false,
-  "readiness_reason": "one sentence why",
-  "square_footage": integer or null,
-  "project_type": "new" or "renovation" or "remodel" or null}}"""
+{_PLAN_REVIEW_CHECKLIST}"""
         message = client.messages.create(
             model="claude-haiku-4-5-20251001", max_tokens=2000,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        analysis = json.loads(raw)
-        gaps = analysis.get("gaps", [])
-
-        created = []
-        conn = _pg()
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT COALESCE(MAX(CAST(NULLIF(rfi_number, '') AS INTEGER)), 0) AS max_num
-                FROM rfis WHERE project_id = %s AND rfi_number ~ '^[0-9]+$'
-            """, (pid,))
-            next_num = cur.fetchone()["max_num"] + 1
-            for gap in gaps:
-                subject = f"{gap.get('item','Gap')} ({gap.get('sheet_reference','')})"[:120]
-                cur.execute("""
-                    INSERT INTO rfis (project_id, rfi_number, subject, question, submitted_by, status, submitted_date)
-                    VALUES (%s, %s, %s, %s, %s, 'open', CURRENT_DATE)
-                    RETURNING id, rfi_number, subject, status
-                """, (pid, str(next_num), subject, gap.get("question", ""), req.reviewed_by))
-                rfi = dict(cur.fetchone())
-                rfi["urgency"] = gap.get("urgency", "medium")
-                created.append(rfi)
-                next_num += 1
-        conn.close()
-
-        prelim_rom = None
-        sf = analysis.get("square_footage")
-        ptype = analysis.get("project_type")
-        if analysis.get("ready_for_rom") and sf:
-            rom_response = rom_estimate(sf=sf, project_type=ptype or "new")
-            prelim_rom = rom_response.get("payload") if isinstance(rom_response, dict) else None
-
+        analysis = _parse_plan_review_json(message.content[0].text)
+        created = _create_rfis_from_gaps(pid, analysis.get("gaps", []), req.reviewed_by)
         _log("/plan-review/analyze", req.reviewed_by, req.project_code, "ok",
              round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"{len(created)} RFIs drafted")
-        return _response("/plan-review/analyze", {
-            "project_code": req.project_code,
-            "gaps_found": len(created),
-            "rfis_created": created,
-            "ready_for_rom": analysis.get("ready_for_rom", False),
-            "readiness_reason": analysis.get("readiness_reason"),
-            "extracted_square_footage": sf,
-            "extracted_project_type": ptype,
-            "preliminary_rom": prelim_rom,
-            "note": "RFIs logged as open — NOT sent to anyone. Review, then use POST "
-                    "/email/draft + /email/send (requires Buck's Telegram approval) to "
-                    "actually notify the design team. preliminary_rom is a rough order of "
-                    "magnitude only, not a bid — sub package/SOW generation is the next phase.",
-        }, start=t0)
+        return _plan_review_finish("/plan-review/analyze", req.project_code, analysis, created, t0)
     except HTTPException as e:
         return _response("/plan-review/analyze", {}, errors=[str(e.detail)], start=t0)
     except Exception as e:
         return _response("/plan-review/analyze", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/plan-review/upload")
+async def plan_review_upload(
+    file: UploadFile = File(...),
+    project_code: str = Form(...),
+    reviewed_by: str = Form("claude_code"),
+    max_pages: int = Form(30),
+):
+    """
+    Real PDF/drawing plan-review (2026-07-01) — the follow-on to /plan-review/analyze
+    named in ADR-014's roadmap. Renders each PDF page to an image and sends it to
+    Claude's vision API directly, since plan sheets are drawings (schedules, dimensions,
+    symbols) that lose most of their information under plain text extraction. Same
+    completeness checklist and RFI/ROM handling as /plan-review/analyze — this endpoint
+    only differs in how it reads the source document.
+    max_pages caps cost/context on large sets; raise it for a genuinely large permit
+    set once the token cost is acceptable to Buck.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(project_code)
+        pdf_bytes = await file.read()
+
+        from pdf2image import convert_from_bytes
+        import base64, io
+        # poppler_path pinned explicitly — the launchd-managed API process doesn't
+        # inherit the interactive shell PATH that has /opt/homebrew/bin on it.
+        pages = convert_from_bytes(pdf_bytes, dpi=150, poppler_path="/opt/homebrew/bin")
+        if len(pages) > max_pages:
+            pages = pages[:max_pages]
+        truncated_note = f" (only the first {max_pages} of the uploaded set were reviewed)" if len(pages) == max_pages else ""
+
+        image_blocks = []
+        for page in pages:
+            buf = io.BytesIO()
+            page.save(buf, format="JPEG", quality=80)
+            b64 = base64.b64encode(buf.getvalue()).decode()
+            image_blocks.append({
+                "type": "image",
+                "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+            })
+
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        text_block = {"type": "text", "text": f"""You are a construction plan reviewer checking a permit set for gaps that would block bidding or construction. The following {len(pages)} images are pages from the uploaded plan set, in order.{truncated_note}
+
+{_PLAN_REVIEW_CHECKLIST}"""}
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001", max_tokens=3000,
+            messages=[{"role": "user", "content": image_blocks + [text_block]}],
+        )
+        analysis = _parse_plan_review_json(message.content[0].text)
+        created = _create_rfis_from_gaps(pid, analysis.get("gaps", []), reviewed_by)
+        _log("/plan-review/upload", reviewed_by, project_code, "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8],
+             f"{len(created)} RFIs from {len(pages)}-page upload")
+        return _plan_review_finish("/plan-review/upload", project_code, analysis, created, t0,
+                                    extra={"pages_reviewed": len(pages), "filename": file.filename})
+    except HTTPException as e:
+        return _response("/plan-review/upload", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/plan-review/upload", {}, errors=[str(e)], start=t0)
 
 
 @router.post("/field/daily-report")

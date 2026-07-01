@@ -339,6 +339,25 @@ if p.get("gaps_found", 0) > 0:
     code, d2 = get("/project/101F/action-list")
     check("Newly created RFI reflected in project action list", code == 200)
 
+# ── 20. POST /gateway/plan-review/upload — real PDF via Claude vision ──────────
+print("\n20. POST /gateway/plan-review/upload — PDF plan-set upload")
+import io as _io
+from reportlab.pdfgen import canvas as _canvas
+_pdf_buf = _io.BytesIO()
+_c = _canvas.Canvas(_pdf_buf)
+_c.drawString(50, 750, "SHEET A1.1 - PLUMBING FIXTURE SCHEDULE")
+_c.drawString(50, 720, "Master Bath Lavatory: MFGR [BLANK] MODEL [BLANK] COLOR [BLANK]")
+_c.save()
+_pdf_buf.seek(0)
+r = requests.post(f"{API}/plan-review/upload", headers=HEADERS,
+                   files={"file": ("test.pdf", _pdf_buf, "application/pdf")},
+                   data={"project_code": "101F", "reviewed_by": "test_suite"}, timeout=30)
+code, d = r.status_code, (r.json() if r.ok else {})
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Reports pages_reviewed", p.get("pages_reviewed") == 1, p)
+check("Has gaps_found as int", isinstance(p.get("gaps_found"), int), p)
+
 # Restore real agent heartbeats clobbered by impersonating them as test agents above —
 # must run regardless of pass/fail so a real BC/GBT session never shows falsely ONLINE.
 for _agent, _snap in _hb_before.items():
