@@ -5875,7 +5875,14 @@ async def telegram_messages_for_agent(agent: str = Query(..., description="chatg
     """GBT/BC visibility fix (2026-07-01): neither can receive a live Telegram push —
     this lets them poll for what they haven't seen yet. Tracks each agent's last-seen
     buck_message id in ai_agent_heartbeat.metadata (extends existing heartbeat infra,
-    no new table) rather than building a separate telegram_messages table."""
+    no new table) rather than building a separate telegram_messages table.
+
+    Does NOT touch heartbeat (fixed 2026-07-01) — this is a read-only GET, and anyone
+    with API access can call it with any agent name in the query string (e.g. Claude
+    Code verifying the endpoint on Browser Claude's behalf), which repeatedly produced
+    a false "browser_claude is ONLINE" signal in Mission Control from activity that
+    wasn't actually Browser Claude. Heartbeat should only reflect an agent genuinely
+    announcing itself — use POST /ai/heartbeat or /telegram/ack for that."""
     t0 = time.time()
     key = _AGENT_ALIASES.get((agent or "").strip().lower())
     if key not in AI_HEARTBEAT_AGENTS:
@@ -5898,7 +5905,6 @@ async def telegram_messages_for_agent(agent: str = Query(..., description="chatg
             "from": "Buck Adams", "text": (r["payload"] or {}).get("text") or (r["payload"] or {}).get("body"),
             "timestamp": r["published_at"].isoformat(),
         } for r in rows]
-        _touch_heartbeat(agent, f"polled telegram/messages ({len(messages)} unread)")
         return _response("/telegram/messages", {
             "agent": key, "last_ack_id": last_ack_id,
             "count": len(messages), "messages": messages,
