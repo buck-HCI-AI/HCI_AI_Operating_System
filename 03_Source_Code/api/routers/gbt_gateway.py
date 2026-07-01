@@ -165,12 +165,30 @@ def gateway_health():
         upstream_ok = True
     except Exception:
         upstream_ok = False
+
+    # ChatGPT is pull-based (no webhook can push into a chat session) — surface
+    # anything waiting for it on the very first call it makes each session so a
+    # pending handoff can't get missed between sessions. (2026-06-30, per Buck:
+    # "gbt is not picking you up" — this doesn't fix the pull-based limitation,
+    # it just makes sure /health itself can't be checked without seeing the count.)
+    pending_for_chatgpt = None
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT COUNT(*) n FROM ai_messages
+                    WHERE target_agent = 'chatgpt' AND status NOT IN ('COMPLETE','FAILED')""")
+                pending_for_chatgpt = cur.fetchone()["n"]
+    except Exception:
+        pass
+
     return _response("/health", {
         "gateway": "GBT Orchestrator Bridge v1.0",
         "hci_api_reachable": upstream_ok,
         "service_count": len(SERVICE_REGISTRY),
         "ngrok_url": "https://speculate-armband-retinal.ngrok-free.dev",
         "auth": "X-API-Key header required for write endpoints; reads open",
+        "pending_for_you": pending_for_chatgpt,
+        "pending_for_you_note": "unresolved items in ai_messages targeted at chatgpt — call GET /gateway/ai/warm-start for detail" if pending_for_chatgpt else None,
     }, start=t0)
 
 
@@ -1989,11 +2007,15 @@ async def drive_write(req: DriveWritePayload):
             action = "created"
 
         _log("/drive/write", "gbt", req.filename, action, round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        result_id = result.get("id")
+        # AD-12: construct the view link explicitly rather than trust webViewLink,
+        # which comes back null if the upload response omits it (auth hiccup, etc.)
+        view_link = result.get("webViewLink") or (f"https://drive.google.com/file/d/{result_id}/view" if result_id else None)
         return _response("/drive/write", {
             "action": action,
             "filename": req.filename,
-            "file_id": result.get("id"),
-            "view_link": result.get("webViewLink"),
+            "file_id": result_id,
+            "view_link": view_link,
             "folder_id": folder_id,
             "bytes_written": len(content_bytes)
         }, start=t0)
@@ -2735,15 +2757,17 @@ async def export_schedule_csv(request: Request,
                              errors=[f"Drive upload failed: {create_resp.text[:200]}"], start=t0)
 
         drive_data = create_resp.json()
+        drive_file_id = drive_data.get("id")
+        view_link = drive_data.get("webViewLink") or (f"https://drive.google.com/file/d/{drive_file_id}/view" if drive_file_id else None)
         _log("/drive/export-schedule-csv", "admin", "Drive", "ok",
              round((time.time()-t0)*1000), rid,
-             f"project={project_code} rows={len(items)} file_id={drive_data.get('id')}")
+             f"project={project_code} rows={len(items)} file_id={drive_file_id}")
         return _response("/drive/export-schedule-csv", {
             "project_code": project_code,
             "rows_exported": len(items),
             "filename": filename,
-            "file_id": drive_data.get("id"),
-            "view_link": drive_data.get("webViewLink"),
+            "file_id": drive_file_id,
+            "view_link": view_link,
             "bytes_written": len(csv_content.encode())
         }, start=t0)
     except Exception as e:

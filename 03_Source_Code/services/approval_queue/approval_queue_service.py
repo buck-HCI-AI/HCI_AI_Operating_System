@@ -47,6 +47,11 @@ def _audit(source: str, event_type: str, actor: str, entity_id: int,
         pass
 
 
+# AD-12.1 (ratified 2026-06-30): these are internal system automation events, not
+# externally-impacting actions — they go to activity_log, never to Buck's approval queue.
+_INTERNAL_NOISE_ACTION_TYPES = {"drive_upload_file", "verify_approval_loop", "system_check", "health_check"}
+
+
 class ApprovalQueueService:
 
     @classmethod
@@ -55,7 +60,24 @@ class ApprovalQueueService:
                 reason: str, project_id: int = None, actor: str = "system",
                 priority: str = "normal", source_data: dict = None,
                 rollback_path: str = None, expires_hours: int = 72) -> dict:
-        """Queue a proposed write action for approval. Returns queue item ID."""
+        """Queue a proposed write action for approval. Returns queue item ID.
+        AD-12.1: internal system automation events (action_type in
+        _INTERNAL_NOISE_ACTION_TYPES) are logged to activity_log instead —
+        they never reach Buck's approval queue."""
+        if action_type in _INTERNAL_NOISE_ACTION_TYPES:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO activity_log (event_type, target_system, target_id, description, payload, actor)
+                        VALUES (%s,%s,%s,%s,%s,%s) RETURNING id
+                    """, (action_type, target_system, target_id, target_description,
+                          json.dumps(proposed_payload), actor))
+                    row = cur.fetchone()
+                conn.commit()
+            return {"queue_id": None, "activity_log_id": row["id"], "status": "logged",
+                    "message": f"Internal system event ({action_type}) logged to activity_log — "
+                               f"not queued for approval per AD-12.1."}
+
         expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_hours)
         corr_id = str(uuid.uuid4())
 
