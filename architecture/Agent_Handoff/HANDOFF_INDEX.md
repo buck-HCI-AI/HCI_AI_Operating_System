@@ -80,3 +80,7 @@
 | 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_WHILE_AWAY_DIRECTIVE___Active_Now_beb40703.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_OVERNIGHT_BUILD_STATUS___GATE_5_GO___OPS_a5f0e4b1.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-06-30 21:52 | GBT_HANDOFF_2026-06-30_SESSION_12_HANDOFF___Gate5_GO___Full_Bui_4b50a764.md | implementation_request | claude_browser | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 23:06 | GBT_HANDOFF_2026-06-30_P0_RESOLVED__AI_Comms___Warm_Start_Recov_eef73c1f.md | implementation_request | claude_code | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 23:06 | GBT_HANDOFF_2026-06-30_Production_Directive__HCI_AI_OS_Book___C_b36b9f0c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 23:06 | GBT_HANDOFF_2026-06-30_P0_AI_Communication_Reliability_Sprint_-_b02ec94e.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-06-30 23:06 | GBT_HANDOFF_2026-06-30_Chief_Architect_Warm_Start_-_Resume_Cont_89e31ede.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |

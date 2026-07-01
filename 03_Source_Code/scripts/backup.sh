@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # HCI AI — Daily Backup Script
-# Backs up Postgres (pg_dump) + Qdrant (snapshot API)
-# Primary: /Volumes/HCI_AI_DEV/backups  |  Fallback: ~/HCI_Backups
+# Backs up repo (rsync) + Postgres (pg_dump) + Qdrant (snapshot API)
+# Primary: external drive whose name starts with HCI_AI_DEV (matched by glob —
+#   macOS mounts it with a trailing space, e.g. "/Volumes/HCI_AI_DEV ", which broke
+#   exact-path matching here for months; fixed 2026-06-30, see ADR-008)
+# Fallback: ~/HCI_Backups
 # Keeps 7 days of rolling backups.
 # Runs via launchd (com.hci.backup) daily at 02:00.
 set -euo pipefail
@@ -10,13 +13,21 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 DATE_TAG=$(date +"%Y%m%d")
 
 # ── Destination ───────────────────────────────────────────────────────────────
-PRIMARY_DIR="${HCI_BACKUP_DIR:-/Volumes/HCI_AI_DEV/backups}"
 FALLBACK_DIR="$HOME/HCI_Backups"
 
-if [[ -d "$(dirname "$PRIMARY_DIR")" && -w "$(dirname "$PRIMARY_DIR")" ]]; then
-  BACKUP_ROOT="$PRIMARY_DIR"
+# Glob-match instead of exact path: tolerates the trailing space / any suffix
+# macOS appends to the actual mounted volume name.
+PRIMARY_VOLUME="${HCI_BACKUP_VOLUME:-}"
+if [[ -z "$PRIMARY_VOLUME" ]]; then
+  for v in /Volumes/HCI_AI_DEV*; do
+    [[ -d "$v" ]] && PRIMARY_VOLUME="$v" && break
+  done
+fi
+
+if [[ -n "$PRIMARY_VOLUME" && -d "$PRIMARY_VOLUME" && -w "$PRIMARY_VOLUME" ]]; then
+  BACKUP_ROOT="${PRIMARY_VOLUME}/backups"
 else
-  echo "[backup] Primary drive not mounted — using fallback: $FALLBACK_DIR"
+  echo "[backup] External drive not mounted (looked for /Volumes/HCI_AI_DEV*) — using fallback: $FALLBACK_DIR"
   BACKUP_ROOT="$FALLBACK_DIR"
 fi
 
@@ -43,9 +54,22 @@ fi
 PGPASSWORD="${POSTGRES_PASSWORD:-hci_pass}"
 export PGPASSWORD
 
+# ── 0. Repo rsync (source code + docs, including untracked/uncommitted files) ──
+echo ""
+echo "[0/4] Repo rsync…"
+REPO_ROOT="$HOME/HCI_AI_Operating_System"
+REPO_OUT="$BACKUP_DIR/repo"
+mkdir -p "$REPO_OUT"
+rsync -a --delete \
+  --exclude='.git' --exclude='node_modules' --exclude='__pycache__' \
+  --exclude='*.pyc' --exclude='.venv' \
+  "$REPO_ROOT"/ "$REPO_OUT"/ && \
+  echo "      ✓ $(du -sh "$REPO_OUT" | cut -f1)  →  $REPO_OUT" || \
+  echo "      ✗ Repo rsync FAILED"
+
 # ── 1. Postgres dump ──────────────────────────────────────────────────────────
 echo ""
-echo "[1/3] Postgres dump…"
+echo "[1/4] Postgres dump…"
 PG_OUT="$BACKUP_DIR/postgres_${TIMESTAMP}.dump"
 docker exec hci_postgres pg_dump \
   -U "${POSTGRES_USER:-hci_user}" \
@@ -58,7 +82,7 @@ docker exec hci_postgres pg_dump \
 
 # ── 2. Qdrant snapshots ───────────────────────────────────────────────────────
 echo ""
-echo "[2/3] Qdrant snapshots…"
+echo "[2/4] Qdrant snapshots…"
 QDRANT_URL="${QDRANT_URL:-http://localhost:6333}"
 QDRANT_DIR="$BACKUP_DIR/qdrant"
 mkdir -p "$QDRANT_DIR"
@@ -88,7 +112,7 @@ fi
 
 # ── 3. MinIO metadata backup (bucket listing) ─────────────────────────────────
 echo ""
-echo "[3/3] MinIO bucket manifest…"
+echo "[3/4] MinIO bucket manifest…"
 MINIO_OUT="$BACKUP_DIR/minio_manifest_${TIMESTAMP}.txt"
 docker exec hci_minio mc alias set local http://localhost:9000 \
   "${MINIO_ROOT_USER:-hci_minio}" "${MINIO_ROOT_PASSWORD:-changeme}" \
@@ -98,12 +122,19 @@ docker exec hci_minio mc ls --recursive local > "$MINIO_OUT" 2>/dev/null && \
   echo "      ⚠ MinIO manifest unavailable"
 
 # ── 4. Prune old backups (keep 7 days) ───────────────────────────────────────
+# `head -n -7` is a GNU-ism — BSD/macOS head errors on negative counts, which
+# silently failed under `set -e` every night until this fix (2026-06-30).
 echo ""
-echo "[4/3] Pruning backups older than 7 days…"
-find "$BACKUP_ROOT" -maxdepth 1 -type d -name "20*" | sort | head -n -7 | while read -r old_dir; do
-  rm -rf "$old_dir"
-  echo "      ✗ Removed $old_dir"
-done
+echo "[4/4] Pruning backups older than 7 days…"
+ALL_DIRS=()
+while IFS= read -r d; do ALL_DIRS+=("$d"); done < <(find "$BACKUP_ROOT" -maxdepth 1 -type d -name "20*" | sort)
+TOTAL_DIRS=${#ALL_DIRS[@]}
+if (( TOTAL_DIRS > 7 )); then
+  for ((i = 0; i < TOTAL_DIRS - 7; i++)); do
+    rm -rf "${ALL_DIRS[$i]}"
+    echo "      ✗ Removed ${ALL_DIRS[$i]}"
+  done
+fi
 KEPT=$(find "$BACKUP_ROOT" -maxdepth 1 -type d -name "20*" | wc -l | tr -d ' ')
 echo "      ✓ $KEPT backup days retained"
 

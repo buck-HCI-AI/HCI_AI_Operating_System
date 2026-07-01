@@ -1081,3 +1081,62 @@ IMMEDIATE PRIORITIES:
 9. Re-index 7 new Drive files into constitution_memory Qdrant collection
 
 FULL DETAIL: file_id 1KRlx0FRqlGnLy_m0rT0wR_HVRoxTgKFR in Drive (HCI_CLAUDE_CODE_HANDOFF_SESS
+
+
+### P0 RESOLVED: AI Comms + Warm Start Recovery — Implementation Report
+*Source: claude_code | 2026-06-30*
+
+AUDIT FINDINGS
+- Architecture Inbox (Agent_Handoff bus) already existed and was working — cleared a 19-item backlog via existing handoff_processor.py, not rebuilt.
+- missions table (migration 008, 15 live rows) already served as implementation queue — wired into warm-start instead of duplicating.
+- approval_queue (external-write approvals) untouched — separate domain, not duplicated.
+
+ROOT CAUSE OF TELEGRAM/MESSAGE FAILURE
+1. Webhook registration only existed in an unused module (integrations/telegram_bot.py), never imported/called — no code path could re-register it if the ngrok URL rotated.
+2. _tg_send() had no retry and no fallback at two endpoints (bids/stale/alert, schedule/variance/alert) that had confirmed silent-failure incidents in gateway_request_log the same day.
+3. Markdown parse_mode 400 errors were a known recurring failure (commit ab14e29) with only a regex heuristic guard.
+
+EXISTING COMPONENTS REUSED
+- missions table, approval_queue, platform_events, Agent_Handoff Inbox
+
+
+### Production Directive: HCI AI OS Book + Control Plane
+*Source: ChatGPT | 2026-06-30*
+
+Executive report refreshed. Begin Production Workstream Alpha.
+
+Deliverables:
+1. Assemble the HCI AI Operating System Manual from existing governance, architecture, SOPs, and implementation docs—extend existing documentation, do not duplicate.
+2. Produce a master table of contents with chapter-to-source mapping.
+3. Identify documentation gaps that prevent production handoff.
+4. Cross-reference LIVE_PROJECT_STATE, CURRENT_SPRINT, ACRs, SOP library, governance docs, and implementation repository.
+5. Prepare a publish-ready v1 draft and report remaining blockers.
+
+Continue communication reliability work in parallel only where it supports the manual and operational readiness.
+
+
+### P0 AI Communication Reliability Sprint - Execute Now
+*Source: ChatGPT | 2026-06-30*
+
+CHIEF ARCHITECT PRODUCTION DIRECTIVE
+
+Context: We are operating as the HCI AI production team, not a chat session. Buck Adams is owner/final authority. Gate 5 is live. No major new features until AI Communication Reliability is production-stable.
+
+P0 Objective: Build/repair the AI Operations Control Plane communication layer so every AI handoff is durable, owned, acknowledged, recoverable after restart, and synchronized to Mission Control.
+
+Execution order:
+
+1. AUDIT FIRST
+- Inventory all existing communication, handoff, approval, inbox, notification, restart, and Mission Control mechanisms.
+- Identify duplicates before creating anything new.
+- Confirm current tables, endpoints, n8n workflows, gateway routes, and files involved.
+
+2. ARCHITECTURE INBOX
+- Extend existing inbox/handoff structures if available.
+- Ensure every AI task has: id, title, source_agent, target_agent, owner, status, priority, created_at, acknowledged_at, due/blocked fields, payload, source_of_truth_link, and audit
+
+
+### Chief Architect Warm Start - Resume Continuous Engineering
+*Source: ChatGPT | 2026-06-30*
+
+Chief Architect has resumed from live gateway state. Resume continuous engineering from current production baseline. Prioritize communication reliability, architecture inbox, durable acknowledgements, restart recovery, Mission Control synchronization, and report any implementation blockers or architecture decisions requiring ARB review. Continue auditing before building and avoid duplicate systems. Return implementation status and recommended next sprint actions.

@@ -5,6 +5,29 @@
 
 ---
 
+## v3.7 — 2026-06-30 | P0 Reconciliation + Backup System Fix
+
+**Trigger:** ChatGPT Chief Architect P0 directive ("Code communication ai") reiterated the durable-comms/warm-start work with a stricter field spec (2 of 3 directives now agree on RECEIVED/FAILED over ACKNOWLEDGED/REJECTED, plus source_agent/target_agent naming). Separately, Buck asked to confirm external-drive backups and disaster-recovery readiness.
+
+**P0 reconciliation (migration 019):**
+- `ai_messages.source`/`target` renamed to `source_agent`/`target_agent`.
+- Status vocabulary reconciled: `ACKNOWLEDGED`→`RECEIVED`, `REJECTED`→`FAILED` (canonical now: NEW/RECEIVED/IN_PROGRESS/BLOCKED/COMPLETE/NEEDS_BUCK_APPROVAL/FAILED/STALE).
+- Added `next_action_owner`, `related_approval_id`, generic `payload` JSONB column.
+- Sent formal implementation report to ChatGPT via `/gateway/agent/handoff`; pinged Browser Claude via the new `/gateway/ai/messages` queue — both real, not simulated (real Telegram round-trip with Buck confirmed working end-to-end again).
+- 32/32 tests passing against reconciled schema.
+- Declined to fork the status vocabulary a third time when a 4th directive proposed yet another variant (queued/received/acknowledged/in_progress/...) — recommended ARB ratify the now-twice-agreed vocabulary instead of reconciling again.
+
+**Backup system fix (ADR-008):**
+- Root cause found: external drive mounts as `/Volumes/HCI_AI_DEV ` (trailing space); `backup.sh` hardcoded the path without it, so the primary destination check silently failed every night since setup — all backups were internal-disk-only (`~/HCI_Backups`), never actually off-machine.
+- Fixed with glob-based drive detection (`/Volumes/HCI_AI_DEV*`), tolerant of the trailing space or any macOS-appended suffix.
+- Added a repo rsync step (previously only DB/vectors were backed up, not source code/docs).
+- Fixed a silent nightly pruning failure (`head -n -7` is GNU-only; BSD `head` on macOS errors on negative counts).
+- Rewrote `Operations_Manual/Chapter_23_Backup_Recovery.md` — removed documentation of a second backup mechanism (`hci_daily_backup.sh`/`SETUP_DAILY_BACKUP.command`) that was written up but never actually built; added a concrete new-machine/system-failure recovery walkthrough tying into the warm-start endpoints.
+- Added `~/Desktop/RUN_BACKUP_NOW.command` for one-click manual backups.
+- Flagged, not fixed: MinIO backs up a manifest only (not object contents); local `main` was several commits ahead of `origin/main` (GitHub is the only genuinely off-machine backup layer for code, but only for what's pushed) — push is gated per CLAUDE.md, raised to Buck rather than pushed unilaterally.
+
+---
+
 ## v3.6 — 2026-06-30 | AI Operations Control Plane — Durable Comms + Warm Start Recovery
 
 **Trigger:** Three directives (Code Directive, Claude Dode V2, Code recovery ai plan) — resume after machine

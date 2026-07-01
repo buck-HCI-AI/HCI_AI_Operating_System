@@ -95,7 +95,7 @@ SERVICE_REGISTRY = [
     {"name": "ai-messages-create", "path": "/gateway/ai/messages",              "description": "POST: Create a durable agent message/task — DB is source of truth, auto-notifies Telegram+ntfy"},
     {"name": "ai-queue",           "path": "/gateway/ai/queue",                 "description": "GET: Fallback polling queue — works even if Telegram is down"},
     {"name": "ai-approvals",       "path": "/gateway/approvals",                "description": "GET: Pending Buck approvals from the durable queue"},
-    {"name": "ai-message-status",  "path": "/gateway/ai/messages/{id}/status",  "description": "PATCH: Agent self-report — ACKNOWLEDGED/IN_PROGRESS/BLOCKED/COMPLETE/etc"},
+    {"name": "ai-message-status",  "path": "/gateway/ai/messages/{id}/status",  "description": "PATCH: Agent self-report — RECEIVED/IN_PROGRESS/BLOCKED/COMPLETE/etc"},
     {"name": "ai-heartbeat",       "path": "/gateway/ai/heartbeat",             "description": "POST: Agent heartbeat ping (chatgpt/claude_code/browser_claude/n8n)"},
     {"name": "ai-escalation-check","path": "/gateway/ai/escalation-check",      "description": "POST: Retry/escalate stale unacknowledged approvals — call from n8n on a schedule"},
     {"name": "telegram-health",    "path": "/gateway/telegram/health",          "description": "GET: Telegram webhook registration state + 24h send health"},
@@ -4427,17 +4427,21 @@ def _touch_heartbeat(agent: str, action: str = ""):
 
 def _create_ai_message(source, target, message_type, title, body, project_code=None,
                         requires_buck_approval=False, approval_type=None,
-                        related_file=None, related_handoff_id=None) -> int:
+                        related_file=None, related_handoff_id=None,
+                        related_approval_id=None) -> int:
     status = "NEEDS_BUCK_APPROVAL" if requires_buck_approval else "NEW"
+    next_owner = "buck" if requires_buck_approval else target
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO ai_messages
-                    (source, target, project_code, message_type, title, body, status,
-                     requires_buck_approval, approval_type, related_file, related_handoff_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                    (source_agent, target_agent, project_code, message_type, title, body, status,
+                     requires_buck_approval, approval_type, related_file, related_handoff_id,
+                     related_approval_id, next_action_owner)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
             """, (source, target, project_code, message_type, title, body, status,
-                  requires_buck_approval, approval_type, related_file, related_handoff_id))
+                  requires_buck_approval, approval_type, related_file, related_handoff_id,
+                  related_approval_id, next_owner))
             mid = cur.fetchone()["id"]
         conn.commit()
     return mid
@@ -4497,13 +4501,14 @@ def _tg_send_with_id(text: str, reply_markup: dict = None) -> dict:
 def _notify_agents(source: str, target: str, message_type: str, title: str, body: str,
                     project_code: str = None, requires_buck_approval: bool = False,
                     approval_type: str = None, related_file: str = None,
-                    related_handoff_id: str = None) -> dict:
+                    related_handoff_id: str = None, related_approval_id: int = None) -> dict:
     """Single entry point for agent-to-agent / agent-to-Buck notices: DB row first
     (source of truth, survives Telegram outages), then Telegram with automatic ntfy
     fallback on failure. Replaces bare _tg_send() at alert sites — audit 2026-06-30
     confirmed two production alerts were silently dropped with no fallback."""
     msg_id = _create_ai_message(source, target, message_type, title, body, project_code,
-                                 requires_buck_approval, approval_type, related_file, related_handoff_id)
+                                 requires_buck_approval, approval_type, related_file, related_handoff_id,
+                                 related_approval_id)
     sent = {"status": "skipped"}
     if message_type in NOTIFY_MESSAGE_TYPES or requires_buck_approval:
         icons = {"approval_request": "✅", "risk_alert": "🚨", "blocked_mission": "⛔",
@@ -4535,14 +4540,16 @@ def _handle_buck_command(text: str) -> Optional[str]:
     cmd = parts[0].upper()
     if cmd in ("APPROVE", "REJECT", "HOLD") and len(parts) >= 2 and parts[1].isdigit():
         msg_id = int(parts[1])
-        new_status = {"APPROVE": "ACKNOWLEDGED", "REJECT": "REJECTED", "HOLD": "BLOCKED"}[cmd]
+        new_status = {"APPROVE": "RECEIVED", "REJECT": "FAILED", "HOLD": "BLOCKED"}[cmd]
+        next_owner = {"APPROVE": None, "REJECT": None, "HOLD": "buck"}[cmd]  # APPROVE hands back to requester
         try:
             with _pg() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        UPDATE ai_messages SET status=%s, telegram_acknowledged_at=NOW(), updated_at=NOW()
+                        UPDATE ai_messages SET status=%s, telegram_acknowledged_at=NOW(), updated_at=NOW(),
+                            next_action_owner = COALESCE(%s, CASE WHEN %s THEN source_agent ELSE next_action_owner END)
                         WHERE id=%s RETURNING title
-                    """, (new_status, msg_id))
+                    """, (new_status, next_owner, cmd == "APPROVE", msg_id))
                     row = cur.fetchone()
                 conn.commit()
             if not row:
@@ -4558,7 +4565,7 @@ def _handle_buck_command(text: str) -> Optional[str]:
                 with conn.cursor() as cur:
                     cur.execute("""
                         SELECT status, COUNT(*) AS n FROM ai_messages
-                        WHERE status NOT IN ('COMPLETE','REJECTED') GROUP BY status
+                        WHERE status NOT IN ('COMPLETE','FAILED') GROUP BY status
                     """)
                     counts = {r["status"]: r["n"] for r in cur.fetchall()}
             lines = [f"{k}: {v}" for k, v in counts.items()] or ["Nothing pending."]
@@ -4639,8 +4646,8 @@ def _comms_snapshot() -> dict:
 
 
 class AIMessageCreate(BaseModel):
-    source: str
-    target: str
+    source_agent: str
+    target_agent: str
     message_type: str
     title: str
     body: str
@@ -4649,6 +4656,7 @@ class AIMessageCreate(BaseModel):
     approval_type: Optional[str] = None
     related_file: Optional[str] = None
     related_handoff_id: Optional[str] = None
+    related_approval_id: Optional[int] = None
 
 
 @router.post("/ai/messages")
@@ -4658,11 +4666,11 @@ async def ai_messages_create(req: AIMessageCreate):
     (approval_request, risk_alert, blocked_mission, handoff_waiting, work_complete,
     review_required) or whenever requires_buck_approval is true."""
     t0 = time.time()
-    _touch_heartbeat(req.source, f"sent {req.message_type}: {req.title[:60]}")
-    result = _notify_agents(req.source, req.target, req.message_type, req.title, req.body,
+    _touch_heartbeat(req.source_agent, f"sent {req.message_type}: {req.title[:60]}")
+    result = _notify_agents(req.source_agent, req.target_agent, req.message_type, req.title, req.body,
                              req.project_code, req.requires_buck_approval, req.approval_type,
-                             req.related_file, req.related_handoff_id)
-    _log("/ai/messages", req.source, "ai_messages", "ok", int((time.time()-t0)*1000),
+                             req.related_file, req.related_handoff_id, req.related_approval_id)
+    _log("/ai/messages", req.source_agent, "ai_messages", "ok", int((time.time()-t0)*1000),
          str(result["id"]), req.title[:60])
     return _response("/ai/messages", result, start=t0)
 
@@ -4679,7 +4687,7 @@ def ai_queue(status: Optional[str] = None, target: Optional[str] = None, limit: 
                 if status:
                     q += " AND status = %s"; params.append(status)
                 if target:
-                    q += " AND target = %s"; params.append(target)
+                    q += " AND target_agent = %s"; params.append(target)
                 q += " ORDER BY created_at DESC LIMIT %s"; params.append(limit)
                 cur.execute(q, params)
                 rows = [dict(r) for r in cur.fetchall()]
@@ -4721,10 +4729,10 @@ class AIMessageStatusUpdate(BaseModel):
 
 @router.patch("/ai/messages/{msg_id}/status")
 async def ai_message_status(msg_id: int, req: AIMessageStatusUpdate):
-    """Agent self-report: ACKNOWLEDGED / IN_PROGRESS / BLOCKED / COMPLETE / etc."""
+    """Agent self-report: RECEIVED / IN_PROGRESS / BLOCKED / COMPLETE / etc."""
     t0 = time.time()
-    valid = {"NEW", "ACKNOWLEDGED", "IN_PROGRESS", "BLOCKED", "COMPLETE",
-              "NEEDS_BUCK_APPROVAL", "REJECTED", "STALE"}
+    valid = {"NEW", "RECEIVED", "IN_PROGRESS", "BLOCKED", "COMPLETE",
+              "NEEDS_BUCK_APPROVAL", "FAILED", "STALE"}
     if req.status not in valid:
         return _response(f"/ai/messages/{msg_id}/status", {},
                           errors=[f"invalid status, must be one of {sorted(valid)}"], start=t0)
@@ -4854,8 +4862,8 @@ def ai_events(limit: int = 20):
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    (SELECT 'ai_message' AS kind, id::text AS ref, source, target, message_type AS type,
-                            title, status, created_at AS ts
+                    (SELECT 'ai_message' AS kind, id::text AS ref, source_agent AS source, target_agent AS target,
+                            message_type AS type, title, status, created_at AS ts
                      FROM ai_messages ORDER BY created_at DESC LIMIT %s)
                     UNION ALL
                     (SELECT 'buck_message' AS kind, id::text AS ref, 'buck' AS source, 'system' AS target,
@@ -4911,7 +4919,7 @@ def ai_warm_start():
 
                 cur.execute("""
                     SELECT id, title, status, created_at FROM ai_messages
-                    WHERE target = 'chatgpt' AND status NOT IN ('COMPLETE','REJECTED')
+                    WHERE target_agent = 'chatgpt' AND status NOT IN ('COMPLETE','FAILED')
                     ORDER BY created_at ASC
                 """)
                 pending_gbt = [dict(r) for r in cur.fetchall()]

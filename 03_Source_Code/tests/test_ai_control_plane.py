@@ -42,7 +42,7 @@ print("=" * 50)
 # ── 1. Create a durable message (no Telegram notify expected — message_type=note) ──
 print("\n1. POST /ai/messages — durable create")
 code, d = post("/ai/messages", {
-    "source": "claude_code", "target": "buck", "message_type": "note",
+    "source_agent": "claude_code", "target_agent": "buck", "message_type": "note",
     "title": "Automated test — control plane suite", "body": "non-notifying test row",
 })
 check("Returns 200", code == 200, code)
@@ -69,7 +69,7 @@ patch(f"/ai/messages/{msg_id}/status", {"status": "COMPLETE", "agent": "claude_c
 # ── 4. Approvals visible without Telegram round-trip ──────────────────────────
 print("\n4. GET /approvals")
 code, d = post("/ai/messages", {
-    "source": "claude_code", "target": "buck", "message_type": "approval_request",
+    "source_agent": "claude_code", "target_agent": "buck", "message_type": "approval_request",
     "title": "Automated test — approval row", "body": "test", "requires_buck_approval": True,
 })
 approval_id = d.get("payload", {}).get("id")
@@ -87,9 +87,9 @@ code, d = post("/telegram/webhook", {
     "update_id": 1, "message": {"message_id": 1, "chat": {"id": 1}, "text": f"APPROVE {approval_id}"},
 })
 check("Webhook returns 200", code == 200, code)
-code, d = get("/ai/queue", {"status": "ACKNOWLEDGED", "limit": 50})
+code, d = get("/ai/queue", {"status": "RECEIVED", "limit": 50})
 ids = [m["id"] for m in d.get("payload", {}).get("messages", [])]
-check("Status flipped to ACKNOWLEDGED via command", approval_id in ids)
+check("Status flipped to RECEIVED via command", approval_id in ids)
 
 # ── 6. Escalation / retry path for stale unacknowledged approvals ─────────────
 print("\n6. POST /ai/escalation-check")
