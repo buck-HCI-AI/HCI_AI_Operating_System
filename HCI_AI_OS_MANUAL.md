@@ -422,3 +422,102 @@ AI performs the repetitive work of collecting, organizing, analyzing, and monito
 ---
 
 *Chapter drafted by HCI Chief Architect (ChatGPT) | Committed by Browser Claude | 2026-06-30*
+
+
+---
+
+# Chapter 8 — The Roadmap: Building the Future of Hendrickson Construction
+
+The HCI AI Operating System is more than a software platform. It is the operating model for the next generation of Hendrickson Construction.
+
+Every sprint, every integration, every architecture decision contributes to a larger objective: creating a construction company that continuously learns, continuously improves, and scales without sacrificing quality or control.
+
+The roadmap described in this chapter is not a feature list. It is the evolution of how the company works. Each phase builds on the previous one. Nothing is discarded unnecessarily. Every sprint should make the organization simpler, more capable, and more resilient.
+
+## Guiding Principles
+
+The roadmap follows five enduring principles: Audit before building. Extend before creating. One source of truth. Human authority remains final. Continuous improvement never ends.
+
+These principles are expected to outlive individual technologies, vendors, or AI platforms. The principles remain constant. The implementation evolves.
+
+## Near-Term Roadmap (Current Sprint)
+
+### AI Communication Reliability
+
+The immediate priority is making AI communication durable. Every directive issued to an AI participant must be acknowledged, tracked, and persistent across restarts.
+
+This requires: the ai_directives table with full lifecycle tracking, gateway endpoints for directive management, ai_heartbeat registration for all agents, Mission Control reflecting real AI team status, and stale directive detection and escalation.
+
+When this work is complete, the AI team operates with the same reliability as any other production system. No directive is lost. No agent is assumed to be running. Restarts are graceful.
+
+### Mission Control as the Single Operational Dashboard
+
+Mission Control should be the one place Buck and the team go to understand what is happening across all projects, all AI agents, all approvals, and all risks.
+
+Current state: Mission Control exists but does not yet reflect real-time operational state. Target state: any person or agent that opens Mission Control immediately understands the complete operational picture without needing additional context.
+
+### Sprint 2 Formal Close
+
+Sprint 2 closes when: sprint metadata is reconciled, AI communication reliability is complete, 101F schedule variance is corrected to -5 days, 1355R risk inflation is resolved to 0, and documentation matches live state. Sprint 3 is then formally declared active.
+
+## Medium-Term Roadmap
+
+### External Platform Integrations
+
+**Houzz Bridge.** Houzz is a primary source of project leads and vendor discovery for HCI. The Houzz bridge will allow the operating system to process Houzz inquiries, qualify leads, and route them to the appropriate estimating resources without manual intervention.
+
+**Telegram Approval Bridge.** Telegram provides Buck with a mobile-native interface for approvals. The Telegram bridge will surface approval queue items directly to Buck's phone, allow one-tap approve or reject, and record the decision in the system. No approval will require a laptop.
+
+**Unified Task Registry.** Every task across every AI agent, every project, and every workflow will be tracked in a single registry. Every task has an owner, a status, a due date, and a linked directive. No orphan tasks. Complete operational visibility.
+
+### AI Memory Synchronization
+
+Each AI agent currently maintains independent session context. Medium-term, the system should synchronize operational memory across all agents through GitHub as the shared state layer.
+
+When any agent starts a session, it reads the current state from GitHub and is immediately operational. When a session ends, it commits its state update. No agent requires another agent to be available to recover context.
+
+### Vendor Intelligence at Scale
+
+As more projects complete, the vendor intelligence in the Knowledge Graph compounds in value. Medium-term objectives include: automated vendor scorecards generated after every project, bid invitation recommendations based on historical performance, risk flags for vendors with quality or schedule history issues, and cross-project vendor comparison reports available to estimators.
+
+## Long-Term Roadmap
+
+### Predictive Project Intelligence
+
+Today's operating system reports current conditions. Tomorrow's operating system predicts future conditions.
+
+Predictive intelligence will: forecast schedule variance before it becomes a delay, identify cost overrun trends before the budget is breached, flag RFI patterns that historically indicate design coordination problems, and recommend procurement timing based on lead time analysis and market conditions.
+
+The system moves from reactive reporting to proactive intelligence.
+
+### Schedule AI That Catches Delays in Hours
+
+The target for schedule intelligence is detection latency measured in hours, not days or weeks. When a concrete pour slips, the schedule impact is calculated and surfaced the same day. When a steel delivery is delayed, the downstream activity impacts are modeled immediately.
+
+This requires integration with field reporting, supplier tracking, and inspection scheduling. The data exists. The intelligence layer connects it.
+
+### Estimating AI That Learns From Every Bid
+
+Every bid HCI prepares contains knowledge: how long it took, what assumptions were made, where the estimate was high or low, what the final cost was. Today that knowledge lives in spreadsheets and individual estimator memory. Long-term, the estimating AI extracts that knowledge, builds historical cost databases by project type and market condition, and uses it to improve every future estimate.
+
+The estimating team's judgment becomes more valuable because it is applied to decisions — which assumptions to make, which risks to carry — rather than to data retrieval and calculation.
+
+## The Vision: HCI in Three Years
+
+Three years from now, Hendrickson Construction operates as a continuously learning organization.
+
+Every project managed through HCI AI OS has contributed to the organization's collective intelligence. Estimators see how similar projects performed. Project Managers see which schedule activities consistently run late and why. Superintendents have daily logs drafted for review, not for creation. Executives no longer ask "What's the status?" — they ask "What decision requires my judgment?" because the system has already gathered the facts, organized the evidence, and highlighted the tradeoffs.
+
+New employees ramp up faster because the operating system teaches how Hendrickson works. Every RFI, every submittal, every bid, every lesson learned, and every vendor interaction strengthens the organization's collective knowledge. Experience is no longer trapped in individual inboxes or memories — it becomes a durable asset that compounds over time.
+
+AI teammates collaborate alongside people through governed processes, with every action traceable, every approval durable, and every decision supported by context.
+
+The measure of success is not that AI has replaced people. It is that people have been freed to focus on leadership, craftsmanship, client relationships, and judgment — while routine coordination, analysis, and administrative work are handled reliably by the operating system.
+
+At that point, HCI AI OS is no longer viewed as software. It is simply how Hendrickson Construction operates — a resilient, continuously learning organization where technology amplifies human capability, governance protects trust, and every completed project makes the next one better.
+
+That is the enduring vision of the HCI AI Operating System.
+
+---
+
+*Chapter drafted by HCI Chief Architect (ChatGPT) | Committed by Browser Claude | 2026-06-30*
