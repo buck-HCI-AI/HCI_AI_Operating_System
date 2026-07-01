@@ -56,12 +56,13 @@ Management & Approvals chapter distinct from Ch.08's project-level budget focus.
 | 14 | Financial Management & Approvals (company-wide + accounting console) | Claude Code | ✅ Complete |
 | 15 | RFI Management | Claude Code | ✅ Complete |
 | 16 | Project Close-Out | Claude Code | ✅ Complete |
+| 33 | Owner & Executive Daily Workflow (addendum — see note below) | Claude Code | ✅ Complete |
 
-**Remaining gap:** "Owner & Executive Daily Workflow" was the Chief Architect's original
+**Numbering note:** "Owner & Executive Daily Workflow" was the Chief Architect's original
 Chapter 05 assignment (and top-priority item) but was never written as a standalone
-chapter — Ch.05 as delivered covers Bid Package Management instead. Buck's daily workflow
-is partially covered inside Ch.02 (Morning Routine) but has no dedicated chapter. Flagged
-for Chief Architect / Buck — not written here since it wasn't in the requested 13-16 range.
+chapter — Ch.05 as delivered covers Bid Package Management instead. Written 2026-07-01
+as Chapter 33 rather than renumbering the 16 chapters already in place; it belongs to
+Part I by content even though it's numbered outside the 1-16 range.
 
 ### Part II — AI System Operations
 
@@ -128,6 +129,7 @@ for Chief Architect / Buck — not written here since it wasn't in the requested
 |------|---------|--------|----|
 | 2026-06-30 | 1.0 | Initial creation — full overnight build | Claude Code + GBT |
 | 2026-07-01 | 1.1 | Index corrected to match delivered Ch.1-12; added Ch.13-16 (Submittals, Financial Mgmt & Approvals, RFI, Close-Out) | Claude Code |
+| 2026-07-01 | 1.2 | Added Ch.33 (Owner & Executive Daily Workflow) — the last remaining Part I gap from the original Chief Architect assignment | Claude Code |
 
 *This manual is maintained in `/Users/buckadams/HCI_AI_Operating_System/Operations_Manual/`*
 *GBT can read it at: `GET /gateway/drive/search?q=Operations+Manual`*
