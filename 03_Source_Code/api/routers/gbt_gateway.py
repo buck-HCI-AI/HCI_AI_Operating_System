@@ -5270,6 +5270,73 @@ async def buck_get_messages(since_minutes: int = 60):
     except Exception as e:
         return _response("/buck/messages", {}, errors=[str(e)], start=t0)
 
+@router.get("/telegram/messages")
+async def telegram_messages_for_agent(agent: str = Query(..., description="chatgpt|browser_claude|claude_code|n8n"),
+                                       limit: int = Query(20, le=100)):
+    """GBT/BC visibility fix (2026-07-01): neither can receive a live Telegram push —
+    this lets them poll for what they haven't seen yet. Tracks each agent's last-seen
+    buck_message id in ai_agent_heartbeat.metadata (extends existing heartbeat infra,
+    no new table) rather than building a separate telegram_messages table."""
+    t0 = time.time()
+    key = _AGENT_ALIASES.get((agent or "").strip().lower())
+    if key not in AI_HEARTBEAT_AGENTS:
+        return _response("/telegram/messages", {}, errors=[f"unknown agent, must be one of {sorted(AI_HEARTBEAT_AGENTS)}"], start=t0)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT metadata FROM ai_agent_heartbeat WHERE agent = %s", (key,))
+                row = cur.fetchone()
+                last_ack_id = (row["metadata"] or {}).get("last_telegram_ack_id", 0) if row else 0
+
+                cur.execute("""
+                    SELECT id, payload, published_at FROM platform_events
+                    WHERE event_type = 'buck_message' AND id > %s
+                    ORDER BY id ASC LIMIT %s
+                """, (last_ack_id, limit))
+                rows = cur.fetchall()
+        messages = [{
+            "message_id": r["id"], "read_status": "unread",
+            "from": "Buck Adams", "text": (r["payload"] or {}).get("text") or (r["payload"] or {}).get("body"),
+            "timestamp": r["published_at"].isoformat(),
+        } for r in rows]
+        _touch_heartbeat(agent, f"polled telegram/messages ({len(messages)} unread)")
+        return _response("/telegram/messages", {
+            "agent": key, "last_ack_id": last_ack_id,
+            "count": len(messages), "messages": messages,
+        }, start=t0)
+    except Exception as e:
+        return _response("/telegram/messages", {}, errors=[str(e)], start=t0)
+
+
+class TelegramAckRequest(BaseModel):
+    agent: str
+    message_id: int
+
+
+@router.post("/telegram/ack")
+async def telegram_ack(req: TelegramAckRequest):
+    """Mark Telegram messages up to message_id as read for this agent."""
+    t0 = time.time()
+    key = _AGENT_ALIASES.get((req.agent or "").strip().lower())
+    if key not in AI_HEARTBEAT_AGENTS:
+        return _response("/telegram/ack", {}, errors=[f"unknown agent, must be one of {sorted(AI_HEARTBEAT_AGENTS)}"], start=t0)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO ai_agent_heartbeat (agent, last_seen_at, status, metadata)
+                    VALUES (%s, NOW(), 'ONLINE', %s::jsonb)
+                    ON CONFLICT (agent) DO UPDATE
+                        SET last_seen_at = NOW(), status = 'ONLINE',
+                            metadata = ai_agent_heartbeat.metadata || %s::jsonb
+                """, (key, json.dumps({"last_telegram_ack_id": req.message_id}),
+                      json.dumps({"last_telegram_ack_id": req.message_id})))
+            conn.commit()
+        return _response("/telegram/ack", {"agent": key, "acked_through": req.message_id}, start=t0)
+    except Exception as e:
+        return _response("/telegram/ack", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/buck/compose", response_class=None)
 async def buck_compose_form():
     """Simple HTML form Buck bookmarks on his phone to send messages to the system."""

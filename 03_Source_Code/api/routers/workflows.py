@@ -130,7 +130,7 @@ def wf002_meeting(req: MeetingRequest):
 # ── WF-003: Morning Brief ─────────────────────────────────────────────────────
 
 class MorningBriefRequest(BaseModel):
-    send:         bool = True
+    send:         bool = False
     inbox_result: Optional[dict] = None  # pass WF-006 output for enriched inbox section
 
 @router.post("/wf003/morning-brief")
@@ -340,19 +340,19 @@ def wf_pm_last_status(project_number: str):
 # ── WF-REPORT: Reporting Framework ───────────────────────────────────────────
 
 @router.post("/wf-report/daily-field/{log_id}")
-def wf_report_daily_field(log_id: int, send: bool = True):
+def wf_report_daily_field(log_id: int, send: bool = False):
     """Generate and optionally email a daily field report for a log."""
     from wf_report import daily_field_report
     return daily_field_report(log_id, send=send)
 
 @router.post("/wf-report/schedule-alert/{variance_id}")
-def wf_report_schedule_alert(variance_id: int, send: bool = True):
+def wf_report_schedule_alert(variance_id: int, send: bool = False):
     """Email a schedule variance alert for a detected high/critical variance."""
     from wf_report import schedule_variance_alert
     return schedule_variance_alert(variance_id, send=send)
 
 @router.post("/wf-report/exec-health")
-def wf_report_exec_health(send: bool = True):
+def wf_report_exec_health(send: bool = False):
     """Generate executive health report for all projects. ?send=false for preview."""
     from wf_report import executive_health_report
     return executive_health_report(send=send)
@@ -364,7 +364,7 @@ def wf_report_owner_summary(project_number: str, send: bool = False):
     return owner_summary(project_number, send=send)
 
 @router.post("/wf-report/weekly-pm")
-def wf_report_weekly_pm(send: bool = True):
+def wf_report_weekly_pm(send: bool = False):
     """Run weekly PM report and email to Buck. ?send=false for preview."""
     from wf_report import weekly_pm_email
     return weekly_pm_email(send=send)

@@ -212,15 +212,18 @@ def run(
                 sv_row = sv_cur.fetchone()
                 sv.close()
                 if sv_row:
-                    schedule_variance_alert(sv_row["id"], send=True)
-                    result["steps"].append("Schedule variance alert sent")
+                    # send=False since 2026-07-01 incident (ADR-011) — draft only, no
+                    # autonomous send. Re-enable per-call only after Buck confirms.
+                    schedule_variance_alert(sv_row["id"], send=False)
+                    result["steps"].append("Schedule variance alert drafted (pending approval)")
             except Exception as e:
                 result["steps"].append(f"Variance alert skipped: {e}")
 
         # Stage 9: Daily field report email (non-blocking)
         try:
             from wf_report import daily_field_report
-            rpt = daily_field_report(log_id, send=True)
+            # send=False since 2026-07-01 incident (ADR-011) — draft only, no autonomous send.
+            rpt = daily_field_report(log_id, send=False)
             result["steps"].append(f"Daily field report: {rpt.get('status','?')}")
             result["report_sent"] = rpt.get("email_sent", False)
         except Exception as e:

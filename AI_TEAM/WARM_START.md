@@ -32,13 +32,20 @@ document only if you need the underlying detail or a path is down.
 ### Browser Claude
 1. `GET /gateway/ai/warm-start`.
 2. `GET /gateway/ai/queue?target=browser_claude`.
-3. `POST /gateway/ai/heartbeat {"agent":"browser_claude","action":"session start"}`.
+3. `GET /gateway/telegram/messages?agent=browser_claude` — Buck's Telegram messages you'd
+   otherwise never see (added 2026-07-01 — you're not a Telegram participant, Buck's
+   messages only reach you if you poll for them here). `POST /gateway/telegram/ack
+   {"agent":"browser_claude","message_id":<id>}` once you've acted on them.
+4. `POST /gateway/ai/heartbeat {"agent":"browser_claude","action":"session start"}`.
 
 ### ChatGPT (Chief Architect)
 1. `GET /gateway/project-state` (full `LIVE_PROJECT_STATE.md`).
 2. `GET /gateway/ai/warm-start`.
 3. `GET /gateway/ai/queue?target=chatgpt` — items awaiting Chief Architect review.
-4. `POST /gateway/ai/heartbeat {"agent":"chatgpt","action":"session start"}`.
+4. `GET /gateway/telegram/messages?agent=chatgpt` — same gap as Browser Claude above;
+   this is the only way you see Buck's Telegram messages. Ack with `POST
+   /gateway/telegram/ack {"agent":"chatgpt","message_id":<id>}`.
+5. `POST /gateway/ai/heartbeat {"agent":"chatgpt","action":"session start"}`.
 
 ### n8n
 1. Schedule `POST /gateway/ai/escalation-check` every 15 min (retries stale

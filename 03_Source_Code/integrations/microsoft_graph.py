@@ -131,32 +131,38 @@ def mark_as_read(msg_id: str) -> tuple:
 
 
 def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple:
-    """Send immediately via /me/sendMail. to: [(name, email), ...]"""
-    msg = {
-        "message": {
-            "subject": subject,
-            "body": {"contentType": "HTML", "content": html_body},
-            "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
-        },
-        "saveToSentItems": True,
-    }
-    return _request("POST", "/me/sendMail", body=msg)
+    """LOCKED DOWN 2026-07-01 (incident: unauthorized live RFI emails to 101F/1355R
+    design contacts, sent via this function with no approval gate — see ADR-010/011).
+    This no longer calls /me/sendMail. It creates a draft instead and returns a result
+    shaped like the old tuple so existing callers don't crash, but nothing is sent.
+    Actual sending only happens via the approval-gated path in gbt_gateway.py
+    (_send_approved_draft, triggered only by Buck's Telegram APPROVE)."""
+    try:
+        draft = create_draft(subject, html_body, to)
+        return {"queued_draft_id": draft.get("id"), "status": "drafted_pending_approval",
+                "note": "send_email() no longer sends live — draft created, requires Buck approval via gateway /email/send"}, None
+    except Exception as e:
+        return None, str(e)
 
 
 def send_email_with_cc(subject: str, html_body: str, to: list[tuple[str, str]],
                        cc: list[tuple[str, str]] = None) -> tuple:
-    """Send immediately with optional CC recipients."""
+    """LOCKED DOWN 2026-07-01 — see send_email() above. Creates a draft only, never sends.
+    CC recipients are noted in the draft body since Graph's createDraft (via /me/messages)
+    honors ccRecipients directly if included in the message payload."""
     msg = {
-        "message": {
-            "subject": subject,
-            "body": {"contentType": "HTML", "content": html_body},
-            "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
-        },
-        "saveToSentItems": True,
+        "subject": subject,
+        "body": {"contentType": "HTML", "content": html_body},
+        "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
+        "isDraft": True,
     }
     if cc:
-        msg["message"]["ccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in cc]
-    return _request("POST", "/me/sendMail", body=msg)
+        msg["ccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in cc]
+    r, err = _request("POST", "/me/messages", body=msg)
+    if err:
+        return None, err
+    return {"queued_draft_id": r.get("id"), "status": "drafted_pending_approval",
+            "note": "send_email_with_cc() no longer sends live — draft created, requires Buck approval via gateway /email/send"}, None
 
 
 def send_draft(msg_id: str) -> tuple:

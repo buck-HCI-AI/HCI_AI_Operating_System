@@ -244,6 +244,23 @@ if email_msg_id:
     check("Approval triggers actual send server-side (status COMPLETE)",
           d.get("payload", {}).get("status") == "COMPLETE", d.get("payload", {}).get("status"))
 
+# ── 16. Telegram visibility for GBT/BC (2026-07-01: neither is a push target) ─
+print("\n16. GET/POST telegram/messages + telegram/ack — GBT/BC polling visibility")
+code, d = get("/telegram/messages", {"agent": "browser_claude"})
+check("Returns 200", code == 200, code)
+check("Has messages list", isinstance(d.get("payload", {}).get("messages"), list))
+before_count = d.get("payload", {}).get("count", 0)
+if before_count > 0:
+    some_id = d["payload"]["messages"][0]["message_id"]
+    code, d = post("/telegram/ack", {"agent": "browser_claude", "message_id": some_id})
+    check("Ack returns 200", code == 200, code)
+    code, d = get("/telegram/messages", {"agent": "browser_claude"})
+    check("Unread count changed after ack", d.get("payload", {}).get("last_ack_id") == some_id, d)
+    # restore original ack pointer so this test doesn't eat real unread messages for BC
+    post("/telegram/ack", {"agent": "browser_claude", "message_id": 0})
+code, d = get("/telegram/messages", {"agent": "not_a_real_agent"})
+check("Unknown agent rejected", bool(d.get("errors")), d)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:
