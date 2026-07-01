@@ -333,3 +333,92 @@ This is how HCI AI OS compounds in value over time. The more projects it manages
 ---
 
 *Chapter drafted by HCI Chief Architect (ChatGPT) | Committed by Browser Claude | 2026-06-30*
+
+
+---
+
+# Chapter 7 — Governance and Approval Framework
+
+## Governance Before Automation
+
+The HCI AI Operating System is designed around a simple principle: Artificial Intelligence accelerates work. Humans remain accountable for decisions.
+
+Automation without governance creates operational risk. Governance without automation creates unnecessary administrative burden. The objective of HCI AI OS is to combine both.
+
+Every automated action must remain: Observable. Reviewable. Recoverable. Auditable. Governed.
+
+The system exists to improve construction execution while preserving executive control.
+
+## Governance Architecture
+
+The governance model consists of four distinct layers.
+
+**Layer 1 — Operational Execution.** This layer performs day-to-day work: document processing, bid comparison, schedule analysis, risk identification, specification search, project reporting, daily log generation, and procurement analysis. Most AI activity occurs here. Operational execution does not authorize commitments.
+
+**Layer 2 — Operational Decisions.** This layer covers decisions within established parameters: routing documents to the correct reviewer, flagging risks against established thresholds, generating recommendations, and scheduling follow-up actions. AI may make these decisions autonomously within defined governance boundaries.
+
+**Layer 3 — Governed Decisions.** This layer covers decisions that require human review before execution: contract modifications, change order approvals, bid awards above threshold, and external communications. These decisions flow through the Approval Queue. AI prepares the recommendation. The human makes the decision.
+
+**Layer 4 — Executive Authority.** This layer covers decisions reserved for Buck Adams: contract awards, financial commitments, governance changes, and strategic direction. No AI system may take these actions. They require explicit human authorization.
+
+## Buck Adams — Final Authority
+
+Buck Adams is the Owner of the HCI AI Operating System. He is the final authority on all matters.
+
+Responsibilities include: strategic direction, financial approval, production authorization, contract awards, governance approval, architecture approval, and executive priorities.
+
+The operating system is designed to reduce the number of decisions Buck must make — to remove him from the decision-making process where his judgment is not required, and surface only the decisions that genuinely need him. Only Buck (or a formally delegated authority) may approve decisions reserved by company governance.
+
+## AI Authority
+
+Artificial Intelligence is authorized to: analyze information, summarize documents, identify risks, generate recommendations, draft communications for human review, route items to the correct reviewer, execute approved workflows, monitor schedules and costs, process documents, and report operational status.
+
+Artificial Intelligence is not authorized to: award contracts, approve financial commitments, send external communications without review, modify governance rules, access systems outside the defined integration boundary, or take any action that cannot be reviewed and reversed.
+
+## The Approval Queue
+
+The Approval Queue is the governance mechanism that bridges AI preparation and human decision.
+
+When a governed decision is required, the system: prepares the recommendation, assembles the supporting information, creates an Approval Queue item, and surfaces it to the appropriate authority.
+
+The authority reviews: the recommendation, the supporting information, the financial impact, the schedule impact, and the risk assessment. The authority decides: approve, reject, or request more information. The decision is recorded. The system executes the approved action.
+
+Nothing in the governed decision category executes without this sequence.
+
+## The Executive Inbox
+
+The Executive Inbox is the intake point for executive work items: architecture directives, implementation requests, operational initiatives, and executive priorities.
+
+The Executive Inbox is not the Approval Queue. Items in the Executive Inbox are work items — things to be reviewed, assigned, or directed. Items requiring authorization are promoted from the Executive Inbox to the Approval Queue when a decision is needed.
+
+This separation is an architectural decision. Mixing work management with governance creates confusion about what requires a decision and what requires attention.
+
+## Architecture Review Board
+
+The Architecture Review Board (ARB) is chaired by the Chief Architect and governs architectural decisions.
+
+The ARB approves: new system creation, architectural changes, sprint close, duplicate system consolidation, integration decisions, and any decision that affects the one-source-of-truth principle.
+
+The ARB does not block execution. Implementation continues while ARB review is pending, unless the implementation would create irreversible architectural damage.
+
+ARB decisions are recorded in the Architecture Decision Record (ADR) and committed to the repository. Every architectural decision has a record: the context, the options considered, the decision made, and the rationale.
+
+## Sprint Governance
+
+Work is organized into sprints. Each sprint has: a defined objective, a set of implementation tasks, close conditions, and an ARB close approval.
+
+A sprint is not closed by a timer. It is closed when the close conditions are verified by the ARB. This prevents declaring work complete when it is not.
+
+Sprint close conditions are defined at sprint start. The team knows from the beginning what must be true for the sprint to close. This creates clarity and prevents scope creep disguised as completion.
+
+## Governance as a Competitive Advantage
+
+Governance is often viewed as administrative overhead. Within HCI AI OS, governance is an operational capability.
+
+A governed AI system is more reliable, more scalable, and more trustworthy than an unmanaged collection of automations. By combining continuous AI execution with disciplined human oversight, Hendrickson Construction creates an operating model where speed and accountability reinforce one another rather than compete.
+
+AI performs the repetitive work of collecting, organizing, analyzing, and monitoring information, while people retain responsibility for judgment, relationships, financial commitments, and strategic direction.
+
+---
+
+*Chapter drafted by HCI Chief Architect (ChatGPT) | Committed by Browser Claude | 2026-06-30*
