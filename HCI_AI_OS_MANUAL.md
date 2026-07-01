@@ -1209,95 +1209,106 @@ The roadmap described in this chapter is not a feature list. It is the evolution
 
 ## Guiding Principles
 
-The roadmap follows five enduring principles: Audit before building. Extend before creating. One source of truth. Human authority remains final. Continuous improvement never ends.
+The roadmap follows five enduring principles.
 
-These principles are expected to outlive individual technologies, vendors, or AI platforms. The principles remain constant. The implementation evolves.
+**Audit before building.** Before any new capability is created, the existing system is audited. Duplication is the enemy of maintainability. Every new sprint begins by verifying what already exists.
 
-## Near-Term Roadmap (Current Sprint)
+**Extend before creating.** When a gap exists, the first solution is always to extend what is already working. New systems are created only when no existing system can reasonably accommodate the requirement.
 
-### AI Communication Reliability
+**One source of truth.** Every piece of operational data lives in exactly one place. Copies are synchronization problems waiting to happen. The GitHub repository is the system of record for all governance, architecture, and operational documentation.
 
-The immediate priority is making AI communication durable. Every directive issued to an AI participant must be acknowledged, tracked, and persistent across restarts.
+**Human authority remains final.** No matter how capable the AI system becomes, the final decision on every significant matter belongs to a human. The system exists to make human decisions better and faster — not to replace them.
 
-This requires: the ai_directives table with full lifecycle tracking, gateway endpoints for directive management, ai_heartbeat registration for all agents, Mission Control reflecting real AI team status, and stale directive detection and escalation.
+**Continuous improvement never ends.** The roadmap is never complete. Every project teaches. Every sprint learns. The operating system evolves alongside the business.
 
-When this work is complete, the AI team operates with the same reliability as any other production system. No directive is lost. No agent is assumed to be running. Restarts are graceful.
+## Sprint History: What Has Been Built
 
-### Mission Control as the Single Operational Dashboard
+The following sprint history records what has been constructed, in sequence. Each sprint built on the foundation of the previous one.
 
-Mission Control should be the one place Buck and the team go to understand what is happening across all projects, all AI agents, all approvals, and all risks.
+**Sprint 1 — Foundation.** The first sprint established the core architecture: GitHub as the repository and system of record, the AI team (GBT as Chief Architect, Claude Code as Lead Implementation, Browser Claude as Operations Intelligence, n8n as Automation Platform), the initial FastAPI gateway, the first Project Brain template, and the core manual framework. Sprint 1 proved the concept: AI agents can collaborate through a shared repository to execute construction operations work.
 
-Current state: Mission Control exists but does not yet reflect real-time operational state. Target state: any person or agent that opens Mission Control immediately understands the complete operational picture without needing additional context.
+**Sprint 2 — Operations Integration.** Sprint 2 expanded operational capabilities: live project data in the Knowledge Graph, schedule monitoring with variance alerts, the Approval Queue foundation, bid comparison tooling, and the Executive Inbox. Sprint 2 revealed the first major governance gap — email send authorization was open without an approval gate — which was corrected before Sprint 3.
 
-### Sprint 2 Formal Close
+**Sprint 3 — Production Hardening + Communications Layer (Active).** Sprint 3 focuses on making every capability production-safe: email governance enforcement, Telegram bot integration, AI directive lifecycle management, the idle monitor (30-minute check-in trigger), and the auto-restart workflow (WF-AI-001). Sprint 3 also introduces the Unified Operational State Model as the architectural foundation for multi-agent coordination.
 
-Sprint 2 closes when: sprint metadata is reconciled, AI communication reliability is complete, 101F schedule variance is corrected to -5 days, 1355R risk inflation is resolved to 0, and documentation matches live state. Sprint 3 is then formally declared active.
+## Sprint 3 in Detail
 
-## Medium-Term Roadmap
+Sprint 3 is the current sprint. Its objective is production hardening — making the system reliable enough to trust with live construction operations without requiring constant human supervision.
 
-### External Platform Integrations
+The seven primary workstreams of Sprint 3:
 
-**Houzz Bridge.** Houzz is a primary source of project leads and vendor discovery for HCI. The Houzz bridge will allow the operating system to process Houzz inquiries, qualify leads, and route them to the appropriate estimating resources without manual intervention.
+**Workstream 1 — Email Governance.** Implement and verify the email approval gate in Claude Code. All seven identified email paths in n8n must route through the approval gate. No email may be transmitted without approval_queue.approved = True. Verification: n8n audit checklist (N8N_EMAIL_AUDIT_CHECKLIST.md).
 
-**Telegram Approval Bridge.** Telegram provides Buck with a mobile-native interface for approvals. The Telegram bridge will surface approval queue items directly to Buck's phone, allow one-tap approve or reject, and record the decision in the system. No approval will require a laptop.
+**Workstream 2 — Telegram Integration.** Deploy the Telegram bot, connect it to n8n via webhook, integrate the gateway command router, and enable Buck to send authorization commands from his phone. Initial commands: /auth, /revoke, /approve, /reject, /status, /pause, /resume.
 
-**Unified Task Registry.** Every task across every AI agent, every project, and every workflow will be tracked in a single registry. Every task has an owner, a status, a due date, and a linked directive. No orphan tasks. Complete operational visibility.
+**Workstream 3 — AI Directive Lifecycle.** Implement the seven directive states (DRAFT, QUEUED, ACTIVE, BLOCKED, QUEUED_RESTART, COMPLETED, ARCHIVED) in the database. Build the directive restart logic that re-queues ACTIVE directives on system restart.
 
-### AI Memory Synchronization
+**Workstream 4 — Idle Monitor.** Deploy AUTO-IDLE-001: if no agent records activity for 30 minutes, trigger a Telegram alert to Buck and re-queue the last known directive. Prevent the system from silently going idle between sessions.
 
-Each AI agent currently maintains independent session context. Medium-term, the system should synchronize operational memory across all agents through GitHub as the shared state layer.
+**Workstream 5 — Auto-Restart.** Deploy WF-AI-001: the n8n workflow that fires on schedule every 60 seconds, checks the ai_heartbeat table, detects stale agents, re-queues ACTIVE directives, and sends a Telegram recovery alert. Three tables required: ai_heartbeat, ai_directives, ai_directive_events.
 
-When any agent starts a session, it reads the current state from GitHub and is immediately operational. When a session ends, it commits its state update. No agent requires another agent to be available to recover context.
+**Workstream 6 — Unified Operational State Model.** Implement the shared state model that allows any agent coming online to immediately understand: open directives and their states, active project health, current sprint and tasks, system configuration, and last known agent state. This eliminates the cold-start problem where a new session has no context.
 
-### Vendor Intelligence at Scale
+**Workstream 7 — Claude Code Recovery.** Bring Claude Code back online with Sprint 3 context fully loaded. Code must read all committed specs, verify the email approval gate, confirm n8n workflow compliance, and report status via the gateway.
 
-As more projects complete, the vendor intelligence in the Knowledge Graph compounds in value. Medium-term objectives include: automated vendor scorecards generated after every project, bid invitation recommendations based on historical performance, risk flags for vendors with quality or schedule history issues, and cross-project vendor comparison reports available to estimators.
+## The Near-Term Roadmap: Next 6 Months
 
-## Long-Term Roadmap
+The following capabilities are targeted for the next six months, in priority order.
 
-### Predictive Project Intelligence
+**Priority 1 — Mobile-First Approval Interface.** All approval queue items accessible from Buck's phone via Telegram. One-tap approve or reject. Decision recorded in system with full audit trail. No laptop required for governance decisions.
 
-Today's operating system reports current conditions. Tomorrow's operating system predicts future conditions.
+**Priority 2 — Perplexity AI Integration.** Integrate Perplexity API as the research intelligence layer for HCI AI OS. Use cases: material cost research (current lumber, steel, concrete pricing by market), local building code lookup, subcontractor reputation research, manufacturer lead time verification. Perplexity's real-time web search capability fills the gap where AI agents have training data cutoffs but construction decisions require current market intelligence.
 
-Predictive intelligence will: forecast schedule variance before it becomes a delay, identify cost overrun trends before the budget is breached, flag RFI patterns that historically indicate design coordination problems, and recommend procurement timing based on lead time analysis and market conditions.
+**Priority 3 — Plan Reader: Construction Document Intelligence.** Implement AI-native plan reading capability. Phase 1: PDF parsing with PyMuPDF or pdfplumber to extract drawing data, extract keynotes and specifications cross-references, identify scope by trade. Phase 2: Computer vision analysis of architectural drawings using a vision-capable model (GPT-4V or Claude Vision) to identify elements not captured in text — room layouts, equipment locations, structural grid. Phase 3: Bluebeam or Procore API integration to pull live drawing sets. Goal: the AI system can read a full drawing set and identify scope gaps, specification conflicts, and missing details without human involvement.
 
-The system moves from reactive reporting to proactive intelligence.
+**Priority 4 — Critical Path Method (CPM) Scheduling.** Implement CPM scheduling in PostgreSQL. Every project has a network of activities with defined durations, predecessors, and successors. The system calculates the critical path, identifies float, and alerts when critical path activities are at risk. Integration with the Project Brain allows the schedule to update automatically when field reports log completed activities.
 
-### Schedule AI That Catches Delays in Hours
+**Priority 5 — Cost Forecasting Engine.** Build a cost-to-complete forecast that runs continuously as the project executes. Inputs: original budget, committed costs, actual costs to date, earned value, remaining scope. Output: projected final cost, projected variance, confidence interval. Alerts when variance exceeds thresholds. This gives Buck a real-time view of every project's financial trajectory.
 
-The target for schedule intelligence is detection latency measured in hours, not days or weeks. When a concrete pour slips, the schedule impact is calculated and surfaced the same day. When a steel delivery is delayed, the downstream activity impacts are modeled immediately.
+**Priority 6 — Subcontractor Portal.** A simple, secure web interface for subcontractors and vendors to: submit bids through a structured form, acknowledge purchase orders, confirm delivery dates, submit lien waivers, and view their own schedule for an active project. The portal eliminates email back-and-forth for routine procurement communications.
 
-This requires integration with field reporting, supplier tracking, and inspection scheduling. The data exists. The intelligence layer connects it.
+**Priority 7 — Photo AI and Field Documentation.** AI analysis of construction site photos: detecting work in place versus approved drawing, identifying potential safety hazards, tracking visual progress by location. Photographs submitted by the superintendent trigger AI analysis and produce a structured observation record that is attached to the Project Brain.
 
-### Estimating AI That Learns From Every Bid
+## The Medium-Term Roadmap: 6 to 18 Months
 
-Every bid HCI prepares contains knowledge: how long it took, what assumptions were made, where the estimate was high or low, what the final cost was. Today that knowledge lives in spreadsheets and individual estimator memory. Long-term, the estimating AI extracts that knowledge, builds historical cost databases by project type and market condition, and uses it to improve every future estimate.
+**AI Memory Synchronization.** Each AI agent currently maintains independent session context. Medium-term, the system synchronizes operational memory across all agents through the Unified Operational State Model and GitHub as the shared state layer. When any agent starts a session, it reads the current state and is immediately operational.
 
-The estimating team's judgment becomes more valuable because it is applied to decisions — which assumptions to make, which risks to carry — rather than to data retrieval and calculation.
+**Knowledge Graph Maturation.** As more projects complete, the Knowledge Graph compounds in value. Medium-term: automated vendor scorecards based on performance data, bid history analytics (who bids, what they win, what their actual costs look like versus bid), and specification libraries that evolve with project experience.
 
-## The Vision: HCI in Three Years
+**Estimating Intelligence.** The system learns from completed project cost data and generates increasingly accurate preliminary estimates. Early estimates inform whether to pursue a project. Detailed estimates improve as drawings develop. The estimating intelligence layer makes HCI more competitive on every bid.
 
-Three years from now, Hendrickson Construction operates as a continuously learning organization.
+**Client Intelligence Layer.** A project-specific client portal that shows curated progress: schedule milestones, photo updates, change order status, current projected completion date. Clients receive information without requiring PM time to produce it. HCI differentiates on transparency.
 
-Every project managed through HCI AI OS has contributed to the organization's collective intelligence. Estimators see how similar projects performed. Project Managers see which schedule activities consistently run late and why. Superintendents have daily logs drafted for review, not for creation. Executives no longer ask "What's the status?" — they ask "What decision requires my judgment?" because the system has already gathered the facts, organized the evidence, and highlighted the tradeoffs.
+**Multi-Project Executive Dashboard.** A single view showing: all active projects and their health scores, total company schedule risk, total financial exposure, open approval queue items, overdue items, and team capacity. Buck sees the full portfolio in one screen.
 
-New employees ramp up faster because the operating system teaches how Hendrickson works. Every RFI, every submittal, every bid, every lesson learned, and every vendor interaction strengthens the organization's collective knowledge. Experience is no longer trapped in individual inboxes or memories — it becomes a durable asset that compounds over time.
+## The Long-Term Vision: 18 to 36 Months
 
-AI teammates collaborate alongside people through governed processes, with every action traceable, every approval durable, and every decision supported by context.
+The long-term vision is not about adding more features. It is about organizational transformation.
 
-The measure of success is not that AI has replaced people. It is that people have been freed to focus on leadership, craftsmanship, client relationships, and judgment — while routine coordination, analysis, and administrative work are handled reliably by the operating system.
+**HCI as a Learning Organization.** Every project that runs through HCI AI OS makes the next project better. Estimates improve because actuals are captured. Schedules improve because variance patterns are recognized. Vendor relationships improve because performance is tracked. The organization learns continuously and automatically.
 
-At that point, HCI AI OS is no longer viewed as software. It is simply how Hendrickson Construction operates — a resilient, continuously learning organization where technology amplifies human capability, governance protects trust, and every completed project makes the next one better.
+**Preconstruction AI.** During the preconstruction phase, the AI system participates in the design process: identifying constructability issues in early drawings, flagging specification conflicts before they become field problems, generating preliminary schedules from design intent, and providing budget feedback as the design develops.
 
-That is the enduring vision of the HCI AI Operating System.
+**AI as Operational Partner.** In the long-term vision, AI teammates collaborate alongside people through governed processes, with every action traceable, every approval durable, and every decision supported by context. The measure of success is not that AI has replaced people. It is that people have been freed to focus on leadership, craftsmanship, client relationships, and judgment — while routine coordination, analysis, and administrative work are handled by systems that never get tired, never forget, and continuously improve.
+
+**Industry Leadership.** Hendrickson Construction becomes the reference model for AI-integrated construction operations. The HCI AI OS Manual documents not just what HCI does, but how any construction company willing to invest in disciplined AI operations can achieve the same results. The playbook becomes the industry standard.
+
+## Roadmap Governance
+
+The roadmap is a living document governed by the Architecture Review Board. Every sprint adds to what has been built and clarifies what comes next. No capability is added to the roadmap without ARB approval. No capability is removed without documenting why.
+
+The roadmap is reviewed at every sprint close. The review answers four questions: What was completed this sprint? What was learned? What does the next sprint prioritize? What has changed in the long-term vision?
+
+Buck Adams approves the sprint priorities. The Chief Architect (GBT) designs the sprint architecture. Claude Code implements. Browser Claude coordinates and monitors. n8n automates.
+
+The roadmap moves forward. One sprint at a time.
 
 ---
 
-*Chapter drafted by HCI Chief Architect (ChatGPT) | Committed by Browser Claude | 2026-06-30*
+*Chapter expanded by Browser Claude | Sprint 3 roadmap updated with Perplexity, CPM, plan reader, and cost forecasting priorities | 2026-07-01*
 
 
 ---
-
 ## Chapter 9 — A Day in the Life
 
 ### The Operating System at Work
