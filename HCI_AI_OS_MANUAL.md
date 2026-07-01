@@ -348,47 +348,176 @@ Key principles:
 
 Chapter 3 — The AI Operations Control Plane
 
-## What It Is
+---
 
-The AI Operations Control Plane is the architecture that makes HCI run on AI. It is not a chatbot. It is not a dashboard. It is an operational system that coordinates projects, documents, workflows, approvals, and AI participants from a single governed architecture.
+## What the Control Plane Is
 
-## Core Components
+The AI Operations Control Plane is the architecture that allows every part of the HCI AI Operating System
+to work as a coordinated unit rather than a collection of disconnected tools.
 
-**The Gateway** is the single interface between all AI agents and all operational systems. Every AI interaction with production data goes through the gateway. The gateway enforces governance, logs every action, and provides the audit trail that makes the system trustworthy.
+Think of it as the central nervous system of the operating system.
+It does not perform the work. It coordinates the work, routes the information,
+enforces the rules, and provides the shared state that every agent and workflow depends on.
 
-**The FastAPI Platform** is the production API layer. 427 endpoints across 18 services handle every operation from project management to bid processing to knowledge retrieval.
-
-**The Project Brain** is the memory system for each individual project. It contains the full operational history: bids, schedules, RFIs, submittals, risks, communications, and lessons learned. Every Project Brain is queryable by any authorized agent.
-
-**The Knowledge Graph** connects information across projects. It enables discovery of historical decisions, vendor performance patterns, recurring issues, lessons learned, and relationships between projects. The Knowledge Graph is organizational memory.
-
-**The Approval Queue** is the authoritative record of decisions awaiting human authorization. It is a governance mechanism, not a work queue. Items in the Approval Queue require Buck's explicit action before proceeding.
-
-**The Executive Inbox** is the intake point for executive work: architecture directives, implementation requests, operational initiatives. Items requiring authorization may be promoted from the Executive Inbox into the Approval Queue. They serve different purposes and must remain separate.
-
-**Mission Control** is the operational dashboard. It reflects real production state: all agents, all projects, all risks, all directives, all approvals. It is the single view that tells any participant — human or AI — what is happening right now.
-
-**The AI Directive System** defines work assigned to AI participants. Every directive has a unique identifier, owner, source, target, priority, status, and audit history. The lifecycle is: Issued → Received → In Progress → Complete (or Blocked / Rejected). Directives survive restart. Any agent can query its own directive queue on startup and resume exactly where it left off.
-
-**The AI Heartbeat** is the agent registration system. Every agent registers a heartbeat on startup and at regular intervals. Mission Control uses heartbeat data to identify unavailable or stalled participants. No agent is assumed to be running — it must prove it.
-
-## How a Construction Project Flows Through the System
-
-A project enters HCI as a bid opportunity. The estimating team prices it. If awarded, a Project Brain is created. The project schedule, budget, and risk profile are loaded. As the project executes, field events — RFIs, submittals, material deliveries, crew assignments, schedule changes — are captured and processed.
-
-When steel arrives late, the schedule intelligence detects the variance and surfaces it immediately. The system does not wait for a weekly report. When an RFI blocks a crew, the system flags it as a risk. When a bid package expires, the approval queue surfaces it for Buck's action.
-
-At project closeout, every lesson learned is extracted into the Knowledge Graph, where it improves the next project's intelligence.
-
-## Why Construction Specifically
-
-Construction is uniquely suited to AI operations management because the cost of slow information is immediate and measurable. A bid that expires while waiting for review costs revenue. A steel delay not surfaced for three days compounds into schedule variance that costs hundreds of thousands of dollars. An RFI that sits unanswered blocks a crew that costs thousands per day.
-
-The HCI AI OS exists to close the gap between when a problem occurs and when it is acted on. The target is not weeks or days. The target is minutes.
+Without the control plane, you have a chatbot and some spreadsheets.
+With it, you have an operating system.
 
 ---
 
-# Chapter 4 — Resilience by Design: What the Shutdown Taught Us
+## The Five Layers
+
+The HCI AI Operations Control Plane has five layers, each with a distinct function.
+
+**Layer 1: The Gateway**
+The Gateway is the single API endpoint through which every AI agent communicates with the production system.
+It runs on FastAPI at localhost:8000 and is exposed externally via ngrok.
+
+Every request to the Gateway is authenticated (X-API-Key header).
+Every request is logged to the activity log.
+Every response follows a standard envelope format: status, timestamp, execution_time_ms, payload, errors.
+
+The Gateway serves two purposes:
+1. Read: Any agent can GET project state, schedule status, bid packages, vendor data, approval queue items
+2. Write: Authorized agents can POST directives, handoffs, approvals, and updates
+
+**Layer 2: The Approval Queue**
+Every action that modifies production data, external communication, or financial commitments
+must pass through the Approval Queue before execution.
+
+An item enters the queue when an agent or workflow creates an action requiring human review.
+Buck receives a notification (via ntfy/Telegram) that an item awaits his decision.
+Buck approves or rejects. The system proceeds or stops. There is no third option.
+
+Items currently in the queue:
+- Vendor approval candidates from HubSpot mining
+- Daily log submissions from superintendents
+- Bid import requests
+- Email drafts for client communication
+
+**Layer 3: The Intelligence Services**
+These are the FastAPI services that process, analyze, and surface information from the production data.
+
+| Service | What It Does |
+|---------|-------------|
+| schedule_intelligence | Computes schedule variance, critical path indicators, look-ahead |
+| bid_intelligence | Manages bid packages, leveling, vendor comparison, award recommendations |
+| project_brain | Real-time snapshot of every project: health, risks, open items, team |
+| vendor_intelligence | Cross-project vendor performance, bid history, contact information |
+| historical_cost | Cost lookup by trade, material, project type from Hendrickson history |
+| lessons_learned | Semantic search of what the company has learned on past projects |
+| executive_reporting | Morning brief, KPI aggregation, cross-project status |
+| approval_queue | Item management, notification, approval logging |
+
+**Layer 4: The Automation Layer (n8n)**
+n8n is the scheduled and event-driven automation layer.
+It keeps the system alive between human sessions.
+
+Every morning at 6 AM, the health check runs.
+At 7 AM, the morning brief is sent to Buck.
+At 8 AM, the sprint status updates.
+At 3 AM, the mining engine runs across all data sources.
+
+n8n also monitors agent heartbeats and sends alerts when agents go offline.
+It routes incoming Telegram messages to the gateway.
+It fires event-based workflows when new bids arrive, schedules update, or risks are detected.
+
+**Layer 5: The Repository**
+The GitHub repository is the source of truth for everything that cannot be stored in the database.
+Configuration, documentation, governance, sprint state, agent directives, audit logs — all committed.
+
+Every significant action by every agent results in a commit.
+The commit log is the immutable audit trail of what the system did and when.
+Buck can always read the repository and understand what happened.
+
+---
+
+## How the Layers Work Together (A Request Flow)
+
+Here is how a bid award recommendation flows through the control plane:
+
+1. Claude Code (or the mining engine) detects that a bid package is ready for award
+2. bid_intelligence service processes all submitted bids: leveling, historical cost comparison, vendor scoring
+3. A recommendation is created: "Award Div 16 Electrical to XYZ Electric at $142,000"
+4. The recommendation enters the Approval Queue with full supporting data
+5. n8n fires a notification: "Bid award recommendation awaiting your approval"
+6. Buck opens the Approval Queue, reviews the data, approves
+7. The award is recorded in the system
+8. A contract communication draft appears in Buck's email drafts for review
+9. Buck reviews and sends from Outlook
+10. The full sequence is logged to the repository
+
+At no point did the system award the contract. At every point, it prepared the decision.
+
+---
+
+## The Gateway API Reference
+
+The Gateway is accessible at:
+**External (for GBT/agents):** https://speculate-armband-retinal.ngrok-free.dev
+**Local (for Claude Code):** http://localhost:8000
+
+Key endpoints:
+
+| Endpoint | Method | What It Returns |
+|----------|--------|----------------|
+| /gateway/health | GET | System health and service count |
+| /gateway/project-state | GET | Full live system state |
+| /gateway/project/{code}/brain | GET | Project snapshot |
+| /gateway/project/{code}/schedule | GET | Schedule status and variance |
+| /gateway/project/{code}/bids | GET | Bid packages and procurement |
+| /gateway/executive/report | GET | Morning brief across all projects |
+| /gateway/approvals | POST | Create approval queue item |
+| /gateway/agent/handoff | POST | Send directive to another agent |
+| /gateway/telegram/inbound | POST | Receive Buck Telegram message |
+
+---
+
+## Mission Control
+
+Mission Control is the real-time dashboard of the operating system.
+It shows, at a glance, the health of every project, every agent, and every workflow.
+
+Mission Control is not a separate application. It is a gateway endpoint:
+GET /gateway/executive/mission-control
+
+Returns:
+- All active projects with health status (RED/YELLOW/GREEN)
+- Open risks across all projects
+- Open RFIs
+- Approval queue count
+- Agent heartbeat status
+- System health (all services)
+- Last mining run timestamp
+
+GBT reads Mission Control via the Gateway every time it connects to the system.
+Buck reads it via the morning brief.
+BC reads it at the start of every session.
+
+---
+
+## The Unified Operational State Model (Sprint 3 Goal)
+
+The single most important architectural improvement for Sprint 3 is the Unified Operational State Model:
+a shared, durable state object that represents the complete current state of the system.
+
+When this exists, every agent that starts or restarts reads the state and knows exactly
+where it left off. No reconstruction from conversation history. No asking "what was I doing?"
+
+The state includes:
+- All open directives and their current lifecycle state
+- All active projects and their current health
+- The current sprint and its tasks
+- System configuration that agents need to operate
+- The last known state of every agent (last heartbeat, last action)
+
+This is Sprint 3's primary architectural investment.
+
+---
+
+*Chapter 3 — The AI Operations Control Plane | HCI AI Operating System*
+*Version 1.0 — July 2026 | Hendrickson Construction, Inc.*
+
+Chapter 4 — Resilience by Design: What the Shutdown Taught Us
 
 ## What Happened
 
