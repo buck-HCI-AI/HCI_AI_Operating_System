@@ -1650,3 +1650,453 @@ Build systems that survive restarts, personnel changes, and years of continuous 
 If future developers, future project managers, and future AI agents can inherit the platform and confidently extend it without first untangling it, then the implementation guide has fulfilled its purpose.
 
 That is the standard to which every contributor should hold themselves—and the standard by which the HCI AI Operating System should continue to evolve.
+
+---
+
+## Chapter 14 — Superintendent Operations
+
+### The Field Intelligence Layer
+
+The HCI AI Operating System does not manage construction.
+
+Superintendents manage construction.
+
+The operating system manages information.
+
+This distinction matters.
+
+The system exists to make information available when it is needed, in a form that is useful, without requiring the Superintendent to produce it manually.
+
+This chapter explains how the system supports field operations and what Superintendents need to know to use it effectively.
+
+---
+
+### 1. The Superintendent Daily Dashboard
+
+The Superintendent Daily Dashboard is the field view of the operating system.
+
+It is designed to give the Superintendent a complete picture of the day before the day begins.
+
+**What the Dashboard Shows**
+
+**Schedule**
+
+The dashboard shows:
+
+- today's planned activities
+- activities that are behind schedule
+- critical path items
+- items that are at risk of delay
+
+Schedule information comes from the project schedule linked to the operating system.
+
+**Crew**
+
+The dashboard shows:
+
+- crews expected on site today
+- trade assignments
+- any reported crew shortages
+
+**Materials**
+
+The dashboard shows current status for:
+
+- Concrete
+- Steel
+- Framing
+- Electrical
+- Plumbing
+- HVAC
+- Fire Protection
+- Drywall
+- Finishes
+
+Unexpected shortages are highlighted automatically.
+
+**Deliveries**
+
+The dashboard lists:
+
+- expected deliveries
+- delayed deliveries
+- missing materials
+- long-lead items
+- items requiring inspection before installation
+
+Material problems are easier to solve before crews begin waiting.
+
+**Safety**
+
+Safety appears near the top because it always comes first.
+
+The dashboard highlights:
+
+- open safety items
+- required inspections
+- safety observations from previous logs
+- any items escalated to the Project Manager
+
+**How to Read It**
+
+Green means the project is moving.
+
+Yellow means the project needs attention.
+
+Red means the project requires immediate decision.
+
+The Superintendent decides.
+
+---
+
+### 2. Daily Field Logs
+
+The Daily Field Log is one of the most valuable documents created during construction.
+
+It is more than a daily report.
+
+It becomes permanent project memory.
+
+**Complete It Every Day**
+
+A complete field log should include:
+
+**Weather**
+
+- temperature
+- precipitation
+- wind
+- unusual conditions
+
+Weather explains many schedule decisions.
+
+**Workforce**
+
+Record:
+
+- trades on site
+- head count per trade
+- hours worked
+- any crew changes or absences
+
+**Work Completed**
+
+Describe what was accomplished today.
+
+Be specific.
+
+Specific logs are useful in disputes.
+
+Vague logs are not.
+
+**Delays and Issues**
+
+Document:
+
+- any work that did not proceed as planned
+- the reason
+- what was done about it
+
+The system does not judge delays.
+
+The system records them so patterns become visible.
+
+**Safety Observations**
+
+Record every safety observation, positive or negative.
+
+The system uses safety observations to identify recurring issues and sites that require follow-up.
+
+**Quality Observations**
+
+Record quality observations when work does not meet standard.
+
+The system links quality observations to specific activities and generates follow-up items.
+
+**Photos**
+
+Photographs should tell the story of the day.
+
+Capture:
+
+- completed work
+- concealed conditions
+- safety observations
+- quality concerns
+- unexpected discoveries
+
+Every photograph should have context.
+
+**What the AI Does with Your Daily Log**
+
+Once submitted, the operating system immediately begins organizing information.
+
+It:
+
+- indexes photographs
+- links work to schedule activities
+- updates Project Brain
+- identifies recurring issues
+- compares progress with schedule
+- identifies possible risks
+- prepares executive summaries
+
+The Superintendent submits the log.
+
+The system does the filing.
+
+---
+
+### 3. Schedule Variance and Health Indicators
+
+The operating system monitors schedule continuously.
+
+When variance is detected, it updates the project health indicator.
+
+**Green**
+
+Green means:
+
+The project is on track.
+
+Schedule variance is within acceptable tolerance.
+
+No immediate action is required.
+
+**Yellow**
+
+Yellow means:
+
+The project is drifting.
+
+Possible causes:
+
+- delayed procurement
+- unresolved RFIs
+- insufficient manpower
+- inspection backlog
+- weather impacts
+
+Yellow is not failure.
+
+Yellow means: Act now while options still exist.
+
+**Red**
+
+Red means:
+
+Critical project objectives are at risk.
+
+Examples:
+
+- critical path slipping
+- major procurement delay
+- regulatory hold
+- safety incident requiring investigation
+
+Red triggers automatic notification to the Project Manager and Buck Adams.
+
+**What the Superintendent Does with a Yellow or Red**
+
+Assess the situation.
+
+Identify the cause.
+
+Determine corrective action.
+
+Report to the Project Manager.
+
+The operating system surfaces the variance.
+
+The Superintendent resolves it.
+
+---
+
+### 4. RFIs and Submittals
+
+RFIs and submittals are the paper trail of construction.
+
+The operating system tracks them.
+
+**RFIs**
+
+When a field question requires a formal response:
+
+1. The Superintendent documents the question and the condition
+2. The Project Manager initiates the RFI
+3. GBT (the HCI Chief Architect AI) drafts the RFI language
+4. The Project Manager reviews and approves the draft
+5. The RFI is submitted to the design team
+6. The operating system tracks status until response is received
+
+The AI drafts.
+
+The human approves.
+
+The response goes on record.
+
+**Submittals**
+
+The operating system tracks:
+
+- required submittals
+- current status
+- pending approvals
+- overdue reviews
+
+If a required submittal threatens the schedule, both the Superintendent and Project Manager receive advance notice.
+
+---
+
+### 5. Safety and Quality Flags
+
+Safety and quality are never secondary priorities.
+
+They are operational priorities.
+
+**Safety Escalation**
+
+The system automatically escalates situations such as:
+
+- repeated safety observations
+- unresolved hazards
+- missing required inspections
+- repeated violations
+- incidents requiring investigation
+
+Automatic escalation does not replace reporting.
+
+It ensures nothing is missed.
+
+**Quality Escalation**
+
+The system escalates quality issues when:
+
+- the same issue is observed more than once
+- work fails inspection
+- a critical hold point is reached
+- corrective work is required
+
+Escalation generates a notification to the Project Manager.
+
+The Project Manager determines whether to involve Buck Adams.
+
+**What the Superintendent Does When Something is Flagged**
+
+Investigate.
+
+Document.
+
+Correct.
+
+Report.
+
+The system supports the process.
+
+The Superintendent owns the outcome.
+
+---
+
+### 6. What Buck Sees Every Morning
+
+Every morning, Buck Adams receives a morning brief.
+
+The morning brief is a cross-project summary.
+
+It reflects the data submitted the previous day.
+
+**The Morning Brief Includes**
+
+- Project health summary for all active projects
+- Schedule variance flags
+- Open approvals requiring Buck's decision
+- Safety flags
+- Active risks
+- Procurement status
+- AI system status
+
+**How Field Data Shapes the Brief**
+
+Every daily field log influences the morning brief.
+
+If a Superintendent documents a delay, that delay appears in the brief.
+
+If a Superintendent documents a safety observation, it appears in the brief.
+
+If a Superintendent documents a quality issue, it appears in the brief.
+
+The brief is only as accurate as the logs.
+
+Accurate logs produce accurate briefs.
+
+Accurate briefs support better decisions.
+
+---
+
+### 7. What Superintendents Do vs. What the AI Handles
+
+**The Superintendent**
+
+Responsible for:
+
+- leading crews
+- coordinating trades
+- observing work
+- documenting conditions
+- identifying issues
+- protecting safety
+- maintaining quality
+- making field decisions
+- communicating with the Project Manager
+
+Leadership remains human.
+
+**The AI Operating System**
+
+Responsible for:
+
+- organizing information
+- indexing photographs
+- linking documents
+- tracking RFIs
+- monitoring schedule variance
+- monitoring procurement
+- identifying trends
+- preparing draft reports
+- highlighting risks
+- updating the Project Brain
+- preparing the morning brief
+
+The AI does not manage people.
+
+The AI does not make field decisions.
+
+The AI does not replace the Superintendent's judgment.
+
+**Working Together**
+
+The system works best when Superintendents use it consistently.
+
+Log every day.
+
+Be specific.
+
+Document what happened, not just what was planned.
+
+The system learns from consistent input.
+
+Consistent input produces useful output.
+
+Use the same formats whenever practical.
+
+Consistency produces better projects.
+
+**The Goal**
+
+The HCI AI Operating System is not intended to place another screen between the Superintendent and the work.
+
+Its purpose is exactly the opposite.
+
+By reducing administrative effort, organizing project information automatically, and surfacing issues before they become crises, the operating system gives Superintendents more time to do what only they can do: lead people, coordinate construction, maintain quality, protect safety, and keep the project moving forward.
+
+When the system is working properly, it quietly handles the information while the Superintendent focuses on building the project. That is the Field Intelligence Layer—technology in service of construction, not construction in service of technology.
