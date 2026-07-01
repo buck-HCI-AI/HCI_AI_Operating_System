@@ -1,7 +1,8 @@
 {
-  "schema_version": "1.0",
-  "last_updated": "2026-07-01T16:00:00Z",
+  "schema_version": "2.0",
+  "last_updated": "2026-07-01T22:00:00Z",
   "updated_by": "browser_claude",
+  "session_date": "2026-07-01",
   "sprint": {
     "id": "sprint_3",
     "name": "Production Hardening + Communications Layer",
@@ -18,166 +19,134 @@
       "Unified State Model deployed (OPERATIONAL_STATE.json committed)"
     ]
   },
-  "directives": {
-    "active": [
-      {
-        "id": "DIR-2026-0001",
-        "title": "Expand manual chapters 1-12 to publish quality",
-        "state": "COMPLETED",
-        "assigned_to": "browser_claude",
-        "completed_at": "2026-07-01T15:45:00Z",
-        "commits": [
-          "affba36",
-          "84eab40",
-          "4e5524f"
-        ],
-        "notes": "All 18 chapters now publish quality. Manual 169KB."
-      },
-      {
-        "id": "DIR-2026-0002",
-        "title": "Commit Sprint 3 architecture specs",
-        "state": "COMPLETED",
-        "assigned_to": "browser_claude",
-        "completed_at": "2026-07-01T16:00:00Z",
-        "commits": [
-          "f6b1125",
-          "7ae48e0",
-          "eb555d3",
-          "fbfeb74"
-        ],
-        "notes": "RECOMMENDED_TOOLS_SPEC, TELEGRAM_AUTH_SPEC, UNIFIED_STATE_MODEL_SPEC, CYCLE6_GBT_RESPONSE committed"
-      },
-      {
-        "id": "DIR-2026-0003",
-        "title": "Implement email governance gate in FastAPI + n8n",
-        "state": "QUEUED",
-        "assigned_to": "claude_code",
-        "blocked_by": "Claude Code offline",
-        "dependencies": [
-          "N8N_EMAIL_AUDIT_CHECKLIST.md",
-          "EMAIL_ARCHITECTURE_REVIEW_2026-07-01.md"
-        ]
-      },
-      {
-        "id": "DIR-2026-0004",
-        "title": "Deploy Telegram bot and WF-TELE-001",
-        "state": "QUEUED",
-        "assigned_to": "claude_code",
-        "blocked_by": "Claude Code offline + Telegram Bot Token needed from Buck",
-        "dependencies": [
-          "TELEGRAM_AUTH_SPEC.md",
-          "TELEGRAM_ARCHITECTURE_SPEC.md"
-        ],
-        "buck_input_needed": "Telegram Bot Token + Buck Telegram User ID (numeric)"
-      },
-      {
-        "id": "DIR-2026-0005",
-        "title": "Deploy WF-AI-001 auto-restart workflow",
-        "state": "QUEUED",
-        "assigned_to": "claude_code",
-        "blocked_by": "Claude Code offline",
-        "dependencies": [
-          "AI_DIRECTIVE_LIFECYCLE_SPEC.md",
-          "IDLE_MONITOR_SPEC.md"
-        ]
-      }
-    ]
-  },
-  "projects": {
-    "active": [
-      {
-        "id": "101F",
-        "name": "Project 101F",
-        "health": "AT_RISK",
-        "schedule_variance_days": -5,
-        "data_issue": "1355R data discrepancy - unresolved",
-        "pm": "TBD",
-        "superintendent": "TBD"
-      }
-    ]
-  },
-  "agents": {
+  "ai_team": {
     "browser_claude": {
       "status": "ACTIVE",
-      "last_heartbeat": "2026-07-01T16:00:00Z",
-      "current_task": "Committing OPERATIONAL_STATE.json - Phase 1 of Unified State Model",
-      "session_commits": [
-        "affba36",
-        "84eab40",
-        "4e5524f",
-        "f6b1125",
-        "7ae48e0",
-        "eb555d3",
-        "fbfeb74"
+      "role": "Operations Intelligence / Repository Governance",
+      "current_task": "Cycle 10 committed - firing Cycle 11 Cost Forecasting",
+      "last_heartbeat": "2026-07-01T22:00:00Z",
+      "session_commits_today": [
+        "478eeeb - CYCLE9 Part 1: /plans/ingest spec + plan_documents DDL",
+        "8a74fb4 - CYCLE9 Part 2: WF-PLAN-001 Gemini n8n constrained workflow",
+        "074c30f - CYCLE9 Part 3: cpm_activities + research_queries DDL",
+        "10a4a16 - TELEGRAM_TROUBLESHOOT: root cause + fix path for Code",
+        "5d794cf - CYCLE10: CPM scheduling intelligence - algorithm + variance + endpoints"
       ]
     },
-    "gbt": {
-      "status": "IDLE",
-      "last_response": "2026-07-01T15:45:00Z",
-      "last_directive": "Cycle 6 - Sprint 4 tool sequence revised: Plan Reader #1, CPM #2, Cost #3, Perplexity #4, Weather #5"
+    "gbt_chief_architect": {
+      "status": "ACTIVE",
+      "role": "Chief Architect / ARB",
+      "cycles_completed_today": [
+        "8",
+        "9_p1",
+        "9_p2",
+        "9_p3",
+        "10"
+      ],
+      "current_cycle": 11,
+      "health_score_last": "9.2/10"
     },
     "claude_code": {
       "status": "OFFLINE",
-      "last_commit": "2026-06-30",
-      "last_known_task": "Sprint 2 implementation tasks",
-      "queued_directives": [
-        "DIR-2026-0003",
-        "DIR-2026-0004",
-        "DIR-2026-0005"
+      "role": "Lead Implementation Engineer",
+      "last_seen": "2026-07-01T14:00:00Z",
+      "queued_work": [
+        "Sprint 4 schemas: plan_documents, cpm_activities, research_queries",
+        "POST /plans/ingest endpoint",
+        "WF-PLAN-001 Gemini n8n constrained workflow",
+        "POST /schedule/import + GET /schedule/critical-path + GET /schedule/variance-report",
+        "CPM calculation service (Kahn topological sort + forward/backward pass)",
+        "Telegram endpoint: POST /gateway/telegram/send",
+        "CORS middleware for browser tab gateway access",
+        "101F variance fix: CPM engine produces -5 day canonical value"
       ],
-      "recovery_doc": "CODE_STATUS_2026-07-01.md"
+      "implementation_specs_ready": [
+        "PLAN_READER_ARCHITECTURE_SPEC.md",
+        "PERPLEXITY_INTEGRATION_SPEC.md",
+        "CYCLE9_GBT_PLANS_INGEST_SPEC_2026-07-01.md",
+        "CYCLE9_GBT_GEMINI_N8N_WORKFLOW_2026-07-01.md",
+        "CYCLE9_GBT_CPM_RESEARCH_SCHEMA_2026-07-01.md",
+        "CYCLE10_GBT_CPM_SCHEDULE_INTELLIGENCE_2026-07-01.md",
+        "TELEGRAM_TROUBLESHOOT_2026-07-01.md",
+        "TELEGRAM_ARCHITECTURE_SPEC.md",
+        "TELEGRAM_AUTH_SPEC.md"
+      ]
     },
     "n8n": {
-      "status": "RUNNING",
-      "gateway_url": "https://speculate-armband-retinal.ngrok-free.dev",
-      "known_issue": "7 email paths unverified for approval gate - n8n audit required"
+      "status": "UNKNOWN",
+      "role": "Automation Orchestrator",
+      "note": "n8n status unknown while Code is offline"
     }
   },
-  "sprint4_tool_sequence": {
-    "source": "GBT Cycle 6",
+  "telegram_status": {
+    "buck_received_message": false,
+    "root_cause": "POST /gateway/telegram/send endpoint does not exist - never built",
+    "secondary_cause": "Gateway offline when Code is offline",
+    "bot_token_provided": false,
+    "buck_user_id_provided": false,
+    "fix_documented_in": "TELEGRAM_TROUBLESHOOT_2026-07-01.md",
+    "buck_action_required": [
+      "Message @BotFather in Telegram -> /newbot -> get Bot Token",
+      "Message @userinfobot in Telegram -> get numeric User ID",
+      "Provide both to Claude Code"
+    ]
+  },
+  "sprint4_roadmap": {
     "sequence": [
       {
-        "rank": 1,
-        "tool": "AI Plan Reader Phase 1",
-        "reason": "Foundational - everything depends on understanding drawings"
+        "priority": 1,
+        "name": "Plan Reader",
+        "status": "SPECS_COMMITTED"
       },
       {
-        "rank": 2,
-        "tool": "CPM Schedule Intelligence",
-        "reason": "Largest operational gap"
+        "priority": 2,
+        "name": "CPM Scheduling",
+        "status": "SPECS_COMMITTED"
       },
       {
-        "rank": 3,
-        "tool": "Cost Forecasting Engine",
-        "reason": "Owner-facing, high-value output"
+        "priority": 3,
+        "name": "Cost Forecasting",
+        "status": "CYCLE_11_IN_PROGRESS"
       },
       {
-        "rank": 4,
-        "tool": "Perplexity AI",
-        "reason": "Research layer, advisory"
+        "priority": 4,
+        "name": "Perplexity Research",
+        "status": "SPECS_COMMITTED"
       },
       {
-        "rank": 5,
-        "tool": "Construction Weather Intelligence",
-        "reason": "Project risk input"
+        "priority": 5,
+        "name": "Weather Intelligence",
+        "status": "PLANNED"
       }
     ]
   },
   "governance": {
-    "email_direct_send_authorized": false,
-    "email_governance_note": "BC_EMAIL_CAPABILITY.md direct send revoked commit e59ba38. Draft only until Code confirms gate.",
-    "pending_buck_decisions": [
-      "Gate 5 explicit go/no-go (GATE5_SIGNOFF_PENDING.md) - Options A, B, or C",
-      "Telegram Bot Token + numeric Telegram User ID for bot integration",
-      "Review BC_EMAIL_CAPABILITY.md governance update"
-    ]
+    "email_policy": "DRAFT_ONLY - no autonomous sends",
+    "approval_required_for": [
+      "email_send",
+      "contract_awards",
+      "external_commits",
+      "production_writes"
+    ],
+    "bc_email_capability": "DRAFT_ONLY - direct send REVOKED (commit e59ba38)",
+    "gateway_endpoint_send_suspended": true
   },
-  "system_config": {
-    "gateway_url": "https://speculate-armband-retinal.ngrok-free.dev",
-    "local_fastapi": "http://localhost:8000",
-    "local_n8n": "http://localhost:5678",
-    "repository": "buck-HCI-AI/HCI_AI_Operating_System",
-    "main_branch": "main"
+  "pending_buck_decisions": [
+    "Gate 5 go/no-go (GATE5_SIGNOFF_PENDING.md - Options A, B, C)",
+    "Telegram Bot Token (create via @BotFather)",
+    "Telegram User ID (message @userinfobot)",
+    "Approve re-enabling WF-003 morning brief send (currently disabled)"
+  ],
+  "gbt_cycles_log": {
+    "cycle_8": "Plan Reader audit + Perplexity spec (prior session)",
+    "cycle_9_p1": "POST /plans/ingest FastAPI spec + plan_documents DDL",
+    "cycle_9_p2": "WF-PLAN-001 Gemini n8n constrained workflow + JSON schema",
+    "cycle_9_p3": "cpm_activities DDL + research_queries DDL + GET /plans/summary",
+    "cycle_10": "CPM scheduling intelligence - Kahn algo + variance thresholds + 3 endpoints"
   },
-  "last_session_summary": "Session 2026-07-01: BC expanded manual chapters 7,8,11,12 to publish quality. All 18 chapters now publish quality (169KB). Committed RECOMMENDED_TOOLS_SPEC (18 tools), TELEGRAM_AUTH_SPEC (/auth /revoke /approve commands), UNIFIED_STATE_MODEL_SPEC (GBT #1 priority), CYCLE6_GBT_RESPONSE (Sprint 4 sequence revised). GBT Cycles 2-6 complete. OPERATIONAL_STATE.json Phase 1 deployed. Sprint 3 specs implementation-ready for Code."
+  "next_actions": {
+    "bc_immediate": "Fire GBT Cycle 11: Cost Forecasting intelligence architecture",
+    "code_on_restart": "Read all CYCLE9+CYCLE10 specs in AI_TEAM/ and implement Sprint 4 schemas",
+    "buck_when_available": "Provide Telegram Bot Token + User ID"
+  }
 }
