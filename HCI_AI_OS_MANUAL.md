@@ -2852,3 +2852,378 @@ Every completed buyout strengthens vendor intelligence.
 Every project improves the next estimate.
 
 That is the purpose of the Bid Intelligence Layer: to combine the discipline of professional estimating with the speed, consistency, and institutional memory of the HCI AI Operating System, ensuring that every procurement decision is supported by evidence, governed by process, and informed by the experience of the entire company.
+
+---
+
+## Chapter 17 — Buck Adams Operating Guide
+
+### Owner's Manual for the HCI AI Operating System
+
+This operating system exists for one reason:
+
+**To help you build a better Hendrickson Construction.**
+
+It is not here to replace your judgment.
+
+It is not here to automate leadership.
+
+It is here to make sure that every morning begins with the best information the company can assemble, every important decision is supported by evidence, and every lesson learned becomes part of the company's future.
+
+You remain the Owner.
+
+The operating system exists to multiply your effectiveness, not your workload.
+
+---
+
+### 1. What Buck Sees Every Morning
+
+The morning brief arrives daily.
+
+It is the operating system's single most important output.
+
+**How to Read It**
+
+The morning brief is an executive summary, not a project report.
+
+It should begin with the company's overall condition.
+
+**Company Health**
+
+The first section should summarize the portfolio.
+
+Examples include:
+
+- Number of active projects
+- Overall project health
+- Critical risks
+- Projects requiring executive attention
+- AI system health
+- Overnight implementation status
+
+This is the executive dashboard, not a project report.
+
+**Projects Requiring Attention**
+
+Only projects that need executive awareness should appear here.
+
+For each project, you should see:
+
+- Current health
+- Why it changed
+- What decision may be required
+- Recommended next action
+
+The objective is to focus your attention where it has the most impact.
+
+**Open Approvals**
+
+This section lists everything waiting for your decision.
+
+Each entry should show:
+
+- What is being requested
+- Why it needs your approval
+- What happens if you approve
+- What happens if you decline
+- The submitting party
+
+Your approval moves work forward.
+
+Your decline stops it and triggers a revision.
+
+**What to Act On**
+
+After reading the morning brief:
+
+1. Address any open approvals that are time-sensitive
+2. Note projects moving from green to yellow or yellow to red
+3. Follow up with the PM on projects requiring executive attention
+4. Ask GBT for deeper analysis on anything that needs it
+
+The morning brief should take fifteen minutes to read.
+
+If it requires more than that, the brief needs to be improved.
+
+---
+
+### 2. The Approval Queue
+
+The Approval Queue is where governed decisions wait for human authorization.
+
+Think of it as the executive decision desk for the company.
+
+It is not a task list.
+
+It is not an inbox.
+
+It is the authoritative record of decisions that require executive approval.
+
+**What Belongs in the Queue**
+
+Examples include:
+
+- Contract awards
+- Major financial commitments
+- Significant client communications
+- Governance exceptions
+- Production actions reserved for executive approval
+
+Routine operational work should not require your attention.
+
+The queue should contain only decisions that genuinely benefit from executive review.
+
+**How to Move Through It**
+
+Review the queue in the morning brief.
+
+For each item:
+
+- Read the request summary
+- Review the supporting evidence
+- Approve or decline
+- Add a note if the decision requires explanation
+
+**What Happens Next**
+
+Approved items:
+
+The operating system executes the approved action.
+
+Declined items:
+
+The operating system returns the item to the submitting party with your decision recorded.
+
+A revised recommendation may be submitted.
+
+**Buck's Approval Rights Are Non-Delegable**
+
+No one approves on your behalf.
+
+The AI team does not approve.
+
+The PM does not approve on your behalf.
+
+Items in your queue wait until you review them.
+
+---
+
+### 3. Using GBT as Your Strategic Partner
+
+GBT is the HCI Chief Architect.
+
+It has access to the entire operating system.
+
+It can synthesize information across every project simultaneously.
+
+**What to Ask GBT**
+
+Examples that work well:
+
+- "Compare these bid packages."
+- "Summarize the major changes since yesterday."
+- "Draft an executive update for this client."
+- "Show me the history of this subcontractor."
+- "What projects resemble this one?"
+- "What decisions require my attention today?"
+
+GBT excels at finding patterns, organizing information, and preparing decision-ready summaries.
+
+It is most valuable when you already know the decision you need to make but want the relevant evidence assembled quickly.
+
+**What GBT Can Draft**
+
+- RFIs
+- Subcontract scope clarifications
+- Executive summaries
+- Risk analyses
+- Bid comparison narratives
+- Lessons learned summaries
+- Client update templates
+
+GBT drafts.
+
+You review.
+
+Nothing goes out without your awareness.
+
+---
+
+### 4. How to Override the AI Team
+
+There will be times when your judgment differs from the system's recommendation.
+
+That is expected.
+
+Your authority is not advisory.
+
+It is final.
+
+**When You Issue a Directive That Overrides an AI Recommendation**
+
+- the directive should be recorded
+- the reason should be documented
+- the AI team should acknowledge it
+- the system should update its records accordingly
+
+You do not need to justify your decision.
+
+You may choose to explain it so the system can learn from it.
+
+**How to Issue an Override**
+
+The simplest method is to tell GBT directly.
+
+Examples:
+
+- "Override the bid recommendation for Division 15. Award to [vendor]."
+- "Disregard the risk flag on 1355R. I've reviewed it directly."
+- "The schedule variance on 101F is acceptable. Do not escalate."
+
+GBT will document the override, update the relevant records, and inform the team.
+
+---
+
+### 5. When to Trust the Data and When to Use Field Judgment
+
+The operating system produces information.
+
+You produce decisions.
+
+**Trust the Data When**
+
+- the information source is documented and reliable
+- the pattern is consistent across multiple data points
+- the recommendation matches what your experience tells you
+- the data has been verified against field reality
+
+**Use Field Judgment When**
+
+- your field experience contradicts what the system shows
+- the situation involves relationships or context the system cannot fully represent
+- you observe something directly that the data has not yet captured
+- something does not feel right even when the numbers look acceptable
+
+The system knows what has been recorded.
+
+You know what is actually happening.
+
+Both are necessary.
+
+Neither replaces the other.
+
+---
+
+### 6. How to Know When the System Is Working vs. When Something Is Wrong
+
+**Signs the System Is Working**
+
+- Project teams spend less time searching for information.
+- Risks are identified early rather than after problems occur.
+- Documentation reflects what is actually happening.
+- Decisions become easier because the evidence is already assembled.
+
+The operating system should reduce friction, not create it.
+
+**Recognizing Warning Signs**
+
+An operating system needs attention when you begin to see patterns such as:
+
+- The same information reported differently in different places.
+- Decisions delayed because supporting information is incomplete.
+- Duplicate documents or conflicting records.
+- Approvals bypassed or unclear.
+- Repeated manual work that should already be automated.
+- Teams relying on private notes instead of shared project information.
+- AI recommendations that cannot explain their reasoning.
+
+When warning signs appear, address them directly.
+
+Do not work around them.
+
+---
+
+### 7. Buck's Non-Negotiables
+
+These rules exist because you put them there.
+
+They are not AI preferences.
+
+They are operating standards.
+
+**No Email Without Approval**
+
+No email goes to an external recipient without your approval.
+
+The system creates drafts.
+
+You release them.
+
+This rule has no exceptions.
+
+**All Writes Go to the Approval Queue**
+
+Every consequential system action that touches external data, commitments, or communications is held for human review before execution.
+
+The AI team does not act autonomously on consequential matters.
+
+**Morning Brief Is the Authoritative Daily Summary**
+
+The morning brief is the official start of the operating day.
+
+Information that does not appear in the morning brief should not be assumed to be current.
+
+**Buck's Authority Is Final**
+
+On any question where the AI team's recommendation conflicts with your judgment:
+
+Your judgment governs.
+
+Always.
+
+**The Operating System Serves the Company**
+
+The operating system exists to serve Hendrickson Construction.
+
+Not the other way around.
+
+If any part of the system is not serving the company's interests, change it.
+
+---
+
+**Continuous Improvement**
+
+Every sprint should leave the company stronger than it was before.
+
+Every incident should teach the organization something.
+
+Every completed project should improve the next one.
+
+Learning is not a side activity.
+
+It is part of the operating system.
+
+**The Legacy**
+
+One day, the software will change.
+
+The AI models will change.
+
+The dashboards will change.
+
+Construction methods will continue to evolve.
+
+What should remain is the operating philosophy behind the HCI AI Operating System:
+
+- Lead with evidence.
+- Govern with discipline.
+- Preserve knowledge.
+- Improve continuously.
+- Keep people at the center of every important decision.
+
+If those principles endure, the operating system will have achieved its purpose.
+
+It will not simply help Hendrickson Construction complete projects more efficiently.
+
+It will help the company preserve its experience, strengthen its culture, and build a business that becomes wiser with every project it undertakes.
+
+That is the owner's operating manual—not for software, but for a company committed to combining craftsmanship, disciplined leadership, and continuously improving intelligence into a lasting competitive advantage.
