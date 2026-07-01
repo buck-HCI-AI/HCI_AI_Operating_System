@@ -29,24 +29,36 @@ Rules, authority, and accountability. Who can approve what. How the AI team oper
 
 ### Part I — Business Operations
 
+**Note (Claude Code, 2026-07-01):** this table originally described a planned 16-chapter
+outline before the chapters existed. GBT has since delivered 12 chapters — table below
+corrected to match what was actually written (titles/topics shifted from the original
+plan). Four originally-planned topics are not yet covered as standalone chapters —
+see "Documentation Gaps" below.
+
 | Chapter | Title | Author | Status |
 |---------|-------|--------|--------|
-| 01 | What This System Is — Purpose & Philosophy | GBT | ⬜ In Progress |
-| 02 | Daily Operations — Morning Routine (All Roles) | GBT | ⬜ In Progress |
-| 03 | Field Operations | GBT | ⬜ In Progress |
-| 04 | Project Manager Daily Workflow | GBT | ⬜ In Progress |
-| 05 | Owner & Executive Daily Workflow | GBT | ⬜ In Progress |
-| 06 | Bidding & Procurement Operations | GBT | ⬜ In Progress |
-| 07 | Subcontractor & Trade Partner Management | GBT | ⬜ In Progress |
-| 08 | Active Construction Management | GBT | ⬜ In Progress |
-| 09 | Client Communications Protocol | GBT | ⬜ In Progress |
-| 10 | Risk Management Protocol | GBT | ⬜ In Progress |
-| 11 | Change Order Management | GBT | ⬜ In Progress |
-| 12 | RFI Management | GBT | ⬜ In Progress |
-| 13 | Submittal Management | GBT | ⬜ In Progress |
-| 14 | Financial Management & Approvals | GBT | ⬜ In Progress |
-| 15 | Schedule Management | GBT | ⬜ In Progress |
-| 16 | Project Close-Out | GBT | ⬜ In Progress |
+| 01 | What This System Is — Purpose & Philosophy | GBT | ✅ Complete |
+| 02 | Daily Operations — Morning Routine (All Roles) | GBT | ✅ Complete |
+| 03 | Field Operations | GBT | ✅ Complete |
+| 04 | Project Manager Daily Workflow | GBT | ✅ Complete |
+| 05 | Bid Package Management | GBT | ✅ Complete |
+| 06 | Vendor and Subcontractor Management | GBT | ✅ Complete |
+| 07 | Contract Management | GBT | ✅ Complete |
+| 08 | Budget and Financial Controls | GBT | ✅ Complete |
+| 09 | Schedule Management | GBT | ✅ Complete |
+| 10 | Risk Management | GBT | ✅ Complete |
+| 11 | Client Management | GBT | ✅ Complete |
+| 12 | Insurance and Compliance | GBT | ✅ Complete |
+
+**Documentation Gaps — not yet covered as standalone chapters:**
+- RFI Management (touched on tangentially in Ch.04/Ch.03; no dedicated chapter)
+- Change Order Management (touched on tangentially in Ch.07/Ch.08; no dedicated chapter)
+- Submittal Management (not covered)
+- Project Close-Out (not covered)
+
+Recommend these four as Chapters 13-16 to complete Part I as originally scoped, or fold
+each into its closest existing chapter (RFI→Ch.04, Change Orders→Ch.07/08, Submittals→
+Ch.05, Close-Out→new) if Buck prefers 12 chapters over 16 — Chief Architect's call.
 
 ### Part II — AI System Operations
 
