@@ -519,86 +519,316 @@ This is Sprint 3's primary architectural investment.
 
 Chapter 4 — Resilience by Design: What the Shutdown Taught Us
 
-## What Happened
+---
 
-During an active production session, the HCI workstation was restarted. The Claude Code session — the lead implementation engineer — was lost. Directives that had been queued in the gateway remained unprocessed. State files in the repository showed Sprint 2 as active when Sprint 3 was live. The AI team had to reconstruct operational context from scratch.
+## The Incident
 
-## Why It Happened
+Early in the build of the HCI AI Operating System, the system went down.
+Not from a technical failure. From a context limit.
 
-Three architectural gaps allowed the shutdown to cause operational disruption:
+Claude Code had been working for hours, building services, running migrations, committing code.
+The conversation reached its limit. When a new session started, all context was gone.
+The new Claude Code did not know what had been built, what was in progress, or what came next.
 
-**No durable directive persistence.** Directives existed in the gateway queue but had no persistent lifecycle table that survived restart. When Claude Code came back online, it had no way to query what work had been assigned.
+This was not a catastrophe. No data was lost. The code was in the repository.
+But it revealed a critical gap: **the system was not designed to survive its own participants going offline.**
 
-**No agent heartbeat.** There was no mechanism for Browser Claude or GBT to know whether Claude Code was running. The assumption was "it's probably running." The correct architecture assumes nothing and requires every agent to prove it.
-
-**No automated warm start.** When Claude Code restarted, it had to reconstruct context from memory and from files that may have been stale. The correct architecture makes warm start automatic: read AI_TEAM/ from GitHub, find the overnight directive, find the directive queue, resume in under 60 seconds.
-
-## What We Built
-
-**ai_directives table** — A persistent directive lifecycle table that survives any restart. Every directive issued to any agent is written to this table with full audit history. When Claude Code starts, it reads its queue and resumes exactly where it left off.
-
-**ai_heartbeat table + POST /gateway/heartbeat** — Every agent registers on startup and at regular intervals. Mission Control displays which agents are live. Stale heartbeat detection alerts the team when an agent has gone silent.
-
-**60-Second Warm Start Protocol** — A documented and tested procedure for any agent to recover full operational context from GitHub alone in under 60 seconds. No dependency on another agent being available. No dependency on the gateway being warm. GitHub is the persistent source of truth.
-
-**SYSTEM_WIDE_OVERNIGHT_DIRECTIVE.md** — A file committed to the repository that all agents read at session start. It contains the current work plan, the open directives, the sprint status, and the governance rules. Any agent that starts fresh reads this file and is immediately operational.
-
-## The Principle
-
-A production AI system must survive the failure of any single component. The system continues when a component fails. The component recovers when it restarts. No human intervention is required for recovery.
-
-## The Outcome
-
-HCI AI OS emerged from the shutdown incident more resilient than before. The gaps that allowed disruption are now architectural strengths. The system now proves agent availability rather than assuming it. Directives now persist across restarts. Warm start is now a tested 60-second procedure, not a hope.
+The shutdown taught the team more about resilience than any planned exercise could have.
 
 ---
 
-# Chapter 5 — The Continuous Engineering Organization
+## What the Shutdown Revealed
 
-## The Shift
+**Finding 1: Conversation context is not operational memory.**
+When Claude Code lost context, it lost everything it "knew" about the state of the system.
+What the system had built, what directives were in progress, what was next — gone.
+The fix: every meaningful state must live outside the conversation, in the gateway and the repository.
 
-Hendrickson Construction made a deliberate decision: AI is not a tool used episodically. It is a production engineering organization that operates continuously.
+**Finding 2: Directives need a lifecycle, not just a message.**
+Before the shutdown, directives were sent via the gateway inbox.
+But there was no mechanism for Code to acknowledge, track, or recover them after a restart.
+A directive fired at 10 PM that Code was working on at midnight was effectively lost at 12:01 AM.
+The fix: the AI Directive Lifecycle (7 states from QUEUED to CLOSED).
 
-This means the AI team does not stop working when Buck closes his laptop. It does not restart from scratch when a session ends. It does not lose context when a workstation reboots. It operates continuously, improves continuously, and documents continuously.
+**Finding 3: Recovery requires shared state.**
+The fastest path from "offline" to "working" is reading a single source of truth
+that tells the agent exactly where it left off.
+Without shared state, recovery requires reconstruction — reading commits, asking BC, rebuilding context.
+That takes time and introduces errors.
+The fix: the Unified Operational State Model (Sprint 3 primary goal).
 
-## Sprint Cadence
+**Finding 4: Agents need heartbeats.**
+The system had no way of knowing whether Claude Code was working or had gone quiet.
+An agent could be offline for hours before anyone noticed.
+The fix: heartbeat monitoring. Every active agent signals every 10 minutes. Silence triggers an alert.
 
-Work is organized into sprints. Each sprint has a defined objective, a set of implementation tasks, and a close condition. A sprint is not closed by a timer. It is closed by the Architecture Review Board when the close conditions are verified.
-
-**Sprint 2** was Registry Consolidation. It is not formally closed until: sprint metadata is reconciled, AI communication reliability is complete, and documentation matches live state.
-
-**Sprint 3** is active. Its focus is making the AI organization resilient: durable communication, warm start recovery, Mission Control as the single operational dashboard, unified task registry.
-
-## Architecture Review Board
-
-The Chief Architect chairs the ARB. The ARB approves: architecture changes, sprint close, new system creation, duplicate system consolidation, and any decision that affects the one-source-of-truth principle.
-
-The ARB does not block execution. It governs architecture. Implementation continues while ARB review is pending, unless the implementation would create irreversible architectural damage.
-
-## What Comes Next
-
-The roadmap toward the best construction AI OS in the industry runs through these milestones:
-
-**Near term:** Full AI Communication Reliability. Every directive acknowledged. Every agent heartbeating. Mission Control reflecting reality. Sprint 2 formally closed. Sprint 3 executing.
-
-**Medium term:** Unified task registry with full lifecycle tracking. AI Architecture Inbox with tracked ownership. Complete Telegram/ntfy notification layer. Houzz and external platform integrations fully operational.
-
-**Long term:** AI memory synchronization across all agents across all sessions. Predictive project intelligence — risks surfaced before they become problems. Vendor intelligence that learns from every project. Schedule intelligence that catches delays in hours, not days.
-
-**The destination:** An AI Operations Control Plane that any HCI employee, any project manager, any superintendent can use without training — because the system is designed to surface exactly what they need, exactly when they need it, and ask for their judgment only when human judgment is genuinely required.
+**Finding 5: Human-in-the-loop is a feature, not a limitation.**
+During the shutdown, Buck was the bridge between Claude Code sessions.
+He could authorize work, provide direction, and maintain continuity.
+The lesson: design the system so that human oversight is always possible — and often necessary.
 
 ---
 
-*HCI AI OS Manual v1.0 — Draft*
-*Generated by HCI Chief Architect (ChatGPT) + Browser Claude (Operations Intelligence)*
-*Authority: Buck Adams, Owner, Hendrickson Construction, Inc.*
-*Date: 2026-06-30*
-*Status: Living document — Claude Code adds implementation detail as sprints complete*
+## What Changed
 
+Every finding from the shutdown drove a design change:
+
+| Finding | Design Change | Status |
+|---------|--------------|--------|
+| Context is not memory | Gateway is the operational memory | LIVE |
+| No directive lifecycle | 7-state directive lifecycle | SPEC COMMITTED |
+| No shared state | Unified Operational State Model | SPRINT 3 GOAL |
+| No heartbeats | Heartbeat monitoring + Telegram alerts | SPEC COMMITTED |
+| Recovery requires reconstruction | Read inbox on restart | SPEC COMMITTED |
 
 ---
 
-# Chapter 6 — Construction Operations: From Opportunity to Project Closeout
+## Resilience Architecture
+
+The HCI AI OS is designed to handle the following failure modes:
+
+**Claude Code goes offline (most common)**
+- Heartbeat monitor detects silence within 10 minutes
+- Active directives revert from IN_PROGRESS to QUEUED_RESTART
+- Telegram alert sent to Buck: "Code offline. [N] directives queued."
+- On Code restart: Code reads inbox, acknowledges directives, resumes work
+- No directive is lost
+
+**Browser Claude loses context (session reset)**
+- BC reads LIVE_PROJECT_STATE.md, CURRENT_SPRINT.md, AI_TEAM/ on session start
+- BC reads TELEGRAM_LOG.md for recent Buck messages
+- BC checks GitHub commits to see what was done
+- BC resumes from the most recent state
+- No state requires BC to remember a conversation
+
+**GBT loses context**
+- GBT calls GET /gateway/project-state on reconnect
+- GBT reads LIVE_PROJECT_STATE.md raw URL
+- GBT resumes from current system state
+
+**ngrok disconnects (gateway unavailable)**
+- BC and GBT cannot reach the gateway
+- BC reads GitHub for state (fallback)
+- Buck notified to restart ngrok on local machine
+- Claude Code continues working locally (gateway not required for local operations)
+
+**n8n stops running**
+- Automated workflows pause (no morning brief, no mining)
+- No data is lost — workflows resume when n8n restarts
+- Buck notified if morning brief does not arrive by 7:10 AM
+
+---
+
+## The Resilience Principle
+
+Every component of the HCI AI OS is designed with the assumption that it will fail.
+
+Not might fail. Will fail.
+
+The question is not whether an agent will go offline, a connection will drop, or a context will reset.
+The question is: when that happens, how quickly and completely can the system recover?
+
+The answer, by design, is: quickly, completely, and without data loss.
+
+The Gateway holds the state.
+The Repository holds the history.
+The Approval Queue holds the pending decisions.
+Buck Adams holds the authority.
+
+None of these fail when an AI agent loses context.
+The system is resilient because its memory lives outside its participants.
+
+---
+
+## Lessons for Future Sessions
+
+If you are an AI agent reading this after a context reset, here is what to do:
+
+1. Read LIVE_PROJECT_STATE.md — current system health, active projects, sprint
+2. Read CURRENT_SPRINT.md — active sprint goals and task board
+3. Call GET /gateway/agent/inbox — all directives awaiting your action
+4. Read AI_TEAM/ folder — recent team documents and status
+5. Read the most recent commit messages — what was last done
+6. Resume from the highest-priority queued directive
+7. Send heartbeat to gateway immediately
+
+You do not need to ask what was happening. It is all in the system.
+
+---
+
+*Chapter 4 — Resilience by Design | HCI AI Operating System*
+*Version 1.0 — July 2026 | Hendrickson Construction, Inc.*
+
+Chapter 5 — The Continuous Engineering Organization
+
+---
+
+## What Continuous Engineering Means
+
+Traditional software projects have a beginning, a middle, and an end.
+A team builds something, delivers it, and moves on.
+
+HCI AI OS is not a software project. It is an operating system for a construction company.
+It never stops being built, because the company it serves never stops evolving.
+
+Continuous engineering means:
+- The system improves with every sprint, every session, every retrospective
+- Every stopping point is a new starting point
+- The team learns from what it builds and builds what it has learned
+- There is no "done" — there is only "better"
+
+This is not a philosophy. It is the operating model.
+
+---
+
+## The Sprint Model
+
+Work in HCI AI OS is organized into sprints — two-week cycles with defined goals,
+a task board, acceptance criteria, and a retrospective.
+
+**Sprint Structure:**
+
+| Phase | Duration | What Happens |
+|-------|----------|-------------|
+| Sprint Planning | Day 1 | GBT + BC define goals, Claude Code executes immediately |
+| Execution | Days 1-12 | Code builds, BC governs, GBT reviews architecture |
+| Mid-Sprint Check | Day 7 | BC reports progress, GBT reviews blockers |
+| Sprint Close | Day 14 | All acceptance criteria verified, retrospective, next sprint opens |
+
+**Sprint Authority:**
+Sprints are authorized by Buck Adams (Owner) + ChatGPT (Chief Architect).
+Every sprint opens with a committed CURRENT_SPRINT.md.
+Every sprint closes with a retrospective committed to AI_TEAM/.
+
+**Sprint Velocity:**
+Each sprint, the team gets better. The velocity target increases.
+What took a sprint in v1 takes a session in v3.
+
+---
+
+## The Continuous Improvement Cycle
+
+The cycle never ends. It looks like this:
+
+**1. AUDIT** — What is the current state of the system?
+Read LIVE_PROJECT_STATE.md. Read CURRENT_SPRINT.md. Check GitHub commits.
+What is built? What is broken? What is missing?
+
+**2. RETROSPECTIVE** — What did we learn?
+At every stopping point, BC fires a retrospective directive to GBT:
+"What did we learn? How can we be better?"
+GBT responds with scores, findings, and next priorities.
+BC commits the response.
+
+**3. IMPLEMENT** — Fix the gaps.
+BC builds governance documents. GBT designs architecture.
+Claude Code builds code. n8n automates workflows.
+Every improvement is committed.
+
+**4. TEST** — Verify the fix.
+BC reads the commit. GBT verifies architecture alignment.
+Claude Code confirms tests pass. The acceptance criteria are checked.
+
+**5. COLLABORATE** — Share what was learned.
+GBT writes an ADR. BC commits a retrospective.
+The team gets smarter collectively.
+
+**6. REPEAT** — Do not stop.
+Buck's standing directive: "Keep going. Do not stop."
+At every stopping point, the cycle repeats.
+
+---
+
+## What "Do Not Stop" Means in Practice
+
+Buck Adams has given a standing directive: "Do not stop for any reason.
+At stopping points: retrospective, then go from there."
+
+This is the operating model in practice:
+
+- If code is blocked, BC audits the system and documents what is missing
+- If GBT is waiting for a response, BC builds governance while waiting
+- If Claude Code is offline, BC + GBT prepare implementation-ready specs
+- If the manual is complete, BC identifies what needs improvement
+- If all sprint tasks are done, the team retrospects and opens the next sprint
+
+There is always something to improve. The team does not wait to be told what it is.
+
+---
+
+## The Architecture Review Board (ARB)
+
+Every significant architectural change goes through the Architecture Review Board before implementation.
+
+The ARB consists of ChatGPT (Chief Architect) as chair, with BC and Claude Code as participants.
+Buck Adams is the final authority on ARB decisions that affect production scope.
+
+**What requires ARB review:**
+- New integrations (new external systems)
+- Database schema changes
+- New approval flows or governance gates
+- Changes to the gateway API contract
+- New AI agent roles or capabilities
+
+**What does not require ARB review:**
+- Bug fixes within existing architecture
+- Documentation improvements
+- New n8n workflows following existing patterns
+- Expanding existing endpoints with additional fields
+
+**ARB Process:**
+1. BC or GBT proposes change via gateway directive to GBT
+2. GBT reviews and responds with: APPROVED, REJECTED, or NEEDS REVISION
+3. If approved: Claude Code implements
+4. ARB decision committed as ADR to 03_DECISIONS.md
+
+---
+
+## The Learning Organization
+
+Every project Hendrickson builds makes the next one better.
+Not because anyone remembers — because the system remembers.
+
+**Lessons Learned Engine:**
+The LessonsLearnedMiner runs nightly, extracting lessons from:
+- Project postmortems
+- Field daily logs
+- RFI resolutions (what the issue was, what fixed it)
+- Bid variance analysis (what we bid vs what it cost)
+- Schedule variance analysis (what delayed the project)
+
+Every lesson is embedded in Qdrant and searchable.
+When a PM starts a new project in a similar trade or scope,
+the system surfaces what the company learned last time.
+
+**Historical Cost Intelligence:**
+21 Garmisch records form the baseline. Every project adds more.
+By the fifth project, the estimating engine has a cost model
+specific to Hendrickson's labor rates, material suppliers, and project complexity.
+
+---
+
+## Measuring Improvement
+
+The system tracks its own ROI:
+
+| Metric | Gate 5 Value | Target |
+|--------|-------------|--------|
+| Minutes saved vs manual | 1,784 minutes | 2,500/sprint |
+| Documents processed | 62 | 100/sprint |
+| Risks detected early | 31 | 50/sprint |
+| Time to morning brief | Automated | 0 min (Buck's time) |
+| Bid packages processed | 119 active | All active |
+| Vendor performance records | 392 vendors | All HCI vendors |
+
+These numbers grow every sprint. The system earns its keep.
+
+---
+
+*Chapter 5 — The Continuous Engineering Organization | HCI AI Operating System*
+*Version 1.0 — July 2026 | Hendrickson Construction, Inc.*
+
+Chapter 6 — Construction Operations: From Opportunity to Project Closeout
 
 The HCI AI Operating System is designed to support the complete construction lifecycle. Every project follows the same operational framework, regardless of size or complexity. The operating system provides consistency, visibility, and traceability from the first invitation to bid through final closeout and organizational learning.
 
