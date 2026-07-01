@@ -1,0 +1,183 @@
+{
+  "schema_version": "1.0",
+  "last_updated": "2026-07-01T16:00:00Z",
+  "updated_by": "browser_claude",
+  "sprint": {
+    "id": "sprint_3",
+    "name": "Production Hardening + Communications Layer",
+    "status": "ACTIVE",
+    "opened": "2026-07-01",
+    "close_conditions": [
+      "Email governance gate verified in code (N8N_EMAIL_AUDIT_CHECKLIST complete)",
+      "Telegram bot deployed and tested",
+      "WF-AI-001 auto-restart deployed",
+      "Unified State Model deployed (DONE - this file)",
+      "Claude Code back online with Sprint 3 context"
+    ],
+    "close_conditions_met": [
+      "Unified State Model deployed (OPERATIONAL_STATE.json committed)"
+    ]
+  },
+  "directives": {
+    "active": [
+      {
+        "id": "DIR-2026-0001",
+        "title": "Expand manual chapters 1-12 to publish quality",
+        "state": "COMPLETED",
+        "assigned_to": "browser_claude",
+        "completed_at": "2026-07-01T15:45:00Z",
+        "commits": [
+          "affba36",
+          "84eab40",
+          "4e5524f"
+        ],
+        "notes": "All 18 chapters now publish quality. Manual 169KB."
+      },
+      {
+        "id": "DIR-2026-0002",
+        "title": "Commit Sprint 3 architecture specs",
+        "state": "COMPLETED",
+        "assigned_to": "browser_claude",
+        "completed_at": "2026-07-01T16:00:00Z",
+        "commits": [
+          "f6b1125",
+          "7ae48e0",
+          "eb555d3",
+          "fbfeb74"
+        ],
+        "notes": "RECOMMENDED_TOOLS_SPEC, TELEGRAM_AUTH_SPEC, UNIFIED_STATE_MODEL_SPEC, CYCLE6_GBT_RESPONSE committed"
+      },
+      {
+        "id": "DIR-2026-0003",
+        "title": "Implement email governance gate in FastAPI + n8n",
+        "state": "QUEUED",
+        "assigned_to": "claude_code",
+        "blocked_by": "Claude Code offline",
+        "dependencies": [
+          "N8N_EMAIL_AUDIT_CHECKLIST.md",
+          "EMAIL_ARCHITECTURE_REVIEW_2026-07-01.md"
+        ]
+      },
+      {
+        "id": "DIR-2026-0004",
+        "title": "Deploy Telegram bot and WF-TELE-001",
+        "state": "QUEUED",
+        "assigned_to": "claude_code",
+        "blocked_by": "Claude Code offline + Telegram Bot Token needed from Buck",
+        "dependencies": [
+          "TELEGRAM_AUTH_SPEC.md",
+          "TELEGRAM_ARCHITECTURE_SPEC.md"
+        ],
+        "buck_input_needed": "Telegram Bot Token + Buck Telegram User ID (numeric)"
+      },
+      {
+        "id": "DIR-2026-0005",
+        "title": "Deploy WF-AI-001 auto-restart workflow",
+        "state": "QUEUED",
+        "assigned_to": "claude_code",
+        "blocked_by": "Claude Code offline",
+        "dependencies": [
+          "AI_DIRECTIVE_LIFECYCLE_SPEC.md",
+          "IDLE_MONITOR_SPEC.md"
+        ]
+      }
+    ]
+  },
+  "projects": {
+    "active": [
+      {
+        "id": "101F",
+        "name": "Project 101F",
+        "health": "AT_RISK",
+        "schedule_variance_days": -5,
+        "data_issue": "1355R data discrepancy - unresolved",
+        "pm": "TBD",
+        "superintendent": "TBD"
+      }
+    ]
+  },
+  "agents": {
+    "browser_claude": {
+      "status": "ACTIVE",
+      "last_heartbeat": "2026-07-01T16:00:00Z",
+      "current_task": "Committing OPERATIONAL_STATE.json - Phase 1 of Unified State Model",
+      "session_commits": [
+        "affba36",
+        "84eab40",
+        "4e5524f",
+        "f6b1125",
+        "7ae48e0",
+        "eb555d3",
+        "fbfeb74"
+      ]
+    },
+    "gbt": {
+      "status": "IDLE",
+      "last_response": "2026-07-01T15:45:00Z",
+      "last_directive": "Cycle 6 - Sprint 4 tool sequence revised: Plan Reader #1, CPM #2, Cost #3, Perplexity #4, Weather #5"
+    },
+    "claude_code": {
+      "status": "OFFLINE",
+      "last_commit": "2026-06-30",
+      "last_known_task": "Sprint 2 implementation tasks",
+      "queued_directives": [
+        "DIR-2026-0003",
+        "DIR-2026-0004",
+        "DIR-2026-0005"
+      ],
+      "recovery_doc": "CODE_STATUS_2026-07-01.md"
+    },
+    "n8n": {
+      "status": "RUNNING",
+      "gateway_url": "https://speculate-armband-retinal.ngrok-free.dev",
+      "known_issue": "7 email paths unverified for approval gate - n8n audit required"
+    }
+  },
+  "sprint4_tool_sequence": {
+    "source": "GBT Cycle 6",
+    "sequence": [
+      {
+        "rank": 1,
+        "tool": "AI Plan Reader Phase 1",
+        "reason": "Foundational - everything depends on understanding drawings"
+      },
+      {
+        "rank": 2,
+        "tool": "CPM Schedule Intelligence",
+        "reason": "Largest operational gap"
+      },
+      {
+        "rank": 3,
+        "tool": "Cost Forecasting Engine",
+        "reason": "Owner-facing, high-value output"
+      },
+      {
+        "rank": 4,
+        "tool": "Perplexity AI",
+        "reason": "Research layer, advisory"
+      },
+      {
+        "rank": 5,
+        "tool": "Construction Weather Intelligence",
+        "reason": "Project risk input"
+      }
+    ]
+  },
+  "governance": {
+    "email_direct_send_authorized": false,
+    "email_governance_note": "BC_EMAIL_CAPABILITY.md direct send revoked commit e59ba38. Draft only until Code confirms gate.",
+    "pending_buck_decisions": [
+      "Gate 5 explicit go/no-go (GATE5_SIGNOFF_PENDING.md) - Options A, B, or C",
+      "Telegram Bot Token + numeric Telegram User ID for bot integration",
+      "Review BC_EMAIL_CAPABILITY.md governance update"
+    ]
+  },
+  "system_config": {
+    "gateway_url": "https://speculate-armband-retinal.ngrok-free.dev",
+    "local_fastapi": "http://localhost:8000",
+    "local_n8n": "http://localhost:5678",
+    "repository": "buck-HCI-AI/HCI_AI_Operating_System",
+    "main_branch": "main"
+  },
+  "last_session_summary": "Session 2026-07-01: BC expanded manual chapters 7,8,11,12 to publish quality. All 18 chapters now publish quality (169KB). Committed RECOMMENDED_TOOLS_SPEC (18 tools), TELEGRAM_AUTH_SPEC (/auth /revoke /approve commands), UNIFIED_STATE_MODEL_SPEC (GBT #1 priority), CYCLE6_GBT_RESPONSE (Sprint 4 sequence revised). GBT Cycles 2-6 complete. OPERATIONAL_STATE.json Phase 1 deployed. Sprint 3 specs implementation-ready for Code."
+}
