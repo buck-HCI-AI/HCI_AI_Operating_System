@@ -2450,6 +2450,81 @@ async def plan_review_upload(
         return _response("/plan-review/upload", {}, errors=[str(e)], start=t0)
 
 
+@router.post("/plan-review/generate-packages")
+def plan_review_generate_packages(req: PlanReviewPayload):
+    """
+    Sub package / SOW generation off the plans (2026-07-01) — phase 2 of the plan-review
+    pipeline named in ADR-014's roadmap. Breaks the plan set down into CSI-organized bid
+    packages with a draft scope-of-work for each, and creates real `bid_packages` rows
+    (status='not_started' — internal draft only). This does NOT invite any sub to bid,
+    email anyone, or create HubSpot deals; soliciting bids from real vendors remains a
+    separate, explicit, Buck-approved step, same governance boundary as the RFI side of
+    this pipeline (ADR-010/011). Any scope the plan set doesn't clearly support is
+    flagged rather than guessed, so a thin plan set produces an honest partial package
+    list, not a fabricated complete one.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(req.project_code)
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        prompt = f"""You are a construction estimator breaking a plan set down into CSI MasterFormat bid packages for subcontractor solicitation.
+
+Plan set excerpt:
+{req.sheet_text[:8000]}
+
+For each distinct scope of work you can identify from what's actually shown (not guessed), produce a bid package:
+- csi_division: the CSI MasterFormat division number and name (e.g. "06 - Wood, Plastics & Composites")
+- package_name: short package title
+- scope_description: a draft SOW paragraph — what the sub is responsible for, referencing what the plans actually show (sheet/schedule references where relevant)
+- confidence: "high" if the plans clearly support this scope, "low" if inferred from limited information
+
+Do NOT invent packages for scope not evidenced in the excerpt. If a scope is implied but under-specified (e.g. "electrical" is clearly needed for a house but no electrical sheet is in this excerpt), note it with confidence "low" rather than omitting it or fabricating detail.
+
+Respond with a JSON object only, no other text, in this exact format:
+{{"packages": [{{"csi_division": "...", "package_name": "...", "scope_description": "...", "confidence": "high|low"}}],
+  "coverage_note": "one sentence on how complete this package list is relative to a full bid-ready set"}}"""
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001", max_tokens=3000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        analysis = _parse_plan_review_json(message.content[0].text)
+        packages = analysis.get("packages", [])
+
+        created = []
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            for pkg in packages:
+                notes = f"Confidence: {pkg.get('confidence','?')} — generated from plan-review, not yet reviewed by PM"
+                cur.execute("""
+                    INSERT INTO bid_packages (project_id, csi_division, package_name, scope_description, status, notes)
+                    VALUES (%s, %s, %s, %s, 'not_started', %s)
+                    RETURNING id, csi_division, package_name, status
+                """, (pid, pkg.get("csi_division", ""), pkg.get("package_name", ""),
+                      pkg.get("scope_description", ""), notes))
+                row = dict(cur.fetchone())
+                row["confidence"] = pkg.get("confidence", "low")
+                created.append(row)
+        conn.close()
+
+        _log("/plan-review/generate-packages", req.reviewed_by, req.project_code, "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"{len(created)} bid packages drafted")
+        return _response("/plan-review/generate-packages", {
+            "project_code": req.project_code,
+            "packages_created": len(created),
+            "bid_packages": created,
+            "coverage_note": analysis.get("coverage_note"),
+            "note": "Bid packages created as 'not_started' — internal draft only. No sub "
+                    "has been invited to bid. PM should review scope_description and "
+                    "confidence before soliciting bids through the normal bid-leveling flow.",
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/plan-review/generate-packages", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/plan-review/generate-packages", {}, errors=[str(e)], start=t0)
+
+
 @router.post("/field/daily-report")
 def field_submit_daily_report(req: FieldDailyReportPayload):
     """

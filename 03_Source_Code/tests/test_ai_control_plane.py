@@ -371,6 +371,21 @@ check("Returns 200", code == 200, code)
 check("Has conflict_count as int", isinstance(d.get("payload", {}).get("conflict_count"), int), d)
 check("Has conflicts list", isinstance(d.get("payload", {}).get("conflicts"), list), d)
 
+# ── 22. Sub package / SOW generation off the plans (ADR-014 phase 2) ───────────
+print("\n22. POST /gateway/plan-review/generate-packages — bid packages from plan content")
+code, d = post("/plan-review/generate-packages", {
+    "project_code": "101F", "reviewed_by": "test_suite",
+    "sheet_text": "Sheet S1.0 Structural Notes: roof framing wide-flange steel beams W12x26. Sheet A2.1 Finish Schedule: hardwood flooring throughout, tile in bathrooms.",
+})
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has packages_created as int", isinstance(p.get("packages_created"), int), p)
+check("Never invites a sub to bid — status not_started only", "not_started" in str(p.get("note", "")))
+if p.get("packages_created", 0) > 0:
+    pkg = p["bid_packages"][0]
+    check("Created package has status=not_started (no bid solicitation)", pkg.get("status") == "not_started", pkg)
+    check("Created package has a confidence rating", pkg.get("confidence") in ("high", "low"), pkg)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:
