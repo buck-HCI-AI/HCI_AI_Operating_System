@@ -2525,6 +2525,146 @@ Respond with a JSON object only, no other text, in this exact format:
         return _response("/plan-review/generate-packages", {}, errors=[str(e)], start=t0)
 
 
+# CSI division -> (construction phase, typical duration in days). Phases run in
+# sequence; packages within the same phase run in parallel (phase duration = max of
+# its packages, not the sum). Industry-standard starting points, same role as
+# rom_estimate()'s BENCHMARKS table — calibrate against this system's own historical
+# schedule data once enough completed projects accumulate (see ADR-014/015).
+_CSI_PHASE_DURATIONS = {
+    "02": (1, 10),  "site work": (1, 10), "existing conditions": (1, 10),
+    "03": (2, 21),  "concrete": (2, 21),
+    "04": (2, 10),  "masonry": (2, 10),
+    "05": (3, 14),  "metals": (3, 14),
+    "06": (3, 28),  "wood": (3, 28), "plastics": (3, 28), "composites": (3, 28),
+    "07": (4, 14),  "thermal": (4, 14), "moisture": (4, 14),
+    "08": (4, 10),  "openings": (4, 10), "doors": (4, 10), "windows": (4, 10),
+    "09": (6, 30),  "finishes": (6, 30),
+    "10": (6, 7),   "specialties": (6, 7),
+    "11": (7, 14),  "equipment": (7, 14),
+    "12": (7, 10),  "furnishings": (7, 10),
+    "21": (5, 7),   "fire suppression": (5, 7),
+    "22": (5, 21),  "plumbing": (5, 21),
+    "23": (5, 21),  "hvac": (5, 21), "mechanical": (5, 21),
+    "26": (5, 21),  "electrical": (5, 21),
+    "27": (5, 10),  "communications": (5, 10),
+    "31": (1, 14),  "earthwork": (1, 14),
+    "32": (7, 14),  "exterior improvements": (7, 14),
+}
+_DEFAULT_PHASE_DURATION = (4, 14)  # fallback for an unrecognized CSI division
+
+
+def _phase_and_duration(csi_division: str) -> tuple:
+    key = (csi_division or "").lower()
+    for token, val in _CSI_PHASE_DURATIONS.items():
+        if token in key:
+            return val
+    return _DEFAULT_PHASE_DURATION
+
+
+class GenerateSchedulePayload(BaseModel):
+    project_code: str
+    start_date: str  # YYYY-MM-DD — project/phase kickoff
+    reviewed_by: str = "claude_code"
+
+
+@router.post("/plan-review/generate-schedule")
+def plan_review_generate_schedule(req: GenerateSchedulePayload):
+    """
+    Preliminary CPM (critical path) schedule generator — ADR-014 roadmap item #4,
+    "real CPM scheduling engine ... generate/re-sequence a critical path from the plan
+    set + historical durations, rather than only monitoring variance after a human
+    enters a schedule." Takes the project's `not_started` bid_packages (typically the
+    output of /plan-review/generate-packages) and sequences them into construction
+    phases (site work -> structural -> envelope -> rough MEP -> interior rough -> rough
+    inspections -> finishes -> equipment/furnishings -> exterior/punch), computing
+    start/end dates per package. Packages within a phase run in parallel; phases run in
+    sequence — a simplified but real critical-path calculation, not just a flat list.
+
+    Writes real `project_schedule_items` rows with status='draft' — a PM must review
+    and mark them started before they count as the live schedule (existing schedule
+    consumers filter/report on real activity, not draft rows, so this cannot silently
+    become "the schedule" without a human looking at it first).
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(req.project_code)
+        from datetime import date as _date, timedelta as _timedelta
+        try:
+            project_start = _date.fromisoformat(req.start_date)
+        except ValueError:
+            return _response("/plan-review/generate-schedule", {},
+                              errors=["start_date must be YYYY-MM-DD"], start=t0)
+
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, csi_division, package_name FROM bid_packages
+                WHERE project_id = %s AND status = 'not_started'
+                ORDER BY id
+            """, (pid,))
+            packages = [dict(r) for r in cur.fetchall()]
+            if not packages:
+                conn.close()
+                return _response("/plan-review/generate-schedule", {},
+                                  errors=["No 'not_started' bid_packages found for this "
+                                          "project — run /plan-review/generate-packages first"],
+                                  start=t0)
+
+            for pkg in packages:
+                phase, duration = _phase_and_duration(pkg["csi_division"])
+                pkg["phase"] = phase
+                pkg["duration"] = duration
+
+            phase_numbers = sorted(set(p["phase"] for p in packages))
+            phase_start = project_start
+            created = []
+            for phase in phase_numbers:
+                phase_packages = [p for p in packages if p["phase"] == phase]
+                phase_duration = max(p["duration"] for p in phase_packages)
+                for pkg in phase_packages:
+                    end = phase_start + _timedelta(days=pkg["duration"])
+                    activity_id = f"PR-{pid}-{pkg['id']}-{str(uuid.uuid4())[:6]}"
+                    cur.execute("""
+                        INSERT INTO project_schedule_items
+                            (activity_id, project_id, title, start_date, end_date,
+                             status, assignee, task_type, notes)
+                        VALUES (%s, %s, %s, %s, %s, 'draft', %s, %s, %s)
+                        RETURNING activity_id, title, start_date, end_date, status
+                    """, (activity_id, str(pid), pkg["package_name"], phase_start, end,
+                          pkg["package_name"], f"phase_{phase}",
+                          "Generated by plan-review CPM engine — PM must review before "
+                          "this counts as the live schedule"))
+                    row = dict(cur.fetchone())
+                    row["phase"] = phase
+                    row["csi_division"] = pkg["csi_division"]
+                    row["start_date"] = row["start_date"].isoformat()
+                    row["end_date"] = row["end_date"].isoformat()
+                    created.append(row)
+                phase_start = phase_start + _timedelta(days=phase_duration)
+        conn.close()
+
+        critical_path_days = (phase_start - project_start).days
+        _log("/plan-review/generate-schedule", req.reviewed_by, req.project_code, "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8],
+             f"{len(created)} schedule items, {critical_path_days}d critical path")
+        return _response("/plan-review/generate-schedule", {
+            "project_code": req.project_code,
+            "items_created": len(created),
+            "schedule_items": created,
+            "critical_path_days": critical_path_days,
+            "projected_completion": phase_start.isoformat(),
+            "note": "All items created with status='draft' — this is a preliminary "
+                    "sequence from typical CSI-division durations, not a confirmed "
+                    "schedule. PM must review phasing/durations and mark items active "
+                    "before this is the live project schedule.",
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/plan-review/generate-schedule", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/plan-review/generate-schedule", {}, errors=[str(e)], start=t0)
+
+
 @router.post("/field/daily-report")
 def field_submit_daily_report(req: FieldDailyReportPayload):
     """

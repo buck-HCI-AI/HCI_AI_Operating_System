@@ -386,6 +386,27 @@ if p.get("packages_created", 0) > 0:
     check("Created package has status=not_started (no bid solicitation)", pkg.get("status") == "not_started", pkg)
     check("Created package has a confidence rating", pkg.get("confidence") in ("high", "low"), pkg)
 
+# ── 23. Preliminary CPM schedule generation (ADR-014 phase 3) ──────────────────
+print("\n23. POST /gateway/plan-review/generate-schedule — phased critical path from packages")
+# Generate a fresh package first so this test has not_started packages to schedule against
+post("/plan-review/generate-packages", {
+    "project_code": "101F", "reviewed_by": "test_suite",
+    "sheet_text": "Sheet S1.0 Structural Notes: roof framing wide-flange steel beams W12x26.",
+})
+code, d = post("/plan-review/generate-schedule", {
+    "project_code": "101F", "start_date": "2026-09-01", "reviewed_by": "test_suite",
+})
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has items_created as int", isinstance(p.get("items_created"), int), p)
+check("Has critical_path_days as int", isinstance(p.get("critical_path_days"), int), p)
+if p.get("items_created", 0) > 0:
+    item = p["schedule_items"][0]
+    check("Created schedule item has status=draft (not the live schedule)", item.get("status") == "draft", item)
+    check("Start date matches requested project start", item.get("start_date") == "2026-09-01", item)
+code, d = post("/plan-review/generate-schedule", {"project_code": "NOT-A-REAL-CODE", "start_date": "2026-09-01"})
+check("Refuses for a nonexistent project rather than silently no-op'ing", bool(d.get("errors")), d)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:
