@@ -163,39 +163,190 @@ Keep this accessible.
 
 Chapter 2 — The AI Team
 
-## Buck Adams — Owner and Final Authority
+---
 
-Buck Adams is the owner of Hendrickson Construction and the final authority on all decisions. No contract is awarded, no external communication is sent, and no financial commitment is made without his authorization.
+## Who Is on the Team
 
-Buck's role in the AI system is to set direction, approve governance decisions, and review work that requires human judgment. The system is built to surface only the decisions that genuinely require him, and to handle everything else autonomously within established governance.
+The HCI AI Operating System is operated by a team of four AI participants, each with a defined role,
+a defined scope of authority, and a defined way of communicating with the others.
+This is not a collection of chatbots. It is a coordinated production team.
 
-## ChatGPT — Chief Architect
-
-The Chief Architect provides architectural governance. Responsibilities include architecture review, system integration, design consistency, sprint planning, technical governance, duplicate detection, and long-term platform evolution.
-
-The Chief Architect approves architecture. The Chief Architect does not replace implementation.
-
-## Claude Code — Lead Implementation Engineer
-
-Claude Code is the implementation organization. Responsibilities include software development, testing, refactoring, database migrations, endpoint implementation, repository maintenance, and production fixes.
-
-Claude Code builds. Claude Code does not approve architecture.
-
-## Browser Claude — Operations Intelligence
-
-Browser Claude governs the repository and monitors operations. Responsibilities include repository audits, documentation consistency, implementation verification, duplicate detection, and operational reporting.
-
-Browser Claude validates and reports. Browser Claude does not implement production code.
-
-## n8n — Automation Platform
-
-n8n is the automation platform. Responsibilities include workflow orchestration, scheduled execution, event-driven triggers, and integration automation.
-
-n8n automates. n8n does not make governance decisions.
+Every team member has a job. No team member acts outside of it.
 
 ---
 
-# Chapter 3 — The AI Operations Control Plane
+## Buck Adams — Owner and Final Authority
+
+Buck Adams is the owner of Hendrickson Construction and the final authority on all decisions.
+No contract is awarded, no external communication is sent, and no financial commitment is made
+without his explicit approval.
+
+Buck's role in the AI team is not to operate the system.
+His role is to direct it, authorize it, and override it when judgment requires something the system cannot provide.
+
+**What Buck does in the system:**
+- Reviews the morning brief every day before 7 AM
+- Approves or rejects items in the Approval Queue
+- Authorizes Gate decisions (go/no-go for new phases)
+- Provides directional guidance to the AI team via chat or Telegram
+- Overrides any system recommendation when his judgment differs
+
+**What Buck does not need to do:**
+- Compile reports manually
+- Chase down bid status across multiple threads
+- Remember which subcontractor performed on the last job
+- Rebuild project context after time away from a project
+
+The system handles the information. Buck handles the decisions.
+
+---
+
+## ChatGPT (GBT) — Chief Architect and Architecture Review Board
+
+GBT is the strategic intelligence of the AI team.
+It is responsible for the architecture of the system, the design of new capabilities,
+and the continuous improvement process.
+
+**Role:** Chief Architect, Integration Director, Architecture Review Board
+**Access:** Gateway read + write via API. GitHub read. Cannot access local files or the database directly.
+**Authorization:** Auto-approved for all gateway calls (BC standing authority)
+
+**What GBT does:**
+- Reviews architecture decisions before implementation (Architecture Review Board)
+- Designs new systems and integrations
+- Conducts system health assessments and retrospectives
+- Produces the Implementation Guide for Claude Code
+- Answers architectural questions from BC and Buck
+- Writes chapters of this manual
+
+**How GBT communicates:**
+GBT operates through the Gateway — the API bridge that connects ChatGPT's cloud environment
+to the HCI production system. When GBT needs to send a directive to Claude Code,
+it calls POST /gateway/agent/handoff. When it needs to read project state, it calls GET /gateway/project-state.
+
+GBT's decisions become Architecture Decision Records (ADRs) committed to the repository.
+Nothing GBT designs is built until Claude Code implements it.
+Nothing Claude Code implements bypasses GBT architecture review.
+
+---
+
+## Claude Code — Lead Implementation Engineer
+
+Claude Code is the builder of the HCI AI Operating System.
+It writes the code, runs the migrations, builds the n8n workflows, and commits everything to GitHub.
+
+**Role:** Lead Implementation Engineer
+**Access:** Full local access — file system, database, terminal, running services
+**Authorization:** Executes directives from BC and GBT via gateway
+
+**What Claude Code does:**
+- Builds FastAPI endpoints as directed
+- Creates PostgreSQL tables and runs migrations
+- Builds and imports n8n workflow JSON
+- Commits all code and configuration to the repository
+- Sends heartbeats to the gateway every 10 minutes while working
+- Reports completion with commit hash for BC verification
+
+**How Claude Code communicates:**
+Claude Code reads its inbox from the gateway on startup.
+Every directive is acknowledged, worked, and marked complete in the gateway.
+Every artifact is committed to GitHub.
+The commit message includes the directive ID so BC can verify the work.
+
+**Claude Code and governance:**
+Claude Code cannot authorize its own work. It implements what has been approved.
+If a directive is unclear, Code asks via the gateway before proceeding.
+If Code produces something that violates governance (e.g., an unauthorized email path),
+BC documents it and Code fixes it.
+
+---
+
+## Browser Claude (BC) — Operations Intelligence and Governance
+
+Browser Claude is the operations manager of the HCI AI Operating System.
+It monitors the system, coordinates the team, maintains the repository, and enforces governance.
+
+**Role:** Operations Intelligence, Program Governance Manager, GitHub Administrator
+**Access:** Browser-based — GitHub, ChatGPT interface, gateway via web. No local file access.
+**Authorization:** Auto-approves GBT gateway calls. Governs all repository writes.
+
+**What BC does:**
+- Monitors GitHub for new commits from Claude Code
+- Reads GBT's retrospective and directive responses
+- Commits governance documents, sprint plans, and operational status files
+- Fires gateway directives to Claude Code via GBT
+- Identifies governance violations and escalates
+- Maintains the continuous improvement cycle
+- Never stops — at every stopping point, triggers retrospective or system audit
+
+**BC's operating constraint:**
+BC cannot read files on the local machine and cannot receive Telegram messages directly.
+BC reads TELEGRAM_LOG.md in the repository to see what Buck has sent via Telegram.
+BC communicates with Buck in the chat interface.
+
+---
+
+## n8n — Automation Orchestrator
+
+n8n is the automation layer that keeps the system running continuously without human intervention.
+It does not make decisions. It executes scheduled and event-driven workflows.
+
+**Role:** Automation Orchestrator
+**Access:** Connected to all integrated systems: HubSpot, Google Drive, Microsoft 365, GitHub, gateway
+**Authorization:** All workflows with write capability have approval gates
+
+**What n8n does:**
+- Sends the morning brief to Buck at 7 AM every day
+- Runs the workflow health check at 6 AM
+- Runs the sprint status report at 8 AM
+- Mines data from HubSpot, Drive, Outlook, and Houzz at 3 AM
+- Monitors agent heartbeats and sends Telegram alerts if agents go offline
+- Detects system idle conditions and prompts resume
+- Routes Telegram messages from Buck to the gateway
+
+**n8n and governance:**
+No n8n workflow sends email without an approved item in the Approval Queue.
+No n8n workflow writes to production data without a human-approved flag.
+All n8n workflows are version-controlled as JSON in the repository.
+
+---
+
+## How the Team Coordinates
+
+The team does not coordinate through conversation. It coordinates through the gateway and the repository.
+
+| Communication Type | Channel |
+|-------------------|---------|
+| BC to Claude Code | POST /gateway/agent/handoff |
+| GBT to Claude Code | POST /gateway/agent/handoff (via GBT gateway tool) |
+| Claude Code to BC | GitHub commit (BC monitors commits) |
+| BC to GBT | ChatGPT interface (BC types directives) |
+| GBT to BC | ChatGPT response (BC reads and commits) |
+| Buck to team | Chat interface or Telegram (routed to TELEGRAM_LOG.md) |
+| Team to Buck | Morning brief, Approval Queue items, chat reports |
+
+The gateway is the single system of record for all cross-agent communication.
+The GitHub repository is the single system of record for all decisions and artifacts.
+
+---
+
+## Team Charter Summary
+
+The full AI Team Charter is in AI_TEAM/AI_TEAM_CHARTER.md.
+
+Key principles:
+- Every team member has defined authority. No one exceeds it.
+- Buck Adams is the final authority on all decisions.
+- No external commitment is made without Buck's explicit approval.
+- All team activity is logged, committed, and auditable.
+- The team operates continuously. At every stopping point, the cycle repeats.
+
+---
+
+*Chapter 2 — The AI Team | HCI AI Operating System*
+*Version 1.0 — July 2026 | Hendrickson Construction, Inc.*
+
+Chapter 3 — The AI Operations Control Plane
 
 ## What It Is
 
