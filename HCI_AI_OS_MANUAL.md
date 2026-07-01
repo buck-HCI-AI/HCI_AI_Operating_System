@@ -2100,3 +2100,399 @@ Its purpose is exactly the opposite.
 By reducing administrative effort, organizing project information automatically, and surfacing issues before they become crises, the operating system gives Superintendents more time to do what only they can do: lead people, coordinate construction, maintain quality, protect safety, and keep the project moving forward.
 
 When the system is working properly, it quietly handles the information while the Superintendent focuses on building the project. That is the Field Intelligence Layer—technology in service of construction, not construction in service of technology.
+
+---
+
+## Chapter 15 — Project Manager Operations
+
+### The Intelligence Layer
+
+The Project Manager is the operational center of every project.
+
+The Superintendent leads the field.
+
+The Estimator manages procurement.
+
+The Owner provides direction.
+
+The Project Manager connects them all.
+
+The HCI AI Operating System is designed to reduce the time spent gathering information so more time can be spent making decisions, solving problems, and serving clients.
+
+This chapter explains how Project Managers use the operating system to run projects—not software.
+
+---
+
+### 1. The PM View of Mission Control
+
+Mission Control is the PM's command center.
+
+It synthesizes information from across the project into a single operational view.
+
+**Project Health**
+
+Every project displays a health indicator.
+
+Typical indicators include:
+
+- Green
+- Yellow
+- Red
+
+Health is determined by multiple factors working together, including:
+
+- schedule
+- procurement
+- RFIs
+- submittals
+- approvals
+- safety
+- quality
+- client commitments
+
+Health is not a score.
+
+It is a conversation starter.
+
+**Schedule**
+
+Mission Control immediately highlights:
+
+- activities behind schedule
+- critical path movement
+- milestone risk
+- pending approvals blocking schedule
+
+**Risks**
+
+The operating system flags:
+
+- open risks
+- unresolved issues
+- trends requiring PM attention
+
+Examples include:
+
+- delayed procurement
+- repeated quality issues
+- inspection bottlenecks
+- vendor performance decline
+- schedule compression
+- unresolved design conflicts
+
+These are recommendations for attention.
+
+They are not conclusions.
+
+**Approvals**
+
+Mission Control highlights:
+
+- approvals waiting for PM action
+- approvals waiting for Buck
+- recently completed approvals
+- overdue approvals
+
+Approvals should never disappear into email.
+
+**Acting on Mission Control**
+
+The dashboard exists to prioritize your day.
+
+A well-functioning project requires the PM to act on what Mission Control surfaces.
+
+If Mission Control is ignored, it stops being useful.
+
+---
+
+### 2. The Weekly PM Review
+
+The weekly review is the PM's primary reporting cycle.
+
+The operating system generates the review automatically.
+
+**What It Pulls**
+
+The weekly PM review synthesizes:
+
+- all daily field logs from the previous week
+- schedule variance compared to baseline
+- open RFIs and submittals
+- approval queue activity
+- risk register changes
+- vendor activity
+- safety and quality observations
+
+**What Questions It Answers**
+
+- Did the project move forward this week?
+- What delayed progress?
+- What decisions are required?
+- What risks are growing?
+- What does the client need to know?
+- What executive decisions are required?
+- What changed since last week?
+
+If these questions cannot be answered quickly, improve the project's information quality.
+
+**Presenting to Buck**
+
+Executive reviews should emphasize decisions.
+
+Not raw data.
+
+Structure every update as:
+
+Current Status: Where the project stands today.
+
+Major Progress: What improved since the last review.
+
+Risks: What could affect project success.
+
+Decisions Needed: What Buck must decide.
+
+The operating system prepares the data.
+
+The PM prepares the interpretation.
+
+---
+
+### 3. Managing the Approval Queue
+
+The Approval Queue is the gateway between AI-generated work and production action.
+
+Nothing consequential happens without approval.
+
+**What Goes Into the Queue**
+
+- vendor write updates
+- bid awards
+- RFI submissions
+- subcontract changes
+- document distributions
+- any system-generated action with external consequence
+
+**What the PM Approves**
+
+The PM approves operational items:
+
+- RFI drafts
+- submittal actions
+- routine vendor communications
+- bid follow-up reminders
+- field coordination items
+
+**What Requires Buck**
+
+Anything with financial consequence.
+
+Anything with client commitment.
+
+Anything with contract implication.
+
+Anything the PM is uncertain about.
+
+When uncertain, escalate.
+
+The queue exists because governance matters.
+
+Nothing should skip the process.
+
+---
+
+### 4. Bid Management
+
+Bid management is one of the operating system's most valuable capabilities.
+
+The AI organizes information.
+
+The Project Manager evaluates it.
+
+**What the AI Does**
+
+For each bid package, the operating system can:
+
+- compare pricing
+- identify exclusions
+- summarize alternates
+- highlight qualifications
+- compare historical vendor performance
+- identify unusual pricing
+- detect missing scope
+- monitor bid expiration
+
+The operating system prepares the comparison.
+
+**What the PM Does**
+
+The PM:
+
+- reviews the leveled comparison
+- identifies scope gaps requiring clarification
+- determines which vendors require follow-up
+- makes the award recommendation
+- submits the recommendation to Buck for approval
+
+Award authority belongs to Buck.
+
+Award preparation belongs to the PM.
+
+---
+
+### 5. RFI and Submittal Management
+
+RFIs and submittals are construction's formal information exchange.
+
+The operating system tracks every item from initiation to resolution.
+
+**RFIs**
+
+When a field question requires a formal response, the PM:
+
+1. Receives the question from the Superintendent
+2. Confirms the question is clear and complete
+3. Reviews the AI-drafted RFI language from GBT
+4. Approves or modifies the draft
+5. Submits to the design team
+6. Monitors status until response is received
+7. Distributes the response to the field
+
+The PM owns the RFI log.
+
+The operating system maintains it.
+
+**Submittals**
+
+Monitor continuously:
+
+- outstanding items
+- overdue reviews
+- rejected submissions
+- critical-path materials
+- procurement dependencies
+
+The AI tracks progress.
+
+The PM keeps work moving.
+
+---
+
+### 6. Communicating with Subcontractors
+
+Communication should be accurate, timely, and documented.
+
+The operating system assists without replacing professional responsibility.
+
+**What the AI Drafts**
+
+Examples include:
+
+- meeting summaries
+- procurement reminders
+- bid invitation letters
+- scope clarification requests
+- schedule notices
+- compliance reminders
+
+**What the PM Reviews Before Sending**
+
+Every AI-drafted communication requires PM review before distribution.
+
+The PM confirms:
+
+- the content is accurate
+- the tone is appropriate
+- the commitments match project reality
+- no unauthorized promises have been made
+
+**What Never Goes Without Buck's Approval**
+
+- any communication implying contract change
+- any communication with schedule or cost commitment
+- any communication involving a dispute
+- any communication to a party with whom HCI has a legal relationship
+
+When uncertain: do not send. Escalate to Buck.
+
+---
+
+### 7. The PM's Relationship with the AI Team
+
+The AI team serves the PM.
+
+Not the other way around.
+
+**Ask GBT When**
+
+Strategic analysis is needed.
+
+Examples include:
+
+- reviewing contract language
+- drafting RFIs or scope clarifications
+- preparing bid comparisons
+- developing risk responses
+- analyzing historical cost data
+- preparing executive summaries
+
+GBT is your operational analyst and governance partner.
+
+**Involve Claude Code When**
+
+Implementation is required.
+
+Examples include:
+
+- workflow improvements
+- software bugs
+- automation changes
+- integration work
+- database improvements
+- gateway enhancements
+
+Claude Code builds the platform.
+
+**Work with Browser Claude When**
+
+Repository intelligence is needed.
+
+Examples include:
+
+- implementation verification
+- documentation review
+- repository audits
+- duplicate detection
+- directive management
+
+**Call Buck When**
+
+A decision requires owner authority.
+
+Examples include:
+
+- bid award
+- scope change
+- client commitment
+- contract modification
+- project go/no-go
+- any situation where the PM is uncertain
+
+Buck makes the decisions that matter.
+
+The AI team prepares the information that supports those decisions.
+
+**The Intelligence Layer**
+
+The HCI AI Operating System does not make Project Managers obsolete.
+
+It makes them more effective.
+
+Instead of spending hours collecting information, Project Managers spend their time interpreting it, coordinating people, solving problems, and leading projects.
+
+The operating system quietly handles the repetitive work of organizing documents, tracking commitments, monitoring schedules, preparing drafts, and preserving project history.
+
+The Project Manager remains responsible for the project.
+
+The operating system ensures that responsibility is supported by timely information, consistent governance, and the accumulated experience of every project Hendrickson Construction has ever completed.
+
+That is the Intelligence Layer: a system that transforms information into operational awareness, allowing Project Managers to focus on the work that only experienced construction professionals can do.
