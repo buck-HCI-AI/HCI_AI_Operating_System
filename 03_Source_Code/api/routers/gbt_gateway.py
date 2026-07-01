@@ -1501,6 +1501,67 @@ def role_trade_partner(vendor: str = Query(..., description="Vendor or company n
 
 # ── Knowledge Graph ───────────────────────────────────────────────────────────
 
+@router.get("/knowledge/vendor-capacity-conflicts")
+def vendor_capacity_conflicts():
+    """
+    Cross-project vendor capacity conflicts (2026-07-01) — a gap identified while
+    thinking through what a $40-60M ultra-luxury Aspen build actually needs versus a
+    standard remodel: HCI runs several active projects sharing a genuinely limited pool
+    of subs capable of that tier of work. Nothing previously flagged the same vendor
+    being scheduled on overlapping windows across two active projects. Matches awarded
+    bid_entries to schedule-item assignees by company-name substring (assignee text is
+    free-form like "Long Beach Enterprise — $185,000", not FK'd to vendors) — this is a
+    heuristic, not a hard rule, and should be treated as "worth confirming," not a fact.
+    """
+    t0 = time.time()
+    try:
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                WITH vendor_windows AS (
+                    SELECT DISTINCT v.id AS vendor_id, v.company_name, p.id AS project_id,
+                        p.project_code, p.name AS project_name,
+                        psi.start_date, psi.end_date, psi.title AS activity
+                    FROM bid_entries be
+                    JOIN vendors v ON v.id = be.vendor_id
+                    JOIN bid_packages bp ON bp.id = be.bid_package_id
+                    JOIN projects p ON p.id = bp.project_id
+                    JOIN project_schedule_items psi
+                        ON psi.project_id = p.id::text
+                        AND length(split_part(v.company_name, ' ', 1)) > 3
+                        AND psi.assignee ILIKE '%' || split_part(v.company_name, ' ', 1) || '%'
+                    WHERE be.status = 'awarded'
+                      AND p.status IN ('active','design','bidding','preconstruction')
+                      AND psi.start_date IS NOT NULL AND psi.end_date IS NOT NULL
+                )
+                SELECT a.company_name,
+                       a.project_code AS project_a, a.project_name AS project_a_name,
+                       a.activity AS activity_a, a.start_date AS a_start, a.end_date AS a_end,
+                       b.project_code AS project_b, b.project_name AS project_b_name,
+                       b.activity AS activity_b, b.start_date AS b_start, b.end_date AS b_end
+                FROM vendor_windows a
+                JOIN vendor_windows b
+                    ON a.vendor_id = b.vendor_id AND a.project_id < b.project_id
+                WHERE a.start_date <= b.end_date AND b.start_date <= a.end_date
+                ORDER BY a.company_name, a.start_date
+            """)
+            rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        for r in rows:
+            for k in ("a_start", "a_end", "b_start", "b_end"):
+                if r.get(k):
+                    r[k] = r[k].isoformat()
+        return _response("/knowledge/vendor-capacity-conflicts", {
+            "conflict_count": len(rows),
+            "conflicts": rows,
+            "note": "Heuristic match on assignee text vs. vendor company name — confirm "
+                    "with the sub before treating as a real scheduling conflict.",
+        }, start=t0)
+    except Exception as e:
+        return _response("/knowledge/vendor-capacity-conflicts", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/knowledge/vendor")
 def knowledge_vendor(name: str = Query(..., description="Vendor or subcontractor name")):
     """Look up all projects a vendor was involved in."""

@@ -364,6 +364,13 @@ for _agent, _snap in _hb_before.items():
     _hb_restore(_agent, _snap)
 print(f"\n(restored real heartbeat state for: {', '.join(_hb_before.keys())})")
 
+# ── 21. Vendor capacity conflicts (2026-07-01: cross-project sub scheduling gap) ─
+print("\n21. GET /gateway/knowledge/vendor-capacity-conflicts")
+code, d = get("/knowledge/vendor-capacity-conflicts")
+check("Returns 200", code == 200, code)
+check("Has conflict_count as int", isinstance(d.get("payload", {}).get("conflict_count"), int), d)
+check("Has conflicts list", isinstance(d.get("payload", {}).get("conflicts"), list), d)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:
