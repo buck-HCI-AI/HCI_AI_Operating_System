@@ -4,11 +4,38 @@ Tests: ai/messages, ai/queue, approvals, status transitions, telegram webhook
 commands, escalation/retry, telegram/health, ai/warm-start, ai/events.
 """
 import requests
+import subprocess
 
 API = "http://localhost:8000/gateway"
 HEADERS = {"X-API-Key": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"}
 
 passed = failed = 0
+
+# This suite impersonates browser_claude (and chatgpt) as a test agent in several
+# places (directive lifecycle, telegram polling) to exercise those code paths, which
+# touches their REAL ai_agent_heartbeat row each time. Bug found 2026-07-01: this left
+# browser_claude showing ONLINE with a fake last_action after every test run, which
+# read as real Browser Claude activity to anyone checking Mission Control. Snapshot
+# real state now, restore it once at the very end regardless of which section ran.
+def _hb_get(agent):
+    out = subprocess.run(
+        ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os", "-t", "-A", "-F", "|",
+         "-c", f"SELECT last_seen_at, last_action, status FROM ai_agent_heartbeat WHERE agent='{agent}'"],
+        capture_output=True, text=True, timeout=10,
+    ).stdout.strip()
+    return out.split("|", 2) if out else None
+
+def _hb_restore(agent, snapshot):
+    if not snapshot:
+        return
+    ts, action, status = snapshot
+    subprocess.run(
+        ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+         "-c", f"UPDATE ai_agent_heartbeat SET last_seen_at='{ts}', last_action=$${action}$$, status='{status}' WHERE agent='{agent}'"],
+        capture_output=True, text=True, timeout=10,
+    )
+
+_hb_before = {a: _hb_get(a) for a in ("browser_claude", "chatgpt")}
 
 
 def check(label, condition, detail=""):
@@ -293,6 +320,12 @@ if p101:
     check("schedule_variance_days is not null", p101.get("schedule_variance_days") is not None, p101)
     check("schedule_variance_days matches executive report sign convention",
           p101.get("schedule_variance_days") == -5, p101.get("schedule_variance_days"))
+
+# Restore real agent heartbeats clobbered by impersonating them as test agents above —
+# must run regardless of pass/fail so a real BC/GBT session never shows falsely ONLINE.
+for _agent, _snap in _hb_before.items():
+    _hb_restore(_agent, _snap)
+print(f"\n(restored real heartbeat state for: {', '.join(_hb_before.keys())})")
 
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
