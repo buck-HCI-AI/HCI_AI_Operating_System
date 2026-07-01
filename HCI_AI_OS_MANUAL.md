@@ -695,3 +695,167 @@ Its success is measured by a simpler question: **Did it help our people build be
 If Buck has better visibility, if Project Managers make better decisions, if Superintendents spend more time leading the field, if Estimators make more informed recommendations, and if every completed project leaves the company smarter than before, then the operating system has achieved its purpose.
 
 Technology fades into the background. What remains is a construction company that is more informed, more coordinated, more resilient, and more capable than it was the day before.
+
+
+---
+
+## Chapter 10 — Getting Started
+
+### Welcome to the HCI AI Operating System
+
+Welcome to Hendrickson Construction.
+
+Whether you are a new employee joining the company, a Project Manager stepping into an active project, or an AI participant connecting to the production system for the first time, this chapter explains how to orient yourself quickly and begin contributing immediately.
+
+The objective is the same for everyone: understand the current state before taking any action.
+
+---
+
+### The First Rule
+
+Before you do anything else, read the current state.
+
+Do not assume. Do not guess. Do not reconstruct from memory or prior conversations.
+
+The system maintains authoritative records. Your first responsibility is to find them and read them.
+
+---
+
+### For New Employees
+
+**Day One — Understand Before Acting**
+
+On your first day, your goal is orientation, not production. Read in this order:
+
+1. This manual — the HCI AI OS Manual — from the beginning. It describes how the company operates.
+2. LIVE_PROJECT_STATE.md — the current operational status of all active projects.
+3. CURRENT_SPRINT.md — the active engineering sprint and its objectives.
+4. The AI Team directory — who is doing what and what each participant is responsible for.
+
+**Finding Project State**
+
+All project information lives in the Project Brain for each active project. Access it through Mission Control at localhost:8000/executive or through the GitHub repository.
+
+Each Project Brain contains: project metadata, active schedule, open risks, open RFIs, open submittals, procurement status, current budget, and recent decisions.
+
+**Using Mission Control**
+
+Mission Control is your operational dashboard. It should become your first screen every morning.
+
+Use it to understand: project health, current priorities, pending approvals, active AI directives, schedule warnings, and AI team status.
+
+If you do not know where something stands, Mission Control is the first place to look.
+
+**Submitting an Approval**
+
+When a decision requires executive authorization, it enters the Approval Queue.
+
+You do not email Buck. You do not send a Telegram message hoping someone sees it. You submit a structured approval request through the Approval Queue with: the decision required, supporting documentation, cost impact if applicable, schedule impact if applicable, and your recommendation.
+
+Buck reviews from the Approval Queue. That is the authoritative path.
+
+**Common Mistakes to Avoid**
+
+Avoid these habits from day one: working from outdated information, keeping important notes outside the system, bypassing the approval process, creating duplicate documentation, assuming someone else updated project status, treating AI recommendations as final decisions, and forgetting to capture lessons learned at project close.
+
+The operating system becomes more valuable when everyone contributes to it consistently.
+
+---
+
+### For Project Managers Joining Mid-Project
+
+**The First 30 Minutes**
+
+When you step into an active project, follow this sequence before making any decisions or commitments.
+
+1. Open the Project Brain for your project. Read the project summary, current schedule, and active risks.
+2. Review open RFIs — understand what questions are unresolved and who owns the response.
+3. Review open submittals — understand what is pending approval and what is blocking procurement.
+4. Review the procurement dashboard — understand what bids are open, what has been awarded, and what is expiring.
+5. Review the Approval Queue — understand what decisions are pending Buck's authorization.
+6. Review recent daily logs — understand what has happened on site in the last week.
+
+**What to Look For**
+
+When reviewing an active project, pay particular attention to: items on the critical path, bids approaching expiration, RFIs with no response date, submittals that are blocking installation, risks that have no mitigation plan, and items in the Approval Queue that have been waiting more than 48 hours.
+
+**Communicating with the AI Team**
+
+The AI team is a production team, not a chat service.
+
+When you need implementation work done, submit a structured directive through the gateway or Architecture Inbox — not a conversational request. Include: what needs to be done, which project it affects, what the priority is, and what the expected output is.
+
+When you need information, query the Project Brain or Mission Control before asking anyone directly. The information is likely already there.
+
+---
+
+### For New AI Participants
+
+**Orientation Sequence**
+
+Every AI participant joining the HCI AI OS production system must follow the same orientation before taking any action.
+
+Read in this order:
+
+1. LIVE_PROJECT_STATE.md — current operational reality across all projects.
+2. CURRENT_SPRINT.md — active sprint objectives and priorities.
+3. AI_TEAM directory — current participants, roles, and standing assignments.
+4. Architecture Decision Records (ADRs) — structural decisions already made. Do not contradict these without ARB review.
+5. OVERNIGHT_REPORT.md if present — most recent implementation report from Claude Code.
+6. Approval Queue — items awaiting executive authorization.
+
+**Operating Principles**
+
+Audit before building. Read what exists before creating anything new.
+
+Extend before creating. Add to existing systems rather than building parallel ones.
+
+One source of truth. Every operational object has exactly one authoritative owner.
+
+Human authority is final. No AI participant makes production commitments, sends external communications, awards contracts, or modifies governed records without authorization.
+
+**Communication Protocol**
+
+Directives flow through the gateway. Every implementation request should be a structured directive with title, body, priority, and source. Conversational requests are acknowledged but not acted upon without a formal directive.
+
+Heartbeat. Every AI participant should register a heartbeat at regular intervals so Mission Control reflects actual team health.
+
+Acknowledgement. When you receive a directive, acknowledge it. When you begin work, update the status to IN_PROGRESS. When you complete work, mark it COMPLETE and return a report.
+
+**Where Things Live**
+
+| If you need... | Go to... |
+|---|---|
+| Project information | Project Brain |
+| Executive approvals | Approval Queue |
+| Active AI work | Architecture Inbox / AI Directives |
+| Vendor history | Vendor Intelligence |
+| Historical costs | Cost Intelligence |
+| Lessons learned | Knowledge Graph |
+| Construction documents | Project document repository |
+
+Always begin with the authoritative source.
+
+---
+
+### Using Mission Control
+
+Mission Control is your operational dashboard. It should become your first screen every morning.
+
+Use it to understand: project health, current priorities, pending approvals, active AI directives, schedule warnings, and AI team heartbeat status.
+
+If something is not visible in Mission Control, it may not be properly tracked. That is a governance gap, not a missing feature.
+
+---
+
+### The HCI Standard
+
+Every employee and every AI participant shares the same responsibility.
+
+Leave the operating system better than you found it.
+
+Improve documentation. Capture knowledge. Reduce ambiguity. Strengthen governance. Simplify operations.
+
+When every project contributes knowledge, every future project begins from a stronger foundation. That is how Hendrickson Construction compounds experience into organizational capability.
+
+Welcome to the HCI AI Operating System. Your first day begins by understanding the current state. Your contribution ensures the next person's first day is even better.
