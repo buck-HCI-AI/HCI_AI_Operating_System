@@ -4326,7 +4326,11 @@ def _ntfy(title: str, body: str, priority: str = "default", tags: str = "") -> d
 
 
 def _tg_send(text: str, reply_markup: dict = None, parse_mode: str = None) -> dict:
-    """Low-level Telegram sendMessage. parse_mode auto-detected from text content."""
+    """Low-level Telegram sendMessage. parse_mode auto-detected from text content.
+    Retries once without Markdown on failure (fixed 2026-07-01 — this function was
+    silently swallowing 400s from unbalanced _/*/`/[ in ordinary text like file paths,
+    e.g. 'AI_TEAM/OVERNIGHT_REPORT.md', with no fallback; _tg_send_with_id already had
+    this retry, this one didn't)."""
     import re as _re
     if parse_mode is None:
         parse_mode = "Markdown" if _re.search(r"[*_`\[]", text) else None
@@ -4337,7 +4341,14 @@ def _tg_send(text: str, reply_markup: dict = None, parse_mode: str = None) -> di
         payload["reply_markup"] = reply_markup
     try:
         r = requests.post(f"{TG_BASE}/sendMessage", json=payload, timeout=10)
-        return {"status": "sent" if r.ok else "failed", "http": r.status_code}
+        if r.ok:
+            return {"status": "sent", "http": r.status_code}
+        if parse_mode:
+            payload.pop("parse_mode", None)
+            r2 = requests.post(f"{TG_BASE}/sendMessage", json=payload, timeout=10)
+            if r2.ok:
+                return {"status": "sent", "http": r2.status_code, "retried_plain": True}
+        return {"status": "failed", "http": r.status_code, "detail": r.text[:300]}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
