@@ -252,7 +252,7 @@ code, _ = requests.post(f"{API}/email/send", json={
 check("No API key -> rejected (403), not sent", code == 403, code)
 
 code, d = post("/email/send", {
-    "to_name": "Buck Test", "to_email": "buck@ahmaspen.com",
+    "to_name": "Buck Test", "to_email": "buck@hendricksoninc.com",
     "subject": "[TEST] automated regression check", "body_html": "<p>Automated test row - safe internal address.</p>",
 })
 check("With API key -> queued_for_approval, not sent", code == 200 and d.get("payload", {}).get("status") == "queued_for_approval", d)
@@ -295,7 +295,8 @@ _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "integration
 from microsoft_graph import send_email as _send_email, _all_recipients_self
 
 check("Buck's own address recognized as self-send", _all_recipients_self([("Buck Adams", "buck@hendricksoninc.com")]))
-check("Buck's alt address recognized as self-send", _all_recipients_self([("Buck", "buck@ahmaspen.com")]))
+check("buck@ahmaspen.com is NOT self-send (2026-07-01: Buck confirmed this isn't his address)",
+      not _all_recipients_self([("Buck", "buck@ahmaspen.com")]))
 check("External address is NOT self-send", not _all_recipients_self([("Someone", "someone@example.com")]))
 check("Mixed self+external is NOT self-send (fails closed)",
       not _all_recipients_self([("Buck", "buck@hendricksoninc.com"), ("Ext", "ext@example.com")]))

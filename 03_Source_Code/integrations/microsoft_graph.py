@@ -136,7 +136,10 @@ def mark_as_read(msg_id: str) -> tuple:
 # brief, field reports, schedule alerts, executive/PM reports) may auto-send — this
 # allowlist is narrow and self-addressed on purpose, not a reopening of the general
 # send capability. Do not add external addresses here without Buck's explicit approval.
-_SELF_SEND_ALLOWLIST = {"buck@hendricksoninc.com", "buck@ahmaspen.com"}
+# Corrected 2026-07-01: Buck confirmed buck@ahmaspen.com is not his address to use here
+# (git history shows BUCK_EMAIL flip-flopped between the two across sessions before
+# settling on hendricksoninc.com — this allowlist had inherited the stale alternate).
+_SELF_SEND_ALLOWLIST = {"buck@hendricksoninc.com"}
 
 
 def _all_recipients_self(to: list[tuple[str, str]], cc: list[tuple[str, str]] = None) -> bool:
