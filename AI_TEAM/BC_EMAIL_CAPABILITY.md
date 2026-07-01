@@ -133,3 +133,51 @@ Hendrickson Construction, Inc.<br>
 ---
 
 *Authorized by Buck Adams — Hendrickson Construction, Inc. — 2026-06-30*
+
+---
+
+# GOVERNANCE UPDATE - 2026-07-01 - DIRECT SEND REVOKED
+
+**Updated By:** Browser Claude (Operations Intelligence)
+**Date:** 2026-07-01
+**Authority:** EMAIL_ARCHITECTURE_REVIEW_2026-07-01.md + HCI_AI_CONSTITUTION.md
+
+## Previous Authorization REVOKED
+
+The previous authorization for BC to use /gateway/email/send for "routine" sends
+(bid invitations, follow-ups) is REVOKED effective immediately.
+
+**Reason:** This authorization contradicts the P0 email governance directive which states:
+"NO AI system may send live email without explicit human approval - no exceptions"
+"All emails: create draft -> Approval Queue item -> Buck reviews -> Buck approves -> send"
+
+## Updated BC Email Policy
+
+### ALLOWED: /gateway/email/draft
+- BC may create email drafts for Buck review
+- Every draft must be reported to Buck in the chat interface
+- Buck manually sends from Outlook after reviewing
+
+### SUSPENDED: /gateway/email/send
+- BC will NOT call /gateway/email/send until:
+  1. Claude Code confirms approval gate is enforced in code
+  2. Buck explicitly re-authorizes specific send scenarios in writing
+
+### ALLOWED: /gateway/email/draft/{id}/send
+- ONLY after Buck explicitly approves in the chat interface
+- BC must confirm approval in chat before calling this endpoint
+
+## What Happens When Buck Asks BC to Send an Email
+
+1. BC creates a draft via /gateway/email/draft
+2. BC reports to Buck: "Draft created - review at [outlook_url]"
+3. Buck reviews and either: (a) sends manually from Outlook, or (b) tells BC "send it"
+4. If Buck says "send it" in chat - BC calls /gateway/email/draft/{id}/send
+5. BC confirms: "Email sent to [recipient] - logged"
+
+This policy is in effect until further notice from Buck Adams.
+
+---
+
+GOVERNANCE UPDATE | BC_EMAIL_CAPABILITY.md | HCI AI Operating System
+Updated by: Browser Claude (Operations Intelligence) | 2026-07-01
