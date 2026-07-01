@@ -1,17 +1,36 @@
 # CURRENT_SPRINT.md
-## HCI AI Operating System — Sprint 2: Registry Consolidation
+## HCI AI Operating System — Sprint 3: Production Stabilization
 
-**Sprint Number:** 2
-**Sprint Name:** Registry Consolidation
+**Sprint Number:** 3
+**Sprint Name:** Production Stabilization — AI Communication Reliability
 **Status:** 🟢 Active
 **Authority:** SPRINT_OPERATING_MODEL.md
 **Parent Document:** PROJECT.md
 **Task Register:** TASKS.md
 
-**Opened:** 2026-06-27
-**Target Close:** 2026-07-07
-**Authorized By:** Buck Adams (Owner) + ChatGPT (ACR) — 2026-06-27
-**Sprint 1 Archived:** reports/sprint/sprint-1-tasks.md
+**Opened:** 2026-07-01
+**Authorized By:** ChatGPT (Chief Architect / ARB) — GBT Handoff "Implementation Directive: Sprint State Fixes + AI Communication Reliability", 2026-07-01
+**Sprint 2 Archived below (this file, "Sprint 2 — Registry Consolidation" section)**
+
+---
+
+## Sprint 2 Close Summary
+
+**Status:** CLOSED — 2026-07-01 (technical close criteria met; formal ARB close ruling pending Chief Architect review of this session's implementation report)
+**Closed by:** Claude Code, per ARB directive 2026-07-01 stating "Sprint 3 is live"
+
+### What Shipped to Close Sprint 2 (this session, 2026-07-01)
+- Directive lifecycle reconciled to ISSUED/RECEIVED/IN_PROGRESS/COMPLETE/BLOCKED/REJECTED (migration 021), resolving the vocabulary conflict ADR-007 flagged as open
+- `ai_messages` extended (not duplicated) with priority, received_at/acknowledged_at/started_at/completed_at, blocked_reason, source_of_truth_link
+- New endpoints: `GET /gateway/ai/messages/{id}`, `POST /gateway/ai/messages/{id}/acknowledge`, `GET /gateway/ai/directives/stale`, `POST /gateway/heartbeat` (literal path alias)
+- `ai_agent_heartbeat` extended with role, current_task, last_directive_id, metadata
+- **101F schedule variance** — confirmed already consistent (executive report `+5d behind` = LIVE_PROJECT_STATE.md `-5 days`); added explicit signed `schedule_variance_days` field to remove the count-vs-days ambiguity that caused the ARB's original concern; regression test added
+- **1355R risk count** — root cause found and fixed: Mission Control was reading a stale algorithmic snapshot (`project_brain_snapshots.risk_count`, showing 1/GREEN) and an empty dead table (`project_risks_computed`) instead of the canonical `risks` table (5 open, 2 high, matching Executive Report/PM Console/role_owner everywhere else). Not test-data inflation as originally suspected — a duplicate-source-of-truth bug. Fixed in `executive.py mission_control()`; regression test added
+- Mission Control `comms` block gained `active_directives` count and `current_sprint` label
+- 65/65 tests passing (`test_ai_control_plane.py`, extended this session)
+
+### Sprint 2 Carry-Over to Sprint 3
+Unchanged from Sprint 2's open items below (n8n API connections AUTO-014/015, Houzz pipeline HZ-004/005, branch protection INT-013, workflow registry INT-006/INT-010) — these were not in scope of the ARB's AI-communication-reliability directive and remain open.
 
 ---
 
@@ -185,7 +204,7 @@ Sprint 2 is complete when ALL of the following are true:
 | Approval queue | ✅ Corrected 2026-06-28 — 986 legitimate vendor approvals (HubSpot mining backlog); 9 true dups deleted |
 | 1355R daily log | 🔴 No real field submission — Gate 5 exception |
 | 246GW procurement gaps | 🔴 5 critical gaps: elevator (16-20wk lead), venetian plaster ($800K/0 bids), MEP all 3 trades |
-| Schedule variance sign bug | 🔴 101F reports 0 days behind when actually -5 days — GBT action needed |
+| Schedule variance sign bug | ✅ RESOLVED 2026-07-01 — 101F now reports consistently (+5d / -5 days signed) across Executive Report, Mission Control, PM Console, LIVE_PROJECT_STATE.md; regression test added |
 | Go-live verdict | ⚠️ READY WITH EXCEPTIONS — see HCI_AI_OS_RECONCILIATION_REPORT_2026-06-28.md in Drive |
 
 ---

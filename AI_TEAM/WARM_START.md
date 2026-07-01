@@ -80,18 +80,17 @@ document only if you need the underlying detail or a path is down.
 in `AI_HEARTBEAT_STALE_MINUTES`, default 120) · `RECOVERING` (set manually during
 a known restart) · `BLOCKED` (set manually when an agent is known-stuck).
 
-**Message/task acknowledgement state** (`ai_messages.status`): `NEW` ·
-`ACKNOWLEDGED` (Buck or an agent has seen it — covers "RECEIVED") ·
-`IN_PROGRESS` · `BLOCKED` · `COMPLETE` · `NEEDS_BUCK_APPROVAL` · `REJECTED`
-(covers "FAILED"/declined) · `STALE` (escalation fired, still unacknowledged).
-
-Two directives landed within minutes of each other on 2026-06-30 specifying
-slightly different acknowledgement vocabularies (`ACKNOWLEDGED`/`REJECTED` vs.
-`RECEIVED`/`FAILED`). The vocabulary above was implemented and tested first
-(live Telegram approve/reject/hold round-trip confirmed working); rather than
-fork a second state machine, `ACKNOWLEDGED` and `REJECTED` are documented here
-as the canonical terms covering `RECEIVED`/`FAILED`. **Flagged for Chief
-Architect reconciliation** — see the audit doc's friction-pattern section.
+**Directive/message lifecycle state** (`ai_messages.status`): `ISSUED` ·
+`RECEIVED` (acknowledged) · `IN_PROGRESS` · `COMPLETE` · `BLOCKED` (see
+`blocked_reason`) · `REJECTED` · `NEEDS_BUCK_APPROVAL` · `STALE` (escalation
+fired, still unacknowledged). Reconciled 2026-07-01 (migration 021, ADR-009)
+per explicit Chief Architect/ARB directive — this is now the canonical
+vocabulary; the `NEW`/`FAILED` and `ACKNOWLEDGED` variants ADR-007 flagged as
+unresolved are retired. Each transition stamps the matching timestamp
+(`received_at`/`started_at`/`completed_at`) automatically via
+`PATCH /ai/messages/{id}/status`; use `POST /ai/messages/{id}/acknowledge` for
+the explicit ISSUED->RECEIVED step. Records also carry `priority`,
+`source_of_truth_link`.
 
 ## Telegram — notification only, DB is source of truth
 

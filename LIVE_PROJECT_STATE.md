@@ -3,9 +3,9 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-06-30T00:17 MST
-**Updated By:** Claude Code v4.0 — GATE 5 GO AUTHORIZED. Full Operations Manual build in progress (13 technical chapters complete, GBT authoring 16 business chapters tonight). Live: 64EW/101F/1355R. Monitored: 246GW. All other projects = learning only.
-**Sprint:** Sprint 2 — Registry Consolidation (ACTIVE — opened 2026-06-27)
+**Last Updated:** 2026-07-01T05:15 UTC
+**Updated By:** Claude Code — Sprint 3 opened per ARB directive. AI communication reliability P0 (directive lifecycle + heartbeat) reconciled. 101F/1355R Mission Control consistency bugs fixed. Live: 64EW/101F/1355R. Monitored: 246GW. All other projects = learning only.
+**Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
 > **Update Protocol:** Any agent may commit factual, observable updates to this file.
@@ -339,4 +339,27 @@ Auth: X-API-Key header (hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6) fo
 
 ### Waiting For GBT
 - Field interface test results (8 tests sent)
+
+---
+
+## [STATE CHANGE] 2026-07-01 — Sprint 3 Open: AI Communication Reliability + Data Consistency (Claude Code)
+
+Executed per ChatGPT (Chief Architect/ARB) GBT handoffs "Implementation Directive: Sprint State Fixes + AI Communication Reliability" and "Production Warm Start", both 2026-07-01.
+
+### Built This Session
+| Item | Status | Details |
+|------|--------|---------|
+| Directive lifecycle reconciliation | COMPLETE | Migration 021 — `ai_messages` status vocab reconciled to ISSUED/RECEIVED/IN_PROGRESS/COMPLETE/BLOCKED/REJECTED per ARB (was NEW/FAILED, flagged as unresolved in ADR-007). Extended, not duplicated. |
+| Directive required fields | COMPLETE | Added priority, received_at, acknowledged_at, started_at, completed_at, blocked_reason, source_of_truth_link to `ai_messages` |
+| New gateway endpoints | COMPLETE | `GET /gateway/ai/messages/{id}`, `POST /gateway/ai/messages/{id}/acknowledge`, `GET /gateway/ai/directives/stale`, `POST /gateway/heartbeat` |
+| Heartbeat extension | COMPLETE | `ai_agent_heartbeat` gained role, current_task, last_directive_id, metadata |
+| 101F schedule variance | VERIFIED CONSISTENT + CLARIFIED | Executive Report already agreed with LIVE_PROJECT_STATE.md (+5d = -5 days signed) — root "bug" was a count-field (`total_variance_items: 1`) being misread as the day value. Added explicit `schedule_variance_days` signed field to Executive Report so this can't recur. |
+| 1355R risk count | ROOT CAUSE FIXED | Mission Control was NOT reading test data — it was reading a stale algorithmic snapshot (`project_brain_snapshots.risk_count=1`, health=GREEN) and an empty/dead table (`project_risks_computed`, 0 rows, so "top risks" was always empty) instead of the canonical `risks` table that Executive Report/PM Console/role_owner use (5 open risks, 2 high severity, health=RED). Fixed `executive.py mission_control()` to reconcile against the canonical table. |
+| Tests | COMPLETE | `test_ai_control_plane.py` extended — 65/65 passing, including new 101F/1355R consistency and directive-lifecycle assertions |
+| Sprint metadata | COMPLETE | Sprint 2 closed (technical criteria), Sprint 3 opened — see CURRENT_SPRINT.md |
+
+### Decisions Pending Buck / Chief Architect
+1. **Sprint 2 formal ARB close ruling** — technical criteria met this session; Chief Architect to review implementation report and issue formal close
+2. **Gate 5 Pilot window** (2026-06-25 to 2026-07-01) closes today — pilot review/go-forward decision is Buck's
+3. Prior open items unchanged: n8n API connections (AUTO-014/015), Houzz pipeline (HZ-004/005), branch protection (INT-013)
 - Field operations architecture design (SS/PM daily workflows, Hendrickson GPT vs GBT)

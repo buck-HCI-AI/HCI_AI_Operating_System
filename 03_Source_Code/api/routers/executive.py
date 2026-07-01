@@ -942,18 +942,48 @@ def mission_control():
     """
     from datetime import date, timedelta
 
-    # 1. Portfolio health (from project_brain_snapshots or predictions_computed)
-    portfolio = _q("""
+    # 1. Portfolio health — reconciled against the `risks` table (2026-07-01 fix):
+    # project_brain_snapshots.risk_count/health comes from the algorithmic
+    # detect_risks() engine (schedule/procurement/budget/decision/data-gap heuristics)
+    # and can go stale relative to the persisted `risks` table that Executive Report,
+    # PM Console, and role_owner all read from directly. Audit confirmed 1355R showed
+    # risk_count=1/GREEN here while the other three views showed 5 open risks (2 high)
+    # /RED for the same day — a real duplicate-source-of-truth bug, not test-data
+    # inflation. Health/risk_count below are now the worse-of the two signals so
+    # Mission Control cannot show a materially different picture than the rest of
+    # the system for the same project.
+    portfolio_raw = _q("""
         SELECT p.id, p.name,
-               COALESCE(pbs.health, 'UNKNOWN') as health,
-               COALESCE(pbs.risk_count, 0) as risk_count,
-               COALESCE(pbs.data_completeness_pct, 0) as data_completeness
+               COALESCE(pbs.health, 'UNKNOWN') as detected_health,
+               COALESCE(pbs.risk_count, 0) as detected_risk_count,
+               COALESCE(pbs.data_completeness_pct, 0) as data_completeness,
+               COALESCE(rr.open_risks, 0) as open_production_risks,
+               COALESCE(rr.high_or_critical, 0) as high_or_critical_risks
         FROM projects p
         LEFT JOIN project_brain_snapshots pbs
             ON pbs.project_id = p.id AND pbs.snapshot_date = CURRENT_DATE
+        LEFT JOIN (
+            SELECT project_id, COUNT(*) as open_risks,
+                   COUNT(*) FILTER (WHERE severity IN ('critical','high')) as high_or_critical
+            FROM risks WHERE status = 'open' GROUP BY project_id
+        ) rr ON rr.project_id = p.id
         WHERE p.status = 'active'
         ORDER BY p.id
     """)
+
+    def _reconcile_health(row: dict) -> str:
+        if row["high_or_critical_risks"] > 0 or row["detected_health"] == "RED":
+            return "RED"
+        if row["open_production_risks"] > 0 or row["detected_health"] in ("YELLOW", "UNKNOWN"):
+            return "YELLOW"
+        return "GREEN"
+
+    portfolio = []
+    for r in portfolio_raw:
+        row = dict(r)
+        row["health"] = _reconcile_health(row)
+        row["risk_count"] = max(row["detected_risk_count"], row["open_production_risks"])
+        portfolio.append(row)
 
     company_health = "GREEN"
     if any(r.get("health") == "RED" for r in portfolio):
@@ -1026,15 +1056,18 @@ def mission_control():
         LIMIT 10
     """)
 
-    # 6. Top risks from project_risks_computed
+    # 6. Top risks — sourced from the same `risks` table as Executive Report / PM
+    # Console / role_owner (project_risks_computed is an empty, unpopulated table and
+    # made this section always render zero results; fixed 2026-07-01).
     top_risks = _q("""
-        SELECT prc.project_id, p.name as project_name,
-               prc.risk_code, prc.risk_type, prc.severity, prc.title,
-               prc.confidence, prc.detected_at
-        FROM project_risks_computed prc
-        JOIN projects p ON p.id = prc.project_id
-        WHERE prc.status = 'open' AND prc.severity IN ('critical','high')
-        ORDER BY CASE prc.severity WHEN 'critical' THEN 0 ELSE 1 END, prc.detected_at DESC
+        SELECT r.project_id, p.name as project_name,
+               r.risk_type as risk_code, r.risk_type, r.severity,
+               LEFT(r.description, 120) as title, r.identified_date as detected_at
+        FROM risks r
+        JOIN projects p ON p.id = r.project_id
+        WHERE r.status = 'open' AND r.severity IN ('critical','high')
+          AND p.status NOT IN ('reference','completed','archived','cancelled')
+        ORDER BY CASE r.severity WHEN 'critical' THEN 0 ELSE 1 END, r.identified_date DESC
         LIMIT 10
     """)
 

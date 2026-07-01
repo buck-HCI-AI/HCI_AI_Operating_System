@@ -122,6 +122,101 @@ check("Has events list", isinstance(d.get("payload", {}).get("events"), list))
 # cleanup
 patch(f"/ai/messages/{approval_id}/status", {"status": "COMPLETE"})
 
+# ── 10. Directive lifecycle vocab reconciliation (ARB 2026-07-01) ─────────────
+print("\n10. Directive lifecycle — ISSUED/RECEIVED/IN_PROGRESS/COMPLETE/BLOCKED/REJECTED")
+code, d = post("/ai/messages", {
+    "source_agent": "claude_code", "target_agent": "browser_claude", "message_type": "note",
+    "title": "Automated test — lifecycle vocab", "body": "test", "priority": "high",
+})
+lc_id = d.get("payload", {}).get("id")
+check("Created with priority accepted", code == 200)
+code, d = get(f"/ai/messages/{lc_id}")
+check("GET single message returns 200", code == 200, code)
+check("Initial status is ISSUED", d.get("payload", {}).get("status") == "ISSUED", d.get("payload", {}).get("status"))
+check("Priority stored", d.get("payload", {}).get("priority") == "high")
+check("received_at null before acknowledge", d.get("payload", {}).get("received_at") is None)
+
+code, d = post(f"/ai/messages/{lc_id}/acknowledge", {"agent": "browser_claude"})
+check("Acknowledge returns 200", code == 200, code)
+check("Acknowledge sets RECEIVED", d.get("payload", {}).get("status") == "RECEIVED")
+code, d = get(f"/ai/messages/{lc_id}")
+check("received_at stamped", d.get("payload", {}).get("received_at") is not None)
+
+code, d = patch(f"/ai/messages/{lc_id}/status", {"status": "IN_PROGRESS", "agent": "browser_claude"})
+check("IN_PROGRESS accepted", code == 200 and d.get("payload", {}).get("status") == "IN_PROGRESS")
+code, d = get(f"/ai/messages/{lc_id}")
+check("started_at stamped", d.get("payload", {}).get("started_at") is not None)
+
+code, d = patch(f"/ai/messages/{lc_id}/status", {"status": "BLOCKED", "agent": "browser_claude",
+                                                   "blocked_reason": "waiting on Drive access"})
+check("BLOCKED accepted", code == 200 and d.get("payload", {}).get("status") == "BLOCKED")
+code, d = get(f"/ai/messages/{lc_id}")
+check("blocked_reason stored", d.get("payload", {}).get("blocked_reason") == "waiting on Drive access")
+
+code, d = patch(f"/ai/messages/{lc_id}/status", {"status": "COMPLETE", "agent": "browser_claude"})
+check("COMPLETE accepted", code == 200)
+code, d = get(f"/ai/messages/{lc_id}")
+check("completed_at stamped", d.get("payload", {}).get("completed_at") is not None)
+
+code, d = patch(f"/ai/messages/{lc_id}/status", {"status": "REJECTED", "agent": "browser_claude"})
+check("REJECTED is a valid status (replaces old FAILED)", code == 200 and d.get("payload", {}).get("status") == "REJECTED")
+code, d = patch(f"/ai/messages/{lc_id}/status", {"status": "NEW", "agent": "browser_claude"})
+check("Old vocab NEW is now rejected", d.get("errors"), d)
+
+# ── 11. Stale directives named endpoint ────────────────────────────────────────
+print("\n11. GET /ai/directives/stale")
+code, d = get("/ai/directives/stale")
+check("Returns 200", code == 200, code)
+check("Has messages list", isinstance(d.get("payload", {}).get("messages"), list))
+
+# ── 12. Heartbeat — extended fields + /gateway/heartbeat alias ─────────────────
+print("\n12. POST /gateway/heartbeat (alias) with role/current_task/metadata")
+code, d = post("/heartbeat", {
+    "agent": "claude_code", "action": "test heartbeat", "role": "Implementation",
+    "current_task": "Sprint 3 stabilization", "metadata": {"test": True},
+})
+check("Returns 200", code == 200, code)
+check("Reports alive", d.get("payload", {}).get("status") == "alive")
+code, d = get("/executive/mission-control")
+hb = d.get("payload", {}).get("comms", {}).get("agent_heartbeats", [])
+cc = next((h for h in hb if h.get("agent") == "claude_code"), None)
+check("claude_code heartbeat present in Mission Control", cc is not None)
+check("current_task surfaced", cc and cc.get("current_task") == "Sprint 3 stabilization", cc)
+check("Mission Control comms has active_directives count", isinstance(d.get("payload", {}).get("comms", {}).get("active_directives"), int))
+check("Mission Control comms has current_sprint", "current_sprint" in d.get("payload", {}).get("comms", {}))
+
+# ── 13. 101F — schedule variance consistency (ARB canonical: -5 days) ─────────
+print("\n13. Executive report vs Mission Control — 101F schedule variance")
+code, d = get("/executive/report")
+p101 = next((p for p in d["payload"]["projects"] if p["project_code"] == "101F"), None)
+check("101F present in executive report", p101 is not None)
+if p101:
+    check("signed schedule_variance_days field present", "schedule_variance_days" in p101)
+    check("max_variance_days (unsigned) matches abs(signed)", p101["max_variance_days"] == abs(p101["schedule_variance_days"]),
+          (p101["max_variance_days"], p101["schedule_variance_days"]))
+
+# ── 14. 1355R — risk count consistency across Executive Report / Mission Control ─
+print("\n14. 1355R — risk count consistency + no test-data leakage")
+code, d = get("/executive/report")
+p1355 = next((p for p in d["payload"]["projects"] if p["project_code"] == "1355R"), None)
+check("1355R present in executive report", p1355 is not None)
+code, mc = get("/executive/mission-control")
+mc_row = next((r for r in mc["payload"]["portfolio"]["projects"] if r["name"] == "1355 Riverside"), None)
+check("1355R present in Mission Control portfolio", mc_row is not None)
+if p1355 and mc_row:
+    check("Mission Control risk_count matches Executive Report open_risks (no stale-rollup drift)",
+          mc_row["risk_count"] >= p1355["open_risks"],
+          (mc_row["risk_count"], p1355["open_risks"]))
+    check("Mission Control health is not GREEN when Executive Report shows open risks",
+          not (p1355["open_risks"] > 0 and mc_row["health"] == "GREEN"),
+          (p1355["open_risks"], mc_row["health"]))
+top_risk_names = [r.get("title", "") for r in mc.get("payload", {}).get("top_risks", [])]
+check("Mission Control top_risks is populated (was always empty via dead project_risks_computed table)",
+      len(mc.get("payload", {}).get("top_risks", [])) > 0)
+check("No test/dummy markers in production risk descriptions",
+      not any("test" in t.lower() or "dummy" in t.lower() or "sample" in t.lower() for t in top_risk_names),
+      top_risk_names)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:

@@ -6,6 +6,21 @@ Format: [Agent] Description — Date
 
 ---
 
+## [Sprint 3 Open — AI Communication Reliability + Mission Control Data Consistency] — 2026-07-01
+
+### Claude Code — per ChatGPT (Chief Architect/ARB) GBT handoffs "Implementation Directive: Sprint State Fixes + AI Communication Reliability" and "Production Warm Start", both 2026-07-01
+
+- Migration 021: `ai_messages` directive lifecycle reconciled to ISSUED/RECEIVED/IN_PROGRESS/COMPLETE/BLOCKED/REJECTED (was NEW/FAILED) — resolves the vocabulary conflict flagged open in ADR-007. Added priority, received_at, acknowledged_at, started_at, completed_at, blocked_reason, source_of_truth_link.
+- `ai_agent_heartbeat` extended with role, current_task, last_directive_id, metadata.
+- New endpoints: `GET /gateway/ai/messages/{id}`, `POST /gateway/ai/messages/{id}/acknowledge`, `GET /gateway/ai/directives/stale`, `POST /gateway/heartbeat`.
+- 101F schedule variance: confirmed no sign inversion existed (executive report already agreed with LIVE_PROJECT_STATE.md at +5d/-5 days) — root issue was a count field being misread as a day value. Added explicit signed `schedule_variance_days` to `/gateway/executive/report`.
+- 1355R risk count: found and fixed the real bug — Mission Control's `portfolio`/`top_risks` read a stale algorithmic snapshot and an empty dead table (`project_risks_computed`) instead of the canonical `risks` table used everywhere else. Not test-data inflation. Fixed in `executive.py mission_control()`.
+- Mission Control `comms` block gained `active_directives` count and `current_sprint` label.
+- `test_ai_control_plane.py` extended — 65/65 passing.
+- Sprint 2 (Registry Consolidation) closed on technical criteria; Sprint 3 (Production Stabilization) opened. See ADR-009, CURRENT_SPRINT.md, LIVE_PROJECT_STATE.md.
+
+---
+
 ## [Aspen Full PM/SS Lifecycle — Complete End-to-End Build] — 2026-06-28 — Full Preconstruction through Job Running
 
 ### Claude Code — Complete PM/SS Lifecycle for All 3 Aspen Hypothetical Projects (Buck directive: "did you do all hypothetical plan reads, rfis from that, rom creation, prelim ms schedule, bids sows and packages sent, leveling and approval, awards and contracts, new budget, new schedule, then run the job as pm and ss? if not that is the directive")

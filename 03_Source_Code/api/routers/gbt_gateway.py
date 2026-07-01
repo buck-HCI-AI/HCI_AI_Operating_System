@@ -8,7 +8,7 @@ Architecture:  ChatGPT → ngrok → FastAPI Gateway → internal HCI services �
 Prefix: /gateway
 Auth:   X-API-Key header  OR  ?api_key= query param
 """
-import os, uuid, time, sys
+import os, uuid, time, sys, json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import psycopg2, psycopg2.extras, requests
@@ -176,7 +176,7 @@ def gateway_health():
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""SELECT COUNT(*) n FROM ai_messages
-                    WHERE target_agent = 'chatgpt' AND status NOT IN ('COMPLETE','FAILED')""")
+                    WHERE target_agent = 'chatgpt' AND status NOT IN ('COMPLETE','REJECTED')""")
                 pending_for_chatgpt = cur.fetchone()["n"]
     except Exception:
         pass
@@ -567,7 +567,10 @@ def executive_report():
                     (SELECT COUNT(*) FROM rfis r WHERE r.project_id = p.id AND r.status = 'open') AS open_rfis,
                     (SELECT COUNT(*) FROM rfis r WHERE r.project_id = p.id AND r.status = 'open'
                          AND r.required_response_date < CURRENT_DATE
-                    ) AS overdue_rfis
+                    ) AS overdue_rfis,
+                    (SELECT pb.schedule_variance_days FROM project_brain_snapshots pb
+                         WHERE pb.project_id = p.id AND pb.snapshot_date = CURRENT_DATE
+                    ) AS signed_variance_days
                 FROM projects p WHERE p.status IN ('active','design','bidding','preconstruction')
                   AND p.name NOT LIKE 'TEST-%%' ORDER BY p.id
             """)
@@ -581,6 +584,13 @@ def executive_report():
             bid_pkgs   = row["packages_with_bids"] or 0
             open_rfis  = row["open_rfis"] or 0
             overdue_rfis = row["overdue_rfis"] or 0
+            # Canonical signed days-behind (matches LIVE_PROJECT_STATE.md / role_owner /
+            # project_brain). max_variance_days/total_variance_items above are UNSIGNED
+            # item counts and magnitude — ARB flagged this as easy to misread as "the
+            # variance"; this field removes the ambiguity (2026-07-01).
+            signed_variance_days = row["signed_variance_days"]
+            if signed_variance_days is None:
+                signed_variance_days = -max_var if max_var else 0
             committed  = float(row["committed_amount"] or 0)
             budget     = float(row["contract_value"] or 0)
             bid_coverage_pct = round((bid_pkgs / total_pkgs * 100) if total_pkgs > 0 else 100)
@@ -622,6 +632,7 @@ def executive_report():
                 "icon": icon,
                 "schedule": sched,
                 "max_variance_days": max_var,
+                "schedule_variance_days": signed_variance_days,
                 "high_variance_items": high_var,
                 "total_variance_items": row["total_variance"] or 0,
                 "open_risks": open_risks,
@@ -4431,29 +4442,41 @@ _AGENT_ALIASES = {
 }
 
 
-def _touch_heartbeat(agent: str, action: str = ""):
+def _touch_heartbeat(agent: str, action: str = "", role: str = None,
+                      current_task: str = None, last_directive_id: int = None,
+                      metadata: dict = None) -> Optional[str]:
     key = _AGENT_ALIASES.get((agent or "").strip().lower())
     if key not in AI_HEARTBEAT_AGENTS:
-        return
+        return None
     try:
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO ai_agent_heartbeat (agent, last_seen_at, last_action, status)
-                    VALUES (%s, NOW(), %s, 'ONLINE')
+                    INSERT INTO ai_agent_heartbeat
+                        (agent, last_seen_at, last_action, status, role, current_task,
+                         last_directive_id, metadata)
+                    VALUES (%s, NOW(), %s, 'ONLINE', %s, %s, %s, COALESCE(%s, '{}'::jsonb))
                     ON CONFLICT (agent) DO UPDATE
-                        SET last_seen_at = NOW(), last_action = EXCLUDED.last_action, status = 'ONLINE'
-                """, (key, (action or "")[:200]))
+                        SET last_seen_at = NOW(), last_action = EXCLUDED.last_action, status = 'ONLINE',
+                            role = COALESCE(EXCLUDED.role, ai_agent_heartbeat.role),
+                            current_task = COALESCE(EXCLUDED.current_task, ai_agent_heartbeat.current_task),
+                            last_directive_id = COALESCE(EXCLUDED.last_directive_id, ai_agent_heartbeat.last_directive_id),
+                            metadata = CASE WHEN EXCLUDED.metadata = '{}'::jsonb THEN ai_agent_heartbeat.metadata
+                                            ELSE EXCLUDED.metadata END
+                """, (key, (action or "")[:200], role, current_task, last_directive_id,
+                      json.dumps(metadata) if metadata else None))
             conn.commit()
     except Exception:
         pass
+    return key
 
 
 def _create_ai_message(source, target, message_type, title, body, project_code=None,
                         requires_buck_approval=False, approval_type=None,
                         related_file=None, related_handoff_id=None,
-                        related_approval_id=None) -> int:
-    status = "NEEDS_BUCK_APPROVAL" if requires_buck_approval else "NEW"
+                        related_approval_id=None, priority="medium",
+                        source_of_truth_link=None) -> int:
+    status = "NEEDS_BUCK_APPROVAL" if requires_buck_approval else "ISSUED"
     next_owner = "buck" if requires_buck_approval else target
     with _pg() as conn:
         with conn.cursor() as cur:
@@ -4461,11 +4484,11 @@ def _create_ai_message(source, target, message_type, title, body, project_code=N
                 INSERT INTO ai_messages
                     (source_agent, target_agent, project_code, message_type, title, body, status,
                      requires_buck_approval, approval_type, related_file, related_handoff_id,
-                     related_approval_id, next_action_owner)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                     related_approval_id, next_action_owner, priority, source_of_truth_link)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
             """, (source, target, project_code, message_type, title, body, status,
                   requires_buck_approval, approval_type, related_file, related_handoff_id,
-                  related_approval_id, next_owner))
+                  related_approval_id, next_owner, priority, source_of_truth_link))
             mid = cur.fetchone()["id"]
         conn.commit()
     return mid
@@ -4525,14 +4548,15 @@ def _tg_send_with_id(text: str, reply_markup: dict = None) -> dict:
 def _notify_agents(source: str, target: str, message_type: str, title: str, body: str,
                     project_code: str = None, requires_buck_approval: bool = False,
                     approval_type: str = None, related_file: str = None,
-                    related_handoff_id: str = None, related_approval_id: int = None) -> dict:
+                    related_handoff_id: str = None, related_approval_id: int = None,
+                    priority: str = "medium", source_of_truth_link: str = None) -> dict:
     """Single entry point for agent-to-agent / agent-to-Buck notices: DB row first
     (source of truth, survives Telegram outages), then Telegram with automatic ntfy
     fallback on failure. Replaces bare _tg_send() at alert sites — audit 2026-06-30
     confirmed two production alerts were silently dropped with no fallback."""
     msg_id = _create_ai_message(source, target, message_type, title, body, project_code,
                                  requires_buck_approval, approval_type, related_file, related_handoff_id,
-                                 related_approval_id)
+                                 related_approval_id, priority, source_of_truth_link)
     sent = {"status": "skipped"}
     if message_type in NOTIFY_MESSAGE_TYPES or requires_buck_approval:
         icons = {"approval_request": "✅", "risk_alert": "🚨", "blocked_mission": "⛔",
@@ -4564,16 +4588,19 @@ def _handle_buck_command(text: str) -> Optional[str]:
     cmd = parts[0].upper()
     if cmd in ("APPROVE", "REJECT", "HOLD") and len(parts) >= 2 and parts[1].isdigit():
         msg_id = int(parts[1])
-        new_status = {"APPROVE": "RECEIVED", "REJECT": "FAILED", "HOLD": "BLOCKED"}[cmd]
+        new_status = {"APPROVE": "RECEIVED", "REJECT": "REJECTED", "HOLD": "BLOCKED"}[cmd]
         next_owner = {"APPROVE": None, "REJECT": None, "HOLD": "buck"}[cmd]  # APPROVE hands back to requester
         try:
             with _pg() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
                         UPDATE ai_messages SET status=%s, telegram_acknowledged_at=NOW(), updated_at=NOW(),
+                            acknowledged_at = COALESCE(acknowledged_at, NOW()),
+                            received_at = CASE WHEN %s = 'RECEIVED' THEN COALESCE(received_at, NOW()) ELSE received_at END,
+                            blocked_reason = CASE WHEN %s = 'BLOCKED' THEN 'Held by Buck via Telegram' ELSE blocked_reason END,
                             next_action_owner = COALESCE(%s, CASE WHEN %s THEN source_agent ELSE next_action_owner END)
                         WHERE id=%s RETURNING title
-                    """, (new_status, next_owner, cmd == "APPROVE", msg_id))
+                    """, (new_status, new_status, new_status, next_owner, cmd == "APPROVE", msg_id))
                     row = cur.fetchone()
                 conn.commit()
             if not row:
@@ -4589,7 +4616,7 @@ def _handle_buck_command(text: str) -> Optional[str]:
                 with conn.cursor() as cur:
                     cur.execute("""
                         SELECT status, COUNT(*) AS n FROM ai_messages
-                        WHERE status NOT IN ('COMPLETE','FAILED') GROUP BY status
+                        WHERE status NOT IN ('COMPLETE','REJECTED') GROUP BY status
                     """)
                     counts = {r["status"]: r["n"] for r in cur.fetchall()}
             lines = [f"{k}: {v}" for k, v in counts.items()] or ["Nothing pending."]
@@ -4602,7 +4629,7 @@ def _handle_buck_command(text: str) -> Optional[str]:
                 with conn.cursor() as cur:
                     cur.execute("""
                         SELECT id, title, status FROM ai_messages
-                        WHERE status IN ('NEW','NEEDS_BUCK_APPROVAL','STALE')
+                        WHERE status IN ('ISSUED','NEEDS_BUCK_APPROVAL','STALE')
                         ORDER BY created_at ASC LIMIT 8
                     """)
                     rows = cur.fetchall()
@@ -4638,7 +4665,7 @@ def _comms_snapshot() -> dict:
                 cur.execute("""SELECT COUNT(*) n FROM ai_messages
                     WHERE requires_buck_approval AND status IN ('NEEDS_BUCK_APPROVAL','STALE')""")
                 pending_approvals = cur.fetchone()["n"]
-                cur.execute("SELECT COUNT(*) n FROM ai_messages WHERE status = 'NEW'")
+                cur.execute("SELECT COUNT(*) n FROM ai_messages WHERE status = 'ISSUED'")
                 unacked = cur.fetchone()["n"]
                 cur.execute("SELECT COUNT(*) n FROM ai_messages WHERE status = 'STALE'")
                 stale = cur.fetchone()["n"]
@@ -4646,7 +4673,10 @@ def _comms_snapshot() -> dict:
                         (SELECT COUNT(*) FROM ai_messages WHERE status = 'BLOCKED') +
                         (SELECT COUNT(*) FROM missions WHERE status = 'BLOCKED') AS n""")
                 blocked = cur.fetchone()["n"]
-                cur.execute("SELECT agent, last_seen_at, last_action, status FROM ai_agent_heartbeat ORDER BY agent")
+                cur.execute("""SELECT COUNT(*) n FROM ai_messages
+                    WHERE status IN ('ISSUED','RECEIVED','IN_PROGRESS')""")
+                active_directives = cur.fetchone()["n"]
+                cur.execute("SELECT agent, last_seen_at, last_action, status, role, current_task, last_directive_id, metadata FROM ai_agent_heartbeat ORDER BY agent")
                 heartbeats = _classify_heartbeats(cur.fetchall())
                 cur.execute("SELECT MAX(published_at) t FROM platform_events WHERE event_type='buck_message'")
                 row = cur.fetchone()
@@ -4657,6 +4687,7 @@ def _comms_snapshot() -> dict:
                     FROM ai_messages WHERE created_at > NOW() - INTERVAL '24 hours'""")
                 tg24 = dict(cur.fetchone())
         return {
+            "active_directives": active_directives,
             "pending_buck_approvals": pending_approvals,
             "unacknowledged_ai_messages": unacked,
             "stale_handoffs_or_approvals": stale,
@@ -4664,9 +4695,26 @@ def _comms_snapshot() -> dict:
             "agent_heartbeats": heartbeats,
             "last_buck_message_received_at": last_buck,
             "telegram_health_last_24h": tg24,
+            "current_sprint": _current_sprint_label(),
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+def _current_sprint_label() -> Optional[str]:
+    """First '**Sprint:**' or '## ... Sprint N' line from CURRENT_SPRINT.md — Mission
+    Control needs sprint visibility without duplicating sprint state anywhere new."""
+    try:
+        path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "CURRENT_SPRINT.md"))
+        with open(path) as f:
+            for line in f:
+                if line.startswith("**Sprint Name:**") or line.startswith("**Sprint Number:**"):
+                    continue
+                if line.startswith("## ") and "Sprint" in line:
+                    return line.lstrip("# ").strip()
+        return None
+    except Exception:
+        return None
 
 
 class AIMessageCreate(BaseModel):
@@ -4681,22 +4729,83 @@ class AIMessageCreate(BaseModel):
     related_file: Optional[str] = None
     related_handoff_id: Optional[str] = None
     related_approval_id: Optional[int] = None
+    priority: str = "medium"
+    source_of_truth_link: Optional[str] = None
 
 
 @router.post("/ai/messages")
 async def ai_messages_create(req: AIMessageCreate):
-    """Create a durable agent message/task. DB row is the source of truth; Telegram
-    notification (with ntfy fallback) is sent automatically for notify-worthy types
-    (approval_request, risk_alert, blocked_mission, handoff_waiting, work_complete,
-    review_required) or whenever requires_buck_approval is true."""
+    """Create a durable agent message/task (this IS the directive system — ai_directives
+    was not created as a separate table per ARB 2026-07-01, extending this one instead).
+    DB row is the source of truth; Telegram notification (with ntfy fallback) is sent
+    automatically for notify-worthy types (approval_request, risk_alert, blocked_mission,
+    handoff_waiting, work_complete, review_required) or whenever requires_buck_approval is true."""
     t0 = time.time()
     _touch_heartbeat(req.source_agent, f"sent {req.message_type}: {req.title[:60]}")
     result = _notify_agents(req.source_agent, req.target_agent, req.message_type, req.title, req.body,
                              req.project_code, req.requires_buck_approval, req.approval_type,
-                             req.related_file, req.related_handoff_id, req.related_approval_id)
+                             req.related_file, req.related_handoff_id, req.related_approval_id,
+                             req.priority, req.source_of_truth_link)
     _log("/ai/messages", req.source_agent, "ai_messages", "ok", int((time.time()-t0)*1000),
          str(result["id"]), req.title[:60])
     return _response("/ai/messages", result, start=t0)
+
+
+@router.get("/ai/messages/{msg_id}")
+def ai_message_get(msg_id: int):
+    """Read a single directive/message by id — the 'read' endpoint of the directive lifecycle."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM ai_messages WHERE id = %s", (msg_id,))
+                row = cur.fetchone()
+        if not row:
+            return _response(f"/ai/messages/{msg_id}", {}, errors=["not found"], start=t0)
+        row = dict(row)
+        for k in ("created_at", "updated_at", "telegram_sent_at", "telegram_acknowledged_at",
+                  "received_at", "acknowledged_at", "started_at", "completed_at"):
+            if row.get(k):
+                row[k] = row[k].isoformat()
+        return _response(f"/ai/messages/{msg_id}", row, start=t0)
+    except Exception as e:
+        return _response(f"/ai/messages/{msg_id}", {}, errors=[str(e)], start=t0)
+
+
+class AIMessageAcknowledge(BaseModel):
+    agent: str
+
+
+@router.post("/ai/messages/{msg_id}/acknowledge")
+async def ai_message_acknowledge(msg_id: int, req: AIMessageAcknowledge):
+    """Explicit ISSUED -> RECEIVED transition — the 'acknowledge' endpoint of the
+    directive lifecycle, distinct from the generic status PATCH below."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE ai_messages SET status='RECEIVED', updated_at=NOW(),
+                        received_at = COALESCE(received_at, NOW()),
+                        acknowledged_at = COALESCE(acknowledged_at, NOW())
+                    WHERE id=%s AND status IN ('ISSUED','STALE') RETURNING id, title
+                """, (msg_id,))
+                row = cur.fetchone()
+            conn.commit()
+        if not row:
+            return _response(f"/ai/messages/{msg_id}/acknowledge", {},
+                              errors=["not found, or not in an acknowledgeable state (ISSUED/STALE)"], start=t0)
+        _touch_heartbeat(req.agent, f"acknowledged #{msg_id}")
+        return _response(f"/ai/messages/{msg_id}/acknowledge", {"id": msg_id, "status": "RECEIVED"}, start=t0)
+    except Exception as e:
+        return _response(f"/ai/messages/{msg_id}/acknowledge", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/ai/directives/stale")
+def ai_directives_stale():
+    """Named alias over GET /ai/queue?status=STALE — ARB directive asked for a distinct
+    'stale directives' endpoint; same table, no second system."""
+    return ai_queue(status="STALE")
 
 
 @router.get("/ai/queue")
@@ -4749,43 +4858,79 @@ def ai_approvals():
 class AIMessageStatusUpdate(BaseModel):
     status: str
     agent: Optional[str] = "system"
+    blocked_reason: Optional[str] = None
+
+
+_DIRECTIVE_STATUS_TIMESTAMP_COL = {
+    "RECEIVED": "received_at",
+    "IN_PROGRESS": "started_at",
+    "COMPLETE": "completed_at",
+}
 
 
 @router.patch("/ai/messages/{msg_id}/status")
 async def ai_message_status(msg_id: int, req: AIMessageStatusUpdate):
-    """Agent self-report: RECEIVED / IN_PROGRESS / BLOCKED / COMPLETE / etc."""
+    """Agent self-report: RECEIVED / IN_PROGRESS / BLOCKED / COMPLETE / REJECTED / etc.
+    Stamps the matching lifecycle timestamp (received_at/started_at/completed_at) and,
+    for BLOCKED, records blocked_reason — required fields per ARB directive 2026-07-01."""
     t0 = time.time()
-    valid = {"NEW", "RECEIVED", "IN_PROGRESS", "BLOCKED", "COMPLETE",
-              "NEEDS_BUCK_APPROVAL", "FAILED", "STALE"}
+    valid = {"ISSUED", "RECEIVED", "IN_PROGRESS", "BLOCKED", "COMPLETE",
+              "NEEDS_BUCK_APPROVAL", "REJECTED", "STALE"}
     if req.status not in valid:
         return _response(f"/ai/messages/{msg_id}/status", {},
                           errors=[f"invalid status, must be one of {sorted(valid)}"], start=t0)
+    ts_col = _DIRECTIVE_STATUS_TIMESTAMP_COL.get(req.status)
     try:
         with _pg() as conn:
             with conn.cursor() as cur:
-                cur.execute("UPDATE ai_messages SET status=%s, updated_at=NOW() WHERE id=%s RETURNING id",
-                            (req.status, msg_id))
+                if ts_col:
+                    cur.execute(f"""
+                        UPDATE ai_messages SET status=%s, updated_at=NOW(),
+                            {ts_col} = COALESCE({ts_col}, NOW())
+                        WHERE id=%s RETURNING id
+                    """, (req.status, msg_id))
+                elif req.status == "BLOCKED":
+                    cur.execute("""
+                        UPDATE ai_messages SET status=%s, updated_at=NOW(), blocked_reason=%s
+                        WHERE id=%s RETURNING id
+                    """, (req.status, req.blocked_reason, msg_id))
+                else:
+                    cur.execute("UPDATE ai_messages SET status=%s, updated_at=NOW() WHERE id=%s RETURNING id",
+                                (req.status, msg_id))
                 row = cur.fetchone()
             conn.commit()
         if not row:
             return _response(f"/ai/messages/{msg_id}/status", {}, errors=["not found"], start=t0)
-        _touch_heartbeat(req.agent, f"set #{msg_id} -> {req.status}")
+        _touch_heartbeat(req.agent, f"set #{msg_id} -> {req.status}", last_directive_id=msg_id)
         return _response(f"/ai/messages/{msg_id}/status", {"id": msg_id, "status": req.status}, start=t0)
     except Exception as e:
         return _response(f"/ai/messages/{msg_id}/status", {}, errors=[str(e)], start=t0)
 
 
-@router.post("/ai/heartbeat")
-async def ai_heartbeat(request: Request):
-    """Explicit agent ping — also touched implicitly by /ai/messages and /agent/handoff."""
+async def _heartbeat_handler(request: Request, response_path: str):
     t0 = time.time()
     body = await request.json()
     agent = (body.get("agent") or "").strip().lower()
     action = body.get("action", "ping")
     if _AGENT_ALIASES.get(agent) not in AI_HEARTBEAT_AGENTS:
-        return _response("/ai/heartbeat", {}, errors=[f"unknown agent, must be one of {sorted(AI_HEARTBEAT_AGENTS)}"], start=t0)
-    _touch_heartbeat(agent, action)
-    return _response("/ai/heartbeat", {"agent": _AGENT_ALIASES[agent], "status": "alive"}, start=t0)
+        return _response(response_path, {}, errors=[f"unknown agent, must be one of {sorted(AI_HEARTBEAT_AGENTS)}"], start=t0)
+    _touch_heartbeat(agent, action, role=body.get("role"), current_task=body.get("current_task"),
+                      last_directive_id=body.get("last_directive_id"), metadata=body.get("metadata"))
+    return _response(response_path, {"agent": _AGENT_ALIASES[agent], "status": "alive"}, start=t0)
+
+
+@router.post("/ai/heartbeat")
+async def ai_heartbeat(request: Request):
+    """Explicit agent ping — also touched implicitly by /ai/messages and /agent/handoff.
+    Fields: agent, action, role, current_task, last_directive_id, metadata."""
+    return await _heartbeat_handler(request, "/ai/heartbeat")
+
+
+@router.post("/heartbeat")
+async def heartbeat_alias(request: Request):
+    """Literal /gateway/heartbeat path required by the ARB directive — same handler as
+    /gateway/ai/heartbeat, not a second implementation."""
+    return await _heartbeat_handler(request, "/heartbeat")
 
 
 @router.post("/ai/escalation-check")
@@ -4943,7 +5088,7 @@ def ai_warm_start():
 
                 cur.execute("""
                     SELECT id, title, status, created_at FROM ai_messages
-                    WHERE target_agent = 'chatgpt' AND status NOT IN ('COMPLETE','FAILED')
+                    WHERE target_agent = 'chatgpt' AND status NOT IN ('COMPLETE','REJECTED')
                     ORDER BY created_at ASC
                 """)
                 pending_gbt = [dict(r) for r in cur.fetchall()]
@@ -4980,7 +5125,7 @@ def ai_warm_start():
                     r["created_at"] = r["created_at"].isoformat()
                 out["stale_handoffs"] = stale
 
-                cur.execute("SELECT agent, last_seen_at, last_action, status FROM ai_agent_heartbeat ORDER BY agent")
+                cur.execute("SELECT agent, last_seen_at, last_action, status, role, current_task, last_directive_id, metadata FROM ai_agent_heartbeat ORDER BY agent")
                 out["agent_heartbeats"] = _classify_heartbeats(cur.fetchall())
 
                 cur.execute("""SELECT MAX(telegram_sent_at) t FROM ai_messages

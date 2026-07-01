@@ -1,9 +1,9 @@
 {
-  "run_at": "2026-06-27T18:47:53.862367",
-  "passed": 11,
-  "failed": 0,
+  "run_at": "2026-06-30T23:22:27.355159",
+  "passed": 10,
+  "failed": 1,
   "total": 11,
-  "pass_rate": 100.0,
+  "pass_rate": 90.9,
   "tests": [
     {
       "test": "Service info",
@@ -31,7 +31,7 @@
     },
     {
       "test": "API health validates all 18 probes",
-      "pass": true
+      "pass": false
     },
     {
       "test": "Health check",
