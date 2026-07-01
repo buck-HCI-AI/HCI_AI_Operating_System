@@ -30,10 +30,13 @@ Rules, authority, and accountability. Who can approve what. How the AI team oper
 ### Part I — Business Operations
 
 **Note (Claude Code, 2026-07-01):** this table originally described a planned 16-chapter
-outline before the chapters existed. GBT has since delivered 12 chapters — table below
-corrected to match what was actually written (titles/topics shifted from the original
-plan). Four originally-planned topics are not yet covered as standalone chapters —
-see "Documentation Gaps" below.
+outline before the chapters existed. GBT's 12 chapters (1-12) shifted titles/topics from
+that original plan (corrected below to match what was actually written). Chapters 13-16
+were then written by Claude Code per Buck's directive to fill the remaining real gaps,
+using the topic assignments from the original Chief Architect chapter-assignment handoff
+(`architecture/Agent_Handoff/Processed/GBT_HANDOFF_2026-06-30_OPERATIONS_MANUAL...`) for
+the three that were still unwritten (Submittals, RFI, Close-Out), plus a Financial
+Management & Approvals chapter distinct from Ch.08's project-level budget focus.
 
 | Chapter | Title | Author | Status |
 |---------|-------|--------|--------|
@@ -43,22 +46,22 @@ see "Documentation Gaps" below.
 | 04 | Project Manager Daily Workflow | GBT | ✅ Complete |
 | 05 | Bid Package Management | GBT | ✅ Complete |
 | 06 | Vendor and Subcontractor Management | GBT | ✅ Complete |
-| 07 | Contract Management | GBT | ✅ Complete |
+| 07 | Contract Management (incl. Change Order Management, §7.5) | GBT | ✅ Complete |
 | 08 | Budget and Financial Controls | GBT | ✅ Complete |
 | 09 | Schedule Management | GBT | ✅ Complete |
 | 10 | Risk Management | GBT | ✅ Complete |
 | 11 | Client Management | GBT | ✅ Complete |
 | 12 | Insurance and Compliance | GBT | ✅ Complete |
+| 13 | Submittal Management | Claude Code | ✅ Complete |
+| 14 | Financial Management & Approvals (company-wide + accounting console) | Claude Code | ✅ Complete |
+| 15 | RFI Management | Claude Code | ✅ Complete |
+| 16 | Project Close-Out | Claude Code | ✅ Complete |
 
-**Documentation Gaps — not yet covered as standalone chapters:**
-- RFI Management (touched on tangentially in Ch.04/Ch.03; no dedicated chapter)
-- Change Order Management (touched on tangentially in Ch.07/Ch.08; no dedicated chapter)
-- Submittal Management (not covered)
-- Project Close-Out (not covered)
-
-Recommend these four as Chapters 13-16 to complete Part I as originally scoped, or fold
-each into its closest existing chapter (RFI→Ch.04, Change Orders→Ch.07/08, Submittals→
-Ch.05, Close-Out→new) if Buck prefers 12 chapters over 16 — Chief Architect's call.
+**Remaining gap:** "Owner & Executive Daily Workflow" was the Chief Architect's original
+Chapter 05 assignment (and top-priority item) but was never written as a standalone
+chapter — Ch.05 as delivered covers Bid Package Management instead. Buck's daily workflow
+is partially covered inside Ch.02 (Morning Routine) but has no dedicated chapter. Flagged
+for Chief Architect / Buck — not written here since it wasn't in the requested 13-16 range.
 
 ### Part II — AI System Operations
 
@@ -124,6 +127,7 @@ Ch.05, Close-Out→new) if Buck prefers 12 chapters over 16 — Chief Architect'
 | Date | Version | Change | By |
 |------|---------|--------|----|
 | 2026-06-30 | 1.0 | Initial creation — full overnight build | Claude Code + GBT |
+| 2026-07-01 | 1.1 | Index corrected to match delivered Ch.1-12; added Ch.13-16 (Submittals, Financial Mgmt & Approvals, RFI, Close-Out) | Claude Code |
 
 *This manual is maintained in `/Users/buckadams/HCI_AI_Operating_System/Operations_Manual/`*
 *GBT can read it at: `GET /gateway/drive/search?q=Operations+Manual`*

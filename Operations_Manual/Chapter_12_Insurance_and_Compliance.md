@@ -159,4 +159,4 @@ HCI's current portfolio is all single-family residential — these do not typica
 
 ---
 
-*Next: Chapter 13 — HubSpot and CRM Operations*
+*Next: Chapter 13 — Submittal Management*
