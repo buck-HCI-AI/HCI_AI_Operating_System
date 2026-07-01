@@ -1117,3 +1117,536 @@ Buildings will continue to rise from concrete, steel, wood, and glass.
 Hendrickson Construction will continue to be built from something less visible but ever more valuable: disciplined people, trusted relationships, hard-earned experience, and a shared operating system that ensures none of those assets are ever lost.
 
 That is the future of HCI — not simply a company that uses AI, but a company whose collective intelligence grows every day, making each project safer, smarter, more predictable, and more successful than the last.
+
+---
+
+## Chapter 13 — Implementation Guide
+
+### How to Build, Extend, and Maintain the HCI AI Operating System
+
+The HCI AI Operating System is designed to outlive individual developers, AI models, and software frameworks.
+
+This chapter exists for the people who will inherit the system.
+
+Some will be software developers.
+
+Some will be project managers.
+
+Some will be future AI agents.
+
+Some may not yet exist.
+
+The objective is simple:
+
+Leave the operating system better than you found it.
+
+Every enhancement should improve the platform without increasing unnecessary complexity.
+
+The operating system is successful when future contributors extend it naturally rather than rebuilding it.
+
+**The First Rule**
+
+Before writing code:
+
+Read the current state.
+
+Never begin implementation from memory.
+
+Always begin from operational truth.
+
+Review:
+
+- Mission Control
+- LIVE_PROJECT_STATE
+- CURRENT_SPRINT
+- Architecture Decision Records
+- Open implementation directives
+- Approval Queue
+- Recent Architecture Review Board decisions
+
+Then build.
+
+---
+
+### 1. Adding a New Workflow
+
+A workflow is a repeatable automated process that executes a business function.
+
+Before adding one, confirm it does not already exist.
+
+Search the n8n workflow registry.
+
+Search the Python workflow directory.
+
+If a workflow already exists, extend it.
+
+**Step 1 — Define the Business Function**
+
+A workflow exists because a business function requires it.
+
+Document:
+
+- What business process does this automate?
+- What SOP governs it?
+- What approvals does it require?
+- What data does it read?
+- What data does it write?
+- Who is the operational owner?
+
+No implementation begins without a documented business function.
+
+**Step 2 — Follow Naming Conventions**
+
+Workflow names should be descriptive and stable.
+
+Examples:
+
+- WF-003 Morning Brief
+- WF-012 Daily Field Report
+- WF-021 Bid Comparison
+- WF-034 Vendor Intelligence Refresh
+
+Avoid names based on implementation details.
+
+Prefer names based on business function.
+
+**Step 3 — Link to an SOP**
+
+Every production workflow should reference its governing Standard Operating Procedure.
+
+The workflow should answer:
+
+- Why does it exist?
+- What business process does it implement?
+- What approvals apply?
+- What evidence is retained?
+
+Automation without documentation becomes operational debt.
+
+**Step 4 — Register in n8n**
+
+For automated workflows:
+
+1. Create a new workflow in n8n at localhost:5678
+2. Name it using the WF-NNN convention
+3. Add a trigger: webhook, schedule, or event
+4. Wire data transformations in the node sequence
+5. Add approval gates where writes occur
+6. Add error handling on every node that touches production data
+7. Test against staging data before activating
+
+**Step 5 — Expose via Gateway (if AI-accessible)**
+
+If the workflow should be callable by AI agents:
+
+1. Add an endpoint to the FastAPI router at api/routers/
+2. Register the capability in the GBT gateway OpenAPI spec
+3. Document the request and response schema
+4. Add authentication enforcement
+5. Wire to the workflow trigger via HTTP or direct function call
+6. Test the end-to-end path from GBT gateway to FastAPI to n8n to result
+
+**Step 6 — Validate Against the Testing Gate**
+
+The system requires 48/48 tests to pass before any workflow is considered production-ready.
+
+Run the full test suite:
+
+- Unit test the workflow logic
+- Integration test the data paths
+- Smoke test the gateway call
+- Verify the approval gate blocks writes without authorization
+
+Add the new workflow to the test matrix.
+
+The gate does not pass until the new workflow is covered.
+
+---
+
+### 2. Extending the GBT Gateway
+
+The Gateway is the public interface to the operating system.
+
+Treat it as a product.
+
+**Step 1 — Determine Whether an Endpoint Already Exists**
+
+Search first.
+
+Never duplicate existing capability.
+
+Questions:
+
+- Does another endpoint already solve this?
+- Can an existing endpoint be extended?
+- Is the business object already represented?
+
+Prefer extension over creation.
+
+**Step 2 — Write the OpenAPI Spec Entry**
+
+The gateway spec lives at: 03_Source_Code/api/routers/gbt_gateway.py
+
+Add:
+
+- A clear operation summary
+- Request body schema with field descriptions
+- Response schema with field descriptions
+- Authentication requirement
+- Error response documentation
+
+The spec is the contract.
+
+Implementation should match the spec exactly.
+
+**Step 3 — Wire to the FastAPI Router**
+
+Add the handler function.
+
+The handler should:
+
+- Validate the request
+- Authenticate the caller
+- Route to the appropriate service or workflow
+- Return a structured response
+- Log the operation to the audit trail
+
+Testing should prove that implementation matches the documented contract.
+
+---
+
+### 3. Adding a New Construction Project
+
+Projects should enter the operating system consistently.
+
+Every project follows the same initialization sequence.
+
+**Step 1 — Create Project State**
+
+Create the Project State record.
+
+Include:
+
+- project identifier
+- client
+- address
+- owner
+- phase
+- budget
+- schedule
+- health
+- active sprint
+- responsible personnel
+
+This becomes the canonical project identity.
+
+**Step 2 — Initialize the Approval Queue**
+
+Every project requires its own approval queue entries.
+
+No writes occur without approval queue enforcement.
+
+Confirm:
+
+- The project identifier is registered
+- All write operations route through the queue
+- Buck Adams is the authorizing approver for all entries
+- The queue is visible in Mission Control
+
+**Step 3 — Link to the Morning Brief**
+
+The morning brief runs daily.
+
+Add the new project to the morning brief configuration so Buck receives daily status.
+
+Confirm the project appears in:
+
+- morning brief output
+- project health dashboard
+- approval queue summary
+
+**Step 4 — Validate Data Integrity**
+
+Before the project enters production:
+
+- Confirm all required fields are populated
+- Confirm no test data remains in production records
+- Confirm schedule items reflect real dates
+- Confirm risk counts are accurate
+- Confirm bid packages reflect real procurement status
+
+Data integrity is confirmed before the project is considered live.
+
+---
+
+### 4. Onboarding a New AI Agent
+
+New AI participants should be treated as new team members.
+
+Capabilities should be explicit.
+
+Responsibilities should be limited.
+
+Authority should be documented.
+
+**Step 1 — Define the Role**
+
+Document:
+
+- responsibilities
+- authority
+- limitations
+- operational owner
+
+Avoid overlapping responsibilities whenever practical.
+
+**Step 2 — Write the Capability File**
+
+Every AI agent requires a capability file in AI_TEAM/.
+
+The file documents:
+
+- What the agent can do
+- What the agent cannot do
+- What approvals the agent requires
+- What data sources the agent can access
+- What actions require human review
+
+Future operators should never guess what an AI participant is allowed to do.
+
+**Step 3 — Establish the Inbox/Outbox Pattern**
+
+The agent receives work through directives.
+
+The agent delivers results through commits or gateway responses.
+
+Directives are written by Browser Claude and approved by GBT before dispatch.
+
+Results are committed to the repository.
+
+No agent should communicate operational decisions directly to external parties without human approval.
+
+**Step 4 — Require ARB Review**
+
+Before the agent operates in production, the Architecture Review Board approves:
+
+- the agent's capability scope
+- the agent's authority limits
+- the integration points
+- the failure modes and fallbacks
+
+The Architecture Review Board approves structural changes to the AI organization.
+
+**Step 5 — Capability Documentation**
+
+Document:
+
+- supported operations
+- prohibited operations
+- approval requirements
+- known limitations
+- integration points
+
+Future operators should never guess what an AI participant is allowed to do.
+
+---
+
+### 5. Running a System Audit
+
+The Browser Claude audit process should become institutional practice.
+
+Every significant review should follow the same sequence.
+
+**Step 1 — Review Repository Activity**
+
+Inspect:
+
+- recent commits
+- open directives
+- pending inbox items
+- unresolved blockers
+
+The repository is the source of truth.
+
+**Step 2 — Review Email Paths**
+
+Verify:
+
+- all email send paths are accounted for
+- no unauthorized sends have occurred
+- draft-only enforcement is active
+- approval queue is enforcing authorization before delivery
+
+Email governance is non-negotiable.
+
+**Step 3 — Review Live Data vs. Test Data**
+
+Confirm:
+
+- production records contain real field data
+- no test seeds remain in live tables
+- superintendent names reflect actual personnel
+- risk counts are accurate
+- schedule items reflect real dates
+
+Test data in production causes operational errors.
+
+**Step 4 — Review Sprint State**
+
+Confirm:
+
+- LIVE_PROJECT_STATE is current
+- CURRENT_SPRINT reflects active work
+- completed items are closed
+- open items have owners and timelines
+
+Sprint state should reflect operational reality.
+
+**Step 5 — Fire a Verification Directive**
+
+Dispatch a structured directive to Claude Code.
+
+The directive should:
+
+- list open items requiring resolution
+- specify the expected output format
+- require a commit confirming completion
+- include a deadline
+
+Directives without completion criteria are advisory.
+
+Directives with completion criteria are operational.
+
+**Step 6 — Review Mission Control**
+
+Confirm:
+
+- project health
+- AI health
+- approvals
+- directives
+- risks
+- system status
+
+Mission Control should accurately represent operational state.
+
+**Step 7 — Review Governance**
+
+Verify:
+
+- approval enforcement
+- audit logging
+- authorization
+- documentation
+
+Governance should be visible.
+
+**Step 8 — Document Findings**
+
+Every audit produces a findings document.
+
+The document includes:
+
+- what was audited
+- what was found
+- what was corrected
+- what remains open
+- who is responsible for open items
+
+Findings without documentation do not exist.
+
+**Step 9 — Report to Buck**
+
+Every audit concludes with a direct report to Buck Adams.
+
+The report should be brief, specific, and actionable.
+
+Buck makes final decisions on open items.
+
+---
+
+### 6. System Health Checklist
+
+**Daily**
+
+- Morning brief delivered to Buck
+- Approval queue reviewed
+- Project health: green/yellow/red for all active projects
+- AI agent status: all agents operational or documented as offline
+- Open directives: acknowledged and assigned
+- Email paths: no unauthorized sends in the last 24 hours
+
+**Weekly**
+
+- Sprint state reviewed and updated
+- Architecture Decision Records updated
+- Repository commits reviewed for consistency
+- Vendor intelligence updated
+- Field data accuracy confirmed
+- Review Mission Control dashboard against live system state
+- Vendor intelligence updates
+- Workflow health inspection
+- Backup success confirmed
+- Approval history reviewed
+- Recurring incidents documented
+- Opportunities to simplify the system identified
+
+Weekly reviews focus on trends rather than individual events.
+
+**Sprint Close Checklist**
+
+A sprint should close only after confirming:
+
+- implementation complete
+- testing complete
+- documentation updated
+- governance verified
+- Architecture Review Board approval recorded
+- Mission Control synchronized
+- repository consistent
+- production state validated
+- outstanding risks assigned
+
+Code completion alone does not end a sprint.
+
+Operational readiness does.
+
+---
+
+**Closing Principle**
+
+The HCI AI Operating System is a living platform.
+
+It will grow as HCI grows.
+
+It will adapt as construction practice evolves.
+
+It will incorporate new tools, new AI models, and new integrations.
+
+The principles that should not change:
+
+- Governance before automation
+- Audit before build
+- Documentation as implementation
+- Human authority over consequential decisions
+- Every system earns the trust placed in it
+
+AI models will change.
+
+Construction methods will evolve.
+
+The principles behind the HCI AI Operating System should remain stable.
+
+Protect the source of truth.
+
+Preserve governance.
+
+Document decisions.
+
+Prefer simplicity.
+
+Build systems that survive restarts, personnel changes, and years of continuous operation.
+
+If future developers, future project managers, and future AI agents can inherit the platform and confidently extend it without first untangling it, then the implementation guide has fulfilled its purpose.
+
+That is the standard to which every contributor should hold themselves—and the standard by which the HCI AI Operating System should continue to evolve.
