@@ -261,6 +261,27 @@ if before_count > 0:
 code, d = get("/telegram/messages", {"agent": "not_a_real_agent"})
 check("Unknown agent rejected", bool(d.get("errors")), d)
 
+# ── 17. Self-send allowlist (2026-07-01: Buck confirmed auto-send to his own inbox) ─
+print("\n17. microsoft_graph.send_email() self-send allowlist")
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "integrations"))
+from microsoft_graph import send_email as _send_email, _all_recipients_self
+
+check("Buck's own address recognized as self-send", _all_recipients_self([("Buck Adams", "buck@hendricksoninc.com")]))
+check("Buck's alt address recognized as self-send", _all_recipients_self([("Buck", "buck@ahmaspen.com")]))
+check("External address is NOT self-send", not _all_recipients_self([("Someone", "someone@example.com")]))
+check("Mixed self+external is NOT self-send (fails closed)",
+      not _all_recipients_self([("Buck", "buck@hendricksoninc.com"), ("Ext", "ext@example.com")]))
+
+result, err = _send_email("[TEST] automated regression — self-send allowlist", "<p>test</p>",
+                           [("Buck Adams", "buck@hendricksoninc.com")])
+check("send_email() to Buck's own address succeeds without drafting", err is None and "queued_draft_id" not in (result or {}), (result, err))
+
+result2, err2 = _send_email("[TEST] automated regression — external still gated", "<p>test</p>",
+                             [("Someone", "someone@example.com")])
+check("send_email() to external address still drafts, never sends",
+      err2 is None and result2.get("status") == "drafted_pending_approval", (result2, err2))
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:

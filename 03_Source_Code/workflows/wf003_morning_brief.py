@@ -261,14 +261,15 @@ def _build_html(today: str, inbox_result: dict = None) -> str:
 </html>"""
 
 
-def run(send: bool = False, inbox_result: dict = None) -> dict:
+def run(send: bool = True, inbox_result: dict = None) -> dict:
     """
     Compile and send the morning brief.
     inbox_result: output from WF-006 inbox review (optional — enriches inbox section).
-    Default changed to send=False 2026-07-01 (ADR-011, GBT directive) pending Buck's
-    explicit confirmation to re-enable — see AI_TEAM/OVERNIGHT_REPORT.md. Note:
-    send_email() itself no longer sends live either way (see microsoft_graph.py) — this
-    default just keeps the caller's intent honest until Buck re-confirms.
+    Default restored to send=True 2026-07-01 — Buck confirmed auto-send to his own
+    inbox (buck@hendricksoninc.com) is fine. send_email() enforces this itself: it only
+    auto-sends when every recipient is Buck's own address, otherwise drafts and
+    requires approval (see microsoft_graph.py) — so this default can't reopen the
+    external-send incident regardless.
     """
     today   = date.today().strftime("%A, %B %d, %Y")
     subject = f"HCI Morning Brief — {date.today().strftime('%b %d, %Y')}"

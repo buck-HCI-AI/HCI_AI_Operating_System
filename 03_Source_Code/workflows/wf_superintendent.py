@@ -212,18 +212,20 @@ def run(
                 sv_row = sv_cur.fetchone()
                 sv.close()
                 if sv_row:
-                    # send=False since 2026-07-01 incident (ADR-011) — draft only, no
-                    # autonomous send. Re-enable per-call only after Buck confirms.
-                    schedule_variance_alert(sv_row["id"], send=False)
-                    result["steps"].append("Schedule variance alert drafted (pending approval)")
+                    # send=True restored 2026-07-01 — Buck confirmed auto-send to his own
+                    # inbox is fine; the underlying send_email() only auto-sends when every
+                    # recipient is Buck's own address (see microsoft_graph.py), so this
+                    # can't reopen the external-send incident either way.
+                    schedule_variance_alert(sv_row["id"], send=True)
+                    result["steps"].append("Schedule variance alert sent")
             except Exception as e:
                 result["steps"].append(f"Variance alert skipped: {e}")
 
         # Stage 9: Daily field report email (non-blocking)
         try:
             from wf_report import daily_field_report
-            # send=False since 2026-07-01 incident (ADR-011) — draft only, no autonomous send.
-            rpt = daily_field_report(log_id, send=False)
+            # send=True restored 2026-07-01 — see note above.
+            rpt = daily_field_report(log_id, send=True)
             result["steps"].append(f"Daily field report: {rpt.get('status','?')}")
             result["report_sent"] = rpt.get("email_sent", False)
         except Exception as e:

@@ -130,26 +130,60 @@ def mark_as_read(msg_id: str) -> tuple:
     return _request("PATCH", f"/me/messages/{eid}", body={"isRead": True})
 
 
+# Locked down 2026-07-01 (ADR-010/011): live sending to anyone outside this allowlist
+# requires Buck's Telegram approval (see gbt_gateway.py _send_approved_draft). Buck
+# explicitly confirmed 2026-07-01 that automated reports to his own inbox (morning
+# brief, field reports, schedule alerts, executive/PM reports) may auto-send — this
+# allowlist is narrow and self-addressed on purpose, not a reopening of the general
+# send capability. Do not add external addresses here without Buck's explicit approval.
+_SELF_SEND_ALLOWLIST = {"buck@hendricksoninc.com", "buck@ahmaspen.com"}
+
+
+def _all_recipients_self(to: list[tuple[str, str]], cc: list[tuple[str, str]] = None) -> bool:
+    addrs = [e.lower() for _, e in to] + [e.lower() for _, e in (cc or [])]
+    return bool(addrs) and all(a in _SELF_SEND_ALLOWLIST for a in addrs)
+
+
 def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple:
-    """LOCKED DOWN 2026-07-01 (incident: unauthorized live RFI emails to 101F/1355R
-    design contacts, sent via this function with no approval gate — see ADR-010/011).
-    This no longer calls /me/sendMail. It creates a draft instead and returns a result
-    shaped like the old tuple so existing callers don't crash, but nothing is sent.
-    Actual sending only happens via the approval-gated path in gbt_gateway.py
+    """Sends immediately ONLY if every recipient is Buck's own address (automated
+    reports to himself — re-confirmed safe 2026-07-01). Any other recipient creates a
+    draft + Buck-approval request instead of sending — see ADR-010/011. Actual external
+    sending only ever happens via the approval-gated path in gbt_gateway.py
     (_send_approved_draft, triggered only by Buck's Telegram APPROVE)."""
+    if _all_recipients_self(to):
+        msg = {
+            "message": {
+                "subject": subject,
+                "body": {"contentType": "HTML", "content": html_body},
+                "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
+            },
+            "saveToSentItems": True,
+        }
+        return _request("POST", "/me/sendMail", body=msg)
     try:
         draft = create_draft(subject, html_body, to)
         return {"queued_draft_id": draft.get("id"), "status": "drafted_pending_approval",
-                "note": "send_email() no longer sends live — draft created, requires Buck approval via gateway /email/send"}, None
+                "note": "send_email() only auto-sends to Buck's own address — draft created, requires Buck approval via gateway /email/send"}, None
     except Exception as e:
         return None, str(e)
 
 
 def send_email_with_cc(subject: str, html_body: str, to: list[tuple[str, str]],
                        cc: list[tuple[str, str]] = None) -> tuple:
-    """LOCKED DOWN 2026-07-01 — see send_email() above. Creates a draft only, never sends.
-    CC recipients are noted in the draft body since Graph's createDraft (via /me/messages)
-    honors ccRecipients directly if included in the message payload."""
+    """See send_email() above — same self-send allowlist applies (checked across
+    to + cc together)."""
+    if _all_recipients_self(to, cc):
+        msg = {
+            "message": {
+                "subject": subject,
+                "body": {"contentType": "HTML", "content": html_body},
+                "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
+            },
+            "saveToSentItems": True,
+        }
+        if cc:
+            msg["message"]["ccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in cc]
+        return _request("POST", "/me/sendMail", body=msg)
     msg = {
         "subject": subject,
         "body": {"contentType": "HTML", "content": html_body},

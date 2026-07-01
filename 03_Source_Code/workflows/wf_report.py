@@ -90,7 +90,7 @@ def _health_color(health: str) -> str:
 
 # ── 1. Daily Field Report ──────────────────────────────────────────────────────
 
-def daily_field_report(log_id: int, send: bool = False) -> dict:
+def daily_field_report(log_id: int, send: bool = True) -> dict:
     """Generate and email a daily field report for a submitted daily log."""
     log = _q1("""
         SELECT dl.*, p.name AS project_name, p.address
@@ -186,7 +186,7 @@ def daily_field_report(log_id: int, send: bool = False) -> dict:
 
 # ── 2. Schedule Variance Alert ────────────────────────────────────────────────
 
-def schedule_variance_alert(variance_id: int, send: bool = False) -> dict:
+def schedule_variance_alert(variance_id: int, send: bool = True) -> dict:
     """Email an immediate alert when a high or critical schedule variance is detected."""
     sv = _q1("""
         SELECT sv.*, p.name AS project_name, dl.log_date
@@ -236,7 +236,7 @@ def schedule_variance_alert(variance_id: int, send: bool = False) -> dict:
 
 # ── 3. Executive Health Report ────────────────────────────────────────────────
 
-def executive_health_report(send: bool = False) -> dict:
+def executive_health_report(send: bool = True) -> dict:
     """All-projects health table. Run every Friday PM."""
     projects = _q("SELECT id, name, address, status FROM projects ORDER BY name")
 
@@ -429,7 +429,7 @@ This summary is prepared by Hendrickson Construction and reflects current field 
 
 # ── 5. Weekly PM Email ────────────────────────────────────────────────────────
 
-def weekly_pm_email(send: bool = False) -> dict:
+def weekly_pm_email(send: bool = True) -> dict:
     """Run WF-PM weekly_report() and email the compiled HTML to Buck."""
     sys.path.insert(0, os.path.dirname(__file__))
     from wf_pm import weekly_report, _review_to_html
