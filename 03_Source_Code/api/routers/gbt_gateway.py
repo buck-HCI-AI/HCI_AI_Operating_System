@@ -1035,10 +1035,12 @@ def schedule_variance():
                   COUNT(CASE WHEN psi.end_date < %s
                               AND psi.status NOT ILIKE '%%complete%%'
                               AND psi.status NOT ILIKE '%%done%%'
+                              AND psi.status != 'draft'  -- exclude unreviewed plan-review-generated items
                               AND psi.start_date <= psi.end_date  -- exclude data errors
                              THEN 1 END) as overdue,
                   COUNT(CASE WHEN psi.end_date BETWEEN %s AND %s
                               AND psi.status NOT ILIKE '%%complete%%'
+                              AND psi.status != 'draft'
                              THEN 1 END) as due_soon,
                   COUNT(CASE WHEN psi.start_date > psi.end_date THEN 1 END) as data_errors,
                   COUNT(CASE WHEN psi.completion_pct > 0 AND psi.completion_pct < 100 THEN 1 END) as in_progress
@@ -1061,6 +1063,7 @@ def schedule_variance():
                   AND psi.end_date < %s
                   AND psi.status NOT ILIKE '%%complete%%'
                   AND psi.status NOT ILIKE '%%done%%'
+                  AND psi.status != 'draft'
                   AND psi.start_date <= psi.end_date
                 ORDER BY days_overdue DESC
                 LIMIT 20
@@ -1082,6 +1085,7 @@ def schedule_variance():
                 WHERE p.id = ANY(%s)
                   AND psi.end_date BETWEEN %s AND %s
                   AND psi.status NOT ILIKE '%%complete%%'
+                  AND psi.status != 'draft'
                 ORDER BY psi.end_date ASC
                 LIMIT 10
             """, (today, LIVE, today, today + __import__('datetime').timedelta(days=WARN_DAYS)))

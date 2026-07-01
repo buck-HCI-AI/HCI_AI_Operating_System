@@ -262,14 +262,13 @@ draft_id = d.get("payload", {}).get("draft_id")
 code, d = post("/email/draft/fake-unapproved-draft-id/send", {})
 check("Unapproved draft_id refused", code == 200 and d.get("errors"), d)
 
+# Do NOT simulate APPROVE here — that triggers a real send to Buck's actual inbox on
+# every test run, which is exactly the noise problem flagged 2026-07-01. The closed
+# APPROVE-triggers-send loop was already verified live once (see ADR-010); this test
+# only needs to prove the message queues correctly and cleans up without sending.
 if email_msg_id:
-    code, d = post("/telegram/webhook", {
-        "update_id": 1, "message": {"message_id": 1, "chat": {"id": 1}, "text": f"APPROVE {email_msg_id}"},
-    })
-    check("Webhook approve returns 200", code == 200, code)
-    code, d = get(f"/ai/messages/{email_msg_id}")
-    check("Approval triggers actual send server-side (status COMPLETE)",
-          d.get("payload", {}).get("status") == "COMPLETE", d.get("payload", {}).get("status"))
+    code, d = patch(f"/ai/messages/{email_msg_id}/status", {"status": "REJECTED", "agent": "test_suite"})
+    check("Test message cleaned up without triggering a real send", code == 200, d)
 
 # ── 16. Telegram visibility for GBT/BC (2026-07-01: neither is a push target) ─
 print("\n16. GET/POST telegram/messages + telegram/ack — GBT/BC polling visibility")
