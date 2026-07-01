@@ -217,6 +217,33 @@ check("No test/dummy markers in production risk descriptions",
       not any("test" in t.lower() or "dummy" in t.lower() or "sample" in t.lower() for t in top_risk_names),
       top_risk_names)
 
+# ── 15. Email send gating (incident 2026-07-01: unauthenticated live-send fixed) ─
+print("\n15. Email send requires API key + Buck approval, never sends directly")
+code, _ = requests.post(f"{API}/email/send", json={
+    "to_name": "x", "to_email": "x@x.com", "subject": "x", "body_html": "x"
+}, timeout=10).status_code, None
+check("No API key -> rejected (403), not sent", code == 403, code)
+
+code, d = post("/email/send", {
+    "to_name": "Buck Test", "to_email": "buck@ahmaspen.com",
+    "subject": "[TEST] automated regression check", "body_html": "<p>Automated test row - safe internal address.</p>",
+})
+check("With API key -> queued_for_approval, not sent", code == 200 and d.get("payload", {}).get("status") == "queued_for_approval", d)
+email_msg_id = d.get("payload", {}).get("message_id")
+draft_id = d.get("payload", {}).get("draft_id")
+
+code, d = post("/email/draft/fake-unapproved-draft-id/send", {})
+check("Unapproved draft_id refused", code == 200 and d.get("errors"), d)
+
+if email_msg_id:
+    code, d = post("/telegram/webhook", {
+        "update_id": 1, "message": {"message_id": 1, "chat": {"id": 1}, "text": f"APPROVE {email_msg_id}"},
+    })
+    check("Webhook approve returns 200", code == 200, code)
+    code, d = get(f"/ai/messages/{email_msg_id}")
+    check("Approval triggers actual send server-side (status COMPLETE)",
+          d.get("payload", {}).get("status") == "COMPLETE", d.get("payload", {}).get("status"))
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:

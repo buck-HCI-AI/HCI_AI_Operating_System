@@ -1668,12 +1668,13 @@ class EmailDraftRequest(BaseModel):
     reply_to_message_id: Optional[str] = None
 
 @router.post("/email/draft")
-def create_email_draft(req: EmailDraftRequest):
+def create_email_draft(req: EmailDraftRequest, request: Request):
     """
-    Create an Outlook draft email (does NOT send). GBT calls this to stage a client/vendor email.
-    Buck reviews and sends manually from Outlook, or calls /email/draft/{id}/send to send via API.
-    Returns the draft message ID so Buck or GBT can track or update it.
+    Create an Outlook draft email (does NOT send). GBT/Browser Claude calls this to stage
+    a client/vendor email. Nothing sends from this endpoint under any circumstance —
+    sending requires Buck's explicit Telegram approval via POST /email/send (see below).
     """
+    _require_key(request)
     t0 = time.time()
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
@@ -1688,11 +1689,28 @@ def create_email_draft(req: EmailDraftRequest):
             "subject":    req.subject,
             "to_email":   req.to_email,
             "status":     "draft_created",
-            "note":       "Draft saved to Outlook Drafts folder. Review in Outlook before sending.",
+            "note":       "Draft saved to Outlook Drafts folder. Review in Outlook, or call POST /email/send to route it for Buck's approval before it goes out.",
             "outlook_url": f"https://outlook.office.com/mail/deeplink/compose/{draft_id}" if draft_id else "",
         }, start=t0)
     except Exception as e:
         return _response("/email/draft", {}, errors=[str(e)], start=t0)
+
+
+def _send_approved_draft(draft_id: str) -> tuple:
+    """Actually calls Microsoft Graph to send a draft. Only ever called from a verified
+    Buck-approval path (the Telegram APPROVE hook in _handle_buck_command, or
+    /email/draft/{id}/send after confirming an approved ai_messages record exists) —
+    never directly from an agent request. See incident 2026-07-01: an unauthenticated,
+    unapproved /email/send endpoint sent live to a 101F architect contact with no audit
+    trail and no API key check. This function is the only code path allowed to call
+    Microsoft Graph's sendMail/send-draft; every caller must prove approval first."""
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import send_draft as _send_draft
+        _send_draft(draft_id)
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 
 class EmailSendRequest(BaseModel):
@@ -1704,58 +1722,80 @@ class EmailSendRequest(BaseModel):
     reply_to_message_id: Optional[str] = None
 
 @router.post("/email/send")
-def send_email_now(req: EmailSendRequest):
+def send_email_now(req: EmailSendRequest, request: Request):
     """
-    Send an email immediately via Outlook (Microsoft Graph /me/sendMail).
-    Saves to Sent Items. Browser Claude uses this for bid invitations, follow-ups, etc.
-    For a reviewable draft first, use POST /email/draft instead.
-    Authorization: Buck Adams approved BC email-send capability 2026-06-30.
+    Despite the name, this does NOT send. It stages an Outlook draft and creates a
+    durable Buck-approval request (Telegram APPROVE/REJECT/HOLD) — the email is only
+    actually sent by Buck tapping APPROVE, which triggers the send server-side via
+    _handle_buck_command. Rewritten 2026-07-01 after an incident where this endpoint
+    called Microsoft Graph's sendMail directly with no API key check and no approval
+    gate, and an email reached a 101F architect contact with zero review or audit trail.
     """
+    _require_key(request)
     t0 = time.time()
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
-        from microsoft_graph import send_email_with_cc, create_reply_draft, send_draft as _send_draft
-
-        cc_tuples = [(c["name"], c["email"]) for c in (req.cc or [])]
+        from microsoft_graph import create_draft, create_reply_draft
 
         if req.reply_to_message_id:
-            # Create a reply draft then send it
             draft = create_reply_draft(req.reply_to_message_id, req.body_html)
-            draft_id = draft.get("id", "")
-            if not draft_id:
-                raise ValueError("Reply draft creation returned no ID")
-            _send_draft(draft_id)
-            result, err = {"id": draft_id}, None
         else:
-            result, err = send_email_with_cc(
-                req.subject, req.body_html,
-                [(req.to_name, req.to_email)],
-                cc=cc_tuples if cc_tuples else None,
-            )
-            if err:
-                raise ValueError(str(err))
+            draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)])
+        draft_id = draft.get("id", "")
+        if not draft_id:
+            raise ValueError("Draft creation returned no ID — cannot queue for approval")
 
-        _log("/email/send", "browser_claude", "outlook", "ok",
-             round((time.time()-t0)*1000), str(uuid.uuid4()),
-             f"Sent to {req.to_email}: {req.subject[:60]}")
+        msg_id = _create_ai_message(
+            "browser_claude", "buck", "approval_request",
+            f"Send email: {req.subject[:80]}",
+            f"To: {req.to_name} <{req.to_email}>\nSubject: {req.subject}\n\n{req.body_html[:500]}",
+            requires_buck_approval=True, approval_type="email_send",
+            related_file=draft_id,
+        )
+        sent = _notify_agents("browser_claude", "buck", "approval_request",
+                               f"Send email: {req.subject[:80]}",
+                               f"To: {req.to_name} <{req.to_email}>\n\n{req.body_html[:500]}",
+                               requires_buck_approval=True, approval_type="email_send",
+                               related_file=draft_id)
+
         return _response("/email/send", {
-            "status":   "sent",
-            "to_email": req.to_email,
-            "subject":  req.subject,
-            "note":     "Email sent and saved to Sent Items.",
+            "status":     "queued_for_approval",
+            "message_id": sent.get("id", msg_id),
+            "draft_id":   draft_id,
+            "to_email":   req.to_email,
+            "subject":    req.subject,
+            "note":       "Draft created and sent to Buck for Telegram approval. It will only send once Buck approves.",
         }, start=t0)
     except Exception as e:
         return _response("/email/send", {}, errors=[str(e)], start=t0)
 
 
 @router.post("/email/draft/{draft_id}/send")
-def send_existing_draft(draft_id: str):
-    """Send a previously created Outlook draft by its message ID."""
+def send_existing_draft(draft_id: str, request: Request):
+    """Send a previously created Outlook draft — but only if an ai_messages record shows
+    Buck already approved (or completed) an email_send request for this exact draft_id.
+    Otherwise refuses. This is the manual/recovery path; the normal path is Buck tapping
+    APPROVE in Telegram, which sends automatically via _handle_buck_command."""
+    _require_key(request)
     t0 = time.time()
     try:
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
-        from microsoft_graph import send_draft as _send_draft
-        _send_draft(draft_id)
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM ai_messages
+                    WHERE related_file = %s AND approval_type = 'email_send'
+                      AND status IN ('RECEIVED', 'COMPLETE')
+                    ORDER BY id DESC LIMIT 1
+                """, (draft_id,))
+                approved = cur.fetchone()
+        if not approved:
+            return _response("/email/draft/send", {},
+                              errors=["No approved email_send request found for this draft_id — "
+                                      "call POST /email/send first and wait for Buck's Telegram approval"],
+                              start=t0)
+        ok, err = _send_approved_draft(draft_id)
+        if not ok:
+            return _response("/email/draft/send", {}, errors=[err], start=t0)
         _log("/email/draft/send", "browser_claude", "outlook", "ok",
              round((time.time()-t0)*1000), str(uuid.uuid4()), f"Sent draft {draft_id[:20]}")
         return _response("/email/draft/send", {
@@ -4599,7 +4639,7 @@ def _handle_buck_command(text: str) -> Optional[str]:
                             received_at = CASE WHEN %s = 'RECEIVED' THEN COALESCE(received_at, NOW()) ELSE received_at END,
                             blocked_reason = CASE WHEN %s = 'BLOCKED' THEN 'Held by Buck via Telegram' ELSE blocked_reason END,
                             next_action_owner = COALESCE(%s, CASE WHEN %s THEN source_agent ELSE next_action_owner END)
-                        WHERE id=%s RETURNING title
+                        WHERE id=%s RETURNING title, approval_type, related_file
                     """, (new_status, new_status, new_status, next_owner, cmd == "APPROVE", msg_id))
                     row = cur.fetchone()
                 conn.commit()
@@ -4607,6 +4647,22 @@ def _handle_buck_command(text: str) -> Optional[str]:
                 return f"⚠️ No message #{msg_id} found."
             verb = {"APPROVE": "Approved", "REJECT": "Rejected", "HOLD": "Held"}[cmd]
             icon = {"APPROVE": "✅", "REJECT": "❌", "HOLD": "⏸"}[cmd]
+            # Closed-loop email send: Buck's APPROVE is the ONLY trigger that actually
+            # calls Microsoft Graph — see incident note on _send_approved_draft.
+            if cmd == "APPROVE" and row.get("approval_type") == "email_send" and row.get("related_file"):
+                ok, err = _send_approved_draft(row["related_file"])
+                with _pg() as conn:
+                    with conn.cursor() as cur:
+                        if ok:
+                            cur.execute("""UPDATE ai_messages SET status='COMPLETE', completed_at=NOW(), updated_at=NOW()
+                                            WHERE id=%s""", (msg_id,))
+                        else:
+                            cur.execute("""UPDATE ai_messages SET status='BLOCKED', blocked_reason=%s, updated_at=NOW()
+                                            WHERE id=%s""", (f"send failed: {err}"[:500], msg_id))
+                    conn.commit()
+                if ok:
+                    return f"✅📧 Approved and sent #{msg_id}: {row['title']}"
+                return f"⚠️ Approved #{msg_id} but the send failed: {err}"
             return f"{icon} {verb} #{msg_id}: {row['title']}"
         except Exception as e:
             return f"⚠️ Error updating #{msg_id}: {e}"
