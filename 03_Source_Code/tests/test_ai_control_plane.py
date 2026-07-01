@@ -406,6 +406,22 @@ if p.get("items_created", 0) > 0:
 code, d = post("/plan-review/generate-schedule", {"project_code": "NOT-A-REAL-CODE", "start_date": "2026-09-01"})
 check("Refuses for a nonexistent project rather than silently no-op'ing", bool(d.get("errors")), d)
 
+# ── 24. Plan-review pending-review queue — closes the loop on the whole pipeline ─
+print("\n24. GET /gateway/project/{code}/plan-review-pending")
+before_code, before_d = get("/project/101F/plan-review-pending")
+before_total = before_d.get("payload", {}).get("total_pending_review", 0)
+post("/plan-review/analyze", {
+    "project_code": "101F", "reviewed_by": "test_suite",
+    "sheet_text": "Sheet A1.1: Master Bath lavatory - MFGR/MODEL/COLOR all BLANK.",
+})
+code, d = get("/project/101F/plan-review-pending")
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has total_pending_review as int", isinstance(p.get("total_pending_review"), int), p)
+check("New RFI increments the pending-review count", p.get("total_pending_review", 0) > before_total, (before_total, p.get("total_pending_review")))
+check("Has all three category lists", all(k in p for k in
+      ("rfis_from_plan_review", "bid_packages_from_plan_review", "schedule_items_from_plan_review")), p)
+
 print("\n" + "=" * 50)
 print(f"PASSED: {passed}  FAILED: {failed}")
 if failed:

@@ -320,6 +320,67 @@ def project_client_comms(code: str):
         return _response(f"/project/{code}/client-comms", {}, errors=[str(e.detail)], start=t0)
 
 
+@router.get("/project/{code}/plan-review-pending")
+def plan_review_pending(code: str):
+    """
+    Closes the loop on the plan-review pipeline (2026-07-01): RFIs, bid packages, and
+    schedule items it generates were real DB rows, but nothing surfaced them anywhere a
+    PM would actually look — a PM had to already know to query for them. This endpoint
+    is that single place: everything the pipeline drafted (identified by the
+    "generated from plan-review"/"plan-review CPM engine" marker left in each row's
+    notes) that's still sitting in its initial, unreviewed state.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, rfi_number, subject, question, status, submitted_date
+                FROM rfis WHERE project_id = %s AND source_email_id = 'plan-review-pipeline'
+                  AND status = 'open'
+                ORDER BY id DESC
+            """, (pid,))
+            rfis = [dict(r) for r in cur.fetchall()]
+            cur.execute("""
+                SELECT id, csi_division, package_name, scope_description, notes
+                FROM bid_packages WHERE project_id = %s AND status = 'not_started'
+                  AND notes ILIKE '%%plan-review%%'
+                ORDER BY id DESC
+            """, (pid,))
+            packages = [dict(r) for r in cur.fetchall()]
+            cur.execute("""
+                SELECT activity_id, title, start_date, end_date, status
+                FROM project_schedule_items WHERE project_id = %s AND status = 'draft'
+                ORDER BY start_date ASC
+            """, (str(pid),))
+            schedule_items = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        for r in rfis:
+            if r.get("submitted_date"):
+                r["submitted_date"] = r["submitted_date"].isoformat()
+        for s in schedule_items:
+            s["start_date"] = s["start_date"].isoformat()
+            s["end_date"] = s["end_date"].isoformat()
+        total = len(rfis) + len(packages) + len(schedule_items)
+        return _response(f"/project/{code}/plan-review-pending", {
+            "project_code": code,
+            "total_pending_review": total,
+            "rfis_from_plan_review": rfis,
+            "bid_packages_from_plan_review": packages,
+            "schedule_items_from_plan_review": schedule_items,
+            "note": "Everything here was AI-drafted from a plan set and needs PM review "
+                    "before it becomes real work: RFIs before anyone sends them (POST "
+                    "/email/send, Buck approval required), bid packages before soliciting "
+                    "bids, schedule items before treating them as the live schedule.",
+        }, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/plan-review-pending", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/plan-review-pending", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/project/{code}/action-list")
 def project_action_list(code: str):
     """AI-ranked top 10 PM actions for the day."""
@@ -2313,8 +2374,8 @@ def _create_rfis_from_gaps(pid: int, gaps: list, reviewed_by: str) -> list:
         for gap in gaps:
             subject = f"{gap.get('item','Gap')} ({gap.get('sheet_reference','')})"[:120]
             cur.execute("""
-                INSERT INTO rfis (project_id, rfi_number, subject, question, submitted_by, status, submitted_date)
-                VALUES (%s, %s, %s, %s, %s, 'open', CURRENT_DATE)
+                INSERT INTO rfis (project_id, rfi_number, subject, question, submitted_by, status, submitted_date, source_email_id)
+                VALUES (%s, %s, %s, %s, %s, 'open', CURRENT_DATE, 'plan-review-pipeline')
                 RETURNING id, rfi_number, subject, status
             """, (pid, str(next_num), subject, gap.get("question", ""), reviewed_by))
             rfi = dict(cur.fetchone())
