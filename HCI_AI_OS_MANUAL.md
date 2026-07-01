@@ -2496,3 +2496,359 @@ The Project Manager remains responsible for the project.
 The operating system ensures that responsibility is supported by timely information, consistent governance, and the accumulated experience of every project Hendrickson Construction has ever completed.
 
 That is the Intelligence Layer: a system that transforms information into operational awareness, allowing Project Managers to focus on the work that only experienced construction professionals can do.
+
+---
+
+## Chapter 16 — Estimator Operations
+
+### The Bid Intelligence Layer
+
+Estimating is one of the most influential disciplines within Hendrickson Construction.
+
+The quality of an estimate affects every phase that follows.
+
+A complete scope reduces change orders.
+
+A well-managed procurement process improves schedules.
+
+Strong vendor selection improves quality.
+
+Accurate budgets improve client confidence.
+
+The HCI AI Operating System exists to make estimators faster, more consistent, and better informed—not to replace professional judgment.
+
+The operating system organizes information.
+
+The Estimator evaluates risk.
+
+---
+
+### 1. How the AI Organizes Incoming Bids
+
+Bid management begins before the first proposal arrives.
+
+The operating system tracks each bid package from creation through award.
+
+Instead of organizing this information manually, the operating system automatically associates each bid with its project and bid package.
+
+**Bid Intake**
+
+When a bid is received, the system records:
+
+- Project
+- Bid package
+- Vendor
+- CSI Division
+- Date received
+- Bid amount
+- Alternates
+- Qualifications
+- Exclusions
+- Expiration date
+- Attached documents
+
+The original proposal remains preserved.
+
+Nothing is overwritten.
+
+**Document Processing**
+
+The operating system indexes each proposal so it can be retrieved, compared, and referenced later.
+
+This indexing supports dispute resolution, lessons learned, and historical cost analysis.
+
+---
+
+### 2. Using the Bid Leveling Service
+
+The Bid Leveling Service produces a standardized comparison across all proposals received for a single bid package.
+
+**What It Produces**
+
+The leveled comparison includes:
+
+- Base bid amounts
+- Alternate pricing
+- Adjusted bid values
+- Scope differences
+- Missing scope
+- Clarifications required
+- Significant pricing deviations
+- Recommendation notes
+
+The output highlights differences that deserve human attention.
+
+**Reading a Leveled Bid**
+
+Do not focus only on price.
+
+Review:
+
+Scope: Did every bidder price the same work?
+
+Exclusions: Which exclusions affect project risk?
+
+Qualifications: Are assumptions reasonable?
+
+Alternates: Are the alternates comparable across bidders?
+
+Vendor history: What does the system know about each vendor's past performance?
+
+The lowest number is not always the best answer.
+
+**What GBT Analyzes**
+
+GBT can provide analysis of bid comparisons including:
+
+- scope gap identification
+- risk flag commentary
+- vendor performance summary
+- award recommendation rationale
+- historical price benchmarking
+
+The Estimator reviews GBT's analysis before presenting to the Project Manager.
+
+---
+
+### 3. Vendor Intelligence
+
+The operating system maintains a vendor intelligence profile for each subcontractor.
+
+**What It Tracks**
+
+The vendor profile includes:
+
+- Company name and contact information
+- Divisions of work
+- Bid history
+- Award history
+- Contact information
+- Project history
+
+The profile grows as additional work is completed.
+
+**Performance History**
+
+Historical information may include:
+
+- Bid responsiveness
+- Award history
+- Schedule performance
+- Change order frequency
+- Quality observations
+- Warranty performance
+- Safety performance
+- Communication responsiveness
+
+Performance is measured using observed project outcomes rather than anecdotal impressions.
+
+**Reliability**
+
+Reliability is not simply low price.
+
+Reliable subcontractors consistently:
+
+- submit complete proposals
+- respond to correspondence
+- perform on schedule
+- communicate problems early
+- stand behind their work
+
+The operating system helps distinguish reliable vendors from unreliable ones using documented evidence rather than memory.
+
+---
+
+### 4. The Bid Package Workflow
+
+The bid package workflow follows a defined sequence from scope definition to award recommendation.
+
+**Step 1 — Define Scope**
+
+Every bid package begins with a scope document.
+
+The scope defines:
+
+- what work is included
+- what work is excluded
+- what the subcontractor is responsible for
+- what HCI provides
+- schedule requirements
+- quality standards
+
+GBT can draft scope sections based on project drawings, specifications, and historical templates.
+
+The Estimator reviews and approves all scope documents.
+
+**Step 2 — Build the Bidder List**
+
+The operating system suggests bidders based on:
+
+- division of work
+- prior HCI history
+- geographic coverage
+- vendor intelligence profile
+
+The Estimator makes the final selection.
+
+**Step 3 — Distribute**
+
+Bid invitations are drafted by the system and reviewed by the Estimator before distribution.
+
+Distribution is approved before any communication goes to vendors.
+
+**Step 4 — Follow Up**
+
+The system identifies vendors requiring follow-up based on:
+
+- No response
+- Missing proposal
+- Incomplete submission
+- Upcoming deadline
+
+GBT can prepare reminder drafts.
+
+The Estimator reviews communications before they are sent through approved company processes.
+
+**Step 5 — Receive Bids**
+
+Each proposal is captured, indexed, and linked to the bid package.
+
+No manual filing should be required.
+
+**Step 6 — Level Bids**
+
+The Bid Leveling Service produces a standardized comparison.
+
+**Step 7 — Award Recommendation**
+
+The Estimator prepares an award recommendation based on:
+
+- leveled comparison
+- scope confirmation
+- vendor intelligence
+- budget position
+- schedule requirements
+- qualitative judgment
+
+The recommendation goes to the Project Manager.
+
+Award authority belongs to Buck Adams.
+
+---
+
+### 5. Budget Tracking
+
+Budget integrity is a primary responsibility of the estimating function.
+
+**ROM vs. Actual Bids vs. Bid Budget**
+
+The operating system tracks three budget benchmarks:
+
+ROM (Rough Order of Magnitude): Initial estimate before design development.
+
+Bid Budget: Target procurement budget based on approved design.
+
+Actual Proposals: Real market pricing from received bids.
+
+Actual proposals provide real market pricing.
+
+The operating system compares them against:
+
+- ROM
+- Current budget
+- Historical pricing
+- Similar projects
+
+Variance becomes immediately visible.
+
+**Variance Alerts**
+
+Examples include:
+
+- Bid exceeds budget by threshold
+- Bid substantially below market expectation
+- Significant spread between bidders
+- Multiple missing scopes
+- Budget erosion across multiple packages
+
+Alerts identify areas requiring investigation—not automatic conclusions.
+
+---
+
+### 6. Buyout Decisions
+
+Buyout is a business decision supported by evidence.
+
+The Estimator's role is to organize that evidence clearly.
+
+**What Goes to Buck**
+
+Every buyout decision is presented to Buck Adams.
+
+The presentation includes:
+
+- recommended vendor
+- bid comparison summary
+- scope confirmation
+- budget impact
+- risk summary
+- Estimator recommendation with rationale
+
+**The Approval Gate**
+
+No subcontract is awarded without Buck's approval.
+
+The operating system routes award recommendations through the approval queue.
+
+Buck reviews and approves or declines.
+
+Declines require documented reason and a revised recommendation.
+
+---
+
+### 7. What the AI Handles vs. What Requires Estimator Judgment
+
+**The AI Operating System**
+
+The operating system can:
+
+- Organize proposals
+- Extract bid information
+- Compare pricing
+- Normalize formats
+- Identify exclusions
+- Highlight scope gaps
+- Monitor bid expiration
+- Track vendor responses
+- Generate comparison tables
+- Draft procurement summaries
+- Preserve procurement history
+
+These tasks reduce administrative effort.
+
+**The Estimator Provides Judgment**
+
+The Estimator decides:
+
+- Whether scope is complete
+- Which assumptions are acceptable
+- Which risks matter
+- Whether pricing is realistic
+- Which subcontractor best fits the project
+- What recommendation should be presented
+
+Professional experience remains indispensable.
+
+**The Bid Intelligence Layer**
+
+The HCI AI Operating System transforms estimating from a document-management exercise into an intelligence-driven process.
+
+Instead of spending valuable time collecting files, formatting spreadsheets, and tracking correspondence, Estimators spend their time evaluating scope, understanding risk, and making informed recommendations.
+
+Every proposal contributes to organizational knowledge.
+
+Every completed buyout strengthens vendor intelligence.
+
+Every project improves the next estimate.
+
+That is the purpose of the Bid Intelligence Layer: to combine the discipline of professional estimating with the speed, consistency, and institutional memory of the HCI AI Operating System, ensuring that every procurement decision is supported by evidence, governed by process, and informed by the experience of the entire company.
