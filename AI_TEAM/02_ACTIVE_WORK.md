@@ -3,9 +3,11 @@
 ## STOP — DO NOT USE THIS FILE FOR CURRENT WORK STATE
 ## Read AI_TEAM/SPRINT_7_DIRECTIVE.md for your actual work queue
 
-**SELF-HEAL NOTE:** This file shows Sprint 3 work items. Sprint 7 is active.
-**Your current task:** 14-router implementation build per SPRINT_7_DIRECTIVE.md
-**Start with:** migrations → /auth router → /vendors router → continue sequence
+**SELF-HEAL NOTE:** This file's real content below (Plan Reader, test data cleanup) is
+Sprint 2 work, not Sprint 3 — it was never updated past 2026-06-29. Sprint 3's actual work
+(production stabilization, completed) is tracked in `CURRENT_SPRINT.md`. Sprint 7's build
+plan (`14-router implementation, migrations → /auth → /vendors → ...`) is a real proposal
+from GBT/BC but has not been authorized to start — check with Buck before beginning it.
 
 ---
 

@@ -4,9 +4,13 @@
 ## Active Sprint Directive: AI_TEAM/SPRINT_7_DIRECTIVE.md
 ## DO NOT USE THIS FILE FOR SPRINT STATE — Read SPRINT_7_DIRECTIVE.md instead
 
-**SELF-HEAL NOTE (2026-07-02):** This file was last updated 2026-06-28 (Sprint 3 era).
-It caused Code to think active sprint was Sprint 3. Sprint 7 is now active.
-Authoritative sprint state = AI_TEAM/SPRINT_7_DIRECTIVE.md + highest CYCLE## file.
+**SELF-HEAL NOTE (2026-07-02):** This file was last updated 2026-06-28 — actually pre-dates
+Sprint 3, not "Sprint 3 era." Sprint 3 (opened 2026-07-01, Production Stabilization) is real,
+completed, and verified — see `CURRENT_SPRINT.md` and `LIVE_PROJECT_STATE.md`, both kept
+current throughout. This specific file just never got updated past Sprint 2. Sprint 7's specs
+(Cycles 21-36) are real too — merged into `main` 2026-07-02 — but building them is still an
+open scope decision, not yet authorized. Don't read "Sprint 7 is active" as "Sprint 3 didn't
+happen."
 
 ---
 
