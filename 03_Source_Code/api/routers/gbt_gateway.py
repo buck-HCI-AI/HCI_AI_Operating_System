@@ -2437,6 +2437,25 @@ def _parse_plan_review_json(raw: str) -> dict:
     return json.loads(raw)
 
 
+def _run_plan_gap_analysis(sheet_text: str) -> dict:
+    """Shared, non-mutating Claude call behind /plan-review/analyze — factored out
+    2026-07-02 so read-only consumers (sales-summary) can get the same gap analysis
+    without creating real RFI rows on every preview."""
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    prompt = f"""You are a construction plan reviewer checking a permit set for gaps that would block bidding or construction.
+
+Plan set excerpt:
+{sheet_text[:8000]}
+
+{_PLAN_REVIEW_CHECKLIST}"""
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001", max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return _parse_plan_review_json(message.content[0].text)
+
+
 def _create_rfis_from_gaps(pid: int, gaps: list, reviewed_by: str) -> list:
     """Logs each identified gap as a real, open RFI. Never sends anything — notifying
     the design team is a separate, explicit, Buck-approved step (POST /email/send)."""
@@ -2507,19 +2526,7 @@ def plan_review_analyze(req: PlanReviewPayload):
     t0 = time.time()
     try:
         pid = _get_pid(req.project_code)
-        import anthropic
-        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        prompt = f"""You are a construction plan reviewer checking a permit set for gaps that would block bidding or construction.
-
-Plan set excerpt:
-{req.sheet_text[:8000]}
-
-{_PLAN_REVIEW_CHECKLIST}"""
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001", max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        analysis = _parse_plan_review_json(message.content[0].text)
+        analysis = _run_plan_gap_analysis(req.sheet_text)
         created = _create_rfis_from_gaps(pid, analysis.get("gaps", []), req.reviewed_by)
         _log("/plan-review/analyze", req.reviewed_by, req.project_code, "ok",
              round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"{len(created)} RFIs drafted")
@@ -2528,6 +2535,79 @@ Plan set excerpt:
         return _response("/plan-review/analyze", {}, errors=[str(e.detail)], start=t0)
     except Exception as e:
         return _response("/plan-review/analyze", {}, errors=[str(e)], start=t0)
+
+
+@router.post("/plan-review/sales-summary")
+def plan_review_sales_summary(req: PlanReviewPayload):
+    """
+    Client-facing summary (2026-07-02) — this is the capability Buck originally named
+    as the actual motivation for the whole plan-review pipeline: "for sales we need to
+    be able to read [a plan set], say what's missing, and have a prelim ROM and
+    schedule to help the sales process." Everything built since (RFI gaps, ROM,
+    packages, vendors, CPM schedule, long-lead) has been PM/execution-facing; this is
+    the first prospect-facing one.
+
+    Read-only and non-mutating — does NOT create RFI rows (uses the same gap analysis
+    as /plan-review/analyze via _run_plan_gap_analysis, but a sales preview shouldn't
+    spam the real RFI log every time someone previews it). If the project already has
+    a generated CPM schedule (from /plan-review/generate-schedule), its critical_path_days
+    is included for schedule context. This produces DATA for a summary, not a sent
+    document — sending anything to a prospect still requires the normal governed path
+    (POST /email/draft + /email/send, Buck's Telegram approval), same as everywhere else.
+    """
+    t0 = time.time()
+    try:
+        analysis = _run_plan_gap_analysis(req.sheet_text)
+        gaps = analysis.get("gaps", [])
+        critical_gaps = [g for g in gaps if g.get("urgency") == "critical"]
+
+        prelim_rom = None
+        sf = analysis.get("square_footage")
+        ptype = analysis.get("project_type")
+        if analysis.get("ready_for_rom") and sf:
+            rom_response = rom_estimate(sf=sf, project_type=ptype or "new")
+            prelim_rom = rom_response.get("payload") if isinstance(rom_response, dict) else None
+
+        pid = _get_pid(req.project_code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT title, end_date FROM project_schedule_items
+                WHERE project_id = %s AND status = 'draft'
+                ORDER BY end_date DESC LIMIT 1
+            """, (str(pid),))
+            latest = cur.fetchone()
+        conn.close()
+        schedule_context = None
+        if latest:
+            schedule_context = {
+                "note": "An existing draft CPM schedule was found for this project — "
+                        "projected completion below is from that schedule, not recomputed here.",
+                "projected_completion": latest["end_date"].isoformat(),
+            }
+
+        return _response("/plan-review/sales-summary", {
+            "project_code": req.project_code,
+            "ready_for_rom": analysis.get("ready_for_rom", False),
+            "readiness_reason": analysis.get("readiness_reason"),
+            "square_footage": sf,
+            "project_type": ptype,
+            "open_items_count": len(gaps),
+            "critical_items_count": len(critical_gaps),
+            "headline_gaps": [g.get("item") for g in critical_gaps[:5]] or [g.get("item") for g in gaps[:3]],
+            "preliminary_rom": prelim_rom,
+            "schedule_context": schedule_context,
+            "note": "DATA only, not a sent document. preliminary_rom is rough-order-of-"
+                    "magnitude, not a bid. Nothing here has been sent to anyone — "
+                    "drafting a client-facing document from this data still goes through "
+                    "the normal POST /email/draft + /email/send flow, requiring Buck's "
+                    "Telegram approval before it reaches a prospect.",
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/plan-review/sales-summary", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/plan-review/sales-summary", {}, errors=[str(e)], start=t0)
 
 
 @router.post("/plan-review/upload")

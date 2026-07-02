@@ -365,6 +365,24 @@ if p.get("gaps_found", 0) > 0:
     code, d2 = get("/project/QATEST/action-list")
     check("Newly created RFI reflected in project action list", code == 200)
 
+# ── 19.5. Sales-facing summary (2026-07-02) — read-only, no RFI side effects ────
+print("\n19.5. POST /gateway/plan-review/sales-summary — prospect-facing, non-mutating")
+before_code, before_d = get("/project/QATEST/plan-review-pending")
+before_rfi_count = len(before_d.get("payload", {}).get("rfis_from_plan_review", []))
+code, d = post("/plan-review/sales-summary", {
+    "project_code": "QATEST", "reviewed_by": "test_suite",
+    "sheet_text": "Sheet A1.1 Plumbing Fixture Schedule: Master Bath lavatory, toilet, tub - MFGR/MODEL/COLOR all BLANK.",
+})
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has ready_for_rom bool", isinstance(p.get("ready_for_rom"), bool), p)
+check("Has open_items_count as int", isinstance(p.get("open_items_count"), int), p)
+check("Has headline_gaps list", isinstance(p.get("headline_gaps"), list), p)
+check("Never sent to anyone — data only", "nothing here has been sent" in str(p.get("note", "")).lower())
+after_code, after_d = get("/project/QATEST/plan-review-pending")
+after_rfi_count = len(after_d.get("payload", {}).get("rfis_from_plan_review", []))
+check("Read-only — did not create real RFI rows", after_rfi_count == before_rfi_count, (before_rfi_count, after_rfi_count))
+
 # ── 20. POST /gateway/plan-review/upload — real PDF via Claude vision ──────────
 print("\n20. POST /gateway/plan-review/upload — PDF plan-set upload")
 import io as _io
