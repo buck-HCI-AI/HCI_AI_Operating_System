@@ -444,6 +444,64 @@ if p.get("packages"):
         v = pkg["vendor_matches"][0]
         check("Vendor match has company_name", bool(v.get("company_name")), v)
         check("Vendor match has current_active_awards as int", isinstance(v.get("current_active_awards"), int), v)
+        check("Vendor match has capacity_conflict key (null when no schedule/conflict)", "capacity_conflict" in v, v)
+
+# Synthetic true-positive test for capacity_conflict (2026-07-02): found live that the
+# join was missing the same short-first-name guard used in vendor-capacity-conflicts
+# ("S & S Construction" -> "S" matched almost anything). Award a real vendor with a
+# qualifying (>3 char) first name token on 101F with an overlapping schedule window,
+# confirm QATEST's matcher flags it, then clean up — same real-project hygiene as the
+# rest of this pipeline's tests.
+# Note: even with -t -A, psql still emits a trailing "INSERT 0 1" status line for DML
+# with RETURNING — take only the first line, or the id gets concatenated with that
+# footer into one malformed string (found 2026-07-02: this silently broke the INSERTs
+# below, making the whole synthetic-conflict test a false negative).
+_pb_row = subprocess.run(
+    ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os", "-t", "-A",
+     "-c", "SELECT id FROM vendors WHERE company_name ILIKE 'Probuild dba%' LIMIT 1"],
+    capture_output=True, text=True, timeout=10,
+).stdout.strip().split("\n")[0]
+if _pb_row:
+    _synth_pkg_id = subprocess.run(
+        ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os", "-t", "-A",
+         "-c", "INSERT INTO bid_packages (project_id, csi_division, package_name, scope_description, status) "
+               "VALUES (2, '09 - Finishes', '[TEST-SYNTH] Capacity Conflict Package', 'test', 'not_started') RETURNING id"],
+        capture_output=True, text=True, timeout=10,
+    ).stdout.strip().split("\n")[0]
+    subprocess.run(
+        ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+         "-c", f"INSERT INTO bid_entries (bid_package_id, vendor_id, status, bid_amount) VALUES ({_synth_pkg_id}, {_pb_row}, 'awarded', 30000)"],
+        capture_output=True, text=True, timeout=10,
+    )
+    subprocess.run(
+        ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+         "-c", "INSERT INTO project_schedule_items (activity_id, project_id, title, start_date, end_date, status, assignee) "
+               "VALUES ('TEST-SYNTH-CONFLICT', '2', '[TEST-SYNTH] activity', '2026-09-05', '2026-09-20', 'active', 'Probuild dba Builders FirstSource')"],
+        capture_output=True, text=True, timeout=10,
+    )
+    post("/plan-review/generate-packages", {
+        "project_code": "QATEST", "reviewed_by": "test_suite",
+        "sheet_text": "Sheet A2.1 Finish Schedule: hardwood flooring throughout.",
+    })
+    post("/plan-review/generate-schedule", {"project_code": "QATEST", "start_date": "2026-09-01", "reviewed_by": "test_suite"})
+    code, d = get("/project/QATEST/bid-package-vendor-matches")
+    p = d.get("payload", {})
+    pb_matches = [v for pkg in p.get("packages", []) for v in pkg["vendor_matches"] if v["company_name"].startswith("Probuild dba")]
+    check("Capacity conflict correctly detected for synthetic overlap",
+          any(v.get("capacity_conflict") for v in pb_matches), pb_matches)
+    ss_matches = [v for pkg in p.get("packages", []) for v in pkg["vendor_matches"] if v["company_name"] == "S & S Construction"]
+    check("Short-first-name vendor ('S & S Construction') does not false-positive",
+          all(v.get("capacity_conflict") is None for v in ss_matches), ss_matches)
+    # Clean up — never leave synthetic data in the real 101F project
+    subprocess.run(["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+                     "-c", "DELETE FROM project_schedule_items WHERE activity_id='TEST-SYNTH-CONFLICT'"],
+                    capture_output=True, text=True, timeout=10)
+    subprocess.run(["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+                     "-c", f"DELETE FROM bid_entries WHERE bid_package_id={_synth_pkg_id}"],
+                    capture_output=True, text=True, timeout=10)
+    subprocess.run(["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+                     "-c", f"DELETE FROM bid_packages WHERE id={_synth_pkg_id}"],
+                    capture_output=True, text=True, timeout=10)
 
 # ── 23. Preliminary CPM schedule generation (ADR-014 phase 3) ──────────────────
 print("\n23. POST /gateway/plan-review/generate-schedule — phased critical path from packages")

@@ -2823,6 +2823,52 @@ def bid_package_vendor_matches(code: str):
                 vendors = [dict(r) for r in cur.fetchall()]
                 for v in vendors:
                     v["win_rate_pct"] = float(v["win_rate_pct"]) if v["win_rate_pct"] is not None else None
+
+                # If this package already has a draft schedule window (generate-schedule
+                # has run), forward-check each candidate against their OTHER active
+                # awards for a date overlap — same join pattern as
+                # GET /knowledge/vendor-capacity-conflicts, but applied before an award
+                # happens rather than after, since a proposed vendor is exactly when a
+                # capacity heads-up is most useful.
+                cur.execute("""
+                    SELECT start_date, end_date FROM project_schedule_items
+                    WHERE project_id = %s AND status = 'draft' AND title = %s
+                    LIMIT 1
+                """, (str(pid), pkg["package_name"]))
+                window = cur.fetchone()
+                if window:
+                    for v in vendors:
+                        cur.execute("""
+                            SELECT p2.project_code, p2.name AS project_name, psi.title AS activity,
+                                   psi.start_date, psi.end_date
+                            FROM bid_entries be2
+                            JOIN bid_packages bp2 ON bp2.id = be2.bid_package_id
+                            JOIN projects p2 ON p2.id = bp2.project_id
+                            JOIN project_schedule_items psi
+                                ON psi.project_id = p2.id::text
+                                AND length(split_part(%s, ' ', 1)) > 3
+                                AND psi.assignee ILIKE '%%' || split_part(%s, ' ', 1) || '%%'
+                            WHERE be2.vendor_id = %s AND be2.status = 'awarded'
+                              AND p2.status IN ('active','design','bidding','preconstruction')
+                              AND p2.id != %s
+                              AND psi.start_date IS NOT NULL AND psi.end_date IS NOT NULL
+                              AND psi.start_date <= %s AND %s <= psi.end_date
+                            LIMIT 1
+                        """, (v["company_name"], v["company_name"], v["id"], pid, window["end_date"], window["start_date"]))
+                        conflict = cur.fetchone()
+                        if conflict:
+                            v["capacity_conflict"] = {
+                                "conflicting_project": conflict["project_code"],
+                                "conflicting_project_name": conflict["project_name"],
+                                "conflicting_activity": conflict["activity"],
+                                "conflicting_window": f"{conflict['start_date'].isoformat()} to {conflict['end_date'].isoformat()}",
+                            }
+                        else:
+                            v["capacity_conflict"] = None
+                else:
+                    for v in vendors:
+                        v["capacity_conflict"] = None
+
                 matches.append({
                     "bid_package_id": pkg["id"], "csi_division": pkg["csi_division"],
                     "package_name": pkg["package_name"],
@@ -2836,7 +2882,12 @@ def bid_package_vendor_matches(code: str):
             "unmatched_packages": sum(1 for m in matches if m["match_count"] == 0),
             "note": "Ranked by preferred tier, then win rate, then bid history. No vendor "
                     "has been contacted — this is a PM shortlist for the normal bid-leveling "
-                    "flow. current_active_awards is a light capacity signal, not a hard block.",
+                    "flow. current_active_awards is a light capacity signal, not a hard block. "
+                    "capacity_conflict is non-null only when this project already has a draft "
+                    "schedule (generate-schedule has run) and the candidate is currently "
+                    "awarded on another active project during an overlapping window — worth "
+                    "confirming before proposing this vendor, not a hard rule (same heuristic "
+                    "as GET /knowledge/vendor-capacity-conflicts, applied pre-award here).",
         }, start=t0)
     except Exception as e:
         return _response(f"/project/{code}/bid-package-vendor-matches", {}, errors=[str(e)], start=t0)
