@@ -412,6 +412,21 @@ if p.get("packages_created", 0) > 0:
     check("Created package has status=not_started (no bid solicitation)", pkg.get("status") == "not_started", pkg)
     check("Created package has a confidence rating", pkg.get("confidence") in ("high", "low"), pkg)
 
+# ── 22.5. Vendor matching for generated bid packages (2026-07-02) ──────────────
+print("\n22.5. GET /project/{code}/bid-package-vendor-matches — real vendor shortlist per package")
+code, d = get("/project/QATEST/bid-package-vendor-matches")
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has packages list", isinstance(p.get("packages"), list), p)
+if p.get("packages"):
+    pkg = p["packages"][0]
+    check("Package entry has vendor_matches list", isinstance(pkg.get("vendor_matches"), list), pkg)
+    check("Never contacts a vendor — shortlist only", "shortlist" in str(p.get("note", "")).lower())
+    if pkg.get("vendor_matches"):
+        v = pkg["vendor_matches"][0]
+        check("Vendor match has company_name", bool(v.get("company_name")), v)
+        check("Vendor match has current_active_awards as int", isinstance(v.get("current_active_awards"), int), v)
+
 # ── 23. Preliminary CPM schedule generation (ADR-014 phase 3) ──────────────────
 print("\n23. POST /gateway/plan-review/generate-schedule — phased critical path from packages")
 # Generate a fresh package first so this test has not_started packages to schedule against

@@ -2611,6 +2611,95 @@ Respond with a JSON object only, no other text, in this exact format:
         return _response("/plan-review/generate-packages", {}, errors=[str(e)], start=t0)
 
 
+@router.get("/project/{code}/bid-package-vendor-matches")
+def bid_package_vendor_matches(code: str):
+    """
+    Vendor matching for generated bid packages (2026-07-02) — the natural next link in
+    the plan-review pipeline: a generated package is just an internal draft until it has
+    real, qualified vendors attached. For each 'not_started' bid_package, ranks vendors
+    whose csi_divisions cover that package's division, preferred tier first, then by
+    win_rate_pct/bid_count as a track-record signal. This does NOT invite anyone to bid
+    or contact any vendor — same governance boundary as generate-packages itself; it's a
+    PM-facing shortlist to speed up the normal bid-leveling flow, not an automated
+    solicitation. current_active_awards is a light capacity signal (how many other
+    active projects this vendor is currently awarded on) — the full date-overlap
+    analysis lives in GET /knowledge/vendor-capacity-conflicts once someone is awarded.
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, csi_division, package_name FROM bid_packages
+                WHERE project_id = %s AND status = 'not_started'
+                ORDER BY id
+            """, (pid,))
+            packages = [dict(r) for r in cur.fetchall()]
+            if not packages:
+                conn.close()
+                return _response(f"/project/{code}/bid-package-vendor-matches", {
+                    "project_code": code, "packages": [],
+                    "note": "No 'not_started' bid_packages found — run /plan-review/generate-packages first.",
+                }, start=t0)
+
+            matches = []
+            for pkg in packages:
+                division_num = (pkg["csi_division"] or "").strip().split(" ")[0].zfill(2)[:2]
+                # Vendor DB is tagged with legacy 16-division CSI (01-16); the plan-review
+                # generator (and the CPM engine, deliberately, for finer-grained MEP/site
+                # scheduling) emits modern 50-division codes for MEP/site work. Fall back
+                # to the legacy equivalent so those packages still find real vendors.
+                lookup_division = _MODERN_TO_LEGACY_CSI.get(division_num, division_num)
+                cur.execute("""
+                    SELECT v.id, v.company_name, v.tier, v.win_rate_pct, v.bid_count,
+                           v.preferred_status, v.phone, v.email,
+                           (SELECT count(*) FROM bid_entries be2
+                            JOIN bid_packages bp2 ON bp2.id = be2.bid_package_id
+                            JOIN projects p2 ON p2.id = bp2.project_id
+                            WHERE be2.vendor_id = v.id AND be2.status = 'awarded'
+                              AND p2.status IN ('active','design','bidding','preconstruction')
+                           ) AS current_active_awards
+                    FROM vendors v
+                    WHERE %s = ANY(v.csi_divisions)
+                    ORDER BY (v.tier = 'preferred') DESC,
+                             COALESCE(v.win_rate_pct, 0) DESC,
+                             COALESCE(v.bid_count, 0) DESC
+                    LIMIT 5
+                """, (lookup_division,))
+                vendors = [dict(r) for r in cur.fetchall()]
+                for v in vendors:
+                    v["win_rate_pct"] = float(v["win_rate_pct"]) if v["win_rate_pct"] is not None else None
+                matches.append({
+                    "bid_package_id": pkg["id"], "csi_division": pkg["csi_division"],
+                    "package_name": pkg["package_name"],
+                    "vendor_matches": vendors,
+                    "match_count": len(vendors),
+                })
+        conn.close()
+        return _response(f"/project/{code}/bid-package-vendor-matches", {
+            "project_code": code,
+            "packages": matches,
+            "unmatched_packages": sum(1 for m in matches if m["match_count"] == 0),
+            "note": "Ranked by preferred tier, then win rate, then bid history. No vendor "
+                    "has been contacted — this is a PM shortlist for the normal bid-leveling "
+                    "flow. current_active_awards is a light capacity signal, not a hard block.",
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/bid-package-vendor-matches", {}, errors=[str(e)], start=t0)
+
+
+# Modern 50-division CSI MasterFormat -> legacy 16-division equivalent, used only for
+# vendor-DB lookups (vendors.csi_divisions is tagged in the legacy scheme; see
+# GET /project/{code}/bid-package-vendor-matches). Not used for scheduling — the CPM
+# engine below deliberately keeps MEP/site split into the modern, finer-grained codes.
+_MODERN_TO_LEGACY_CSI = {
+    "21": "15", "22": "15", "23": "15",  # fire suppression, plumbing, HVAC -> Mechanical
+    "26": "16", "27": "16",              # electrical, communications -> Electrical
+    "31": "02", "32": "02",              # earthwork, exterior improvements -> Site Work
+}
+
 # CSI division -> (construction phase, typical duration in days). Phases run in
 # sequence; packages within the same phase run in parallel (phase duration = max of
 # its packages, not the sum). Industry-standard starting points, same role as
