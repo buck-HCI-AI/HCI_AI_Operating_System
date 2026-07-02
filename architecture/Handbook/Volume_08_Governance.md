@@ -3,10 +3,24 @@
 
 ---
 
-## 8.1 Governance Philosophy (⚠️ Chief Architect Input Required)
+## 8.1 Governance Philosophy
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
 
-*[Chief Architect: Define the governance philosophy — how does Hendrickson Construction balance
-AI autonomy with human oversight? What is the long-term vision for AI governance as capability grows?]*
+The HCI AI Operating System is governed by a simple principle: AI accelerates decisions, but it does not own them. Construction projects involve contractual obligations, financial commitments, safety responsibilities, and client relationships that remain the responsibility of qualified people. The purpose of governance is not to slow the organization — it is to ensure that every action is performed with the appropriate level of authority.
+
+The platform is designed to remove repetitive administrative work while preserving human accountability where judgment is required. AI continuously analyzes information, identifies risks, recommends actions, prepares documentation, and organizes operational knowledge. Human leaders evaluate those recommendations, apply professional experience, and authorize decisions that affect projects, clients, contracts, or the business.
+
+Governance is implemented through three operational authority tiers.
+
+**Tier 0 — Automated Operations** consist of actions that carry little or no business risk and improve organizational efficiency: monitoring system health, indexing documents, synchronizing approved data between connected systems, generating internal analytics, organizing project information, and producing draft reports or recommendations. These operations may execute automatically because they do not create external commitments or alter approved business records without authorization.
+
+**Tier 1 — Approval-Required Operations** prepare work for human review before execution: uploading finalized project documents to controlled repositories, issuing AI-generated recommendations, drafting client communications, publishing bid analyses, initiating workflow changes, or updating operational records that become part of the project record. These require explicit human review before they become official.
+
+**Tier 2 — Human-Authority Decisions** are never delegated to AI: contractual commitments, financial approvals, vendor selection, award decisions, client commitments, change orders, safety decisions, legal determinations, project execution strategy, personnel decisions, and any action requiring licensed professional judgment or organizational authority. AI may provide supporting analysis, but the decision remains exclusively human.
+
+Every approval, recommendation, and completed action is traceable. The operating system records what information was available, what recommendation was presented, who made the decision, and when the decision occurred. Governance therefore becomes an operational asset rather than an administrative burden, providing transparency, accountability, and organizational learning across every project.
+
+The objective of the governance model is to maximize the speed of routine work while ensuring that responsibility always remains with the people entrusted to build projects, serve clients, and lead Hendrickson Construction. Automation increases capacity. Approval preserves trust. Human judgment remains the final authority.
 
 ---
 

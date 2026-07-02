@@ -124,7 +124,7 @@ Chief Architect resolves authoring items.
 
 | # | Chapter | Status | Dependencies | Source Docs | Related ADRs | Related Code | Review Required |
 |---|---------|--------|-------------|-------------|-------------|-------------|----------------|
-| 8.1 | Governance Philosophy | 🟡 IN PROGRESS (GBT authoring live, 2026-07-02) | Vol I complete | SOP_APPROVAL_GATE_REGISTER.md | — | — | Chief Architect |
+| 8.1 | Governance Philosophy | 🟢 PUBLISHED | Vol I complete | SOP_APPROVAL_GATE_REGISTER.md | — | — | None |
 | 8.2 | Approval Gate Register | ⚙️ IMPL ONLY | 8.1 | SOP_APPROVAL_GATE_REGISTER.md | — | `approval_queue` | None |
 | 8.3 | Security Standards | ⚙️ IMPL ONLY | — | — | — | `.env`, `api_key_middleware` | None |
 | 8.4 | Testing Standards | ⚙️ IMPL ONLY | — | — | — | `tests/` directory | None |
