@@ -448,6 +448,30 @@ if p.get("items_created", 0) > 0:
 code, d = post("/plan-review/generate-schedule", {"project_code": "NOT-A-REAL-CODE", "start_date": "2026-09-01"})
 check("Refuses for a nonexistent project rather than silently no-op'ing", bool(d.get("errors")), d)
 
+# ── 23.5. Long-lead item detection (2026-07-02) ─────────────────────────────────
+# Unit-tests _long_lead_flags() directly (deterministic keyword matching) rather than
+# depending on a live LLM call to reliably phrase a package as containing "elevator" —
+# found 2026-07-02 that the LLM's package_name/scope_description wording varies run to
+# run (e.g. may describe owner-furnished items differently), which made an
+# integration-level assertion on exact wording flaky through no fault of the matching
+# logic itself. The "long_lead_alerts is a list" structural check below still covers
+# the live end-to-end path.
+print("\n23.5. generate-schedule flags long-lead items (elevator, custom windows, etc.)")
+code, d = post("/plan-review/generate-schedule", {
+    "project_code": "QATEST", "start_date": "2026-09-01", "reviewed_by": "test_suite",
+})
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has long_lead_alerts list", isinstance(p.get("long_lead_alerts"), list), p)
+
+_sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "api", "routers"))
+from gbt_gateway import _long_lead_flags
+elevator_flags = _long_lead_flags("Passenger Elevator Installation", "Supply and install passenger elevator per Sheet A3.1")
+check("Keyword matcher flags elevator as long-lead", any(f["item"] == "elevator" for f in elevator_flags), elevator_flags)
+check("Elevator lead time is realistic (>=12 weeks)", any(f["lead_weeks"] >= 12 for f in elevator_flags), elevator_flags)
+no_match_flags = _long_lead_flags("Interior Painting", "Paint all interior walls and trim")
+check("Ordinary package has no long-lead flags", no_match_flags == [], no_match_flags)
+
 # ── 24. Plan-review pending-review queue — closes the loop on the whole pipeline ─
 print("\n24. GET /gateway/project/{code}/plan-review-pending")
 before_code, before_d = get("/project/QATEST/plan-review-pending")
