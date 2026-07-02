@@ -5,24 +5,50 @@
 ---
 
 > **Authorship Split:**
-> Section 5.1–5.2 (Philosophy): ⚠️ Chief Architect Required
+> Section 5.1–5.2 (Philosophy): Chief Architect (ChatGPT) + Browser Claude, 2026-06-30, recovered from Google Drive and integrated 2026-07-02
 > Section 5.3–5.8 (Implementation Reference): Claude Code
 
 ---
 
-## 5.1 Executive Intelligence Philosophy (⚠️ Chief Architect Required)
+## 5.1 Executive Intelligence Philosophy
+*Authored by: Chief Architect (ChatGPT) + Browser Claude — 2026-06-30*
 
-*[Chief Architect: What decisions does Buck Adams need AI to support vs make?
-What is the morning intelligence briefing model — what does Buck see first thing each day?
-How does executive intelligence differ from operational intelligence?]*
+### How Buck Adams Wants to Use AI
+
+Buck Adams does not want to use software. He wants to run a construction company. The HCI AI OS serves him best when it is invisible: when it handles the information management work so completely that Buck's experience is "I always know what's happening and I always know what to do next" — without consciously thinking about the system behind it.
+
+**The 5-minute principle:** Every morning, Buck should be able to review the complete state of all active projects, identify the things that require his decision today, and queue those decisions — in five minutes or less. If the Owner Console requires more than five minutes to process, it has too much information, is poorly organized, or is not prioritizing effectively.
+
+**Action first, summary second:** The Owner Console leads with actions — decisions pending, risks requiring response, approvals in queue. The portfolio health summary comes after. Buck does not need to read a summary to know whether to act; he needs to know what to act on, and can read the context after.
+
+**Time budget model:** Buck's engagement with the system is budgeted at roughly 15 minutes a day across morning review, afternoon check, and approval processing. If the system is generating more action items than can be processed in that window, it is generating too much noise, and sensitivity thresholds need adjustment.
+
+**Mobile-first:** Buck reviews the system from his phone as often as from a desktop. The Owner Console and ntfy notifications are the primary interface; anything requiring a desktop is secondary.
+
+**The trust threshold:** Buck will trust AI-generated intelligence when it is consistently accurate and the evidence is always visible. If the system ever presents a confident assertion that turns out to be wrong, and the evidence trail doesn't make clear why, trust degrades. Every intelligence output must be traceable.
 
 ---
 
-## 5.2 Approval Authority Model (⚠️ Chief Architect Required)
+## 5.2 Approval Authority Model
+*Authored by: Chief Architect (ChatGPT) + Browser Claude — 2026-06-30*
 
-*[Chief Architect: Define the approval authority matrix.
-What can AI recommend? What can AI act on autonomously? What requires Buck's explicit approval?
-What is the time budget for Buck's daily AI interaction?]*
+### The Complete Approval Authority Matrix
+
+The approval authority matrix is the operational implementation of "AI proposes, humans decide." It defines, for every category of action, what level of authorization is required and who provides it.
+
+**Tier 0: Fully Automated (no approval required)** — Generating morning briefs, daily reports, health summaries; detecting risks, bid gaps, schedule variances (detection only, not response); indexing new documents; running nightly audits; refreshing role console data; logging project events to the Brain.
+
+**Tier 1: Buck's Approval Required (via approval queue + ntfy)** — Sending any external communication (email, RFI to design team, client update); drafting any SOW for subcontractor review; any bid award recommendation; any change order recommendation to a client; any commitment to a trade partner (hold dates, delivery commitments); any communication to a permitting authority; writing data back to HubSpot.
+
+**Tier 2: Buck's Direct Action Required (AI assists only)** — Signing contracts or legal documents; authorizing financial payments or wire transfers; any personnel decision; disclosing project financial data externally; approving design alternatives requiring engineering signoff.
+
+**PM Authority (within their project scope)** — PMs may approve routine subcontractor coordination communications (not awards), RFI routing to the design team, submittal routing and review requests, field note acknowledgment, and standard inspection scheduling. PMs route to Buck when the action involves a financial commitment above their authority threshold, a client commitment, a design change with cost implications, or anything outside project scope or budget without owner approval.
+
+**Escalation Path:** Critical risk → Buck, phone call within 2 hours. High risk → Buck via approval queue, ntfy alert at 24 hours. Medium risk → PM console, escalates to Buck at 7 days. Low risk → PM awareness, no escalation.
+
+**Approval Queue Mechanics:** Every Tier 1 item enters the approval queue with a title, full context/evidence/recommended action, priority, requester, a decision deadline based on priority, and status (pending/approved/rejected/deferred/expired). Items that pass their deadline without action are auto-escalated: status set to "escalated," ntfy push sent, and the morning brief flags it OVERDUE.
+
+**The Anti-Flood Rule:** No more than roughly 5 new items should enter the approval queue from automated detection in any given 24-hour period, except during active escalation events. If detection is generating more than that on average, sensitivity thresholds are miscalibrated. The approval queue is a decision surface, not a notification log — if it becomes overwhelming, it stops being used, and governance breaks down.
 
 ---
 

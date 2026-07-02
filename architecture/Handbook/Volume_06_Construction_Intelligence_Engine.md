@@ -1,16 +1,29 @@
-# Volume VII — Construction Intelligence Engine
+# Volume VI — Construction Intelligence Engine
 *HCI AI Construction Operating System Architecture Handbook*
 
 ---
 
-## 7.1 Engine Overview
+## 6.1 Engine Overview + Intelligence Engine Philosophy
+*Philosophy authored by: Chief Architect (ChatGPT) + Browser Claude — 2026-06-30*
 
 The Construction Intelligence Engine is the collection of specialized services that analyze
 project data and produce domain-specific insights. Each service extends `BaseIntelligenceService`.
 
+### Why the Intelligence Is Modular
+
+The HCI AI OS intelligence layer is composed of twenty-plus specialized services rather than a single monolithic intelligence engine. This is deliberate and deliberately unusual — most AI implementations choose the monolith: one large model that handles everything. HCI chose modularity.
+
+**Reason 1: Construction intelligence is domain-specific at the sub-task level.** Bid leveling analysis requires knowledge of trade categories, CSI divisions, and outlier pricing detection. Schedule analysis requires dependency relationships and critical path methodology. Risk detection requires encoding of construction-specific risk patterns. These are genuinely different domains of expertise — modularity lets each be implemented by a service that specializes in it, with its own detection logic, confidence calibration, and evidence format.
+
+**Reason 2: Modularity enables independent improvement.** When the bid leveling service gets more accurate, only that service needs to change. The schedule and risk services are unaffected. Changes are isolated, testable, and deployable independently — a monolithic model that improves in one area changes everything else too, and you cannot verify the improvement without re-testing the whole system.
+
+**Reason 3: The BaseIntelligenceService pattern enforces auditability.** Every service that inherits from it produces output in the same format: data + confidence + evidence + metadata. Any consumer of intelligence — the Project Brain, the role consoles, the workflow engine — can evaluate any intelligence output the same way, regardless of which service produced it. Auditability is not optional in a governance-constrained environment; the modular pattern makes traceability structural, not an afterthought.
+
+**The Anti-Pattern We Rejected:** A single "project intelligence" endpoint returning a comprehensive assessment from a large language model is superficially simpler but less auditable (LLM reasoning is opaque), less reliable (outputs vary between runs on identical inputs), less correctable (you cannot tune one aspect without affecting others), and more expensive. The modular service architecture makes the system's intelligence inspectable, correctable, and improvable at the level that matters — the right trade-off for HCI's context.
+
 ---
 
-## 7.2 Intelligence Services — Current State (✅ Implemented)
+## 6.2 Intelligence Services — Current State (✅ Implemented)
 
 ### Service Map
 
@@ -67,7 +80,7 @@ class BaseIntelligenceService:
 
 ---
 
-## 7.3 Risk Engine (✅ Implemented — to be expanded)
+## 6.3 Risk Engine (✅ Implemented — to be expanded)
 
 ### Current Detectors
 - Procurement risks: `_procurement_risks()` in `intelligence.py`
@@ -96,29 +109,42 @@ TABLE project_risks_computed (
 
 ---
 
-## 7.4 Sections Requiring Chief Architect Input (⚠️)
+## 6.4 Sections Requiring Chief Architect Input (⚠️)
 
-### 7.4.1 Risk Engine Design Philosophy
-*[Chief Architect: How should the risk engine prioritize and weight different risk signals?
-What risk patterns are unique to Hendrickson Construction?]*
+### 6.4.1 Risk Detection Architecture
+*Authored by: Chief Architect (ChatGPT) + Browser Claude — 2026-06-30*
 
-### 7.4.2 Schedule Intelligence Model
+**The Canonical Risk Detection Pattern**
+
+All risk detection services in the HCI AI OS follow the same pattern, so future services can be added consistently.
+
+Every risk detection method follows the signature `_detect_{category}_risks(project_id, project_data) → List[RiskRecord]`, where category is one of procurement, schedule, budget, decision, data_gap (or a new category added via ACR).
+
+Every detected risk produces a RiskRecord with: project_id, category, severity (critical/high/medium/low), title (max 120 chars, action-oriented — e.g. "No bids for Mechanical HVAC — deadline in 3 days"), description, evidence (a list of `{field, value, threshold, significance}` items), confidence (0.0–1.0), recommended_action, detected_at, and status.
+
+**The Non-Duplication Check:** Before inserting a new RiskRecord, the system queries for an existing record with the same project, category, and matching title in an open/acknowledged/in-response status. If found, it updates last_detected_at and re-evaluates severity rather than inserting a duplicate.
+
+**The Evidence Format:** Evidence items must be specific and quantitative. `{field: "bid_coverage_pct", value: 6, threshold: 30, significance: "Only 2 of 35 packages have bids received"}` is defensible; `{field: "procurement", value: "low", significance: "Not many bids"}` is not. Vague evidence gets a risk dismissed or ignored; specific evidence compels action.
+
+**Adding a New Risk Category (requires ACR):** define the category's scope, implement `_detect_{category}_risks()` following the canonical pattern, register it in the RiskDetectionService orchestrator, define its evidence format, set initial confidence calibration, write unit tests against known data, and run in shadow mode (detect but don't surface) for two weeks before activating. New categories must not overlap existing ones — overlap creates duplicate risk records that clutter the approval queue.
+
+### 6.4.2 Schedule Intelligence Model
 *[Chief Architect: How should the system reason about construction schedule interdependencies?]*
 
-### 7.4.3 Cost Intelligence Model
+### 6.4.3 Cost Intelligence Model
 *[Chief Architect: How should historical cost data inform current project predictions?
 What variance thresholds are acceptable vs alarming for HCI?]*
 
-### 7.4.4 Vendor Intelligence Model
+### 6.4.4 Vendor Intelligence Model
 *[Chief Architect: How should the system evaluate vendor performance, capacity, and reliability?]*
 
-### 7.4.5 Labor Intelligence
+### 6.4.5 Labor Intelligence
 *[Chief Architect: Define what labor intelligence the system should track and predict]*
 
-### 7.4.6 Client Intelligence
+### 6.4.6 Client Intelligence
 *[Chief Architect: Define how the system should track and surface client relationship signals]*
 
-### 7.4.7 Prediction Model Confidence Thresholds
+### 6.4.7 Prediction Model Confidence Thresholds
 *[Chief Architect: At what confidence level should a prediction trigger an alert vs be surfaced passively?]*
 
 ---

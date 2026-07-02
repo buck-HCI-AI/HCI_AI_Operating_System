@@ -1,9 +1,9 @@
-# Volume VIII — Automation Architecture
+# Volume VII — Automation Architecture
 *HCI AI Construction Operating System Architecture Handbook*
 
 ---
 
-## 8.1 Automation Stack (✅ Implemented)
+## 7.1 Automation Stack (✅ Implemented)
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -33,7 +33,7 @@
 
 ---
 
-## 8.2 n8n Workflows (✅ Active)
+## 7.2 n8n Workflows (✅ Active)
 
 ### Automation Schedule
 
@@ -91,7 +91,7 @@
 
 ---
 
-## 8.3 Connectors (✅ Partial)
+## 7.3 Connectors (✅ Partial)
 
 ### n8n Credentials Configured
 
@@ -110,7 +110,7 @@ Table: `integration_registry` — catalog of all integrations
 
 ---
 
-## 8.4 Background Services (✅ Implemented)
+## 7.4 Background Services (✅ Implemented)
 
 ### launchd Services (macOS)
 
@@ -132,7 +132,7 @@ Table: `integration_registry` — catalog of all integrations
 
 ---
 
-## 8.5 Error Handling + Retry (✅ Partial)
+## 7.5 Error Handling + Retry (✅ Partial)
 
 ### API Error Strategy
 - All service endpoints wrap queries in try/except
@@ -145,15 +145,15 @@ Table: `integration_registry` — catalog of all integrations
 
 ---
 
-## 8.6 Sections Requiring Chief Architect Input (⚠️)
+## 7.6 Sections Requiring Chief Architect Input (⚠️)
 
-### 8.6.1 Self-Healing Architecture
+### 7.6.1 Self-Healing Architecture
 *[Chief Architect: Define how the system should detect and recover from failures automatically]*
 
-### 8.6.2 Continuous Monitoring Philosophy
+### 7.6.2 Continuous Monitoring Philosophy
 *[Chief Architect: What should the system always be watching? What triggers are non-negotiable?]*
 
-### 8.6.3 Workflow Orchestration Model
+### 7.6.3 Workflow Orchestration Model
 *[Chief Architect: How should complex multi-step workflows be designed and governed?]*
 
 ---

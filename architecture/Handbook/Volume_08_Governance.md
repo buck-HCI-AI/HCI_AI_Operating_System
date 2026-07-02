@@ -1,16 +1,16 @@
-# Volume IX — Governance
+# Volume VIII — Governance
 *HCI AI Construction Operating System Architecture Handbook*
 
 ---
 
-## 9.1 Governance Philosophy (⚠️ Chief Architect Input Required)
+## 8.1 Governance Philosophy (⚠️ Chief Architect Input Required)
 
 *[Chief Architect: Define the governance philosophy — how does Hendrickson Construction balance
 AI autonomy with human oversight? What is the long-term vision for AI governance as capability grows?]*
 
 ---
 
-## 9.2 Human Approval Gates (✅ Enforced)
+## 8.2 Human Approval Gates (✅ Enforced)
 
 ### Never Auto-Execute (Requires Buck Approval)
 
@@ -37,7 +37,7 @@ AI autonomy with human oversight? What is the long-term vision for AI governance
 
 ---
 
-## 9.3 Security Standards (✅ Implemented)
+## 8.3 Security Standards (✅ Implemented)
 
 | Standard | Implementation | Status |
 |---------|---------------|--------|
@@ -50,7 +50,7 @@ AI autonomy with human oversight? What is the long-term vision for AI governance
 
 ---
 
-## 9.4 Testing Standards (✅ Implemented)
+## 8.4 Testing Standards (✅ Implemented)
 
 | Standard | Current State |
 |---------|-------------|
@@ -72,7 +72,7 @@ AI autonomy with human oversight? What is the long-term vision for AI governance
 
 ---
 
-## 9.5 Database Migration Standards (✅ Implemented)
+## 8.5 Database Migration Standards (✅ Implemented)
 
 | Standard | Convention |
 |---------|-----------|
@@ -84,7 +84,7 @@ AI autonomy with human oversight? What is the long-term vision for AI governance
 
 ---
 
-## 9.6 Architecture Review Process (✅ Partial)
+## 8.6 Architecture Review Process (✅ Partial)
 
 | Process | Status |
 |---------|--------|
@@ -96,7 +96,7 @@ AI autonomy with human oversight? What is the long-term vision for AI governance
 
 ---
 
-## 9.7 Coding Standards (✅ Enforced via CLAUDE.md)
+## 8.7 Coding Standards (✅ Enforced via CLAUDE.md)
 
 - No explanatory comments unless WHY is non-obvious
 - No trailing summaries in responses
@@ -108,14 +108,14 @@ AI autonomy with human oversight? What is the long-term vision for AI governance
 
 ---
 
-## 9.8 Sections Requiring Chief Architect Input (⚠️)
+## 8.8 Sections Requiring Chief Architect Input (⚠️)
 
-### 9.8.1 Release Management Process
+### 8.8.1 Release Management Process
 *[Chief Architect: How should the platform transition from local-only to production/cloud?
 Define staging, testing, and release gate criteria.]*
 
-### 9.8.2 Continuous Deployment Vision
+### 8.8.2 Continuous Deployment Vision
 *[Chief Architect: Define the target CD pipeline for the platform]*
 
-### 9.8.3 Operational Governance as the Platform Scales
+### 8.8.3 Operational Governance as the Platform Scales
 *[Chief Architect: How does governance evolve when the platform manages more projects or companies?]*
