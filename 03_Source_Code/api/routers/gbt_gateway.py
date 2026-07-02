@@ -1932,6 +1932,9 @@ class EmailSendRequest(BaseModel):
     cc: Optional[list] = None  # [{"name": "...", "email": "..."}]
     reply_to_message_id: Optional[str] = None
     skip_notify: bool = False  # test-only: queue for approval without pushing a real Telegram message
+    dry_run: bool = False  # test-only: skip the real Outlook draft creation entirely (2026-07-02 -
+    # skip_notify alone was NOT enough; create_draft() ran unconditionally before it was even checked,
+    # so every test run was creating a real draft in Buck's actual mailbox. ~100 accumulated this way.
     source_agent: str = "browser_claude"  # who actually drafted this — was hardcoded, falsely
     # attributing every caller's (including test-suite) activity/errors to Browser Claude
 
@@ -1951,11 +1954,14 @@ def send_email_now(req: EmailSendRequest, request: Request):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
         from microsoft_graph import create_draft, create_reply_draft
 
-        if req.reply_to_message_id:
+        if req.dry_run:
+            draft_id = f"dry-run-{uuid.uuid4().hex[:12]}"
+        elif req.reply_to_message_id:
             draft = create_reply_draft(req.reply_to_message_id, req.body_html)
+            draft_id = draft.get("id", "")
         else:
             draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)])
-        draft_id = draft.get("id", "")
+            draft_id = draft.get("id", "")
         if not draft_id:
             raise ValueError("Draft creation returned no ID — cannot queue for approval")
 
@@ -2464,11 +2470,114 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Sprint drift check errored: {e}"})
 
+    # 5. n8n credential staleness - the exact "HubSpot credential broken 9 days,
+    #    nobody noticed" pattern. Flags any credential attached to an active
+    #    workflow that hasn't been updated in 14+ days.
+    try:
+        n8n_key = os.environ.get("N8N_API_KEY", "")
+        cred_resp = requests.get("http://localhost:5678/api/v1/credentials",
+                                  headers={"X-N8N-API-KEY": n8n_key}, timeout=10)
+        wf_resp = requests.get("http://localhost:5678/api/v1/workflows",
+                                headers={"X-N8N-API-KEY": n8n_key}, params={"limit": 250}, timeout=10)
+        if cred_resp.status_code == 200 and wf_resp.status_code == 200:
+            creds = {c["id"]: c for c in cred_resp.json().get("data", [])}
+            active_cred_ids = set()
+            for wf in wf_resp.json().get("data", []):
+                if not wf.get("active"):
+                    continue
+                for node in wf.get("nodes", []):
+                    for cred in (node.get("credentials") or {}).values():
+                        active_cred_ids.add(cred.get("id"))
+            stale_creds = []
+            for cid in active_cred_ids:
+                c = creds.get(cid)
+                if not c:
+                    continue
+                updated = c.get("updatedAt")
+                if updated:
+                    age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(updated.replace("Z", "+00:00"))).days
+                    if age_days > 14:
+                        stale_creds.append(f"{c['name']} (unchanged {age_days}d, in active use)")
+            if stale_creds:
+                findings.append({
+                    "severity": "medium",
+                    "category": "stale_credential",
+                    "detail": f"{len(stale_creds)} credential(s) in active use, unchanged 14+ days - verify still valid",
+                    "items": stale_creds,
+                })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Credential staleness check errored: {e}"})
+
+    # 6. Duplicate rows on natural keys where no unique constraint exists yet -
+    #    the connector_registry pattern (54 rows -> 9), checked here for other
+    #    tables known to accumulate the same way via repeated init/seed calls.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                dup_checks = [
+                    ("missions", "mission_id"),
+                    ("integration_registry", "integration_key"),
+                ]
+                for table, key_cols in dup_checks:
+                    try:
+                        cur.execute(f"""
+                            SELECT {key_cols}, COUNT(*) c FROM {table}
+                            GROUP BY {key_cols} HAVING COUNT(*) > 1
+                        """)
+                        dups = cur.fetchall()
+                        if dups:
+                            findings.append({
+                                "severity": "low",
+                                "category": "duplicate_rows",
+                                "detail": f"{table}: {len(dups)} key(s) with duplicate rows, no unique constraint enforcing this",
+                                "items": [str(dict(d)) for d in dups[:10]],
+                            })
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Duplicate row check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
         "findings": findings,
         "clean": len(findings) == 0,
+    }, start=t0)
+
+
+@router.post("/admin/self-heal")
+async def system_self_heal(request: Request):
+    """Auto-fix ONLY the narrow set of issues that are unambiguously safe and
+    reversible: restarting the n8n container when its SQLite I/O error
+    signature is detected (this happened twice - ADR-015 fixed the config,
+    but the running container needed a restart to pick it up each time, and
+    that step kept getting missed). Deliberately does NOT touch business data,
+    Drive files, or DB rows - those go through /admin/drift-check for a human
+    to review and act on via /drive/move or explicit SQL, never auto-applied."""
+    _require_key(request)
+    t0 = time.time()
+    actions_taken = []
+    try:
+        import subprocess
+        n8n_key = os.environ.get("N8N_API_KEY", "")
+        resp = requests.get("http://localhost:5678/api/v1/workflows", headers={"X-N8N-API-KEY": n8n_key},
+                             params={"limit": 1}, timeout=8)
+        body_text = resp.text if resp.status_code != 200 else ""
+        if resp.status_code != 200 and "SQLITE_IOERR" in body_text:
+            subprocess.run(
+                ["docker", "compose", "-f",
+                 os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "docker-compose.yml")),
+                 "restart", "n8n"],
+                capture_output=True, timeout=60,
+            )
+            actions_taken.append("Restarted n8n container - detected SQLITE_IOERR on its API, same signature as ADR-015")
+    except Exception as e:
+        actions_taken.append(f"n8n health check/restart attempt errored: {e}")
+
+    return _response("/admin/self-heal", {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "actions_taken": actions_taken,
+        "note": "Only auto-fixes container-level issues. Data/file issues from /admin/drift-check always require human review.",
     }, start=t0)
 
 

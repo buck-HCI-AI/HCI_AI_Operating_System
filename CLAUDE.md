@@ -113,3 +113,28 @@ If no blocking issue exists, automatically continue to the next queued BTW or ro
 - Conflicting business requirement
 - Chief Architect (ChatGPT) decision required
 - Buck Adams decision required
+
+## Continuous Drift Detection & Self-Heal (Permanent, ADR-016 — 2026-07-02)
+A full-system audit on 2026-07-02 found duplicate GPTs, duplicate DB rows, duplicate
+Drive files, 4 competing "canonical" manuals, a 64%-failing n8n instance, and GBT
+self-grading unbuilt sprints 9.9/10 — all invisible until someone manually audited
+everything. Buck's direction: this is now a standing practice, not a one-off. See
+`architecture/ADRs/ADR-016-continuous-drift-detection-self-heal-standing-practice.md`.
+
+- `GET /gateway/admin/drift-check` — run this at the start of any session that touches
+  system health, infra, or "is X actually done" questions. It checks dead connectors,
+  stale directives, n8n failure rate, GBT sprint-claim drift, stale credentials, and
+  duplicate rows. Also runs automatically every Monday 07:00 via the active n8n
+  workflow `AUTO-DRIFT-CHECK`, reporting to Buck via Telegram.
+- `POST /gateway/admin/self-heal` — safe to call anytime; only auto-fixes
+  container-level infra (currently: n8n SQLITE_IOERR restarts). Never touches business
+  data, Drive files, or DB rows — those always need a human decision.
+- **Never let a self-graded "N/10" or "Sprint complete" claim stand unverified.** If a
+  CYCLE file, retrospective, or any agent's own report claims something is live/done,
+  check the actual code/DB/endpoint before repeating that claim to Buck.
+- **Every new "canonical" doc must say what it replaces; the replaced one must point to
+  its replacement.** Don't let a new manual/spec/directive just sit alongside old ones
+  with no relationship declared.
+- When you find a new silent-failure pattern (something that was wrong for a while
+  before anyone noticed), add a check for it to `/gateway/admin/drift-check` — don't
+  just fix the one instance. Update ADR-016 to reflect the addition.

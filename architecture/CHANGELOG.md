@@ -5,6 +5,30 @@
 
 ---
 
+## v4.1 — 2026-07-02 | Continuous Drift Detection + Self-Heal (ADR-016)
+
+**Trigger:** Buck, after a full-system audit found the same root cause (nothing ever
+re-checks whether something is still true, needed, or already exists) independently in
+5 places — duplicate GPTs, duplicate DB rows, duplicate Drive files, 4 competing
+manuals, and a 64%-failing n8n instance nobody had noticed. Direction: make self-audit
+and self-heal a permanent practice, not a one-off cleanup.
+
+- `GET /gateway/admin/drift-check` — automates the manual audit: dead connectors,
+  stale directives, n8n failure rate, GBT sprint-claim drift, stale credentials,
+  duplicate rows. See ADR-016.
+- `POST /gateway/admin/self-heal` — auto-restarts n8n on its known SQLITE_IOERR
+  signature only; everything else always requires human review.
+- `POST /gateway/drive/move` — real Drive file relocation (the connector previously
+  only supported copy, which multiplies clutter instead of reducing it).
+- New n8n workflow `AUTO-DRIFT-CHECK` (active, Monday 07:00) runs the check and pushes
+  findings to Buck via Telegram automatically.
+- Also fixed this session: n8n's SQLite I/O error (WAL config existed but the running
+  container never picked it up), a HubSpot n8n credential broken 9 days unnoticed,
+  54 duplicate `connector_registry` rows deduped + unique-constrained, 4 competing
+  "canonical" manuals reconciled to one, and 22 duplicate/superseded Drive files
+  archived — including one GBT report caught fabricating specific vendor names and
+  dollar amounts as if pulled from live data.
+
 ## v3.9 — 2026-07-02 | Test-Hygiene Fixes + n8n Networking + Plan-Review Extensions
 
 **Trigger:** Recurring "yes/no prompt" complaints traced to real bugs (not the harness), plus a full system audit Buck requested after the earlier shutdown/merge with GBT and Browser Claude.

@@ -273,7 +273,7 @@ check("No API key -> rejected (403), not sent", code == 403, code)
 code, d = post("/email/send", {
     "to_name": "Buck Test", "to_email": "buck@hendricksoninc.com",
     "subject": "[TEST] automated regression check", "body_html": "<p>Automated test row - safe internal address.</p>",
-    "skip_notify": True, "source_agent": "test_suite",
+    "skip_notify": True, "dry_run": True, "source_agent": "test_suite",
 })
 check("With API key -> queued_for_approval, not sent", code == 200 and d.get("payload", {}).get("status") == "queued_for_approval", d)
 email_msg_id = d.get("payload", {}).get("message_id")
@@ -326,15 +326,18 @@ _msgraph._request = lambda *a, **k: ({"id": "test-stub-sent"}, None)
 try:
     result, err = _send_email("[TEST] automated regression — self-send allowlist", "<p>test</p>",
                                [("Buck Adams", "buck@hendricksoninc.com")])
+    check("send_email() to Buck's own address routes to direct-send branch (network call stubbed - no real inbox spam per test run)",
+          err is None and "queued_draft_id" not in (result or {}), (result, err))
+
+    # 2026-07-02: this second call used to run AFTER the stub was already restored in the
+    # finally block below, so every test run created a real "external still gated" draft
+    # in Buck's actual Outlook (~50 accumulated this way). Moved inside the stubbed block.
+    result2, err2 = _send_email("[TEST] automated regression — external still gated", "<p>test</p>",
+                                 [("Someone", "someone@example.com")])
+    check("send_email() to external address still drafts, never sends",
+          err2 is None and result2.get("status") == "drafted_pending_approval", (result2, err2))
 finally:
     _msgraph._request = _real_request
-check("send_email() to Buck's own address routes to direct-send branch (network call stubbed - no real inbox spam per test run)",
-      err is None and "queued_draft_id" not in (result or {}), (result, err))
-
-result2, err2 = _send_email("[TEST] automated regression — external still gated", "<p>test</p>",
-                             [("Someone", "someone@example.com")])
-check("send_email() to external address still drafts, never sends",
-      err2 is None and result2.get("status") == "drafted_pending_approval", (result2, err2))
 
 # ── 18. role_owner snapshot fallback (2026-07-01: null-until-nightly-job bug) ──
 print("\n18. GET /gateway/role/owner — 101F shows real data, not null/blank")
