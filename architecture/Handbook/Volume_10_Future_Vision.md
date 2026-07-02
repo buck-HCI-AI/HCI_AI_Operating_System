@@ -10,9 +10,11 @@
 
 ---
 
-## 10.1 2026 Roadmap (⚠️ Chief Architect Required)
+## 10.1 2026 Roadmap
 
-*[Chief Architect: Define the 2026 implementation roadmap — what capabilities ship this year?]*
+The 2026 implementation roadmap is authored in full in Volume IX §9.1 (2026 Q3–Q4 Roadmap) — that
+chapter is the canonical version. This section is kept only as the pre-2027 implementation
+reference below; it does not duplicate the roadmap narrative itself.
 
 ### Current State (Claude Code Reference — DO NOT OVERWRITE)
 
@@ -54,16 +56,26 @@ By mid-2027, the HCI AI OS will have evolved from its current state (intelligenc
 
 ---
 
-## 10.3 2028 Vision (⚠️ Chief Architect Required)
+## 10.3 2028 Vision
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
 
-*[Chief Architect: Define the 2028 vision — where does this platform go in 2-3 years?]*
+By 2028, the HCI AI Operating System should no longer be viewed as a collection of software applications or AI services. It should function as the operational intelligence layer of the construction company, providing continuous situational awareness, organizational memory, and decision support across every project and every role.
+
+Earlier phases establish connected data, construction intelligence, predictive cost modeling, automated lessons extraction, vendor intelligence, and governed automation. The 2028 vision extends beyond individual capabilities toward a continuously learning operating environment in which every completed project immediately strengthens every future project.
+
+Construction knowledge becomes cumulative rather than project-specific. Design decisions, procurement outcomes, schedule performance, coordination patterns, vendor performance, quality observations, and operational lessons continuously refine the intelligence model. Recommendations become increasingly contextual because they are informed not only by historical records but also by demonstrated organizational experience.
+
+By this stage, planning begins with intelligence rather than documentation. New projects inherit relevant lessons, historical production rates, known procurement constraints, comparable project risks, preferred execution strategies, and proven operational practices before work begins. Teams spend less time rediscovering knowledge that already exists within the organization.
+
+The platform also becomes increasingly adaptive to individual roles. Intelligence evolves based on operational context, presenting information appropriate to current project conditions, responsibilities, and priorities while preserving a consistent governance model. The objective is not greater automation for its own sake, but greater clarity, earlier insight, and higher confidence in every operational decision.
+
+The long-term measure of success is organizational capability. Hendrickson Construction should complete projects with greater consistency, preserve institutional knowledge across personnel changes, reduce operational variability, and continuously improve project delivery because the operating system learns alongside the organization it serves.
 
 ---
 
-## 10.4 Scaling Beyond Hendrickson Construction (⚠️ Chief Architect Required)
+## 10.4 Scaling Beyond Hendrickson Construction
 
-*[Chief Architect: How does this platform scale to serve other construction companies?
-What is the multi-tenant architecture? What is the licensing model?]*
+The two questions this chapter originally asked — the licensing model and the technical multi-tenant architecture — are answered directly by the two chapters that follow: §10.5 (Commercial Expansion) covers the licensing/commercial model, and §10.6 (Multi-Company Architecture) covers the technical architecture. This chapter is intentionally left as a pointer rather than duplicating that content.
 
 ---
 
@@ -86,10 +98,20 @@ Buck's decision on commercial model is not required in the near term. The priori
 
 ---
 
-## 10.6 Multi-Company Architecture (⚠️ Chief Architect Required)
+## 10.6 Multi-Company Architecture
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
 
-*[Chief Architect: Define the technical architecture for multi-company deployment —
-separate databases, shared intelligence layer, cross-company benchmarking?]*
+The HCI AI Operating System is designed so that its architecture can support multiple construction companies without compromising the independence, confidentiality, or governance of any individual organization. Multi-company capability is achieved through architectural isolation first and shared intelligence second.
+
+Each company operates within its own logical environment containing its projects, documents, vendors, workflows, financial information, users, approvals, and organizational knowledge. Company-specific operational data remains isolated through tenant-aware application services, access controls, and dedicated data boundaries. One company's operational records are never exposed to another company through application logic or direct data access.
+
+Above these isolated operational environments, the platform may maintain a separate intelligence layer composed only of information that has been intentionally generalized or anonymized. This layer contains architectural patterns, software capabilities, operational best practices, statistical models, and other knowledge that does not reveal confidential project information or proprietary business data.
+
+Cross-company benchmarking, where appropriate, should be performed using aggregated and anonymized metrics rather than project-level records. Comparative intelligence answers questions such as whether procurement lead times, schedule reliability, or response times fall within observed industry ranges without revealing which company produced the underlying data or exposing identifiable project information.
+
+Participation in any shared benchmarking or intelligence program should be an explicit organizational decision rather than a platform default. Each company determines what information, if any, may contribute to shared learning. Sensitive operational, financial, contractual, client, and project information remains under the sole control of the originating organization unless explicitly authorized otherwise.
+
+This architecture allows the platform itself to improve across deployments while preserving complete operational independence for every participating company. The software becomes more capable through broader experience, but each company's competitive knowledge, client relationships, and project information remain its own. The result is a scalable construction intelligence platform that supports organizational growth without sacrificing trust, confidentiality, or governance.
 
 ---
 

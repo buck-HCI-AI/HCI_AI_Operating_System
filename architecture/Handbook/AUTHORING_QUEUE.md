@@ -150,9 +150,9 @@ Chief Architect resolves authoring items.
 | # | Chapter | Status | Dependencies | Source Docs | Related ADRs | Related Code | Review Required |
 |---|---------|--------|-------------|-------------|-------------|-------------|----------------|
 | 10.1 | 2027 Vision | 🟢 PUBLISHED (as Vol X §10.2) | Vol IX complete | — | — | — | None |
-| 10.2 | 2028 Vision | 🔴 NOT STARTED | 10.1 | — | — | — | Chief Architect |
+| 10.2 | 2028 Vision | 🟢 PUBLISHED (as Vol X §10.3) | 10.1 | — | — | — | None |
 | 10.3 | Commercial Expansion | 🟢 PUBLISHED (as Vol X §10.5) | 10.1 | — | — | — | None |
-| 10.4 | Multi-Company Architecture | 🔴 NOT STARTED | 10.3 | — | — | — | Chief Architect |
+| 10.4 | Multi-Company Architecture | 🟢 PUBLISHED (as Vol X §10.6) | 10.3 | — | — | — | None |
 | 10.5 | AI Workforce Evolution | 🟢 PUBLISHED (as Vol X §10.7, plus bonus §10.9 Data Moat Strategy) | 10.1 | — | — | — | None |
 
 ---
@@ -170,21 +170,28 @@ Chief Architect resolves authoring items.
 
 ---
 
-## Queue Summary (Updated 2026-07-02)
+## Queue Summary (Updated 2026-07-02, final pass)
 
 | Status | Count | Volumes Affected |
 |--------|-------|-----------------|
-| 🔴 NOT STARTED | 4 | VII (7.1), IX (9.3, 9.5), X (10.2, 10.4) |
+| 🔴 NOT STARTED | 0 | — |
 | ⚙️ IMPL ONLY | 26 | II, III, IV, V, VI, VII, VIII, IX |
-| 🟡 IN PROGRESS | 1 | VIII (8.1 — GBT authoring live, 2026-07-02) |
+| 🟡 IN PROGRESS | 0 | — |
 | 🟠 DRAFT READY | 0 | — |
-| 🟢 PUBLISHED | 25 | I (complete), II, III, IV, V, VI, IX (9.1-9.2), X (partial) |
+| 🟢 PUBLISHED | 30 | I-X, all philosophy chapters complete |
 | ⚠️ CONFLICT | 0 | — |
 
-**Remaining chapters needing authorship:**
-1. Volume VII §7.1 — Automation Philosophy (no draft exists anywhere, real gap)
-2. Volume VIII §8.1 — Governance Philosophy (in progress with GBT right now)
-3. Volume IX §9.3, §9.5 — Phase Definitions, Architecture Milestones
-4. Volume X §10.2, §10.4 (file §10.3, §10.6) — 2028 Vision, Multi-Company Architecture
+**Every top-level chapter originally queued for Chief Architect authorship is now published**,
+closing out the 2026-06-27 queue (18 chapters) plus the 6 real gaps found after the 2026-07-02
+Drive reconciliation (7.0/7.1, 8.1, 9.3, 9.5, 10.2/10.3, 10.4/10.6) — all authored live by GBT in
+this session, none duplicated from the Drive backlog.
 
-**Total chapters needing authorship: 6, down from 18 as of the 2026-07-02 reconciliation.**
+**Honest exception, not swept under the rug:** a handful of *sub-section* placeholders below the
+chapter level were never in this queue's top-level list and are still open — Vol III §3.3.17
+(Project Brain future evolution), Vol VI §6.4.2-6.4.7 (schedule/cost/vendor/labor/client
+intelligence models, prediction confidence thresholds), Vol VII §7.6.1-7.6.3 (self-healing
+architecture, continuous monitoring, workflow orchestration), Vol VIII §8.8.1-8.8.3 (release
+management, CD pipeline, governance-at-scale). These are real, smaller open items for a future
+authoring pass, not fabricated as done. Also open: Volume IX §9.2's Gate 5 verdict is genuinely
+pending Buck's sign-off — that is real-world status, not a missing chapter, and should never be
+"closed" by anyone other than Buck.
