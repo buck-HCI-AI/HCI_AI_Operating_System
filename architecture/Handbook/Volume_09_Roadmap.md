@@ -60,11 +60,24 @@ What is open, per the real sign-off request to Buck: an email-governance inciden
 
 ---
 
-## 9.3 Phase Definitions (⚠️ Chief Architect Required)
+## 9.3 Phase Definitions
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
 
-*[Chief Architect: Define Phase 1, 2, 3, 4+ for the HCI AI OS.
-What capabilities does each phase unlock?
-What is the dependency order?]*
+The HCI AI Operating System is developed in sequential architectural phases. Each phase establishes capabilities that become stable foundations for the phases that follow. New functionality is introduced only after the underlying architecture has demonstrated operational reliability, ensuring that the platform grows through deliberate evolution rather than continuous redesign.
+
+**Phase 1 — Foundation** established the core operating environment. System architecture, repository governance, source control, project structure, service boundaries, and the fundamental operating model were defined. The objective of Phase 1 was to create a stable platform capable of supporting long-term development.
+
+**Phase 2 — Integration** connected the platform to the systems that contain operational knowledge. Data synchronization, project information, document management, external services, communications, and workflow orchestration established the platform as the operational source of truth.
+
+**Phase 3 — Intelligence** transformed connected information into construction intelligence. Project Brain, role-based intelligence, mission control, historical learning, knowledge retrieval, risk identification, and decision-support capabilities enabled the platform to provide recommendations rather than simply storing information. Intelligence became an operational service instead of a reporting function.
+
+**Phase 4 — Operational Maturity** established governance, reliability, and production readiness. Approval gates, operational monitoring, self-healing infrastructure, architecture documentation, role consoles, handbook publication, and organizational operating procedures matured the platform from a technical system into a dependable construction operating environment suitable for daily use.
+
+These four phases establish the permanent architectural foundation of the HCI AI Operating System. Future phases build upon this foundation rather than replacing it.
+
+**Phase 5 and Beyond — Organizational Intelligence** expands the platform through measured operational capability rather than architectural reinvention. Future work emphasizes predictive planning, continuously improving organizational memory, broader operational adoption, deeper decision support, additional role intelligence, and carefully governed automation. Each future phase is expected to strengthen the existing architecture, preserve backward compatibility, and increase measurable value without compromising the principles established during the foundational phases.
+
+Every subsequent phase should satisfy a single test: does it make the operating system more capable, more reliable, and more valuable without increasing unnecessary complexity?
 
 ---
 
@@ -85,24 +98,33 @@ What is the dependency order?]*
 | BTW-9 | Company Knowledge Graph (service + Qdrant 13 collections) | ✅ Complete |
 | BTW-10 | Continuous Discovery Engine | ✅ Complete |
 
-**Gate 5 Pilot (Active — 2026-06-25 → 2026-07-01):**
+**Gate 5 Pilot (Closed 2026-07-01 — verdict pending Buck's sign-off, see §9.2):**
 - Projects: 64 Eastwood, 101 Francis, 1355 Riverside
-- Verdict due: July 1, 2026
 - Current health: 64EW YELLOW, 101F YELLOW (-5d steel delay), 1355R GREEN
 
 **Remaining blockers before full go-live:**
 1. Houzz Browser Extraction (15 min × 3 projects — unlocks BTW-7 + all Houzz tables)
 2. Gmail OAuth in n8n for AUTO-EOD workflow (Buck to configure)
-3. Architecture Handbook philosophy chapters (GBT authoring — see Section 9.5)
-4. Gate 5 verdict (July 1, 2026)
+3. Buck's Gate 5 sign-off (see §9.2 — this is the actual gate, not a formality)
 
 ---
 
-## 9.5 Architecture Milestones (⚠️ Chief Architect Required)
+## 9.5 Architecture Milestones
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
 
-*[Chief Architect: When should the Architecture Handbook be feature-complete?
-When should each volume transition from DRAFT to Published?
-What is the review and sign-off process?]*
+Architecture milestones represent structural changes to the HCI AI Operating System rather than the completion of individual features. A feature demonstrates functionality. An architecture milestone demonstrates that the platform itself has permanently advanced to a higher level of capability, stability, or organizational maturity.
+
+The first milestone is the establishment of a stable architectural foundation, where the core operating model, service boundaries, governance principles, and repository structure are defined and no longer subject to frequent redesign. Once this foundation exists, subsequent development should extend the architecture rather than replace it.
+
+The second milestone is schema stability. Core data structures become sufficiently mature that applications, workflows, integrations, and intelligence services can depend upon them with confidence. Schema changes become deliberate, versioned, and governed rather than continuous.
+
+The third milestone is operational integration. Independent services become a coordinated operating system through shared governance, common data models, approval workflows, role intelligence, and a unified construction knowledge model. At this point the platform functions as a cohesive system rather than a collection of connected tools.
+
+The fourth milestone is architecture freeze for production. Structural experimentation gives way to controlled evolution. Core interfaces, authority boundaries, governance policies, and architectural principles remain stable while enhancements occur within the established framework. Changes to the architecture itself require explicit review because they affect every capability built upon it.
+
+The fifth milestone is organizational publication. The Architecture Handbook transitions from a working design document into the authoritative reference for how the HCI AI Operating System is designed, governed, and operated. Publication should occur only after the major architectural principles are implemented, validated against the live system, and reviewed for consistency. After publication, revisions become controlled updates that document architectural evolution rather than ongoing design exploration.
+
+Future milestones should represent meaningful structural advances, such as the introduction of new architectural domains, enduring governance capabilities, or fundamental operating-model improvements. They should never be defined solely by the number of completed features. The architecture succeeds when it remains understandable, stable, extensible, and trusted as the foundation upon which every future capability is built.
 
 ---
 

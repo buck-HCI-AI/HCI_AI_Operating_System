@@ -139,9 +139,9 @@ Chief Architect resolves authoring items.
 |---|---------|--------|-------------|-------------|-------------|-------------|----------------|
 | 9.1 | 2026 Roadmap | 🟢 PUBLISHED | Vol I complete | — | — | — | None |
 | 9.2 | Gate 5 Pilot Outcomes | 🟢 PUBLISHED — documents real PENDING status, not a verdict | None | PILOT_READINESS_REPORT.md, GATE5_CLOSE_2026-07-01.md | — | — | None |
-| 9.3 | Phase Definitions | 🔴 NOT STARTED | 9.1 | IMPLEMENTATION_SEQUENCE.md | — | — | Chief Architect |
+| 9.3 | Phase Definitions | 🟢 PUBLISHED | 9.1 | IMPLEMENTATION_SEQUENCE.md | — | — | None |
 | 9.4 | Current State Reference | ⚙️ IMPL ONLY | — | LIVE_PROJECT_STATE.md | — | — | None |
-| 9.5 | Architecture Milestones | 🔴 NOT STARTED | 9.1 | — | — | — | Chief Architect |
+| 9.5 | Architecture Milestones | 🟢 PUBLISHED | 9.1 | — | — | — | None |
 
 ---
 
