@@ -112,7 +112,7 @@ Chief Architect resolves authoring items.
 
 | # | Chapter | Status | Dependencies | Source Docs | Related ADRs | Related Code | Review Required |
 |---|---------|--------|-------------|-------------|-------------|-------------|----------------|
-| 7.1 | Automation Philosophy | 🔴 NOT STARTED | Vol I complete | — | ADR-005 | — | Chief Architect |
+| 7.1 | Automation Philosophy | 🟢 PUBLISHED (as Vol VII §7.0) | Vol I complete | — | ADR-005 | — | None |
 | 7.2 | n8n Workflow Registry | ⚙️ IMPL ONLY | — | WORKFLOW_INVENTORY.md | — | `workflows/n8n/` | None |
 | 7.3 | launchd Service Management | ⚙️ IMPL ONLY | — | — | — | `launchd/` | None |
 | 7.4 | Browser Agent Protocol | ⚙️ IMPL ONLY | — | BROWSER_AGENT_STANDARD.md | — | `services/connectors/` | None |

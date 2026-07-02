@@ -3,6 +3,27 @@
 
 ---
 
+## 7.0 Automation Philosophy
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+The HCI AI Operating System treats automation as an operational capability, not a centralized control system. No single scheduler is expected to manage every process, monitor every service, or recover every failure. Instead, automation is distributed across specialized components, each responsible for the work it performs best.
+
+Workflow orchestration manages business processes. Background services monitor platform health, synchronization, indexing, and continuous intelligence. Application services execute domain-specific logic. Together, these components create a resilient operating model in which individual failures are isolated, observable, and recoverable without placing the entire platform at risk.
+
+This architecture favors reliability over centralization. Small, purpose-built automation services are easier to understand, test, maintain, and replace than a single orchestration engine responsible for every operational function. As the platform evolves, automation can expand incrementally without requiring fundamental changes to the operating model.
+
+Automation is expected to detect abnormal conditions and recover automatically whenever recovery is deterministic, repeatable, and carries minimal operational risk. Examples include restarting unhealthy services, resuming interrupted synchronization, retrying transient operations, rebuilding derived indexes, and restoring normal platform operation after temporary failures.
+
+Automation is not expected to make business judgments. When recovery requires interpretation, changes project information, creates external commitments, or could conceal an underlying operational problem, the system stops, records the condition, and requests human review. A visible alert is preferable to an invisible mistake. The objective is dependable operation, not autonomous behavior at any cost.
+
+The self-healing boundary reflects this philosophy. Infrastructure may heal itself when returning to a previously known, healthy state — for example, restarting a failed service or container that has already been validated. The platform does not automatically modify business rules, alter project data, rewrite workflows, or change production behavior without explicit human authorization. Restoring operation is fundamentally different from changing intent.
+
+Automation earns expanded authority through demonstrated reliability rather than assumption. Every new capability begins with observation and recommendation. After proving consistent accuracy, appropriate safeguards, and operational value, it may advance to approval-assisted execution. Only after sustained performance, measurable benefit, and organizational confidence should limited autonomous operation be considered, and only for low-risk activities within established governance boundaries.
+
+The objective is not to automate everything. The objective is to automate repetitive work, reduce operational friction, improve system reliability, and allow construction professionals to focus their time on building successful projects. Every expansion of automation must increase trust, reduce workload, and remain fully accountable to the governance model of the HCI AI Operating System.
+
+---
+
 ## 7.1 Automation Stack (✅ Implemented)
 
 ```
