@@ -488,6 +488,22 @@ check("New RFI increments the pending-review count", p.get("total_pending_review
 check("Has all three category lists", all(k in p for k in
       ("rfis_from_plan_review", "bid_packages_from_plan_review", "schedule_items_from_plan_review")), p)
 
+# ── 24.5. Owner-selection decision tracker (2026-07-02) ─────────────────────────
+print("\n24.5. GET /project/{code}/owner-decisions-needed")
+post("/plan-review/analyze", {
+    "project_code": "QATEST", "reviewed_by": "test_suite",
+    "sheet_text": "Sheet A1.1 Plumbing Fixture Schedule: Master Bath lavatory - manufacturer, model, and color all BLANK.",
+})
+code, d = get("/project/QATEST/owner-decisions-needed")
+check("Returns 200", code == 200, code)
+p = d.get("payload", {})
+check("Has decisions_needed list", isinstance(p.get("decisions_needed"), list), p)
+check("Has count as int", isinstance(p.get("count"), int), p)
+check("Fixture-schedule RFI picked up as a selection decision",
+      any("manufacturer" in (d2.get("subject","")+d2.get("question","")).lower()
+          or "fixture" in (d2.get("subject","")+d2.get("question","")).lower()
+          for d2 in p.get("decisions_needed", [])), p.get("decisions_needed"))
+
 # ── 25. Grounded permitting research (ADR-014 roadmap item 3) ──────────────────
 print("\n25. GET /gateway/permitting/research/{code} — grounded in cited sources")
 code, d = get("/permitting/research/101F")

@@ -381,6 +381,78 @@ def plan_review_pending(code: str):
         return _response(f"/project/{code}/plan-review-pending", {}, errors=[str(e)], start=t0)
 
 
+_OWNER_SELECTION_KEYWORDS = (
+    "manufacturer", "model", "color", "finish", "fixture", "selection", "select",
+)
+
+
+@router.get("/project/{code}/owner-decisions-needed")
+def owner_decisions_needed(code: str):
+    """
+    Owner-selection tracker (2026-07-02) — spec-driven luxury builds stall on the same
+    pattern every time: the plan set shows a fixture/finish location but leaves
+    manufacturer/model/color blank pending an owner decision. The plan-review pipeline
+    already generates an RFI for exactly this (see the fixture-schedule gaps in every
+    real run so far), but nothing distinguished "owner needs to pick a tile" from
+    "engineer needs to answer a structural question" or attached a real deadline. This
+    endpoint filters open RFIs to selection-flavored ones (keyword match on subject/
+    question — a heuristic, not a hard classification) and cross-references the
+    long-lead schedule notes (see generate-schedule) so a selection blocking a
+    long-lead item shows the actual order-by date, not just "open."
+    """
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        conn = _pg()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, rfi_number, subject, question, submitted_date, required_response_date
+                FROM rfis WHERE project_id = %s AND status = 'open'
+                ORDER BY id DESC
+            """, (pid,))
+            all_open = [dict(r) for r in cur.fetchall()]
+            cur.execute("""
+                SELECT title, notes FROM project_schedule_items
+                WHERE project_id = %s AND status = 'draft' AND notes ILIKE '%%LONG-LEAD%%'
+            """, (str(pid),))
+            long_lead_items = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        decisions = []
+        for rfi in all_open:
+            text = f"{rfi.get('subject','')} {rfi.get('question','')}".lower()
+            if not any(kw in text for kw in _OWNER_SELECTION_KEYWORDS):
+                continue
+            if rfi.get("submitted_date"):
+                rfi["submitted_date"] = rfi["submitted_date"].isoformat()
+            if rfi.get("required_response_date"):
+                rfi["required_response_date"] = rfi["required_response_date"].isoformat()
+            needed_by = None
+            for item in long_lead_items:
+                item_words = set(item["title"].lower().split())
+                rfi_words = set(text.split())
+                if item_words & rfi_words:
+                    order_by = item["notes"].split("order by ")[-1].split(" to avoid")[0]
+                    needed_by = order_by
+                    break
+            decisions.append({**rfi, "needed_by": needed_by or rfi.get("required_response_date")})
+
+        decisions.sort(key=lambda d: (d["needed_by"] is None, d.get("needed_by") or ""))
+        return _response(f"/project/{code}/owner-decisions-needed", {
+            "project_code": code,
+            "decisions_needed": decisions,
+            "count": len(decisions),
+            "count_blocking_long_lead_order": sum(1 for d in decisions if d["needed_by"] and d["needed_by"] != d.get("required_response_date")),
+            "note": "Keyword-filtered from open RFIs — a heuristic, not a hard "
+                    "classification; PM should still skim for misses. needed_by prefers "
+                    "a long-lead order date over the RFI's own required_response_date "
+                    "when the selection blocks a long-lead item.",
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/owner-decisions-needed", {}, errors=[str(e)], start=t0)
+
+
 @router.get("/project/{code}/action-list")
 def project_action_list(code: str):
     """AI-ranked top 10 PM actions for the day."""
