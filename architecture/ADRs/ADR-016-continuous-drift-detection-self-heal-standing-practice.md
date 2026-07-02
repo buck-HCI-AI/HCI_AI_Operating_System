@@ -76,6 +76,33 @@ this audit proved AI agents get wrong when unsupervised.
   directives landed within a day over one incident this session. Not fixed by this
   ADR, but named here as the next highest-value drift-check candidate.
 
+## Addendum 2026-07-02 (later same day) — Cross-agent peer review, permanent
+
+During the same session, all three agents were asked to collaborate continuously on
+Handbook authoring and system hardening. Buck's direction once real collaboration was
+underway: **"collaborate — have GBT check work — you guys check each other. Stay on
+mission. No drift allowed now or for future... think about operating in 5 years with
+no hiccups and continuous learning and being better."**
+
+This extends the "no self-graded complete claims" rule above into an explicit,
+permanent practice:
+
+- **Every agent's output gets checked by a different agent before it's treated as
+  final** — not just verified against the live system by the same agent that produced
+  it. Claude Code checking Claude Code's own claim is necessary but not sufficient;
+  today's session repeatedly found things a second party (usually Claude Code checking
+  BC's or GBT's claim against git/DB) caught that the originating agent's own
+  self-check missed. GBT reviewing BC's Handbook commits and vice versa is the same
+  pattern applied going forward, not a one-time Handbook-specific step.
+- **This is not a one-off for the Handbook.** It applies to every future collaborative
+  build: code, docs, specs, retrospectives. The reviewing agent's job is specifically
+  to check the claim against the real system state (files, DB, live endpoints), not to
+  re-read the same chat context and agree.
+- **"No drift allowed now or for future"** means this practice itself is subject to
+  drift-check the same way everything else in this ADR is — if peer review stops
+  happening (agents start rubber-stamping each other, or skip it under time pressure),
+  that is itself a drift-check-worthy finding, not just a lapse to note quietly.
+
 ## Extending this
 
 Whenever a future audit — manual or automated — finds a new silent-failure pattern,

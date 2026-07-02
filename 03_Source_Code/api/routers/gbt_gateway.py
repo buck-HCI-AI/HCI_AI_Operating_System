@@ -17,7 +17,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, Any, Dict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 
 router = APIRouter(prefix="/gateway", tags=["gbt-gateway"])
 
@@ -301,6 +301,306 @@ def project_pm(code: str):
         return _response(f"/project/{code}/pm", data, start=t0)
     except HTTPException as e:
         return _response(f"/project/{code}/pm", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/project/{code}/deep-dive")
+def project_deep_dive(code: str):
+    """Full per-project synthesis — daily logs, schedule, and budget together, not just
+    a health/summary line. Added 2026-07-02 per Buck: 'not just an overview, full deep
+    dive into each project.' Pulls real rows (not derived health scores) so a GPT can
+    actually answer 'where do things stand on X' with specifics."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, name, project_code, contract_value, status, permit_status
+                    FROM projects WHERE UPPER(project_code) = UPPER(%s)
+                """, (code,))
+                proj = cur.fetchone()
+                if not proj:
+                    return _response(f"/project/{code}/deep-dive", {}, errors=[f"Unknown project code: {code}"], start=t0)
+                pid = proj["id"]
+
+                # Daily logs — last 14 days, most recent first
+                cur.execute("""
+                    SELECT log_date, work_performed, issues, weather, crew_on_site,
+                           manpower, deliveries, inspections, logged_by
+                    FROM daily_logs WHERE project_id = %s
+                    ORDER BY log_date DESC LIMIT 14
+                """, (pid,))
+                logs = [dict(r) for r in cur.fetchall()]
+                last_log_date = logs[0]["log_date"] if logs else None
+                days_since_log = (date.today() - last_log_date).days if last_log_date else None
+
+                # Schedule — upcoming and overdue items
+                cur.execute("""
+                    SELECT activity_id, title, start_date, end_date, status, completion_pct, task_type
+                    FROM project_schedule_items WHERE project_id = %s::text
+                    ORDER BY start_date ASC NULLS LAST
+                """, (pid,))
+                sched_items = [dict(r) for r in cur.fetchall()]
+                today = date.today()
+                overdue = [s for s in sched_items if s["end_date"] and s["end_date"] < today
+                           and (s["status"] or "").lower() not in ("complete", "completed", "done")]
+                upcoming = [s for s in sched_items if s["start_date"] and s["start_date"] >= today][:8]
+                total_items = len(sched_items)
+                complete_items = len([s for s in sched_items if (s["status"] or "").lower() in ("complete", "completed", "done")])
+
+                # Budget — bid packages + committed amount
+                cur.execute("""
+                    SELECT bp.id, bp.package_name, bp.csi_division, bp.status, bp.awarded_amount,
+                        (SELECT COUNT(*) FROM bid_entries be WHERE be.bid_package_id = bp.id) AS bid_count,
+                        (SELECT MIN(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS low_bid,
+                        (SELECT MAX(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS high_bid
+                    FROM bid_packages bp WHERE bp.project_id = %s
+                """, (pid,))
+                packages = [dict(r) for r in cur.fetchall()]
+                total_packages = len(packages)
+                no_bid_packages = [p["package_name"] for p in packages if p["bid_count"] == 0]
+                awarded = [p for p in packages if p["status"] == "awarded"]
+                committed = sum(float(p["awarded_amount"] or 0) for p in awarded)
+                contract_value = float(proj["contract_value"] or 0)
+                # Flag packages with a wide bid spread — scope likely not normalized yet
+                spread_flags = [
+                    {"package": p["package_name"], "low": float(p["low_bid"]), "high": float(p["high_bid"]),
+                     "spread_pct": round((float(p["high_bid"]) - float(p["low_bid"])) / float(p["low_bid"]) * 100)}
+                    for p in packages if p["low_bid"] and p["high_bid"] and p["bid_count"] >= 2
+                    and (float(p["high_bid"]) - float(p["low_bid"])) / float(p["low_bid"]) > 0.5
+                ]
+
+                # Risks and RFIs
+                cur.execute("""
+                    SELECT risk_type, severity, description, identified_date
+                    FROM risks WHERE project_id = %s AND status = 'open'
+                    ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END
+                """, (pid,))
+                open_risks = [dict(r) for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT rfi_number, subject, submitted_date, required_response_date, status
+                    FROM rfis WHERE project_id = %s AND status = 'open'
+                    ORDER BY required_response_date ASC NULLS LAST
+                """, (pid,))
+                open_rfis = [dict(r) for r in cur.fetchall()]
+                overdue_rfis = [r for r in open_rfis if r["required_response_date"] and r["required_response_date"] < today]
+
+        # Synthesis — structured flags, not prose. Consumers (GPTs) turn these into narrative.
+        flags = []
+        if proj["permit_status"] == "not_issued":
+            flags.append("No permit issued yet — any daily-log/schedule data implying active field construction should be treated as pre-construction planning, not real progress.")
+        if days_since_log is not None and days_since_log > 7:
+            flags.append(f"No daily log in {days_since_log} days — field reporting has gone quiet.")
+        if overdue:
+            flags.append(f"{len(overdue)} schedule item(s) past their end date and not marked complete.")
+        if overdue_rfis:
+            flags.append(f"{len(overdue_rfis)} RFI(s) past their required response date.")
+        if no_bid_packages:
+            flags.append(f"{len(no_bid_packages)} bid package(s) with zero bids received.")
+        if spread_flags:
+            flags.append(f"{len(spread_flags)} bid package(s) with >50% spread between low and high bid — scope likely not normalized.")
+
+        return _response(f"/project/{code}/deep-dive", {
+            "project": proj["name"],
+            "project_code": proj["project_code"],
+            "status": proj["status"],
+            "permit_status": proj["permit_status"],
+            "daily_logs": {
+                "last_14_days": logs,
+                "last_log_date": last_log_date.isoformat() if last_log_date else None,
+                "days_since_last_log": days_since_log,
+            },
+            "schedule": {
+                "total_items": total_items,
+                "complete_items": complete_items,
+                "pct_complete": round(complete_items / total_items * 100) if total_items else 0,
+                "overdue": overdue,
+                "upcoming_next_8": upcoming,
+            },
+            "budget": {
+                "contract_value": contract_value,
+                "committed": committed,
+                "pct_committed": round(committed / contract_value * 100) if contract_value else 0,
+                "total_packages": total_packages,
+                "packages_with_no_bids": no_bid_packages,
+                "bid_spread_flags": spread_flags,
+            },
+            "open_risks": open_risks,
+            "open_rfis": open_rfis,
+            "overdue_rfis": overdue_rfis,
+            "flags": flags,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/deep-dive", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/project/{code}/cost-forecast")
+def project_cost_forecast(code: str):
+    """Earned Value Management (EVM) cost forecast — CYCLE49 queue item #5, 2026-07-02.
+    BAC from contract_value, AC from awarded bid_entries, EV from % schedule complete x BAC,
+    PV from % of schedule items that should have started by today x BAC. Grounded entirely
+    in real committed/awarded numbers already in the DB - no fabricated progress. Pre-permit
+    projects will correctly show EV/PV near zero, not a bug."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, name, project_code, contract_value, permit_status
+                    FROM projects WHERE UPPER(project_code) = UPPER(%s)
+                """, (code,))
+                proj = cur.fetchone()
+                if not proj:
+                    return _response(f"/project/{code}/cost-forecast", {}, errors=[f"Unknown project code: {code}"], start=t0)
+                pid = proj["id"]
+                bac = float(proj["contract_value"] or 0)
+
+                # AC: actual cost = sum of awarded bid package amounts (real committed dollars)
+                cur.execute("""
+                    SELECT COALESCE(SUM(awarded_amount), 0) AS ac
+                    FROM bid_packages WHERE project_id = %s AND status = 'awarded'
+                """, (pid,))
+                ac = float(cur.fetchone()["ac"] or 0)
+
+                # Schedule completion %  and %  that should have started by today (for PV)
+                cur.execute("""
+                    SELECT COUNT(*) AS total,
+                        COUNT(*) FILTER (WHERE status ILIKE 'complete%%' OR status ILIKE 'done') AS complete,
+                        COUNT(*) FILTER (WHERE start_date IS NOT NULL AND start_date <= CURRENT_DATE) AS should_have_started
+                    FROM project_schedule_items WHERE project_id = %s::text
+                """, (pid,))
+                sched = cur.fetchone()
+                total_items = sched["total"] or 0
+                pct_complete = (sched["complete"] / total_items) if total_items else 0.0
+                pct_should_have_started = (sched["should_have_started"] / total_items) if total_items else 0.0
+
+        ev = round(bac * pct_complete, 2)
+        pv = round(bac * pct_should_have_started, 2)
+        cpi = round(ev / ac, 3) if ac > 0 else None
+        spi = round(ev / pv, 3) if pv > 0 else None
+        eac = round(bac / cpi, 2) if cpi else (round(ac + (bac - ev), 2) if bac else None)
+        etc = round(eac - ac, 2) if eac is not None else None
+        vac = round(bac - eac, 2) if eac is not None else None
+
+        notes = []
+        if total_items == 0:
+            notes.append("No schedule items on file - EV/PV/SPI cannot be computed.")
+        if ac == 0:
+            notes.append("No packages awarded yet - CPI undefined, EAC falls back to BAC - EV + AC.")
+        if proj["permit_status"] == "not_issued":
+            notes.append("No permit issued - near-zero EV/PV reflects pre-construction reality, not missing data.")
+
+        # Log a snapshot for trend tracking (one per project per day)
+        try:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO cost_forecasts (project_id, bac, ac, ev, pv, cpi, spi, eac, etc, vac, notes)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT (project_id, snapshot_date) DO UPDATE SET
+                            bac=EXCLUDED.bac, ac=EXCLUDED.ac, ev=EXCLUDED.ev, pv=EXCLUDED.pv,
+                            cpi=EXCLUDED.cpi, spi=EXCLUDED.spi, eac=EXCLUDED.eac, etc=EXCLUDED.etc,
+                            vac=EXCLUDED.vac, notes=EXCLUDED.notes
+                    """, (pid, bac, ac, ev, pv, cpi, spi, eac, etc, vac, "; ".join(notes) or None))
+        except Exception:
+            pass  # snapshot logging is best-effort, never block the response
+
+        return _response(f"/project/{code}/cost-forecast", {
+            "project": proj["name"],
+            "project_code": proj["project_code"],
+            "bac_budget_at_completion": bac,
+            "ac_actual_cost": ac,
+            "ev_earned_value": ev,
+            "pv_planned_value": pv,
+            "cpi_cost_performance_index": cpi,
+            "spi_schedule_performance_index": spi,
+            "eac_estimate_at_completion": eac,
+            "etc_estimate_to_complete": etc,
+            "vac_variance_at_completion": vac,
+            "pct_schedule_complete": round(pct_complete * 100, 1),
+            "notes": notes,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/cost-forecast", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/project/{code}/schedule/critical-path")
+def project_critical_path(code: str):
+    """CPM (critical path method) engine — CYCLE49 queue item #4, 2026-07-02. Real
+    forward/backward-pass float calculation over schedule_relationships. Confirmed
+    zero predecessor/successor data exists anywhere in the system right now, so this
+    honestly reports 'no_dependency_network' + a labeled date-span fallback rather
+    than fabricating a critical path. Populate schedule_relationships (via
+    /gateway/project/{code}/schedule/relationships POST, or a future Houzz CPM
+    export) to get a real logic-driven critical path."""
+    t0 = time.time()
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "schedule_intelligence"))
+        from cpm_engine import compute_critical_path
+
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name FROM projects WHERE UPPER(project_code) = UPPER(%s)", (code,))
+                proj = cur.fetchone()
+                if not proj:
+                    return _response(f"/project/{code}/schedule/critical-path", {}, errors=[f"Unknown project code: {code}"], start=t0)
+                pid = proj["id"]
+
+                cur.execute("""
+                    SELECT activity_id, title, start_date, end_date
+                    FROM project_schedule_items WHERE project_id = %s::text AND activity_id IS NOT NULL
+                """, (pid,))
+                activities = [dict(r) for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT predecessor_activity_id, successor_activity_id, relationship_type, lag_days
+                    FROM schedule_relationships WHERE project_id = %s
+                """, (pid,))
+                relationships = [dict(r) for r in cur.fetchall()]
+
+        result = compute_critical_path(activities, relationships)
+        result["project"] = proj["name"]
+        result["project_code"] = code.upper()
+        result["activity_count"] = len(activities)
+        result["relationship_count"] = len(relationships)
+        return _response(f"/project/{code}/schedule/critical-path", result, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/schedule/critical-path", {}, errors=[str(e)], start=t0)
+
+
+class ScheduleRelationshipPayload(BaseModel):
+    predecessor_activity_id: str
+    successor_activity_id: str
+    relationship_type: str = "FS"
+    lag_days: int = 0
+
+
+@router.post("/project/{code}/schedule/relationships")
+def add_schedule_relationship(code: str, req: ScheduleRelationshipPayload, request: Request):
+    """Add a real predecessor/successor link so /schedule/critical-path can compute
+    an actual logic-driven critical path instead of the date-span fallback."""
+    _require_key(request)
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM projects WHERE UPPER(project_code) = UPPER(%s)", (code,))
+                row = cur.fetchone()
+                if not row:
+                    return _response(f"/project/{code}/schedule/relationships", {}, errors=[f"Unknown project code: {code}"], start=t0)
+                pid = row["id"]
+                cur.execute("""
+                    INSERT INTO schedule_relationships (project_id, predecessor_activity_id, successor_activity_id, relationship_type, lag_days)
+                    VALUES (%s,%s,%s,%s,%s)
+                    ON CONFLICT (project_id, predecessor_activity_id, successor_activity_id)
+                    DO UPDATE SET relationship_type=EXCLUDED.relationship_type, lag_days=EXCLUDED.lag_days
+                    RETURNING id
+                """, (pid, req.predecessor_activity_id, req.successor_activity_id, req.relationship_type, req.lag_days))
+                rid = cur.fetchone()["id"]
+                conn.commit()
+        return _response(f"/project/{code}/schedule/relationships", {"relationship_id": rid, "added": True}, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/schedule/relationships", {}, errors=[str(e)], start=t0)
 
 
 @router.get("/project/{code}/weekly-digest")
@@ -709,7 +1009,7 @@ def executive_report():
                     (SELECT pb.schedule_variance_days FROM project_brain_snapshots pb
                          WHERE pb.project_id = p.id AND pb.snapshot_date = CURRENT_DATE
                     ) AS signed_variance_days
-                FROM projects p WHERE p.status IN ('active','design','bidding','preconstruction')
+                FROM projects p WHERE p.status IN ('active','design','bidding','preconstruction','monitoring')
                   AND p.name NOT LIKE 'TEST-%%' ORDER BY p.id
             """)
             rows = cur.fetchall()
@@ -1131,7 +1431,8 @@ def project_drive(code: str):
             "https://www.googleapis.com/drive/v3/files",
             params={"q": f"'{folder_id}' in parents and trashed=false",
                     "fields": "files(id,name,mimeType,modifiedTime,size)",
-                    "pageSize": 50},
+                    "pageSize": 50,
+                    "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"},
             headers={"Authorization": f"Bearer {_drive_token()}"},
             timeout=15,
         )
@@ -1146,10 +1447,14 @@ def project_drive(code: str):
 
 
 def _drive_token() -> str:
+    # 2026-07-02: was importing get_drive_token, which doesn't exist in credentials.py
+    # (only get_google_token(service) does) - every call silently returned "" via the
+    # swallowed exception, breaking /project/{code}/drive with 401s since whenever this
+    # was written.
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
-        from credentials import get_drive_token
-        return get_drive_token()
+        from credentials import get_google_token
+        return get_google_token("drive")
     except Exception:
         return ""
 
@@ -1359,7 +1664,7 @@ def role_owner():
                     SELECT health, schedule_variance_days FROM project_brain_snapshots
                     WHERE project_id = p.id ORDER BY snapshot_date DESC LIMIT 1
                 ) pb ON true
-                WHERE p.status IN ('active','design','bidding','preconstruction')
+                WHERE p.status IN ('active','design','bidding','preconstruction','monitoring')
                 ORDER BY p.contract_value DESC NULLS LAST
             """)
             project_summary = [dict(r) for r in cur.fetchall()]
@@ -1470,7 +1775,7 @@ def role_accounting():
                     (SELECT COUNT(*) FROM bid_packages bp2 WHERE bp2.project_id = p.id) as total_packages,
                     (SELECT COUNT(*) FROM bid_packages bp2 WHERE bp2.project_id = p.id AND bp2.status='awarded') as awarded_packages
                 FROM projects p
-                WHERE p.status IN ('active','design','bidding','preconstruction')
+                WHERE p.status IN ('active','design','bidding','preconstruction','monitoring')
                 ORDER BY p.contract_value DESC NULLS LAST
             """)
             projects = [dict(r) for r in cur.fetchall()]
@@ -2537,6 +2842,34 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Duplicate row check errored: {e}"})
 
+    # 7. Construction-phase data (daily logs, schedule variance) on projects
+    #    with no permit issued yet - the exact "framing cannot proceed" fabricated
+    #    RFI/risk/daily-log/schedule-variance contamination found on 1355R/101F
+    #    on 07-02. permit_status defaults to 'unknown' so this only fires once a
+    #    project has been explicitly confirmed not_issued.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_code,
+                        (SELECT COUNT(*) FROM daily_logs dl WHERE dl.project_id = p.id) AS dl_count,
+                        (SELECT COUNT(*) FROM schedule_variance sv WHERE sv.project_id = p.id) AS sv_count
+                    FROM projects p
+                    WHERE p.permit_status = 'not_issued'
+                      AND ((SELECT COUNT(*) FROM daily_logs dl WHERE dl.project_id = p.id) > 0
+                           OR (SELECT COUNT(*) FROM schedule_variance sv WHERE sv.project_id = p.id) > 0)
+                """)
+                phase_mismatches = cur.fetchall()
+                if phase_mismatches:
+                    findings.append({
+                        "severity": "high",
+                        "category": "permit_phase_mismatch",
+                        "detail": f"{len(phase_mismatches)} project(s) with permit_status='not_issued' still have daily_logs/schedule_variance rows implying active field construction - these are almost certainly test artifacts",
+                        "items": [f"{r['project_code']}: {r['dl_count']} daily_logs, {r['sv_count']} schedule_variance rows" for r in phase_mismatches],
+                    })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Permit-phase mismatch check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
@@ -2579,6 +2912,49 @@ async def system_self_heal(request: Request):
         "actions_taken": actions_taken,
         "note": "Only auto-fixes container-level issues. Data/file issues from /admin/drift-check always require human review.",
     }, start=t0)
+
+
+@router.post("/admin/purge-email-noise")
+async def purge_email_noise(request: Request):
+    """Permanently deletes messages from the 'System Noise (auto-purge 30d)' Outlook
+    folder that are older than 30 days. Added 2026-07-02 after discovering this mailbox's
+    DELETE does NOT move to Deleted Items - it purges immediately, no recovery. That
+    surprised us mid-cleanup (a real test email was lost before we caught the pattern).
+    Buck's explicit direction: route anything test/noise/system-alert into this dedicated
+    folder first (via move, always reversible), let it sit for 30 days as a recovery
+    window, THEN purge on a schedule - never delete anything immediately again.
+    Meant to run weekly via the AUTO-EMAIL-NOISE-PURGE n8n workflow, not called ad hoc."""
+    _require_key(request)
+    t0 = time.time()
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import _request as graph_request
+
+        folders, ferr = graph_request("GET", "/me/mailFolders", params={"$filter": "displayName eq 'System Noise (auto-purge 30d)'"})
+        if ferr or not folders.get("value"):
+            return _response("/admin/purge-email-noise", {"purged": 0, "note": "Folder not found - nothing to do"}, start=t0)
+        folder_id = folders["value"][0]["id"]
+
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        msgs, merr = graph_request("GET", f"/me/mailFolders/{folder_id}/messages",
+                                    params={"$filter": f"receivedDateTime le {cutoff}", "$select": "subject,receivedDateTime", "$top": 200})
+        if merr:
+            return _response("/admin/purge-email-noise", {}, errors=[str(merr)], start=t0)
+
+        to_purge = msgs.get("value", [])
+        purged = []
+        for m in to_purge:
+            _, derr = graph_request("DELETE", f"/me/messages/{m['id']}")
+            if not derr:
+                purged.append(m["subject"][:60])
+
+        return _response("/admin/purge-email-noise", {
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "purged_count": len(purged),
+            "purged_subjects": purged[:20],
+        }, start=t0)
+    except Exception as e:
+        return _response("/admin/purge-email-noise", {}, errors=[str(e)], start=t0)
 
 
 # ── Field Endpoints (GBT Field GPT) ──────────────────────────────────────────
@@ -5424,22 +5800,23 @@ For each drawing sheet, extract and report:
 Be exhaustive and forensic. Quote exact callouts, dimensions, and notes verbatim. Flag anything with a question mark as unresolved."""
 
     try:
-        # 1. Download PDF from Drive via MCP token (reuse existing Drive credential)
+        # 1. Download PDF from Drive via the shared OAuth credential (2026-07-02: was
+        # reading a GOOGLE_ACCESS_TOKEN env var that's never set anywhere - this endpoint
+        # has been falling back to "credential_required" on every call since it was written).
         import anthropic as _anthropic
         drive_resp = requests.get(
             f"https://www.googleapis.com/drive/v3/files/{req.file_id}?alt=media",
-            headers={"Authorization": f"Bearer {os.environ.get('GOOGLE_ACCESS_TOKEN','')}"},
+            headers={"Authorization": f"Bearer {_drive_token()}"},
             timeout=60,
         )
         if drive_resp.status_code != 200:
-            # Fallback: try via gateway drive endpoint which uses MCP session
             return _response("/plan/read", {
                 "status": "credential_required",
-                "message": "Direct Drive API token not available in gateway context. "
-                           "Run plan_reader.py locally or provide GOOGLE_ACCESS_TOKEN in env.",
+                "message": f"Drive download failed (HTTP {drive_resp.status_code}). "
+                           "Run plan_reader.py locally as a fallback.",
                 "file_id": req.file_id,
                 "model_requested": req.model,
-            }, warnings=["Use plan_reader.py locally for full Drive access"], start=t0)
+            }, warnings=["Drive token invalid or file not accessible"], start=t0)
 
         # 2. Save PDF to temp dir
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -5454,8 +5831,13 @@ Be exhaustive and forensic. Quote exact callouts, dimensions, and notes verbatim
                 if len(parts) == 2:
                     page_filter = ["-f", parts[0], "-l", parts[1]]
 
+            # launchd runs this service with a minimal PATH that doesn't include Homebrew's
+            # /opt/homebrew/bin, so a bare "pdftoppm" raises FileNotFoundError even though
+            # poppler is installed (found 2026-07-02 while testing this endpoint for real).
+            import shutil as _shutil
+            pdftoppm_bin = _shutil.which("pdftoppm") or "/opt/homebrew/bin/pdftoppm"
             subprocess.run(
-                ["pdftoppm", "-r", "150", *page_filter, pdf_path, os.path.join(tmpdir, "page")],
+                [pdftoppm_bin, "-r", "150", *page_filter, pdf_path, os.path.join(tmpdir, "page")],
                 capture_output=True, check=False
             )
 
@@ -5505,6 +5887,115 @@ Be exhaustive and forensic. Quote exact callouts, dimensions, and notes verbatim
 
     except Exception as e:
         return _response("/plan/read", {}, errors=[str(e)], start=t0)
+
+
+class PhotoAnalyzePayload(BaseModel):
+    file_id: str  # Drive file ID of the photo
+    project_code: str
+    submitted_by: str = "field"
+    note: Optional[str] = None
+
+
+PHOTO_SYSTEM = """You are a construction superintendent reviewing a field photo from a luxury residential project in Aspen, CO.
+
+Analyze the photo and report:
+1. WORK VISIBLE: What construction activity or completed work is shown - be specific (framing stage, rough-in, finish work, etc.)
+2. PROGRESS ASSESSMENT: Does this look on-track, ahead, or behind for a typical build sequence at this stage? State your confidence.
+3. SAFETY OBSERVATIONS: Any visible safety concerns (missing PPE, fall hazards, unsecured materials, electrical hazards, housekeeping issues). If none visible, say so explicitly - do not invent hazards.
+4. DEFECT/QUALITY FLAGS: Any visible workmanship issues, code-concern items, or things that look wrong and warrant a closer look. If none visible, say so explicitly.
+5. WHAT'S NOT VISIBLE: Note if the photo angle/quality limits what can actually be assessed - do not overstate confidence on things you cannot actually see clearly.
+
+Be specific and evidence-based. Do not invent problems to seem thorough - "no issues visible" is a valid and useful finding."""
+
+
+@router.post("/project/{code}/photo/analyze")
+async def photo_analyze(code: str, req: PhotoAnalyzePayload, request: Request):
+    """Photo AI — CYCLE49 queue item #6, 2026-07-02. Claude Vision analysis of a field
+    photo: progress assessment, safety observations, defect flags. Stored in
+    photo_analyses (queryable per-project field record), same credential/vision
+    pattern as /gateway/plan/read."""
+    import anthropic as _anthropic
+    import base64
+    t0 = time.time()
+    _require_key(request)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name FROM projects WHERE UPPER(project_code) = UPPER(%s)", (code,))
+                proj = cur.fetchone()
+                if not proj:
+                    return _response(f"/project/{code}/photo/analyze", {}, errors=[f"Unknown project code: {code}"], start=t0)
+                pid = proj["id"]
+
+        drive_resp = requests.get(
+            f"https://www.googleapis.com/drive/v3/files/{req.file_id}?alt=media",
+            headers={"Authorization": f"Bearer {_drive_token()}"},
+            timeout=30,
+        )
+        if drive_resp.status_code != 200:
+            return _response(f"/project/{code}/photo/analyze", {
+                "status": "credential_required",
+                "message": f"Drive download failed (HTTP {drive_resp.status_code}).",
+            }, start=t0)
+
+        img_b64 = base64.standard_b64encode(drive_resp.content).decode()
+        media_type = drive_resp.headers.get("Content-Type", "image/jpeg")
+        if media_type not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+            media_type = "image/jpeg"
+
+        client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1500,
+            system=PHOTO_SYSTEM,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}},
+                    {"type": "text", "text": f"Project: {proj['name']}. Field note from submitter: {req.note or '(none provided)'}"}
+                ]
+            }]
+        )
+        analysis_text = resp.content[0].text
+
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO photo_analyses (project_id, drive_file_id, submitted_by, note, findings, model_used)
+                    VALUES (%s,%s,%s,%s,%s,%s) RETURNING id, created_at
+                """, (pid, req.file_id, req.submitted_by, req.note, analysis_text, "claude-sonnet-4-6"))
+                row = cur.fetchone()
+                conn.commit()
+
+        return _response(f"/project/{code}/photo/analyze", {
+            "photo_analysis_id": row["id"],
+            "project": proj["name"],
+            "analyzed_at": row["created_at"].isoformat(),
+            "analysis": analysis_text,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/photo/analyze", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/project/{code}/photos")
+def project_photos(code: str, limit: int = Query(20, le=100)):
+    """List recent photo analyses for a project."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM projects WHERE UPPER(project_code) = UPPER(%s)", (code,))
+                row = cur.fetchone()
+                if not row:
+                    return _response(f"/project/{code}/photos", {}, errors=[f"Unknown project code: {code}"], start=t0)
+                cur.execute("""
+                    SELECT id, drive_file_id, submitted_by, note, findings, created_at
+                    FROM photo_analyses WHERE project_id = %s ORDER BY created_at DESC LIMIT %s
+                """, (row["id"], limit))
+                photos = [dict(r) for r in cur.fetchall()]
+        return _response(f"/project/{code}/photos", {"count": len(photos), "photos": photos}, start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/photos", {}, errors=[str(e)], start=t0)
 
 
 @router.get("/plan/read-local")

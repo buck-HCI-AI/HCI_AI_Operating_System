@@ -138,3 +138,20 @@ everything. Buck's direction: this is now a standing practice, not a one-off. Se
 - When you find a new silent-failure pattern (something that was wrong for a while
   before anyone noticed), add a check for it to `/gateway/admin/drift-check` — don't
   just fix the one instance. Update ADR-016 to reflect the addition.
+
+### Cross-agent peer review (Permanent, ADR-016 addendum — 2026-07-02)
+Buck's direction once Claude Code, GBT, and Browser Claude were collaborating live:
+*"collaborate — have GBT check work — you guys check each other. Stay on mission. No
+drift allowed now or for future... think about operating in 5 years with no hiccups
+and continuous learning and being better."*
+
+- **A different agent must check every agent's output before it's treated as final.**
+  Self-verification (checking your own claim against the live system) is necessary but
+  not sufficient — this session repeatedly found things only a second party caught.
+  GBT checks BC's commits, BC checks GBT's authored content, Claude Code checks both
+  against real git/DB/endpoint state. This is not Handbook-specific — it applies to
+  every future collaborative build.
+- The reviewing agent's job is to check the claim against real system state, not to
+  re-read the same chat context and agree.
+- If peer review lapses (agents start rubber-stamping each other, or skip it under time
+  pressure), that is itself a drift-check-worthy finding — flag it, don't let it slide.
