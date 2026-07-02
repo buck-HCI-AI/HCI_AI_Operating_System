@@ -1,3 +1,14 @@
+# ⚠️ ACTIVE WORK: SPRINT 7 — IMPLEMENTATION CONVERGENCE
+## Last Updated by BC: 2026-07-02T16:45 UTC
+## STOP — DO NOT USE THIS FILE FOR CURRENT WORK STATE
+## Read AI_TEAM/SPRINT_7_DIRECTIVE.md for your actual work queue
+
+**SELF-HEAL NOTE:** This file shows Sprint 3 work items. Sprint 7 is active.
+**Your current task:** 14-router implementation build per SPRINT_7_DIRECTIVE.md
+**Start with:** migrations → /auth router → /vendors router → continue sequence
+
+---
+
 # 02_ACTIVE_WORK.md
 **What is being implemented right now**
 Last updated: 2026-06-26 (MVP Sprint 1 COMPLETE — Gate 5 pilot active)
