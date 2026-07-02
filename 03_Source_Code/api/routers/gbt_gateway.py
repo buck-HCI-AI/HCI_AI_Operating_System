@@ -1854,6 +1854,9 @@ class EmailSendRequest(BaseModel):
     body_html: str
     cc: Optional[list] = None  # [{"name": "...", "email": "..."}]
     reply_to_message_id: Optional[str] = None
+    skip_notify: bool = False  # test-only: queue for approval without pushing a real Telegram message
+    source_agent: str = "browser_claude"  # who actually drafted this — was hardcoded, falsely
+    # attributing every caller's (including test-suite) activity/errors to Browser Claude
 
 @router.post("/email/send")
 def send_email_now(req: EmailSendRequest, request: Request):
@@ -1880,17 +1883,20 @@ def send_email_now(req: EmailSendRequest, request: Request):
             raise ValueError("Draft creation returned no ID — cannot queue for approval")
 
         msg_id = _create_ai_message(
-            "browser_claude", "buck", "approval_request",
+            req.source_agent, "buck", "approval_request",
             f"Send email: {req.subject[:80]}",
             f"To: {req.to_name} <{req.to_email}>\nSubject: {req.subject}\n\n{req.body_html[:500]}",
             requires_buck_approval=True, approval_type="email_send",
             related_file=draft_id,
         )
-        sent = _notify_agents("browser_claude", "buck", "approval_request",
-                               f"Send email: {req.subject[:80]}",
-                               f"To: {req.to_name} <{req.to_email}>\n\n{req.body_html[:500]}",
-                               requires_buck_approval=True, approval_type="email_send",
-                               related_file=draft_id)
+        if req.skip_notify:
+            sent = {"id": msg_id}
+        else:
+            sent = _notify_agents(req.source_agent, "buck", "approval_request",
+                                   f"Send email: {req.subject[:80]}",
+                                   f"To: {req.to_name} <{req.to_email}>\n\n{req.body_html[:500]}",
+                                   requires_buck_approval=True, approval_type="email_send",
+                                   related_file=draft_id)
 
         return _response("/email/send", {
             "status":     "queued_for_approval",
@@ -2557,10 +2563,20 @@ Respond with a JSON object only, no other text, in this exact format:
         packages = analysis.get("packages", [])
 
         created = []
+        skipped_existing = []
         conn = _pg()
         conn.autocommit = True
         with conn.cursor() as cur:
+            cur.execute("""
+                SELECT lower(csi_division), lower(package_name) FROM bid_packages
+                WHERE project_id = %s AND status NOT IN ('awarded', 'cancelled')
+            """, (pid,))
+            existing = {(row[0], row[1]) for row in cur.fetchall()}
             for pkg in packages:
+                key = (pkg.get("csi_division", "").lower(), pkg.get("package_name", "").lower())
+                if key in existing:
+                    skipped_existing.append(pkg.get("package_name", ""))
+                    continue
                 notes = f"Confidence: {pkg.get('confidence','?')} — generated from plan-review, not yet reviewed by PM"
                 cur.execute("""
                     INSERT INTO bid_packages (project_id, csi_division, package_name, scope_description, status, notes)
@@ -2571,6 +2587,7 @@ Respond with a JSON object only, no other text, in this exact format:
                 row = dict(cur.fetchone())
                 row["confidence"] = pkg.get("confidence", "low")
                 created.append(row)
+                existing.add(key)
         conn.close()
 
         _log("/plan-review/generate-packages", req.reviewed_by, req.project_code, "ok",
@@ -2579,10 +2596,14 @@ Respond with a JSON object only, no other text, in this exact format:
             "project_code": req.project_code,
             "packages_created": len(created),
             "bid_packages": created,
+            "skipped_existing": skipped_existing,
             "coverage_note": analysis.get("coverage_note"),
             "note": "Bid packages created as 'not_started' — internal draft only. No sub "
                     "has been invited to bid. PM should review scope_description and "
-                    "confidence before soliciting bids through the normal bid-leveling flow.",
+                    "confidence before soliciting bids through the normal bid-leveling flow. "
+                    "Re-running plan review after revised plans arrive will not duplicate "
+                    "packages already open for the same scope (matched on division + name) — "
+                    "only genuinely new scope gets a new package.",
         }, start=t0)
     except HTTPException as e:
         return _response("/plan-review/generate-packages", {}, errors=[str(e.detail)], start=t0)
@@ -2675,6 +2696,12 @@ def plan_review_generate_schedule(req: GenerateSchedulePayload):
                                   errors=["No 'not_started' bid_packages found for this "
                                           "project — run /plan-review/generate-packages first"],
                                   start=t0)
+
+            # This endpoint regenerates the draft schedule from the current package set —
+            # clear prior draft rows first so re-running it (e.g. after new packages are
+            # added) replaces stale items instead of stacking duplicates alongside them.
+            # Only 'draft' rows are touched — a PM-reviewed/started schedule is never here.
+            cur.execute("DELETE FROM project_schedule_items WHERE project_id = %s AND status = 'draft'", (str(pid),))
 
             for pkg in packages:
                 phase, duration = _phase_and_duration(pkg["csi_division"])
@@ -5386,6 +5413,7 @@ class AIMessageCreate(BaseModel):
     related_approval_id: Optional[int] = None
     priority: str = "medium"
     source_of_truth_link: Optional[str] = None
+    skip_notify: bool = False  # test-only: create the durable row without a real Telegram/ntfy send
 
 
 @router.post("/ai/messages")
@@ -5397,10 +5425,17 @@ async def ai_messages_create(req: AIMessageCreate):
     handoff_waiting, work_complete, review_required) or whenever requires_buck_approval is true."""
     t0 = time.time()
     _touch_heartbeat(req.source_agent, f"sent {req.message_type}: {req.title[:60]}")
-    result = _notify_agents(req.source_agent, req.target_agent, req.message_type, req.title, req.body,
-                             req.project_code, req.requires_buck_approval, req.approval_type,
-                             req.related_file, req.related_handoff_id, req.related_approval_id,
-                             req.priority, req.source_of_truth_link)
+    if req.skip_notify:
+        msg_id = _create_ai_message(req.source_agent, req.target_agent, req.message_type, req.title, req.body,
+                                     req.project_code, req.requires_buck_approval, req.approval_type,
+                                     req.related_file, req.related_handoff_id, req.related_approval_id,
+                                     req.priority, req.source_of_truth_link)
+        result = {"id": msg_id, "delivery": {"status": "skipped_test_mode"}}
+    else:
+        result = _notify_agents(req.source_agent, req.target_agent, req.message_type, req.title, req.body,
+                                 req.project_code, req.requires_buck_approval, req.approval_type,
+                                 req.related_file, req.related_handoff_id, req.related_approval_id,
+                                 req.priority, req.source_of_truth_link)
     _log("/ai/messages", req.source_agent, "ai_messages", "ok", int((time.time()-t0)*1000),
          str(result["id"]), req.title[:60])
     return _response("/ai/messages", result, start=t0)

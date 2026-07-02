@@ -37,6 +37,19 @@ def _hb_restore(agent, snapshot):
 
 _hb_before = {a: _hb_get(a) for a in ("browser_claude", "chatgpt")}
 
+# QATEST (project_id 28, status='sandbox') is the isolated plan-review pipeline test
+# project — never one of the real live projects. Reset its transient pipeline data at
+# the start of every run so results are deterministic regardless of prior manual
+# testing or earlier runs (found 2026-07-02: the generate-packages dedup fix made a
+# stale leftover package silently absorb a new one across runs, failing the test).
+subprocess.run(
+    ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
+     "-c", "DELETE FROM bid_packages WHERE project_id=28",
+     "-c", "DELETE FROM project_schedule_items WHERE project_id='28'",
+     "-c", "DELETE FROM rfis WHERE project_id=28"],
+    capture_output=True, text=True, timeout=10,
+)
+
 
 def check(label, condition, detail=""):
     global passed, failed
@@ -94,15 +107,21 @@ check("Rejects invalid status", code == 200 and d.get("errors"), d)
 patch(f"/ai/messages/{msg_id}/status", {"status": "COMPLETE", "agent": "claude_code"})
 
 # ── 4. Approvals visible without Telegram round-trip ──────────────────────────
+# skip_notify added 2026-07-02: this test used to trigger a REAL Telegram approval
+# push (with live APPROVE/REJECT/HOLD buttons) to Buck's phone on every single test
+# run — exactly the "yes/no prompt" noise problem flagged repeatedly this session.
+# The real Telegram delivery path is already covered by production use; this test
+# only needs to verify the durable-row + queue-visibility mechanics.
 print("\n4. GET /approvals")
 code, d = post("/ai/messages", {
     "source_agent": "claude_code", "target_agent": "buck", "message_type": "approval_request",
     "title": "Automated test — approval row", "body": "test", "requires_buck_approval": True,
+    "skip_notify": True,
 })
 approval_id = d.get("payload", {}).get("id")
 check("Approval create returns 200", code == 200, code)
-check("Telegram attempted (sent or failed, not skipped)",
-      d.get("payload", {}).get("delivery", {}).get("status") in ("sent", "failed", "error"))
+check("Telegram send skipped in test mode (no real push to Buck's phone)",
+      d.get("payload", {}).get("delivery", {}).get("status") == "skipped_test_mode")
 code, d = get("/approvals")
 check("Approvals endpoint 200", code == 200, code)
 ids = [a["id"] for a in d.get("payload", {}).get("approvals", [])]
@@ -254,6 +273,7 @@ check("No API key -> rejected (403), not sent", code == 403, code)
 code, d = post("/email/send", {
     "to_name": "Buck Test", "to_email": "buck@hendricksoninc.com",
     "subject": "[TEST] automated regression check", "body_html": "<p>Automated test row - safe internal address.</p>",
+    "skip_notify": True, "source_agent": "test_suite",
 })
 check("With API key -> queued_for_approval, not sent", code == 200 and d.get("payload", {}).get("status") == "queued_for_approval", d)
 email_msg_id = d.get("payload", {}).get("message_id")
@@ -300,9 +320,16 @@ check("External address is NOT self-send", not _all_recipients_self([("Someone",
 check("Mixed self+external is NOT self-send (fails closed)",
       not _all_recipients_self([("Buck", "buck@hendricksoninc.com"), ("Ext", "ext@example.com")]))
 
-result, err = _send_email("[TEST] automated regression — self-send allowlist", "<p>test</p>",
-                           [("Buck Adams", "buck@hendricksoninc.com")])
-check("send_email() to Buck's own address succeeds without drafting", err is None and "queued_draft_id" not in (result or {}), (result, err))
+import microsoft_graph as _msgraph
+_real_request = _msgraph._request
+_msgraph._request = lambda *a, **k: ({"id": "test-stub-sent"}, None)
+try:
+    result, err = _send_email("[TEST] automated regression — self-send allowlist", "<p>test</p>",
+                               [("Buck Adams", "buck@hendricksoninc.com")])
+finally:
+    _msgraph._request = _real_request
+check("send_email() to Buck's own address routes to direct-send branch (network call stubbed - no real inbox spam per test run)",
+      err is None and "queued_draft_id" not in (result or {}), (result, err))
 
 result2, err2 = _send_email("[TEST] automated regression — external still gated", "<p>test</p>",
                              [("Someone", "someone@example.com")])
@@ -324,7 +351,7 @@ if p101:
 # ── 19. Plan-review-to-RFI pipeline (2026-07-01: formalizes the RFI-batch incident) ─
 print("\n19. POST /gateway/plan-review/analyze — gaps become logged RFIs, never emailed")
 code, d = post("/plan-review/analyze", {
-    "project_code": "101F", "reviewed_by": "test_suite",
+    "project_code": "QATEST", "reviewed_by": "test_suite",
     "sheet_text": "Sheet A1.1 Plumbing Fixture Schedule: Master Bath lavatory, toilet, tub - MFGR/MODEL/COLOR all BLANK, pending selection.",
 })
 check("Returns 200", code == 200, code)
@@ -335,7 +362,7 @@ check("Never sends an email itself — only logs RFIs", "email" not in str(p.get
 if p.get("gaps_found", 0) > 0:
     rfi = p["rfis_created"][0]
     check("Created RFI has status=open (not sent anywhere)", rfi.get("status") == "open", rfi)
-    code, d2 = get("/project/101F/action-list")
+    code, d2 = get("/project/QATEST/action-list")
     check("Newly created RFI reflected in project action list", code == 200)
 
 # ── 20. POST /gateway/plan-review/upload — real PDF via Claude vision ──────────
@@ -350,7 +377,7 @@ _c.save()
 _pdf_buf.seek(0)
 r = requests.post(f"{API}/plan-review/upload", headers=HEADERS,
                    files={"file": ("test.pdf", _pdf_buf, "application/pdf")},
-                   data={"project_code": "101F", "reviewed_by": "test_suite"}, timeout=30)
+                   data={"project_code": "QATEST", "reviewed_by": "test_suite"}, timeout=30)
 code, d = r.status_code, (r.json() if r.ok else {})
 check("Returns 200", code == 200, code)
 p = d.get("payload", {})
@@ -373,7 +400,7 @@ check("Has conflicts list", isinstance(d.get("payload", {}).get("conflicts"), li
 # ── 22. Sub package / SOW generation off the plans (ADR-014 phase 2) ───────────
 print("\n22. POST /gateway/plan-review/generate-packages — bid packages from plan content")
 code, d = post("/plan-review/generate-packages", {
-    "project_code": "101F", "reviewed_by": "test_suite",
+    "project_code": "QATEST", "reviewed_by": "test_suite",
     "sheet_text": "Sheet S1.0 Structural Notes: roof framing wide-flange steel beams W12x26. Sheet A2.1 Finish Schedule: hardwood flooring throughout, tile in bathrooms.",
 })
 check("Returns 200", code == 200, code)
@@ -389,11 +416,11 @@ if p.get("packages_created", 0) > 0:
 print("\n23. POST /gateway/plan-review/generate-schedule — phased critical path from packages")
 # Generate a fresh package first so this test has not_started packages to schedule against
 post("/plan-review/generate-packages", {
-    "project_code": "101F", "reviewed_by": "test_suite",
+    "project_code": "QATEST", "reviewed_by": "test_suite",
     "sheet_text": "Sheet S1.0 Structural Notes: roof framing wide-flange steel beams W12x26.",
 })
 code, d = post("/plan-review/generate-schedule", {
-    "project_code": "101F", "start_date": "2026-09-01", "reviewed_by": "test_suite",
+    "project_code": "QATEST", "start_date": "2026-09-01", "reviewed_by": "test_suite",
 })
 check("Returns 200", code == 200, code)
 p = d.get("payload", {})
@@ -408,13 +435,13 @@ check("Refuses for a nonexistent project rather than silently no-op'ing", bool(d
 
 # ── 24. Plan-review pending-review queue — closes the loop on the whole pipeline ─
 print("\n24. GET /gateway/project/{code}/plan-review-pending")
-before_code, before_d = get("/project/101F/plan-review-pending")
+before_code, before_d = get("/project/QATEST/plan-review-pending")
 before_total = before_d.get("payload", {}).get("total_pending_review", 0)
 post("/plan-review/analyze", {
-    "project_code": "101F", "reviewed_by": "test_suite",
+    "project_code": "QATEST", "reviewed_by": "test_suite",
     "sheet_text": "Sheet A1.1: Master Bath lavatory - MFGR/MODEL/COLOR all BLANK.",
 })
-code, d = get("/project/101F/plan-review-pending")
+code, d = get("/project/QATEST/plan-review-pending")
 check("Returns 200", code == 200, code)
 p = d.get("payload", {})
 check("Has total_pending_review as int", isinstance(p.get("total_pending_review"), int), p)
