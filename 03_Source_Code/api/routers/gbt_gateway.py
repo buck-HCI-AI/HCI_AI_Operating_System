@@ -250,11 +250,16 @@ def project_brain(code: str):
         except HTTPException:
             brain_ref = str(_get_pid(code))
             snap = _proxy(f"/services/project-brain/{brain_ref}")
-        # intelligence endpoint requires integer project_id
+        # intelligence endpoint requires integer project_id. ai_summary=false: this
+        # endpoint's consumer is GBT (ChatGPT) — an AI reading raw structured data
+        # doesn't need another AI's prose summary of the same data, and the internal
+        # Claude call to generate one was adding 3-7s of latency (root cause of GBT's
+        # "gateway unreachable" failure 2026-07-02 — it wasn't unreachable, it was
+        # slow enough to exceed GBT's action-call timeout).
         numeric_pid = _get_pid(code)
         intel = {}
         try:
-            intel = _proxy(f"/services/project-brain/{numeric_pid}/intelligence")
+            intel = _proxy(f"/services/project-brain/{numeric_pid}/intelligence", params={"ai_summary": "false"})
         except Exception:
             pass
         payload = {"snapshot": snap, "intelligence": intel}
@@ -2899,7 +2904,11 @@ def bid_package_vendor_matches(code: str):
 # typical order-to-delivery lead time in weeks. Matched against package_name +
 # scope_description; deliberately keyword-based, not a vendor-confirmed lead time.
 _LONG_LEAD_ITEMS = {
-    "elevator": 18, "generator": 26, "structural steel": 10,
+    # elevator recalibrated 2026-07-02 from real HCI project data (ASPN-MC risk:
+    # "ThyssenKrupp elevator package has 40-week lead — longest lead item") — the
+    # generic industry estimate (18wk) was less than half the real observed lead
+    # time for a specialty residential elevator manufacturer.
+    "elevator": 40, "generator": 26, "structural steel": 10,
     "custom window": 16, "window wall": 16, "steel window": 16, "custom glazing": 14,
     "imported stone": 14, "natural stone": 14, "marble": 14,
     "custom cabinetry": 14, "millwork": 14,

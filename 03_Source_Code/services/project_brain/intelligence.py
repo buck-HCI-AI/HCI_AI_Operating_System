@@ -53,10 +53,13 @@ class ProjectIntelligenceEngine(BaseIntelligenceService):
         data_completeness = self._data_completeness()
 
         ai_summary = ""
-        next_actions = []
+        # _recommend_actions is pure risk/decision formatting, no AI call — was
+        # incorrectly bundled under include_ai_summary, silently dropping this field
+        # for any caller that (correctly) turns off the AI summary to avoid its
+        # latency (found 2026-07-02 via GBT's brain-endpoint timeout investigation).
+        next_actions = self._recommend_actions(risks, decisions, procurement)
         if include_ai_summary:
             ai_summary = self._generate_summary(project, health, risks, decisions, procurement)
-            next_actions = self._recommend_actions(risks, decisions, procurement)
 
         # Persist snapshot
         self._persist_snapshot(health, factors, risks, decisions, procurement)
