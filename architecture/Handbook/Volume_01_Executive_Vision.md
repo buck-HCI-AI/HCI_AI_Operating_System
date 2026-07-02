@@ -5,12 +5,17 @@
 ---
 
 ## 1.A HCI AI Organization
-*Authored by: Buck Adams (Chief Architect) — 2026-06-27*
+*Authored by: Buck Adams (HCI Chief Designer / Platform Owner) — 2026-06-27*
 
 ```
+Chris Hendrickson
+Owner — Hendrickson Construction, Inc.
+Final Authority on all construction contracts and business decisions
+        |
+        ▼
 Buck Adams
-CEO / Owner — Hendrickson Construction
-Final Authority
+PM / Senior Superintendent / Owner — HCI AI Operating System
+HCI AI System Owner / Final Authority on AI operations and platform decisions
         │
         ▼
 Chief Architect
@@ -128,10 +133,21 @@ This is the philosophy that will keep the HCI AI Operating System focused on wha
 
 ---
 
-## 1.1 Platform Purpose (⚠️ Chief Architect — ChatGPT authorship pending)
+## 1.1 Platform Purpose and Governance
 
-*[Chief Architect: What is the fundamental purpose of the HCI AI Operating System?
-What problem does it solve that no other tool solves for Hendrickson Construction?]*
+*Authored by: GBT Chief Architect — 2026-07-02 (verified via getMissionControl)*
+
+The HCI AI Operating System (HCI AI OS) is the governance and operational coordination platform supporting Hendrickson Construction Inc.'s preconstruction workflows. Its purpose is to provide a verified, auditable source of truth for project intelligence, architecture decisions, AI coordination, and executive reporting.
+
+The system follows a **verify-before-claim** governance model (ADR-016). Any statement regarding project status, system capability, or completion must identify the evidence used for verification. If a claim cannot be confirmed against the live system, it must be marked **Unverified** rather than presented as fact.
+
+The Chief Architect (ChatGPT) serves as the Architecture Review Board (ARB) lead, responsible for: maintaining architectural governance and documentation; reconciling Handbook content against the live implementation; identifying documentation drift; and reviewing cross-agent design decisions before they become canonical guidance.
+
+Implementation responsibilities are delegated to **Claude Code**, which owns software development, testing, deployment, production stabilization, and implementation of approved architectural decisions. **Browser Claude** owns repository governance, documentation synchronization, and repository integrity. **n8n** is the automation platform; however, its operational status must always be verified against live telemetry before documentation states it is active.
+
+Mission Control is the authoritative operational dashboard for executive status. Handbook text should describe the architecture and identify Mission Control as the source of operational truth rather than hard-coding transient metrics.
+
+Because all current pilot projects remain in **preconstruction** until permits are issued, Handbook guidance must not infer active field construction, schedule progress, or daily site operations from historical test data. Any construction-state assertions require verification through the live system before publication.
 
 ---
 
