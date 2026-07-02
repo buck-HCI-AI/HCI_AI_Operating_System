@@ -5,9 +5,15 @@
 
 ## 3.1 What Is the Project Brain? (⚠️ Chief Architect Vision Required)
 
-*[Chief Architect: Define the Project Brain as a persistent, intelligent memory system per project.
-Describe how it should accumulate knowledge, build a timeline, and reason about a project's state.]*
+*Authored by: GBT Chief Architect — 2026-07-02 (verified via getMissionControl + getProjectBrain 101F)*
 
+Project Brain is the project-level intelligence service within HCI AI OS.
+
+Rather than functioning as a document repository, it produces a synthesized operational view of an individual project using verified system data. A Project Brain snapshot may include: project metadata, procurement status, bid package activity, risk summary, open decisions, outstanding RFIs, missing information, recommended next actions, and data quality indicators.
+
+The intelligence layer is intended to support decision-making by summarizing verified project state while preserving traceability back to operational evidence.
+
+Project Brain complements Mission Control by providing detailed project context, whereas Mission Control provides portfolio-level operational oversight.
 ---
 
 ## 3.2 Current Implementation (✅ Implemented)
@@ -135,7 +141,18 @@ TABLE project_brain_snapshots (
 ✅ `services/cross_project/routes.py` — vendor overlap, procurement comparison, schedule trends
 
 ### 3.3.17 Future Evolution
-*[Chief Architect: Define how the Project Brain should grow over time]*
+*Authored by: GBT Chief Architect — 2026-07-02*
+
+Project Brain is designed to evolve incrementally while maintaining architectural governance.
+
+Future enhancements may include: richer cross-project intelligence, improved procurement analytics, enhanced risk correlation, expanded recommendation capabilities, greater integration with executive decision workflows, and improved lifecycle awareness as projects transition from preconstruction into later phases.
+
+These represent architectural direction rather than verified implementation status.
+
+Future enhancements should continue to follow three governing principles:
+1. Live operational data remains the primary source of truth.
+2. 2. Recommendations remain explainable and traceable to supporting evidence.
+   3. 3. New capabilities are documented only after implementation has been verified under ADR-016.
 
 ---
 
