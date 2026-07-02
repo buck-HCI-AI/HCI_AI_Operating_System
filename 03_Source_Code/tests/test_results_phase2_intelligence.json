@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-06-27T18:47:41.575978",
+  "run_at": "2026-07-02T11:03:03.746229",
   "passed": 38,
   "failed": 0,
   "total": 38,
@@ -28,7 +28,7 @@
         },
         {
           "check": "has safety",
-          "pass": "Hand & Power Tool Safety \u2014 guards and PPE"
+          "pass": "Trenching & Excavation \u2014 soil classification, shoring"
         },
         {
           "check": "has procurement",

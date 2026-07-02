@@ -1,5 +1,7 @@
 # BOOK_00 § 00 — Executive Overview
 
+> **⚠️ Manual consolidation (2026-07-02):** This was one of four separate documents all self-declaring as canonical (alongside `Operations_Manual/`, `HCI_AI_OS_MANUAL.md`, `BOOK_01/`). `HCI_AI_OS_MANUAL.md` (repo root) is now the canonical reference. This content is kept for reference only.
+
 **Company:** Hendrickson Construction, Inc. (HCI) — high-end residential remodels, Aspen CO  
 **Owner/Operator:** Buck Adams  
 **Mission:** Build the permanent AI operating system that runs HCI's construction operations.

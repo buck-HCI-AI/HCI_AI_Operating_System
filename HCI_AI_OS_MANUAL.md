@@ -7,7 +7,9 @@
 **Lead Implementation:** Claude Code
 **Operations Intelligence:** Browser Claude
 **Automation:** n8n
-**Status:** Living document — updated continuously
+**Status:** Living document — updated continuously — **CANONICAL as of 2026-07-02**, adopted as the single source of truth over `Operations_Manual/`, `BOOK_00/`, and `BOOK_01/` (all now marked reference-only, pointing here) after a full-system audit found four competing "canonical" manuals.
+
+> **Trust but verify, especially on sprint/feature status.** A 2026-07-02 audit cross-checked this manual and separately GBT's own "Sprint 7 complete"/"Sprint 8 preview" retrospectives against the actual codebase, and found both describing features (RBAC/identity, QuickBooks integration, an event bus, 14 new routers) as "live" that do not exist in the code — zero lines of RBAC or QuickBooks code anywhere in the repo as of this date. The real, current state is always `CURRENT_SPRINT.md` and `LIVE_PROJECT_STATE.md` at the repo root, updated by whoever is actually doing the work — treat any "Sprint N complete" claim in a CYCLE*.md file as a proposal, not a progress report, until checked against real code.
 
 ---
 
@@ -468,7 +470,11 @@ Key endpoints:
 | /gateway/executive/report | GET | Morning brief across all projects |
 | /gateway/approvals | POST | Create approval queue item |
 | /gateway/agent/handoff | POST | Send directive to another agent |
-| /gateway/telegram/inbound | POST | Receive Buck Telegram message |
+| /gateway/telegram/webhook | POST | Receive Buck's Telegram message (real endpoint — this table previously listed a nonexistent `/gateway/telegram/inbound`, fixed 2026-07-02) |
+| /gateway/telegram/messages | GET | Poll for Buck's Telegram messages (for agents that can't receive a live push) |
+| /gateway/telegram/ack | POST | Acknowledge Telegram messages as read |
+| /gateway/ai/messages | POST | Send any agent a durable message — triggers a real Telegram push to Buck |
+| /gateway/ai/warm-start | GET | Recovery snapshot after any restart |
 
 ---
 

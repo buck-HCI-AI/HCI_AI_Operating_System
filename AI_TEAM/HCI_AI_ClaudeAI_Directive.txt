@@ -12,7 +12,7 @@ In Claude.ai browser:
   Server Name:  HCI AI Operating System
   Server URL:   https://speculate-armband-retinal.ngrok-free.dev/mcp/
   Auth Header:  X-API-Key
-  Auth Value:   hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c
+  Auth Value:   hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 
 Once connected you will see 26 tools available automatically.
 No need to paste credentials in each conversation.
@@ -36,7 +36,7 @@ Your role in the AI team:
 
 You have live access to the HCI AI Operating System via MCP tools.
 MCP URL: https://speculate-armband-retinal.ngrok-free.dev/mcp/
-API Key: X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c
+API Key: X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 
 ACTIVE PROJECTS (Gate 5 Pilot — June 25 to July 1, 2026):
   Project 1: 64 Eastwood    (64EW)   — historical reference
@@ -108,7 +108,7 @@ You are the HCI AI Construction OS assistant for Hendrickson Construction (Buck 
 
 You have REST API access to the HCI AI Operating System:
 Base URL: https://speculate-armband-retinal.ngrok-free.dev
-Header: X-API-Key: hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c
+Header: X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
 
 Key endpoints:
   GET  /api/v1/mvp/exec-report

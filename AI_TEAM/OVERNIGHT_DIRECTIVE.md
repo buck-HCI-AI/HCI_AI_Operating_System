@@ -1,10 +1,15 @@
-# OVERNIGHT DIRECTIVE
+# OVERNIGHT DIRECTIVE — SUPERSEDED
+
+**Superseded 2026-07-02:** `SYSTEM_WIDE_OVERNIGHT_DIRECTIVE.md` (same date, 2026-06-30) explicitly states it supersedes this file, but this one was never marked as such — found during a full-system audit. Read `SYSTEM_WIDE_OVERNIGHT_DIRECTIVE.md` instead; this file is kept for history only.
+
+---
+
 ## HCI AI Operating System — Claude Code
 
 **Issued:** 2026-06-30
 **Issued by:** Browser Claude (Operations Intelligence) + HCI Chief Architect (GBT)
 **Authority:** Buck Adams (Owner)
-**Status:** ACTIVE — work through the night
+**Status:** SUPERSEDED — see banner above
 
 ---
 

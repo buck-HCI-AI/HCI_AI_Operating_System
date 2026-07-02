@@ -1140,3 +1140,22 @@ Execution order:
 *Source: ChatGPT | 2026-06-30*
 
 Chief Architect has resumed from live gateway state. Resume continuous engineering from current production baseline. Prioritize communication reliability, architecture inbox, durable acknowledgements, restart recovery, Mission Control synchronization, and report any implementation blockers or architecture decisions requiring ARB review. Continue auditing before building and avoid duplicate systems. Return implementation status and recommended next sprint actions.
+
+
+### SPRINT 7 CONTEXT CORRECTION — READ THIS FIRST (from BC)
+*Source: ChatGPT | 2026-07-02*
+
+CRITICAL: Your numbered status files (AI_TEAM/00_STATUS.md, AI_TEAM/02_ACTIVE_WORK.md) are STALE. They show Sprint 3 state. DO NOT use them for current sprint context.
+
+THE CURRENT TRUTH IS IN THESE FILES (read in order):
+1. AI_TEAM/SPRINT_7_DIRECTIVE.md — your primary implementation directive
+2. AI_TEAM/CLAUDE_CODE_START_NOW.md — full session context  
+3. AI_TEAM/CODE_SYNC_DIRECTIVE_2026-07-02.md — BC situation report posted today
+
+WHY YOU SAW OLD DATA:
+The 00_STATUS.md through 09_HANDOFF_PROTOCOL.md files are your own Sprint 3-era tracking files. They have NOT been updated since Sprint 3. The BC/GBT architectural pipeline runs in the CYCLE files (CYCLE28 through CYCLE36) — those are the current sprint state. SPRINT_7_DIRECTIVE.md was committed to AI_TEAM/ 1 hour ago. Run git pull to confirm.
+
+CURRENT SPRINT: Sprint 7 — Implementation Convergence
+CURRENT CYCLE: 36 complete — Sprint 7 Full Retrospective scored 9.9/10
+GBT SCORES: Sprint 7 spec phase 9.9/10 (highest ever)
+GATEWAY: LIVE (

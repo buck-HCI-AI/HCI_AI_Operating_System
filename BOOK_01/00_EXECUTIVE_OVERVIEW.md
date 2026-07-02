@@ -1,5 +1,7 @@
 # BOOK_01 — Volume 00: Executive Overview
 
+> **⚠️ Manual consolidation (2026-07-02):** This was one of four separate documents all self-declaring as canonical (alongside `Operations_Manual/`, `HCI_AI_OS_MANUAL.md`, `BOOK_00/`), and was already ~1 week stale at time of audit. `HCI_AI_OS_MANUAL.md` (repo root) is now the canonical reference. This content is kept for reference only.
+
 **Version:** 1.0 | **Date:** 2026-06-25 | **Directive:** HCI_AI_Business_Operating_Layer_BOOK01_Decision_KPI_Master_Directive_v1.0
 
 ---

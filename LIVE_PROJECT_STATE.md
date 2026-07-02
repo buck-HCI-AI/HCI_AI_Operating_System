@@ -128,8 +128,8 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 | ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
 |---|---|---|---|---|---|---|---|---|
 | 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | 0 days |
-| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 26 | 2 | -5 days (steel delay) |
-| 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🟢 GREEN | 58 | 0 | 0 days |
+| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 41 | 2 | -5 days (steel delay) |
+| 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🔴 RED | 73 | 5 | 0 days |
 
 ### Monitored / Staged
 | ID | Code | Project | Scope | HubSpot Deal | Health | Notes |
@@ -410,6 +410,7 @@ Executed per ChatGPT (Chief Architect/ARB) GBT handoffs "Implementation Directiv
 | 1355R risk count | ROOT CAUSE FIXED | Mission Control was NOT reading test data — it was reading a stale algorithmic snapshot (`project_brain_snapshots.risk_count=1`, health=GREEN) and an empty/dead table (`project_risks_computed`, 0 rows, so "top risks" was always empty) instead of the canonical `risks` table that Executive Report/PM Console/role_owner use (5 open risks, 2 high severity, health=RED). Fixed `executive.py mission_control()` to reconcile against the canonical table. |
 | Tests | COMPLETE | `test_ai_control_plane.py` extended — 65/65 passing, including new 101F/1355R consistency and directive-lifecycle assertions |
 | Sprint metadata | COMPLETE | Sprint 2 closed (technical criteria), Sprint 3 opened — see CURRENT_SPRINT.md |
+| 1355R/101F top-table sync | FIXED 2026-07-02 | The "Live Production Projects" summary table (top of this file) still showed 1355R as GREEN/0 risks — the exact stale value the 07-01 fix above corrected at the API level, never propagated to this table. Table now shows RED/5 (matching live `/gateway/project/1355R/pm`), and 101F/1355R bid package counts corrected to live values (41 and 73). Found via a full-system audit — a live-facing "source of truth" doc had been self-contradicting since 07-01. |
 
 ### Decisions Pending Buck / Chief Architect
 1. **Sprint 2 formal ARB close ruling** — technical criteria met this session; Chief Architect to review implementation report and issue formal close
