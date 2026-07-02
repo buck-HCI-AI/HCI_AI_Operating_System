@@ -2351,6 +2351,127 @@ async def drive_move(req: DriveMovePayload):
         return _response("/drive/move", {}, errors=[str(e)], start=t0)
 
 
+# ── System Drift Check ───────────────────────────────────────────────────────
+# Added 2026-07-02 after a full manual audit (5 parallel research passes) found:
+# n8n silently failing 64% of executions, a HubSpot credential broken 9 days
+# unnoticed, connector_registry never wired to any real sync, and GBT's own
+# retrospectives claiming "Sprint 7 complete"/"9.9/10" while zero code shipped
+# for the sprint. None of that was caught until someone manually went looking.
+# This endpoint automates the highest-value checks from that audit so drift
+# gets caught in days, not whenever someone next asks "read everything."
+
+@router.get("/admin/drift-check")
+def system_drift_check():
+    """Automated version of the 2026-07-02 manual audit. Checks for the
+    specific silent-failure patterns found that day: n8n execution health,
+    stale/dead connectors, stale credentials, and sprint-status drift between
+    GBT's CYCLE files and the real CURRENT_SPRINT.md. Intended to run on a
+    schedule (n8n, weekly) and report findings via /ai/messages, not just
+    sit here waiting to be polled."""
+    t0 = time.time()
+    findings = []
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                # 1. connector_registry rows that claim to be registered but have
+                #    literally never synced - the exact pattern found for Houzz/
+                #    Drive/HubSpot all three on 07-02.
+                cur.execute("""
+                    SELECT project_code, source_system, created_at
+                    FROM connector_registry
+                    WHERE last_indexed IS NULL
+                      AND created_at < NOW() - INTERVAL '3 days'
+                """)
+                dead_connectors = cur.fetchall()
+                if dead_connectors:
+                    findings.append({
+                        "severity": "high",
+                        "category": "dead_connector",
+                        "detail": f"{len(dead_connectors)} connector_registry rows registered 3+ days ago, never synced",
+                        "items": [f"{r['project_code']}/{r['source_system']} (registered {r['created_at'].date()})" for r in dead_connectors],
+                    })
+
+                # 2. ai_messages stuck STALE for a long time - the BC 101F
+                #    self-report sat unacknowledged for over a day undetected.
+                cur.execute("""
+                    SELECT id, title, target_agent, created_at
+                    FROM ai_messages
+                    WHERE status = 'STALE' AND created_at < NOW() - INTERVAL '24 hours'
+                    ORDER BY created_at ASC
+                """)
+                stale_msgs = cur.fetchall()
+                if stale_msgs:
+                    findings.append({
+                        "severity": "medium",
+                        "category": "stale_directive",
+                        "detail": f"{len(stale_msgs)} directive(s) STALE for 24h+, nobody has acted on them",
+                        "items": [f"#{r['id']} to {r['target_agent']}: {r['title']} (since {r['created_at'].date()})" for r in stale_msgs],
+                    })
+    except Exception as e:
+        findings.append({"severity": "high", "category": "check_failed", "detail": f"DB checks errored: {e}"})
+
+    # 3. n8n execution failure rate - the 64%-failing-and-nobody-noticed pattern.
+    try:
+        n8n_key = os.environ.get("N8N_API_KEY", "")
+        resp = requests.get(
+            "http://localhost:5678/api/v1/executions",
+            headers={"X-N8N-API-KEY": n8n_key},
+            params={"limit": 100},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            execs = resp.json().get("data", [])
+            if execs:
+                errored = sum(1 for e in execs if e.get("status") == "error" or e.get("finished") is False and e.get("stoppedAt"))
+                rate = errored / len(execs)
+                if rate > 0.20:
+                    findings.append({
+                        "severity": "high",
+                        "category": "n8n_failure_rate",
+                        "detail": f"{errored}/{len(execs)} ({rate:.0%}) of last 100 n8n executions failed - exceeds 20% threshold",
+                        "items": [],
+                    })
+        else:
+            findings.append({"severity": "medium", "category": "n8n_unreachable", "detail": f"n8n executions API returned {resp.status_code} - can't verify workflow health"})
+    except Exception as e:
+        findings.append({"severity": "medium", "category": "n8n_unreachable", "detail": f"n8n executions API unreachable: {e}"})
+
+    # 4. Sprint status drift - GBT's CYCLE files claiming a higher sprint number
+    #    "complete" than CURRENT_SPRINT.md's real active sprint.
+    try:
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        with open(os.path.join(repo_root, "CURRENT_SPRINT.md")) as f:
+            current_sprint_text = f.read()
+        m = _re.search(r"Sprint Number:\*\*\s*(\d+)", current_sprint_text)
+        real_sprint = int(m.group(1)) if m else None
+
+        ai_team_dir = os.path.join(repo_root, "AI_TEAM")
+        cycle_files = [f for f in os.listdir(ai_team_dir) if f.startswith("CYCLE") and "SPRINT" in f.upper() and f.endswith(".md")]
+        max_claimed_sprint = None
+        for fname in cycle_files:
+            m2 = _re.search(r"SPRINT(\d+)", fname.upper())
+            if m2:
+                n = int(m2.group(1))
+                if max_claimed_sprint is None or n > max_claimed_sprint:
+                    max_claimed_sprint = n
+        if real_sprint and max_claimed_sprint and max_claimed_sprint > real_sprint:
+            findings.append({
+                "severity": "medium",
+                "category": "sprint_drift",
+                "detail": f"AI_TEAM/ has CYCLE files claiming Sprint {max_claimed_sprint}, but CURRENT_SPRINT.md says Sprint {real_sprint} is active - verify claimed sprints against real code before trusting any 'complete' status",
+                "items": [],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Sprint drift check errored: {e}"})
+
+    return _response("/admin/drift-check", {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "findings_count": len(findings),
+        "findings": findings,
+        "clean": len(findings) == 0,
+    }, start=t0)
+
+
 # ── Field Endpoints (GBT Field GPT) ──────────────────────────────────────────
 
 class FieldNotePayload(BaseModel):
