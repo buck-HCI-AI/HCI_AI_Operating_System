@@ -3,7 +3,7 @@
   "info": {
     "title": "HCI AI Operating System",
     "description": "Gateway Bridge + Bid Leveling + Project Data for Hendrickson Construction AI OS.",
-    "version": "2.0.0"
+    "version": "2.2.0"
   },
   "servers": [
     {
@@ -154,6 +154,84 @@
         },
         "responses": {
           "200": { "description": "File created or updated in Drive" }
+        }
+      }
+    },
+    "/gateway/ai/messages": {
+      "post": {
+        "operationId": "sendMessageToBuck",
+        "summary": "The ONLY way to reach Buck directly — triggers a real Telegram push to his phone. Use for status updates, questions, risk alerts, or anything needing Buck's decision. Reading dashboards or filing a handoff to Claude Code does NOT notify Buck — this endpoint is required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["source_agent", "target_agent", "message_type", "title", "body"],
+                "properties": {
+                  "source_agent": { "type": "string", "default": "chatgpt" },
+                  "target_agent": { "type": "string", "default": "buck", "description": "buck | claude_code | browser_claude" },
+                  "message_type": { "type": "string", "enum": ["approval_request", "risk_alert", "blocked_mission", "handoff_waiting", "work_complete", "review_required", "note", "status_update"], "description": "The first six types trigger an immediate Telegram push. note/status_update are stored but only pushed if requires_buck_approval is true." },
+                  "title": { "type": "string" },
+                  "body": { "type": "string" },
+                  "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"], "default": "medium" },
+                  "requires_buck_approval": { "type": "boolean", "default": false, "description": "Set true to require Buck's explicit APPROVE/REJECT/HOLD reply before anything downstream proceeds" },
+                  "approval_type": { "type": "string" },
+                  "project_code": { "type": "string" },
+                  "source_of_truth_link": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message created and Telegram push sent (or queued if requires_buck_approval)" }
+        }
+      }
+    },
+    "/gateway/telegram/messages": {
+      "get": {
+        "operationId": "getBuckTelegramMessages",
+        "summary": "Poll for Buck's Telegram messages you haven't seen yet — you cannot receive a live push, this is how you catch up. Call at the start of every session and periodically during long ones.",
+        "parameters": [
+          { "name": "agent", "in": "query", "required": true, "schema": { "type": "string", "default": "chatgpt", "enum": ["chatgpt", "browser_claude", "claude_code", "n8n"] } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Unread messages from Buck since your last ack" }
+        }
+      }
+    },
+    "/gateway/telegram/ack": {
+      "post": {
+        "operationId": "ackBuckTelegramMessages",
+        "summary": "Mark Buck's Telegram messages as read up through a given message_id — also marks you ONLINE in agent heartbeat",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["agent", "message_id"],
+                "properties": {
+                  "agent": { "type": "string", "default": "chatgpt" },
+                  "message_id": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Acknowledged through message_id" }
+        }
+      }
+    },
+    "/gateway/ai/warm-start": {
+      "get": {
+        "operationId": "getWarmStart",
+        "summary": "Single-call recovery snapshot after any restart — active projects, top risks, and any ai_messages waiting on your response. Call this alongside getBuckTelegramMessages at session start.",
+        "responses": {
+          "200": { "description": "Warm-start snapshot" }
         }
       }
     },
