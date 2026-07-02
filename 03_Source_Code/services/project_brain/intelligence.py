@@ -556,23 +556,37 @@ class ProjectIntelligenceEngine(BaseIntelligenceService):
             )
             conn.autocommit = True
             cur = conn.cursor()
+            # schedule_variance_days defaults to 0 (not NULL) at the column level, and
+            # this INSERT previously never set it — so a fresh daily snapshot (created
+            # by the first /brain call of the day) silently zeroed out the real
+            # days-behind figure, masking the NULL-fallback logic in gbt_gateway.py's
+            # executive report that only engages when no snapshot exists at all (found
+            # 2026-07-02 via a live 101F mismatch: max_variance_days=5 but
+            # schedule_variance_days=0 in the same response). Compute it here from the
+            # same live source and sign convention (negative = behind schedule) so the
+            # snapshot is self-consistent from the moment it's created.
+            cur.execute("SELECT MAX(ABS(variance_days)) FROM schedule_variance WHERE project_id = %s", (self.project_id,))
+            max_var = (cur.fetchone() or [0])[0] or 0
+            signed_variance_days = -max_var if max_var else 0
             cur.execute("""
                 INSERT INTO project_brain_snapshots
                     (project_id, snapshot_date, health, health_factors, risk_count,
-                     open_decisions, open_bids, data_completeness_pct)
-                VALUES (%s, CURRENT_DATE, %s, %s, %s, %s, %s, %s)
+                     open_decisions, open_bids, data_completeness_pct, schedule_variance_days)
+                VALUES (%s, CURRENT_DATE, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (project_id, snapshot_date) DO UPDATE SET
                     health = EXCLUDED.health,
                     health_factors = EXCLUDED.health_factors,
                     risk_count = EXCLUDED.risk_count,
                     open_decisions = EXCLUDED.open_decisions,
                     open_bids = EXCLUDED.open_bids,
-                    data_completeness_pct = EXCLUDED.data_completeness_pct
+                    data_completeness_pct = EXCLUDED.data_completeness_pct,
+                    schedule_variance_days = EXCLUDED.schedule_variance_days
             """, (
                 self.project_id, health, json.dumps(factors),
                 len(risks), len(decisions),
                 procurement.get("open", 0),
-                self._data_completeness()
+                self._data_completeness(),
+                signed_variance_days,
             ))
             conn.close()
         except Exception:
