@@ -20,6 +20,11 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=America/Denver
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # WAL mode does far fewer fsync/lock operations than the default rollback
+      # journal — mitigates the recurring SQLITE_IOERR seen with SQLite over a
+      # host bind-mount on Docker Desktop for macOS (~/.n8n below is a bind
+      # mount, not a native Docker volume, which is the documented root cause).
+      - DB_SQLITE_ENABLE_WAL=true
     volumes:
       - ~/.n8n:/home/node/.n8n
     networks:

@@ -5,6 +5,30 @@
 
 ---
 
+## v3.9 — 2026-07-02 | Test-Hygiene Fixes + n8n Networking + Plan-Review Extensions
+
+**Trigger:** Recurring "yes/no prompt" complaints traced to real bugs (not the harness), plus a full system audit Buck requested after the earlier shutdown/merge with GBT and Browser Claude.
+
+**Test-suite live-side-effect fixes:**
+- `/email/send` and `POST /ai/messages` both took a real network path (Outlook draft + Telegram push) on every test run, including test rows appearing as real approval requests on Buck's phone. Added `skip_notify` to both request models — tests exercise the DB/approval-queue mechanics without a real send.
+- `/email/send` hardcoded `source_agent="browser_claude"` regardless of caller, misattributing every test run's activity to Browser Claude (50 stale rows cleaned up). Added a `source_agent` field, defaulting to the prior behavior for real callers.
+- Test suite was writing real RFIs/bid packages/schedule items into the live 101F project (24 fake RFIs, 40 fake bid packages, 184 fake draft schedule items accumulated). Added an isolated `QATEST` sandbox project (`status='sandbox'`, excluded from all dashboard queries) and moved all plan-review pipeline tests to it, with a reset step at the top of the suite.
+
+**n8n networking (large, previously invisible):**
+- 41 of 55 active n8n workflows called `http://localhost:8000/...`, unreachable from inside the n8n Docker container (host services aren't `localhost` from a container's network namespace) — 100% silent failure on every run. Bulk-updated all 41 to `host.docker.internal:8000`.
+- Root-caused a recurring `SQLITE_IOERR` (n8n's execution DB) to SQLite's file-locking not being fully POSIX-compliant over Docker Desktop's bind-mount filesystem layer on macOS (`~/.n8n` is a host bind mount, not a native Docker volume). Added `DB_SQLITE_ENABLE_WAL=true` to `docker-compose.yml` — WAL mode does far fewer fsync/lock operations, which is the standard mitigation for this class of issue.
+
+**Plan-review pipeline extensions (ADR-014's 4 roadmap items were already shipped; these are organic follow-ons):**
+- `generate-packages`/`generate-schedule` now dedupe on re-run instead of stacking duplicate packages/schedule items every time a plan set is re-reviewed.
+- `GET /project/{code}/bid-package-vendor-matches` — ranks real HCI vendors against each generated package (tier, win rate, bid history), with a `capacity_conflict` field cross-referencing `vendor-capacity-conflicts`' overlap logic pre-award. Found and fixed the same short-first-name false-positive bug in this new join that the original endpoint already guarded against.
+- `generate-schedule` now flags long-lead items (elevator, custom steel windows, imported stone, geothermal) with a recommended order-by date, since these routinely blow ultra-luxury custom-home schedules when ordered on the package's normal phase timeline.
+- `GET /project/{code}/owner-decisions-needed` — surfaces open RFIs that are owner-selection-flavored (manufacturer/model/color/finish gaps), cross-referenced against long-lead order dates.
+- `POST /plan-review/sales-summary` — the capability Buck named as the original motivation for this whole pipeline ("for sales we need to read a plan, say what's missing, and have a prelim ROM/schedule"); read-only, does not create RFI rows on every preview.
+
+140/140 tests passing. System auditor: 94/100 HEALTHY.
+
+---
+
 ## v3.7 — 2026-06-30 | P0 Reconciliation + Backup System Fix
 
 **Trigger:** ChatGPT Chief Architect P0 directive ("Code communication ai") reiterated the durable-comms/warm-start work with a stricter field spec (2 of 3 directives now agree on RECEIVED/FAILED over ACKNOWLEDGED/REJECTED, plus source_agent/target_agent naming). Separately, Buck asked to confirm external-drive backups and disaster-recovery readiness.
