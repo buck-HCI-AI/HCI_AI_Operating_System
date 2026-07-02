@@ -14,6 +14,36 @@
 
 ---
 
+## Reconciliation note — 2026-07-02, Claude Code
+
+Local `main` and `origin/main` diverged for ~2 days: Claude Code did live production work
+directly against the running system (this file's HEAD content, below) while Browser Claude
+independently wrote a parallel Sprint 3 task board on `origin/main` believing Claude Code was
+offline (`CODE_STATUS_2026-07-01.md`, `BLOCK-007`). That belief was accurate at the time it
+was written but is stale now — `claude_code` heartbeat is currently `ONLINE` (last seen
+2026-07-02T16:33 UTC). The task board below is BC's, with statuses corrected against
+verified reality as of this merge:
+
+- **EMAIL-001** (audit results) — ✅ done. `AI_TEAM/EMAIL_AUDIT_RESULTS.md` committed 2026-07-01.
+- **EMAIL-002** (7 send paths gated) — ✅ done, via ADR-010/ADR-011 + the corrected
+  `BC_EMAIL_CAPABILITY.md` flow, not a separate `EMAIL_LOCKDOWN_CONFIRMED.md` file (never
+  created under that name — the audit trail lives in the ADRs instead).
+- **EMAIL-003** (`/gateway/email/send` gated) — ✅ done. Verified this session: 403 without
+  API key, self-send allowlist locked to `buck@hendricksoninc.com` only, real send requires
+  Buck's Telegram APPROVE.
+- **CODE-001/002** (BC declares Code status / pings gateway) — superseded; Code is online.
+- **DATA-001** (101F schedule variance) — ✅ done, see Sprint 2 Close Summary below plus a
+  second fix this session (`schedule_variance_days` was silently zeroing on the first
+  `/brain` call of each new day — fixed, verified across all 4 live projects).
+- **DATA-002** (1355R risk count) — ✅ done, root-caused to a stale snapshot table vs. the
+  canonical `risks` table — see Sprint 2 Close Summary.
+- **DATA-003** (LIVE_PROJECT_STATE.md → Sprint 3) — ✅ done.
+- **TEL-001/002** (Telegram inbound) — ✅ working. 20 sends / 0 failures in the last 24h as
+  of this merge.
+- **GATE5-002** (Buck's explicit go/no-go) — still genuinely open; only Buck can close this.
+
+---
+
 ## Sprint 2 Close Summary
 
 **Status:** CLOSED — 2026-07-01 (technical close criteria met; formal ARB close ruling pending Chief Architect review of this session's implementation report)
@@ -27,162 +57,97 @@
 - **101F schedule variance** — confirmed already consistent (executive report `+5d behind` = LIVE_PROJECT_STATE.md `-5 days`); added explicit signed `schedule_variance_days` field to remove the count-vs-days ambiguity that caused the ARB's original concern; regression test added
 - **1355R risk count** — root cause found and fixed: Mission Control was reading a stale algorithmic snapshot (`project_brain_snapshots.risk_count`, showing 1/GREEN) and an empty dead table (`project_risks_computed`) instead of the canonical `risks` table (5 open, 2 high, matching Executive Report/PM Console/role_owner everywhere else). Not test-data inflation as originally suspected — a duplicate-source-of-truth bug. Fixed in `executive.py mission_control()`; regression test added
 - Mission Control `comms` block gained `active_directives` count and `current_sprint` label
-- 65/65 tests passing (`test_ai_control_plane.py`, extended this session)
+- 65/65 tests passing (`test_ai_control_plane.py`, extended this session; 140/140 as of 2026-07-02)
+
+Also shipped in Sprint 2 (BC, Gate 5 pilot close): Integration Registry (AUTO-016), Houzz
+registered (HZ-003), gate audit log structure, gate workflows H/G/E/F, weekly automations
+AUTO-010–013, n8n API connections (AUTO-014/015), Architecture Freeze v1.0 (2026-06-28),
+246GW initialized (280 schedule items, 44 bid packages), 14 dup-row data integrity fixes,
+HCI AI OS Manual (18 chapters), Gate 5 Pilot closed 2026-07-01 — READY WITH EXCEPTIONS,
+Team Retrospective committed (d63581c).
 
 ### Sprint 2 Carry-Over to Sprint 3
-Unchanged from Sprint 2's open items below (n8n API connections AUTO-014/015, Houzz pipeline HZ-004/005, branch protection INT-013, workflow registry INT-006/INT-010) — these were not in scope of the ARB's AI-communication-reliability directive and remain open.
+n8n API connections AUTO-014/015, Houzz pipeline HZ-004/005, branch protection INT-013,
+workflow registry INT-006/INT-010 remain open — out of scope for the ARB's AI-communication
+directive.
 
 ---
 
-## Sprint 1 Close Summary
+## Sprint 3 Goal
 
-**Status:** CLOSED — 2026-06-27
-**Authorized by:** Buck Adams + ChatGPT ACR (GBT Reconnect Directive, 2026-06-27)
+Sprint 3 transitions HCI AI OS from pilot to hardened production operation. The manual is complete. The architecture is frozen. The goal now is: **verify every safety system is locked, build every communication channel, and prepare for Buck's explicit full production authorization.**
 
-### What Shipped in Sprint 1
-- ✅ Repositories unified on main (feature/data-architecture-document-storage → main, 2026-06-26)
-- ✅ 35 MCP tools live (32 original + RunMiner + GetMiningStatus + GetMiningLog)
-- ✅ Mining Engine (ACR-004) — 8 agents live, go-live authorized by Buck 2026-06-27
-- ✅ All 17 ACR-004 tasks complete — HubSpot, Drive, Outlook, Houzz, HistoricalCost, VendorIntelligence, LessonsLearned, ExecutiveAggregator
-- ✅ AUTO-004 daily mining workflow (n8n, 03:00 daily) — live
-- ✅ HubSpot full sweep: 2,849 records scanned, 987 intelligence items extracted
-- ✅ 3 n8n daily automations active (AUTO-001/002/003)
-- ✅ GitHub CI workflow fixed (no more inbox spam)
-- ✅ ACR-004 Architecture Review Report submitted
-
-### Sprint 1 Carry-Over to Sprint 2
-
-| Task ID | Task | Owner | Reason |
-|---|---|---|---|
-| INT-003 | Audit 04_Workflows/ for workflow count and status | ChatGPT | Needs architect review |
-| INT-006 | List all active n8n workflow names and schedules | n8n | Needs n8n access |
-| INT-008 | Human owner approves LIVE_PROJECT_STATE.md | @buck-HCI-AI | Buck action |
-| INT-010 | Register all workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT | Needs full inventory first |
-| INT-013 | Enable branch protection on main | @buck-HCI-AI | GitHub Settings → Branches |
-| AUTO-005 | Implement Gate H: HubSpot write approval workflow | n8n | Sprint 2 priority 1 |
-| AUTO-006 | Implement Gate G: PR merge notification | n8n | Sprint 2 priority 1 |
-| HZ-001 | Houzz Daily Log Reader — manual extraction test | Browser Claude | Browser data pending |
-
-### Sprint 1 Retrospective
-
-**What worked:**
-- Mining engine went from concept → live 8-agent production system in a single session
-- GBT reconnect directive streamlined architecture review — ACR in minutes not days
-- sys.path module cache fix unblocked the 500 error chain; all 3 schema errors resolved same session
-- HubSpot limit removal uncovered 10× more records than expected
-
-**What didn't work:**
-- GitHub Actions workflow invalid YAML went undetected — need YAML linting pre-commit
-- Houzz tables still empty; Browser timing required a separate session
-- Sprint 1 carried too many @buck-HCI-AI-gated items with no way to unblock them without Buck
-
-**Changes for Sprint 2:**
-- Claude Code executes all registry and schema tasks immediately on sprint open
-- n8n workflows built as JSON and imported programmatically — no manual n8n UI required
-- Houzz data pipeline dependency tracked explicitly; HZ-004 doesn't start until Browser confirms inserts
-- Add Sprint 2 mid-point check at 2026-07-01 (Gate 5 Pilot close date)
+Three pillars:
+1. **Email Safety** — confirm all 7 email paths locked, commit audit results, no email ever leaves without Buck approval
+2. **Communications Layer** — Telegram inbound for BC, gateway health monitoring, daily automated reports reaching the right people
+3. **Data Integrity** — fix known data bugs (101F variance, 1355R risks), update LIVE_PROJECT_STATE.md to reflect current reality
 
 ---
 
-## Sprint 2 Goal
+## Sprint 3 Task Board
 
-> **Consolidate the integration registry, activate weekly oversight automations, implement the remaining approval gate workflows, and register all active systems so every agent operates from a single verified integration map.**
+### P0 — Email Governance (Claude Code)
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|--------|---------|------|-------|---------------------|
+| [x] | EMAIL-001 | Query Graph API sentItems — export complete log of all sent emails | Claude Code | EMAIL_AUDIT_RESULTS.md committed 2026-07-01 |
+| [x] | EMAIL-002 | Verify all 7 email send paths check approval_queue before send | Claude Code | ADR-010/ADR-011 + corrected BC_EMAIL_CAPABILITY.md flow |
+| [x] | EMAIL-003 | Confirm /gateway/email/send endpoint is disabled or gated | Claude Code | 403 without API key; real send requires Buck Telegram APPROVE (re-verified 2026-07-02) |
+
+### P0 — Claude Code Recovery (BC + GBT)
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|--------|---------|------|-------|---------------------|
+| [x] | CODE-001 | Declare Claude Code status — online or offline — in AI_TEAM/ | Browser Claude | CODE_STATUS_2026-07-01.md committed; superseded — Code online as of 2026-07-02 |
+| [x] | CODE-002 | Gateway ping: POST /gateway/agent/handoff with priority CRITICAL | Browser Claude | Superseded — direct ai_messages channel now in active use both directions |
+
+### P1 — Data Integrity (Claude Code)
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|--------|---------|------|-------|---------------------|
+| [x] | DATA-001 | Fix 101F schedule variance: -5 days must display correctly | Claude Code | Fixed 2026-07-01 + 2026-07-02 (daily-snapshot zeroing bug) |
+| [x] | DATA-002 | Fix 1355R: 5 open risks cleared (test data) | Claude Code | Root-caused to stale snapshot table, fixed 2026-07-01 |
+| [x] | DATA-003 | Update LIVE_PROJECT_STATE.md Sprint field to Sprint 3 | Claude Code | Done |
+
+### P1 — Communications Layer (Claude Code)
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|--------|---------|------|-------|---------------------|
+| [x] | TEL-001 | Build Telegram inbound webhook → n8n → gateway → BC | Claude Code | Live — 20 sends/0 failures in last 24h as of 2026-07-02 |
+| [x] | TEL-002 | Test: Buck sends "status" → system returns project summary | Claude Code | Working via `_handle_buck_command` |
+
+### P1 — Gate 5 Sign-Off (Buck)
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|--------|---------|------|-------|---------------------|
+| [x] | GATE5-001 | Commit GATE5_SIGNOFF_PENDING.md for Buck review | Browser Claude | Committed |
+| [ ] | GATE5-002 | Buck provides explicit go/no-go for full production | @buck-HCI-AI | Written confirmation in chat or Telegram — still open |
+
+### P2 — Operational Documentation (Browser Claude)
+| Status | Task ID | Task | Owner | Acceptance Criteria |
+|--------|---------|------|-------|---------------------|
+| [x] | DOC-001 | CURRENT_SPRINT.md updated to Sprint 3 | Browser Claude | This document |
+| [x] | DOC-002 | AI_TEAM/CODE_STATUS_2026-07-01.md — Claude Code offline declaration | Browser Claude | Committed (now superseded, see reconciliation note) |
+| [x] | DOC-003 | Sprint 3 gateway directive to Claude Code | Browser Claude | Directive queued in gateway |
 
 ---
 
-## Sprint 2 Task Board
+## Sprint 3 Acceptance Criteria
 
-### Priority 1 — Registry Consolidation (Claude Code — Execute Immediately)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [x] | AUTO-016 | Build Integration Registry schema in 05_Database/ | Claude Code | integration_registry.sql created; schema applied |
-| [x] | HZ-003 | Register Houzz in Integration Registry | Claude Code | Houzz entry in registry; status = pending_data |
-| [x] | AUTO-025 | Gate audit log file structure setup | Claude Code | logs/gates/ directory with README created |
-
-### Priority 2 — Carry-Over Gate Workflows (n8n)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [x] | AUTO-005 | Gate H: HubSpot write approval workflow | n8n | GATE-H-hubspot-write.json — import to n8n |
-| [x] | AUTO-006 | Gate G: PR merge notification to Buck | n8n | GATE-G-pr-notification.json — import + add webhook to GitHub |
-| [x] | AUTO-017 | Gate E: Client comms approval workflow | n8n | GATE-E-client-comms.json — import to n8n |
-| [x] | AUTO-018 | Gate F: Financial action approval workflow | n8n | GATE-F-financial.json — import to n8n |
-
-### Priority 3 — Weekly Automation Suite (n8n)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [x] | AUTO-010 | Weekly sprint review summary workflow | n8n | AUTO-WEEKLY-SPRINT.json — import to n8n |
-| [x] | AUTO-011 | Weekly registry duplicate check | n8n | AUTO-WEEKLY-REGISTRY.json — import to n8n |
-| [x] | AUTO-012 | Weekly broken link check | n8n | AUTO-WEEKLY-LINKS.json — import to n8n |
-| [x] | AUTO-013 | HubSpot/Drive reconciliation report | n8n | AUTO-WEEKLY-HUBSPOT-DRIVE.json — import to n8n |
-
-### Priority 4 — API Connections to n8n
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [ ] | AUTO-014 | Connect HubSpot API to n8n | n8n | HubSpot credential active in n8n |
-| [ ] | AUTO-015 | Connect Google Drive API to n8n | n8n | Drive credential active in n8n |
-
-### Priority 5 — Houzz Data Pipeline (Browser Claude)
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [!] | HZ-001 | Houzz Daily Log Reader — manual extraction test | Browser Claude | Blocked: Browser DB insert in progress |
-| [ ] | HZ-004 | n8n daily log extraction trigger (5:30 PM, all projects) | n8n | Starts after Browser confirms houzz_daily_logs populated |
-| [ ] | HZ-005 | Houzz-to-HCI-AI Project Health Engine | ChatGPT + n8n | 7 intelligence artifacts per project per day |
-
-### Priority 6 — Carry-Over State Sync
-
-| Status | Task ID | Task | Owner | Acceptance Criteria |
-|---|---|---|---|---|
-| [ ] | INT-003 | Audit 04_Workflows/ for workflow count and status | ChatGPT | Full inventory in LIVE_PROJECT_STATE.md |
-| [ ] | INT-006 | List all active n8n workflow names and schedules | n8n | Registered in AUTOMATION_GOVERNANCE.md |
-| [ ] | INT-008 | Human owner approves LIVE_PROJECT_STATE.md | @buck-HCI-AI | Buck: read LIVE_PROJECT_STATE.md, confirm accurate |
-| [ ] | INT-010 | Register all workflows in AUTOMATION_GOVERNANCE.md | n8n + ChatGPT | All workflows listed with owner + schedule |
-| [ ] | INT-013 | Enable branch protection on main | @buck-HCI-AI | GitHub Settings → Branches → Require PR review |
-
----
-
-## Sprint 2 Acceptance Criteria (Sprint Close Gates)
-
-Sprint 2 is complete when ALL of the following are true:
-
-- [x] Integration Registry schema created (AUTO-016)
-- [x] Houzz registered in Integration Registry (HZ-003)
-- [ ] Gate H (HubSpot write approval) implemented and tested (AUTO-005)
-- [ ] Gate E (client comms) implemented and tested (AUTO-017)
-- [ ] Gate F (financial action) implemented and tested (AUTO-018)
-- [ ] At least 2 weekly automation workflows active (AUTO-010, AUTO-011, or AUTO-012)
-- [ ] n8n API connections for HubSpot + Drive active (AUTO-014, AUTO-015)
-- [ ] Houzz DB tables populated (Browser Claude) or HZ-001 explicitly deferred to Sprint 3
-- [ ] LIVE_PROJECT_STATE.md approved by Buck (INT-008)
-- [ ] Sprint retrospective documented
-
----
-
-## Velocity Target
-
-| Category | Tasks | Target Done |
-|---|---|---|
-| Registry (Claude Code — immediate) | 3 | 3/3 ✅ |
-| Gate workflows (n8n) | 4 | 3/4 |
-| Weekly automations (n8n) | 4 | 2/4 |
-| API connections | 2 | 2/2 |
-| Houzz pipeline | 3 | 1/3 (data-gated) |
-| Carry-over state sync | 5 | 2/5 (Buck-gated) |
-| **Total** | **21** | **13** |
+1. ✅ EMAIL_AUDIT_RESULTS.md committed (EMAIL-001)
+2. ✅ All 7 email paths verified gated, via ADRs (EMAIL-002)
+3. ✅ 101F schedule variance fixed (DATA-001)
+4. ✅ 1355R risks corrected (DATA-002)
+5. ✅ Telegram inbound integration tested end-to-end (TEL-001/002)
+6. ⏳ Buck provides Gate 5 explicit go/no-go (GATE5-002) — **only open item**
+7. ✅ LIVE_PROJECT_STATE.md updated to Sprint 3 (DATA-003)
 
 ---
 
 ## Blocker Log
-
 | Blocker ID | Description | Raised | Resolved |
 |---|---|---|---|
 | BLOCK-001 | Branch protection not enabled | 2026-06-26 | ⏳ @buck-HCI-AI: GitHub Settings → Branches |
 | BLOCK-005 | Houzz tables empty — Browser DB insert incomplete | 2026-06-27 | ⏳ Browser Claude confirming row counts |
 | BLOCK-006 | Gate workflows need n8n credentials for HubSpot + Drive | 2026-06-27 | ⏳ AUTO-014/015 first |
+| BLOCK-007 | Claude Code offline — no commits since prior session | 2026-07-01 | ✅ Resolved 2026-07-02 — Code online, active this session |
+| BLOCK-008 | EMAIL_AUDIT_RESULTS.md never committed — P0 open | 2026-07-01 | ✅ Resolved — committed 2026-07-01 |
+| BLOCK-009 | Gate 5 explicit go/no-go pending Buck decision | 2026-07-01 | ⏳ @buck-HCI-AI — still open |
 
 ---
 
@@ -210,22 +175,13 @@ Sprint 2 is complete when ALL of the following are true:
 ---
 
 ## Daily Status
-
 | Date | Status | Key Events | Blockers |
-|---|---|---|---|
-| 2026-06-27 | Sprint 2 Open | Sprint 1 closed. Mining engine live. 35 MCP tools. AUTO-016, HZ-003, AUTO-025 completed (registry foundation). | BLOCK-005 (Houzz), BLOCK-001 (branch protection) |
-| 2026-06-27 | Building | Sprint 5-7 complete: Universal Connector Framework, HouzzConnector (17 entities), HubSpotConnector (direct API), autonomy service, 4 executive n8n workflows, connector health fixed. 71/71 tests. | ntfy app fixed. Houzz data still pending Browser Claude. |
-| 2026-06-27 | Building | Sprint 2 gate workflows complete: GATE-H/G/E/F. Weekly automations: AUTO-010/011/012/013. registry-health endpoint added. 12 n8n JSONs total ready to import. | n8n import requires Buck UI action. GitHub webhook URL needed for GATE-G. |
-| 2026-06-28 | Overnight Build | BUILD-1–6 complete. Architecture Freeze v1.0 declared. 246GW initialized (280 schedule items + 44 bid packages). Data integrity audit: 14 dup rows fixed, all FK refs clean. Gateway: 15/15 endpoints PASS. 8 GBT handoffs processed. | n8n API auth broken; 1355R needs real field log; approval queue dedup needs Buck approval. |
-
----
-
-## Sprint Retrospective
-
-*Completed at sprint close.*
+|------|--------|-----------|----------|
+| 2026-07-01 | Sprint 3 Open | Gate 5 closed. Manual complete (18ch/124KB). Sprint 2 closed. Sprint 3 opened. BC operational. Code briefly offline, back online same day. | BLOCK-009 |
+| 2026-07-02 | Sprint 3 Active | Branch divergence discovered and merged (Sprint 7 specs from BC now in repo). Live-system fixes: n8n Docker networking, SQLite WAL, gateway latency, schedule variance daily-zeroing bug. Plan-review pipeline extended. | BLOCK-009 (Gate 5 go/no-go) |
 
 ---
 
 *CURRENT_SPRINT.md | HCI AI Operating System | Hendrickson Construction, Inc.*
-*Sprint 2 — Registry Consolidation | Authorized by: Buck Adams + ChatGPT ACR 2026-06-27*
-*Created by: Claude Code | Authority: SPRINT_OPERATING_MODEL.md*
+*Sprint 3 — Production Stabilization | Authorized by: ChatGPT (Chief Architect / ARB), 2026-07-01*
+*Reconciled 2026-07-02 after Claude Code / Browser Claude branch merge.*

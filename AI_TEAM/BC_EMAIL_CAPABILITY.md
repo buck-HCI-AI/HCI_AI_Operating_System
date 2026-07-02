@@ -167,3 +167,17 @@ Hendrickson Construction, Inc.<br>
 
 *Authorized by Buck Adams — Hendrickson Construction, Inc. — 2026-06-30*
 *Corrected by Claude Code per Chief Architect (ChatGPT) directive — 2026-07-01*
+
+---
+
+## Historical note — BC's 2026-07-01 SUSPENDED directive (condition since satisfied)
+
+Browser Claude independently posted a governance update on 2026-07-01 suspending
+`/gateway/email/send` until "Claude Code confirms approval gate is enforced in code."
+That condition was met the same day (ADR-010, ADR-011) and has been re-verified in
+subsequent sessions, most recently 2026-07-02: `POST /gateway/email/send` returns
+403 without an API key, the self-send allowlist in `microsoft_graph.py` contains only
+`buck@hendricksoninc.com`, and every real send still requires Buck's literal Telegram
+APPROVE against an `ai_messages` row before `_send_approved_draft()` fires. Endpoint 2
+above (the corrected flow) reflects this current, enforced state — BC's suspension is
+resolved, not overridden.
