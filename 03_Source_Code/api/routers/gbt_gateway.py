@@ -2292,6 +2292,65 @@ async def drive_write(req: DriveWritePayload):
         return _response("/drive/write", {}, errors=[str(e)], start=t0)
 
 
+class DriveMovePayload(BaseModel):
+    file_id: str
+    new_parent_id: str
+    old_parent_id: Optional[str] = None  # if omitted, removes all current parents
+
+
+@router.post("/drive/move")
+async def drive_move(req: DriveMovePayload):
+    """
+    Move a file/folder to a different Drive parent (real move — updates parents,
+    does not copy). Uses the same drive-scoped token as /drive/write. Added
+    2026-07-02 for the Drive cleanup pass — the claude.ai Drive MCP connector
+    only exposes search/read/create/copy, no move, so copying was the only
+    prior option and that just multiplies clutter instead of reducing it.
+    """
+    t0 = time.time()
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+        from integrations.credentials import get_google_token
+        token = get_google_token("drive")
+        DRIVE_TIMEOUT = 20
+
+        old_parents = req.old_parent_id
+        if not old_parents:
+            meta_resp = requests.get(
+                f"https://www.googleapis.com/drive/v3/files/{req.file_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"fields": "parents,name"},
+                timeout=DRIVE_TIMEOUT,
+            )
+            meta = meta_resp.json()
+            old_parents = ",".join(meta.get("parents", []))
+
+        move_resp = requests.patch(
+            f"https://www.googleapis.com/drive/v3/files/{req.file_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={
+                "addParents": req.new_parent_id,
+                "removeParents": old_parents,
+                "fields": "id,name,parents",
+            },
+            timeout=DRIVE_TIMEOUT,
+        )
+        result = move_resp.json()
+        if "error" in result:
+            return _response("/drive/move", {}, errors=[str(result["error"])], start=t0)
+
+        _log("/drive/move", "claude_code", req.file_id, "moved", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response("/drive/move", {
+            "file_id": result.get("id"),
+            "name": result.get("name"),
+            "new_parents": result.get("parents"),
+            "removed_from": old_parents,
+        }, start=t0)
+
+    except Exception as e:
+        return _response("/drive/move", {}, errors=[str(e)], start=t0)
+
+
 # ── Field Endpoints (GBT Field GPT) ──────────────────────────────────────────
 
 class FieldNotePayload(BaseModel):
