@@ -3,14 +3,67 @@
 
 **Organization:** Hendrickson Construction, Inc.
 **Owner:** @buck-HCI-AI (Buck Adams)
-**Last Updated:** 2026-07-01T05:15 UTC
-**Updated By:** Claude Code — Sprint 3 opened per ARB directive. AI communication reliability P0 (directive lifecycle + heartbeat) reconciled. 101F/1355R Mission Control consistency bugs fixed. Live: 64EW/101F/1355R. Monitored: 246GW. All other projects = learning only.
+**Last Updated:** 2026-07-02T15:35 UTC
+**Updated By:** Claude Code — full system audit + plan-review pipeline extensions (this session). See handoff block below.
 **Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
 > **Update Protocol:** Any agent may commit factual, observable updates to this file.
 > Always append — never remove history. Tag significant changes with `[STATE CHANGE]`.
 > Human owner is the final authority on all state decisions.
+
+---
+
+## 🔄 SESSION HANDOFF — 2026-07-02 (read this first if you're a new Claude Code session)
+
+**Why this exists:** Buck is starting a fresh Claude Code session (to clear a stuck terminal
+permission mode) and asked for a seamless handoff — nothing missed, GBT/BC still connected,
+no email-safety regressions. This block is that handoff.
+
+**System state right now:** System auditor 94/100 HEALTHY. Full test suite 140/140 passing
+(`03_Source_Code/tests/test_ai_control_plane.py`) + 38/38 (`test_phase2_intelligence.py`).
+Gateway confirmed healthy both locally and via the public ngrok URL. ChatGPT (GBT) heartbeat
+ONLINE; Browser Claude heartbeat STALE (hasn't run a session recently, not an error state).
+
+**Email safety — explicitly verified intact before this handoff:**
+`POST /gateway/email/send` without an API key returns 403 (confirmed live). Self-send
+allowlist (`microsoft_graph.py`) contains only `buck@hendricksoninc.com` — no other address
+can bypass the draft+approval gate. Every real send still requires Buck's Telegram
+APPROVE before `_send_approved_draft()` fires. Nothing about this gate was touched or
+weakened this session — only test-suite side effects were fixed (see below).
+
+**What was fixed this session (all committed, see `git log` for full detail per commit):**
+1. Test suite was pushing real Telegram approval requests and real test emails on every
+   run (two separate live-send code paths) — both patched with a `skip_notify` flag.
+   If you run the test suite and get a real Telegram ping, something regressed — check
+   `EmailSendRequest.skip_notify` and `AIMessageCreate.skip_notify` in `gbt_gateway.py`.
+2. 101F (a real live project) had accumulated fake test data (RFIs/bid packages/schedule
+   items) — cleaned up. All plan-review pipeline testing now runs against an isolated
+   `QATEST` sandbox project (`projects.status='sandbox'`, id 28) — never a real project.
+3. 41 of 55 active n8n workflows were calling `localhost:8000` (unreachable from inside
+   the n8n Docker container) — bulk-fixed to `host.docker.internal:8000`.
+4. Recurring n8n `SQLITE_IOERR` root-caused to SQLite locking over a Docker Desktop
+   bind-mount — `DB_SQLITE_ENABLE_WAL=true` added to `docker-compose.yml`.
+5. GBT reported "gateway unreachable" — actual cause was `/project/{code}/brain` taking
+   3-7.4s (a redundant internal AI summary call), likely exceeding GBT's action timeout.
+   Fixed to ~0.35s by passing `ai_summary=false` to the underlying intelligence call.
+6. `project_brain_snapshots.schedule_variance_days` was silently zeroing on the first
+   `/brain` call of each new day (column defaults to 0, not NULL, and the persist
+   function never set it) — fixed; verified correct for all 4 live projects.
+7. Plan-review pipeline extended: vendor matching with capacity-conflict cross-referencing,
+   long-lead item detection (elevator recalibrated to 40wk from real HCI project data),
+   owner-decision tracker, and a prospect-facing sales-summary endpoint.
+
+**Still open, needs a human/BC (not fixable via API):**
+- `ai_messages` id 23 — Browser Claude still hasn't self-reported on the original 101F
+  unauthorized-email incident from 2026-07-01. Still sitting STALE.
+- One n8n HubSpot Private App credential (`AUTO-BID-INVITATION-TASKS` workflow) is expired
+  — needs Buck's interactive HubSpot login to reconnect, same category as the earlier
+  Google Drive OAuth issue.
+
+**Terminal permission mode:** unrelated to any of the above — a Claude Code harness UI
+state, not a code bug. `.claude/settings.local.json` has `defaultMode: "bypassPermissions"`
+saved, so a genuinely new session should start unlocked without needing Shift+Tab at all.
 
 ---
 
