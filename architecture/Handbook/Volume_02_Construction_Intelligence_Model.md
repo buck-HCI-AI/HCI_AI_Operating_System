@@ -130,11 +130,58 @@ Seven prediction types, each returns:
 *[Chief Architect: Explain the domain-specific reasoning required for construction vs generic AI]*
 
 ### 2.5.2 How the System Should Prioritize Competing Signals
-*[Chief Architect: When schedule, budget, and procurement risks conflict — which takes precedence?]*
+*[Chief Architect: Explain the domain-specific reasoning required for construction vs generic AI]*
 
-### 2.5.3 Confidence Thresholds for Autonomous Action
-*[Chief Architect: At what confidence level should the system act vs flag for human review?]*
+*Authored by: GBT Chief Architect — 2026-07-02 (verified via getMissionControl + getProjectBrain 101F)*
+
+Construction intelligence differs from conventional business intelligence because it must combine structured operational data with incomplete, evolving project information while preserving traceability.
+
+Within HCI AI OS, project intelligence is assembled from multiple operational sources rather than a single transactional database. Depending on project maturity, available evidence may include procurement records, bid packages, RFIs, drawings, approvals, connector synchronization, executive decisions, and project metadata.
+
+Because projects progress through distinct lifecycle phases, the same indicator can have different meanings at different times. A project in preconstruction should not generate conclusions about field progress simply because historical schedule artifacts exist. System recommendations must therefore be interpreted in the context of the verified project lifecycle.
+
+The platform treats verified operational state as authoritative and requires live validation before generating construction-status conclusions (ADR-016).
 
 ---
 
-*Ref: [architecture/CONSTRUCTION_INTELLIGENCE_MODEL.md](../architecture/CONSTRUCTION_INTELLIGENCE_MODEL.md)*
+### 2.5.2 How the System Should Prioritize Competing Signals
+
+*Authored by: GBT Chief Architect — 2026-07-02*
+
+The intelligence engine evaluates evidence according to source reliability rather than source quantity.
+
+**Signal priority hierarchy (highest to lowest):**
+1. Live platform state (Mission Control, Project Brain, verified project records)
+2. 2. Executive approvals and governance decisions
+   3. 3. Structured project data (procurement, bid packages, RFIs, decisions)
+      4. 4. Connector-derived operational information
+         5. 5. Historical reference information
+           
+            6. When conflicting signals exist, the system favors the most recently verified authoritative source and records uncertainty rather than manufacturing certainty. Lower-priority or historical signals may provide context but must not override current verified operational state.
+           
+            7. **Example:** If a schedule artifact suggests active framing but permit_status = not_issued, the permit status overrides the schedule artifact. The schedule artifact is flagged as potentially invalid.
+           
+            8. ---
+           
+            9. ### 2.5.3 Confidence Thresholds for Autonomous Action
+           
+            10. *Authored by: GBT Chief Architect — 2026-07-02*
+           
+            11. Every architectural recommendation carries an implicit confidence assessment based on evidence quality.
+           
+            12. **Governance thresholds:**
+           
+            13. | Confidence Level | Definition | System Action |
+            14. |-----------------|------------|---------------|
+            15. | High | Corroborated by live operational data from authoritative sources | Surface as finding; may trigger alert |
+            16. | Medium | Supported by multiple consistent sources; awaiting additional confirmation | Surface as advisory; flag for review |
+            17. | Low | Based on incomplete, historical, or partially synchronized information | Surface as low-confidence observation only |
+            18. | Unverified | Insufficient evidence to support a factual claim | Must not be presented as fact; label UNVERIFIED |
+           
+            19. Under ADR-016, unverified information must remain explicitly identified as such rather than presented as completed work or operational fact.
+           
+            20. **Autonomous action threshold:** The system acts autonomously only on HIGH-confidence signals where the action is within the approved autonomy list (see Volume IX Governance). All other signals surface for human review.
+           
+            21. ---
+           
+            22. Ref: architecture/CONSTRUCTION_INTELLIGENCE_MODEL.md
