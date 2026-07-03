@@ -169,13 +169,39 @@ Table: `integration_registry` — catalog of all integrations
 ## 7.6 Sections Requiring Chief Architect Input (⚠️)
 
 ### 7.6.1 Self-Healing Architecture
-*[Chief Architect: Define how the system should detect and recover from failures automatically]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Self-healing architecture exists to maintain platform availability by automatically restoring known-good operational states without altering business intent. The HCI AI Operating System distinguishes infrastructure recovery from business decision-making, and this boundary is fundamental to the platform's governance model.
+
+Infrastructure failures that can be safely and deterministically corrected may be recovered automatically. Examples include restarting failed services, restoring container availability, retrying interrupted synchronization, rebuilding temporary indexes, or recovering communication between system components after transient failures.
+
+Self-healing never extends to business information, project records, financial data, approvals, schedules, contracts, or operational workflows. The platform does not modify project data, infer missing business decisions, or rewrite operational history in an attempt to recover from failure. When uncertainty exists, the system preserves evidence, records the condition, and requests human review.
+
+The objective is resilient operation without compromising accountability. Infrastructure may restore itself; business authority always remains with people.
 
 ### 7.6.2 Continuous Monitoring Philosophy
-*[Chief Architect: What should the system always be watching? What triggers are non-negotiable?]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Continuous monitoring provides the operational awareness required to maintain a dependable construction intelligence platform. Monitoring is not limited to server availability; it extends across every component whose failure could reduce confidence in project information or system operation.
+
+The platform continuously observes service health, workflow execution, synchronization status, approval queues, scheduled automation, data freshness, integration connectivity, security events, intelligence generation, and operational performance. Monitoring verifies that information continues to flow correctly from source systems to decision-support capabilities.
+
+Certain conditions are non-negotiable and require immediate visibility. Loss of platform availability, failed synchronization, repeated workflow failures, approval bottlenecks, degraded intelligence generation, authentication failures, and persistent integration errors must always be detected, recorded, and surfaced for corrective action.
+
+The objective is not to eliminate failure but to eliminate unnoticed failure. Reliable systems acknowledge problems quickly, preserve operational context, and enable rapid recovery before project operations are affected.
 
 ### 7.6.3 Workflow Orchestration Model
-*[Chief Architect: How should complex multi-step workflows be designed and governed?]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Workflow orchestration coordinates operational processes that span multiple systems, users, and stages of execution. It provides predictable movement of information while preserving governance, traceability, and human authority.
+
+Each workflow should perform a single operational objective through clearly defined stages with explicit inputs, outputs, ownership, and completion criteria. Complex business processes are composed from smaller, understandable workflows rather than monolithic automation that is difficult to maintain or validate.
+
+Approval boundaries are designed into workflows rather than added afterward. Automated stages complete deterministic work. Approval stages pause execution until authorized personnel review the proposed action. Human-only stages remain entirely outside automation where professional judgment, contractual authority, or organizational responsibility is required.
+
+Every workflow should be observable, recoverable, and auditable. Execution history, decision points, retries, approvals, failures, and completion status become part of the permanent operational record. Workflows therefore function not only as automation but also as documentation of how the organization consistently executes its construction processes.
+
+The objective is dependable operational coordination through modular, governed automation that can evolve over time without sacrificing transparency or organizational control.
 
 ---
 
