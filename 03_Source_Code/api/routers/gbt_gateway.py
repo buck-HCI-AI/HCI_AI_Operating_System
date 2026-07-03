@@ -2748,6 +2748,42 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "medium", "category": "n8n_unreachable", "detail": f"n8n executions API unreachable: {e}"})
 
+    # 3b. Per-workflow n8n failure rate - the aggregate check above found nothing wrong the
+    #     whole 2026-07-02 session because healthy workflows diluted the overall rate below the
+    #     20% threshold, while 14 active workflows (28 nodes, all pointed at the wrong n8n
+    #     credential from a copy-paste error) were consistently failing 100% of their recent
+    #     runs the entire time. This checks each active workflow individually so a single
+    #     always-broken workflow can never hide behind everyone else's health again.
+    try:
+        n8n_key = os.environ.get("N8N_API_KEY", "")
+        wf_resp = requests.get("http://localhost:5678/api/v1/workflows", headers={"X-N8N-API-KEY": n8n_key},
+                                params={"limit": 250}, timeout=10)
+        if wf_resp.status_code == 200:
+            broken_workflows = []
+            for wf in wf_resp.json().get("data", []):
+                if not wf.get("active"):
+                    continue
+                ex_resp = requests.get("http://localhost:5678/api/v1/executions",
+                                        headers={"X-N8N-API-KEY": n8n_key},
+                                        params={"workflowId": wf["id"], "limit": 5}, timeout=10)
+                if ex_resp.status_code != 200:
+                    continue
+                execs = ex_resp.json().get("data", [])
+                if len(execs) < 3:
+                    continue
+                errored = sum(1 for e in execs if e.get("status") == "error")
+                if errored == len(execs):
+                    broken_workflows.append(f"{wf['name']} ({errored}/{len(execs)} recent runs failed)")
+            if broken_workflows:
+                findings.append({
+                    "severity": "high",
+                    "category": "n8n_workflow_consistently_failing",
+                    "detail": f"{len(broken_workflows)} active workflow(s) failing 100% of their last 3+ runs - these can hide inside a healthy aggregate failure rate",
+                    "items": broken_workflows,
+                })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Per-workflow n8n failure check errored: {e}"})
+
     # 4. Sprint status drift - GBT's CYCLE files claiming a higher sprint number
     #    "complete" than CURRENT_SPRINT.md's real active sprint.
     try:

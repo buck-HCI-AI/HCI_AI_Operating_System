@@ -1,0 +1,403 @@
+{
+  "updatedAt": "2026-07-03T01:06:45.138Z",
+  "createdAt": "2026-06-30T04:44:01.132Z",
+  "id": "G6hlRTQZQa6EAUgb",
+  "name": "AUTO-010 \u2014 Monday 07:00 Weekly Sprint Review",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1"
+            }
+          ]
+        }
+      },
+      "name": "Cron Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        300
+      ],
+      "id": "596ab2e4-c05c-4295-bbc0-f79b12bc7c7c"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/weekend-summary",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Weekend Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        300,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "4f5a06f0-5320-4b05-9e85-d80e36eb2c93"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst today = new Date().toISOString().split('T')[0];\nconst exec = d.executive_summary || {};\nconst projects = (d.projects || []).map(p => `## ${p.health} ${p.name}\\n- Variance: ${p.schedule_variance_days}d | Risks: ${p.open_risks} | Budget: ${p.budget_health}`).join('\\n\\n');\nconst missions = (d.missions?.upcoming || []).slice(0, 5).map((m, i) => `${i+1}. [${m.priority}] ${m.title} \u2192 ${m.assigned_to}`).join('\\n') || 'None queued';\nconst connectors = (d.connectors || []).map(c => `- ${c.connector}: ${c.errors > 0 ? c.errors + ' errors' : 'OK'}`).join('\\n') || 'None';\n\nconst md = `# HCI AI \u2014 Weekly Sprint Review\\n**${d.period || today}**\\n\\n## Executive Summary\\n- Hours saved this week: ${exec.hours_saved_this_week || 0}h\\n- Documents processed: ${exec.documents_processed || 0}\\n- Risks detected: ${exec.risks_detected || 0}\\n- Workflow runs: ${exec.workflow_runs || 0}\\n\\n## Projects\\n${projects || 'No project data'}\\n\\n## Top Missions (Next 5)\\n${missions}\\n\\n## Connector Health\\n${connectors}\\n\\n---\\n*Generated: ${new Date().toISOString()} by AUTO-010*`;\n\nreturn [{ json: { filename: `reports/sprint/weekly-${today}.md`, content: md, date: today } }];"
+      },
+      "name": "Format Sprint Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "id": "46e1b49d-f396-46b1-9de1-9429ded5104a"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/weekend-summary",
+        "method": "GET",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Write Report via API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "d2bbf6a1-6ac3-4364-8c9e-2f3b76ed4b56"
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Title",
+              "value": "Weekly Sprint Review Ready"
+            },
+            {
+              "name": "Tags",
+              "value": "calendar,chart_with_upwards_trend"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            },
+            {
+              "name": "Actions",
+              "value": "view, Dashboard, http://host.docker.internal:8000/executive"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "=Sprint review for {{ $('Format Sprint Report').first().json.date }} ready. Hours saved: {{ $('Get Weekend Summary').first().json.executive_summary?.hours_saved_this_week || 0 }}h | Open risks: {{ $('Get Weekend Summary').first().json.executive_summary?.risks_detected || 0 }}",
+        "options": {}
+      },
+      "name": "Push: Review Ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        500
+      ],
+      "id": "099d766f-0f95-4634-a95c-415d8c195aa0"
+    }
+  ],
+  "connections": {
+    "Cron Monday 07:00": {
+      "main": [
+        [
+          {
+            "node": "Get Weekend Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Weekend Summary": {
+      "main": [
+        [
+          {
+            "node": "Format Sprint Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Sprint Report": {
+      "main": [
+        [
+          {
+            "node": "Write Report via API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Push: Review Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Monday 07:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "3fe70462-5c93-4c4f-ae20-4950d63666f9",
+  "activeVersionId": "3fe70462-5c93-4c4f-ae20-4950d63666f9",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-30T04:44:01.133Z",
+      "createdAt": "2026-06-30T04:44:01.133Z",
+      "role": "workflow:owner",
+      "workflowId": "G6hlRTQZQa6EAUgb",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:06:45.139Z",
+    "createdAt": "2026-07-03T01:06:45.139Z",
+    "versionId": "3fe70462-5c93-4c4f-ae20-4950d63666f9",
+    "workflowId": "G6hlRTQZQa6EAUgb",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 7 * * 1"
+              }
+            ]
+          }
+        },
+        "name": "Cron Monday 07:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "596ab2e4-c05c-4295-bbc0-f79b12bc7c7c"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/weekend-summary",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get Weekend Summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "4f5a06f0-5320-4b05-9e85-d80e36eb2c93"
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $input.first().json;\nconst today = new Date().toISOString().split('T')[0];\nconst exec = d.executive_summary || {};\nconst projects = (d.projects || []).map(p => `## ${p.health} ${p.name}\\n- Variance: ${p.schedule_variance_days}d | Risks: ${p.open_risks} | Budget: ${p.budget_health}`).join('\\n\\n');\nconst missions = (d.missions?.upcoming || []).slice(0, 5).map((m, i) => `${i+1}. [${m.priority}] ${m.title} \u2192 ${m.assigned_to}`).join('\\n') || 'None queued';\nconst connectors = (d.connectors || []).map(c => `- ${c.connector}: ${c.errors > 0 ? c.errors + ' errors' : 'OK'}`).join('\\n') || 'None';\n\nconst md = `# HCI AI \u2014 Weekly Sprint Review\\n**${d.period || today}**\\n\\n## Executive Summary\\n- Hours saved this week: ${exec.hours_saved_this_week || 0}h\\n- Documents processed: ${exec.documents_processed || 0}\\n- Risks detected: ${exec.risks_detected || 0}\\n- Workflow runs: ${exec.workflow_runs || 0}\\n\\n## Projects\\n${projects || 'No project data'}\\n\\n## Top Missions (Next 5)\\n${missions}\\n\\n## Connector Health\\n${connectors}\\n\\n---\\n*Generated: ${new Date().toISOString()} by AUTO-010*`;\n\nreturn [{ json: { filename: `reports/sprint/weekly-${today}.md`, content: md, date: today } }];"
+        },
+        "name": "Format Sprint Report",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          300
+        ],
+        "id": "46e1b49d-f396-46b1-9de1-9429ded5104a"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/weekend-summary",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Write Report via API",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          700,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "d2bbf6a1-6ac3-4364-8c9e-2f3b76ed4b56"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "Weekly Sprint Review Ready"
+              },
+              {
+                "name": "Tags",
+                "value": "calendar,chart_with_upwards_trend"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              },
+              {
+                "name": "Actions",
+                "value": "view, Dashboard, http://host.docker.internal:8000/executive"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "raw",
+          "rawBody": "=Sprint review for {{ $('Format Sprint Report').first().json.date }} ready. Hours saved: {{ $('Get Weekend Summary').first().json.executive_summary?.hours_saved_this_week || 0 }}h | Open risks: {{ $('Get Weekend Summary').first().json.executive_summary?.risks_detected || 0 }}",
+          "options": {}
+        },
+        "name": "Push: Review Ready",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          700,
+          500
+        ],
+        "id": "099d766f-0f95-4634-a95c-415d8c195aa0"
+      }
+    ],
+    "connections": {
+      "Cron Monday 07:00": {
+        "main": [
+          [
+            {
+              "node": "Get Weekend Summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Weekend Summary": {
+        "main": [
+          [
+            {
+              "node": "Format Sprint Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Sprint Report": {
+        "main": [
+          [
+            {
+              "node": "Write Report via API",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Push: Review Ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:06:45.149Z",
+        "id": 268,
+        "workflowId": "G6hlRTQZQa6EAUgb",
+        "versionId": "3fe70462-5c93-4c4f-ae20-4950d63666f9",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:06:45.146Z",
+        "id": 267,
+        "workflowId": "G6hlRTQZQa6EAUgb",
+        "versionId": "3fe70462-5c93-4c4f-ae20-4950d63666f9",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

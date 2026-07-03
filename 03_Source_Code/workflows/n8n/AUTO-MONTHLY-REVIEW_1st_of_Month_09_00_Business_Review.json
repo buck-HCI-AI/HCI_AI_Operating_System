@@ -1,0 +1,545 @@
+{
+  "updatedAt": "2026-07-03T01:06:45.334Z",
+  "createdAt": "2026-06-27T23:16:57.562Z",
+  "id": "VrRq3XdWLS626UYS",
+  "name": "AUTO-MONTHLY-REVIEW \u2014 1st of Month 09:00 Business Review",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-monthly",
+      "name": "Cron 1st of Month 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/mission-control",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-mission-control",
+      "name": "Get Mission Control",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/services/autonomy/report",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-autonomy",
+      "name": "Get AI ROI Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        340
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/reports/weekly/company",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-portfolio",
+      "name": "Get Portfolio Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const mc = $('Get Mission Control').first().json;\nconst autonomy = $('Get AI ROI Report').first().json;\nconst portfolio = $('Get Portfolio Status').first().json;\nconst now = new Date();\nconst today = now.toISOString().split('T')[0];\nconst monthYear = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });\n// Previous month label\nconst prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)\n  .toLocaleString('en-US', { month: 'long', year: 'numeric' });\n\n// Company health\nconst healthIcon = h => h === 'GREEN' ? '\ud83d\udfe2' : h === 'YELLOW' ? '\ud83d\udfe1' : h === 'RED' ? '\ud83d\udd34' : '\u26aa';\nconst coHealth = mc.company_health || portfolio.company_health || 'UNKNOWN';\n\n// Portfolio table\nconst projects = portfolio.projects || mc.portfolio?.projects || [];\nconst projectLines = projects.map(p => {\n  const health = p.health || 'UNKNOWN';\n  const risk = p.risk_count ?? p.open_risks ?? 0;\n  const decisions = p.open_decisions ?? 0;\n  const budget = p.budget_exposure != null ? `$${p.budget_exposure.toLocaleString()}` : '\u2014';\n  return `| ${p.project_code || '\u2014'} | ${p.project_name || p.name} | ${healthIcon(health)} ${health} | ${risk} | ${decisions} | ${budget} |`;\n}).join('\\n');\n\n// AI ROI\nconst roi = autonomy.executive_summary || {};\nconst hoursSaved = roi.hours_saved_this_week || 0;\nconst docsProcessed = roi.documents_processed || 0;\nconst risksDetected = roi.risks_detected || 0;\nconst workflowRuns = roi.workflow_runs || 0;\nconst top3 = autonomy.top_3_opportunities || [];\nconst top3Lines = top3.map((o, i) =>\n  `${i + 1}. **${o.title}** \u2014 ${o.roi_hours_per_week || 0}h/wk ROI\\n   ${o.why || ''}`\n).join('\\n\\n');\n\n// Missions\nconst missions = mc.ai_missions || {};\nconst missionCounts = missions.counts || {};\nconst completeRate = missions.active_missions\n  ? Math.round((missionCounts.completed || 0) / Math.max((missionCounts.completed || 0) + (missionCounts.in_progress || 0) + (missionCounts.blocked || 0) + (missionCounts.open_q || 0), 1) * 100)\n  : 0;\n\n// System health from MC\nconst sysHealth = mc.system_health || {};\n\nconst md = `# HCI Monthly Business Review\n**${prevMonth} Review** | Generated ${today}\n\n---\n\n## Company Portfolio \u2014 ${healthIcon(coHealth)} ${coHealth}\n\n| Code | Project | Health | Risks | Decisions | Budget Exposure |\n|------|---------|--------|-------|-----------|----------------|\n${projectLines || '| \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |'}\n\n**Active Projects:** ${portfolio.active_projects || projects.length} | **At Risk:** ${portfolio.projects_at_risk || 0}\n\n---\n\n## AI ROI \u2014 ${prevMonth}\n\n| Metric | This Period |\n|--------|-------------|\n| Hours saved by automation | **${hoursSaved}h** |\n| Documents processed | ${docsProcessed} |\n| Risks auto-detected | ${risksDetected} |\n| Workflow runs | ${workflowRuns} |\n\n### Top Automation Opportunities for Next Month\n\n${top3Lines || '_No new opportunities ranked_'}\n\n---\n\n## Mission Control Summary\n\n| Status | Count |\n|--------|-------|\n| In Progress | ${missionCounts.in_progress || 0} |\n| Blocked | ${missionCounts.blocked || 0} |\n| Open Questions | ${missionCounts.open_q || 0} |\n| Completed | ${missionCounts.completed || 0} |\n\n**Mission completion rate:** ${completeRate}%\n\n${(missionCounts.blocked || 0) > 0 ? `\\n\u26d4 **${missionCounts.blocked} mission(s) blocked \u2014 review required**` : '\u2705 No missions blocked'}\n\n---\n\n## Executive Inbox\n\n**${mc.inbox?.pending_count || 0} item(s) pending approval**\n\n---\n\n## Decisions Made This Month\n\n_Review architecture/CHANGELOG.md for architectural decisions and ADRs filed._\n\n---\n\n## Next Month Priorities\n\n1. ${(missionCounts.blocked || 0) > 0 ? 'Unblock ' + missionCounts.blocked + ' blocked mission(s)' : 'Continue current mission roadmap'}\n2. ${(portfolio.projects_at_risk || 0) > 0 ? 'Resolve ' + portfolio.projects_at_risk + ' at-risk project(s)' : 'Maintain project health'}\n3. ${top3[0] ? 'Evaluate: ' + top3[0].title + ' (' + (top3[0].roi_hours_per_week || 0) + 'h/wk ROI)' : 'Review automation backlog'}\n\n---\n*Generated by AUTO-MONTHLY-REVIEW | HCI AI OS | ${new Date().toISOString()}*`;\n\nconst pushMsg = `\ud83d\udcc5 ${prevMonth} Review: ${healthIcon(coHealth)} ${coHealth} portfolio | AI saved ${hoursSaved}h | Missions: ${missionCounts.completed || 0} complete, ${missionCounts.blocked || 0} blocked | ${portfolio.projects_at_risk || 0} projects at risk`;\n\nreturn [{ json: {\n  md,\n  pushMsg,\n  company_health: coHealth,\n  hours_saved: hoursSaved,\n  missions_blocked: missionCounts.blocked || 0,\n  projects_at_risk: portfolio.projects_at_risk || 0,\n  filename: `reports/monthly/exec-review-${today.slice(0, 7)}.md`\n}}];"
+      },
+      "id": "build-monthly-review",
+      "name": "Build Monthly Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
+        "options": {}
+      },
+      "id": "write-to-disk",
+      "name": "Write Report to Disk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Title",
+              "value": "\ud83d\udcc5 Monthly Business Review Ready"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.projects_at_risk > 0 || $json.missions_blocked > 0 ? 'high' : 'default' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.pushMsg }}",
+        "options": {}
+      },
+      "id": "send-ntfy",
+      "name": "Send ntfy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Cron 1st of Month 09:00": {
+      "main": [
+        [
+          {
+            "node": "Get Mission Control",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get AI ROI Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Portfolio Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Mission Control": {
+      "main": [
+        [
+          {
+            "node": "Build Monthly Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get AI ROI Report": {
+      "main": [
+        [
+          {
+            "node": "Build Monthly Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Portfolio Status": {
+      "main": [
+        [
+          {
+            "node": "Build Monthly Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Monthly Review": {
+      "main": [
+        [
+          {
+            "node": "Write Report to Disk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron 1st of Month 09:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+  "activeVersionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T23:16:57.563Z",
+      "createdAt": "2026-06-27T23:16:57.563Z",
+      "role": "workflow:owner",
+      "workflowId": "VrRq3XdWLS626UYS",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:06:45.335Z",
+    "createdAt": "2026-07-03T01:06:45.335Z",
+    "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+    "workflowId": "VrRq3XdWLS626UYS",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 9 1 * *"
+              }
+            ]
+          }
+        },
+        "id": "trigger-monthly",
+        "name": "Cron 1st of Month 09:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          100,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/mission-control",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "id": "get-mission-control",
+        "name": "Get Mission Control",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          160
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/autonomy/report",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "id": "get-autonomy",
+        "name": "Get AI ROI Report",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          340
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/reports/weekly/company",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "id": "get-portfolio",
+        "name": "Get Portfolio Status",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          520
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const mc = $('Get Mission Control').first().json;\nconst autonomy = $('Get AI ROI Report').first().json;\nconst portfolio = $('Get Portfolio Status').first().json;\nconst now = new Date();\nconst today = now.toISOString().split('T')[0];\nconst monthYear = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });\n// Previous month label\nconst prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)\n  .toLocaleString('en-US', { month: 'long', year: 'numeric' });\n\n// Company health\nconst healthIcon = h => h === 'GREEN' ? '\ud83d\udfe2' : h === 'YELLOW' ? '\ud83d\udfe1' : h === 'RED' ? '\ud83d\udd34' : '\u26aa';\nconst coHealth = mc.company_health || portfolio.company_health || 'UNKNOWN';\n\n// Portfolio table\nconst projects = portfolio.projects || mc.portfolio?.projects || [];\nconst projectLines = projects.map(p => {\n  const health = p.health || 'UNKNOWN';\n  const risk = p.risk_count ?? p.open_risks ?? 0;\n  const decisions = p.open_decisions ?? 0;\n  const budget = p.budget_exposure != null ? `$${p.budget_exposure.toLocaleString()}` : '\u2014';\n  return `| ${p.project_code || '\u2014'} | ${p.project_name || p.name} | ${healthIcon(health)} ${health} | ${risk} | ${decisions} | ${budget} |`;\n}).join('\\n');\n\n// AI ROI\nconst roi = autonomy.executive_summary || {};\nconst hoursSaved = roi.hours_saved_this_week || 0;\nconst docsProcessed = roi.documents_processed || 0;\nconst risksDetected = roi.risks_detected || 0;\nconst workflowRuns = roi.workflow_runs || 0;\nconst top3 = autonomy.top_3_opportunities || [];\nconst top3Lines = top3.map((o, i) =>\n  `${i + 1}. **${o.title}** \u2014 ${o.roi_hours_per_week || 0}h/wk ROI\\n   ${o.why || ''}`\n).join('\\n\\n');\n\n// Missions\nconst missions = mc.ai_missions || {};\nconst missionCounts = missions.counts || {};\nconst completeRate = missions.active_missions\n  ? Math.round((missionCounts.completed || 0) / Math.max((missionCounts.completed || 0) + (missionCounts.in_progress || 0) + (missionCounts.blocked || 0) + (missionCounts.open_q || 0), 1) * 100)\n  : 0;\n\n// System health from MC\nconst sysHealth = mc.system_health || {};\n\nconst md = `# HCI Monthly Business Review\n**${prevMonth} Review** | Generated ${today}\n\n---\n\n## Company Portfolio \u2014 ${healthIcon(coHealth)} ${coHealth}\n\n| Code | Project | Health | Risks | Decisions | Budget Exposure |\n|------|---------|--------|-------|-----------|----------------|\n${projectLines || '| \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |'}\n\n**Active Projects:** ${portfolio.active_projects || projects.length} | **At Risk:** ${portfolio.projects_at_risk || 0}\n\n---\n\n## AI ROI \u2014 ${prevMonth}\n\n| Metric | This Period |\n|--------|-------------|\n| Hours saved by automation | **${hoursSaved}h** |\n| Documents processed | ${docsProcessed} |\n| Risks auto-detected | ${risksDetected} |\n| Workflow runs | ${workflowRuns} |\n\n### Top Automation Opportunities for Next Month\n\n${top3Lines || '_No new opportunities ranked_'}\n\n---\n\n## Mission Control Summary\n\n| Status | Count |\n|--------|-------|\n| In Progress | ${missionCounts.in_progress || 0} |\n| Blocked | ${missionCounts.blocked || 0} |\n| Open Questions | ${missionCounts.open_q || 0} |\n| Completed | ${missionCounts.completed || 0} |\n\n**Mission completion rate:** ${completeRate}%\n\n${(missionCounts.blocked || 0) > 0 ? `\\n\u26d4 **${missionCounts.blocked} mission(s) blocked \u2014 review required**` : '\u2705 No missions blocked'}\n\n---\n\n## Executive Inbox\n\n**${mc.inbox?.pending_count || 0} item(s) pending approval**\n\n---\n\n## Decisions Made This Month\n\n_Review architecture/CHANGELOG.md for architectural decisions and ADRs filed._\n\n---\n\n## Next Month Priorities\n\n1. ${(missionCounts.blocked || 0) > 0 ? 'Unblock ' + missionCounts.blocked + ' blocked mission(s)' : 'Continue current mission roadmap'}\n2. ${(portfolio.projects_at_risk || 0) > 0 ? 'Resolve ' + portfolio.projects_at_risk + ' at-risk project(s)' : 'Maintain project health'}\n3. ${top3[0] ? 'Evaluate: ' + top3[0].title + ' (' + (top3[0].roi_hours_per_week || 0) + 'h/wk ROI)' : 'Review automation backlog'}\n\n---\n*Generated by AUTO-MONTHLY-REVIEW | HCI AI OS | ${new Date().toISOString()}*`;\n\nconst pushMsg = `\ud83d\udcc5 ${prevMonth} Review: ${healthIcon(coHealth)} ${coHealth} portfolio | AI saved ${hoursSaved}h | Missions: ${missionCounts.completed || 0} complete, ${missionCounts.blocked || 0} blocked | ${portfolio.projects_at_risk || 0} projects at risk`;\n\nreturn [{ json: {\n  md,\n  pushMsg,\n  company_health: coHealth,\n  hours_saved: hoursSaved,\n  missions_blocked: missionCounts.blocked || 0,\n  projects_at_risk: portfolio.projects_at_risk || 0,\n  filename: `reports/monthly/exec-review-${today.slice(0, 7)}.md`\n}}];"
+        },
+        "id": "build-monthly-review",
+        "name": "Build Monthly Review",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          560,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
+          "options": {}
+        },
+        "id": "write-to-disk",
+        "name": "Write Report to Disk",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          780,
+          240
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://ntfy.sh/hci-executive",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "\ud83d\udcc5 Monthly Business Review Ready"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $json.projects_at_risk > 0 || $json.missions_blocked > 0 ? 'high' : 'default' }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "text/plain"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "text/plain",
+          "body": "={{ $json.pushMsg }}",
+          "options": {}
+        },
+        "id": "send-ntfy",
+        "name": "Send ntfy",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          780,
+          440
+        ]
+      }
+    ],
+    "connections": {
+      "Cron 1st of Month 09:00": {
+        "main": [
+          [
+            {
+              "node": "Get Mission Control",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get AI ROI Report",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Portfolio Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Mission Control": {
+        "main": [
+          [
+            {
+              "node": "Build Monthly Review",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get AI ROI Report": {
+        "main": [
+          [
+            {
+              "node": "Build Monthly Review",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Portfolio Status": {
+        "main": [
+          [
+            {
+              "node": "Build Monthly Review",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Monthly Review": {
+        "main": [
+          [
+            {
+              "node": "Write Report to Disk",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Send ntfy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:06:45.346Z",
+        "id": 276,
+        "workflowId": "VrRq3XdWLS626UYS",
+        "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:06:45.342Z",
+        "id": 275,
+        "workflowId": "VrRq3XdWLS626UYS",
+        "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

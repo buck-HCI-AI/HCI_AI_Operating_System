@@ -1,69 +1,112 @@
 {
-  "name": "AUTO-CONTINUOUS-DISCOVERY — HubSpot Hourly + Houzz Nightly",
+  "updatedAt": "2026-07-03T01:02:46.360Z",
+  "createdAt": "2026-06-27T23:16:57.514Z",
+  "id": "2iM1eViWnnQ4I2Xv",
+  "name": "AUTO-CONTINUOUS-DISCOVERY \u2014 HubSpot Hourly + Houzz Nightly",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 * * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
         }
       },
       "id": "trigger-hourly",
       "name": "Cron Every Hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 200]
+      "position": [
+        100,
+        200
+      ]
     },
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 2 * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
         }
       },
       "id": "trigger-nightly",
       "name": "Cron Nightly 02:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 400]
+      "position": [
+        100,
+        400
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/services/continuous-discovery/scan-and-notify?connector_name=hubspot",
+        "url": "http://host.docker.internal:8000/api/v1/services/continuous-discovery/scan-and-notify?connector_name=hubspot",
         "method": "POST",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        }
       },
       "id": "scan-hubspot",
       "name": "Scan HubSpot",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [340, 200],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        340,
+        200
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/services/continuous-discovery/scan-and-notify?connector_name=houzz",
+        "url": "http://host.docker.internal:8000/api/v1/services/continuous-discovery/scan-and-notify?connector_name=houzz",
         "method": "POST",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        }
       },
       "id": "scan-houzz",
       "name": "Scan Houzz",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [340, 400],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        340,
+        400
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const hubspot = $('Scan HubSpot').first().json;\nconst houzz = $('Scan Houzz').first()?.json || { result: { detection_status: 'SKIPPED' } };\n\nconst hbStatus = hubspot?.result?.detection_status || 'UNKNOWN';\nconst hzStatus = houzz?.result?.detection_status || 'UNKNOWN';\n\nconst needsAction = [hbStatus, hzStatus].some(s => ['ERROR', 'STALE', 'CHANGES_DETECTED'].includes(s));\nconst isError = [hbStatus, hzStatus].some(s => ['ERROR', 'STALE'].includes(s));\n\nconst lines = [];\nif (hbStatus === 'CHANGES_DETECTED') {\n  const n = hubspot?.result?.summary?.total_new_records_24h || 0;\n  lines.push(`HubSpot: ${n} new record(s) — syncing`);\n} else if (hbStatus === 'ERROR' || hbStatus === 'STALE') {\n  lines.push(`HubSpot: ⚠️ ${hbStatus}`);\n} else {\n  lines.push('HubSpot: no new data');\n}\n\nif (hzStatus === 'CHANGES_DETECTED') {\n  const n = houzz?.result?.summary?.total_new_records_24h || 0;\n  lines.push(`Houzz: ${n} new record(s) — syncing`);\n} else if (hzStatus === 'NO_DATA') {\n  lines.push('Houzz: awaiting Browser extraction');\n} else if (hzStatus === 'ERROR' || hzStatus === 'STALE') {\n  lines.push(`Houzz: ⚠️ ${hzStatus}`);\n} else {\n  lines.push('Houzz: no new data');\n}\n\nreturn [{\n  json: {\n    needs_notify: needsAction,\n    is_error: isError,\n    title: isError ? '⚠️ Discovery Engine Alert' : (needsAction ? '🔄 New Data Detected' : null),\n    message: lines.join(' | '),\n    priority: isError ? 'high' : 'default',\n    hubspot_status: hbStatus,\n    houzz_status: hzStatus,\n  }\n}];"
+        "jsCode": "let hubspot;\ntry {\n  hubspot = $('Scan HubSpot').first().json;\n} catch (e) {\n  hubspot = { result: { detection_status: 'SKIPPED' } };\n}\n\nlet houzz;\ntry {\n  houzz = $('Scan Houzz').first().json;\n} catch (e) {\n  houzz = { result: { detection_status: 'SKIPPED' } };\n}\n\nconst hbStatus = hubspot?.result?.detection_status || 'UNKNOWN';\nconst hzStatus = houzz?.result?.detection_status || 'UNKNOWN';\n\nconst needsAction = [hbStatus, hzStatus].some(s => ['ERROR', 'STALE', 'CHANGES_DETECTED'].includes(s));\nconst isError = [hbStatus, hzStatus].some(s => ['ERROR', 'STALE'].includes(s));\n\nconst lines = [];\nif (hbStatus === 'CHANGES_DETECTED') {\n  const n = hubspot?.result?.summary?.total_new_records_24h || 0;\n  lines.push(`HubSpot: ${n} new record(s) \u2014 syncing`);\n} else if (hbStatus === 'ERROR' || hbStatus === 'STALE') {\n  lines.push(`HubSpot: \u26a0\ufe0f ${hbStatus}`);\n} else if (hbStatus === 'SKIPPED') {\n  lines.push('HubSpot: not scheduled this run');\n} else {\n  lines.push('HubSpot: no new data');\n}\n\nif (hzStatus === 'CHANGES_DETECTED') {\n  const n = houzz?.result?.summary?.total_new_records_24h || 0;\n  lines.push(`Houzz: ${n} new record(s) \u2014 syncing`);\n} else if (hzStatus === 'NO_DATA') {\n  lines.push('Houzz: awaiting Browser extraction');\n} else if (hzStatus === 'ERROR' || hzStatus === 'STALE') {\n  lines.push(`Houzz: \u26a0\ufe0f ${hzStatus}`);\n} else if (hzStatus === 'SKIPPED') {\n  lines.push('Houzz: not scheduled this run');\n} else {\n  lines.push('Houzz: no new data');\n}\n\nreturn [{\n  json: {\n    needs_notify: needsAction,\n    is_error: isError,\n    title: isError ? '\u26a0\ufe0f Discovery Engine Alert' : (needsAction ? '\ud83d\udd04 New Data Detected' : null),\n    message: lines.join(' | '),\n    priority: isError ? 'high' : 'default',\n    hubspot_status: hbStatus,\n    houzz_status: hzStatus,\n  }\n}];"
       },
       "id": "evaluate-changes",
       "name": "Evaluate Changes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [580, 300]
+      "position": [
+        580,
+        300
+      ]
     },
     {
       "parameters": {
@@ -80,7 +123,10 @@
       "name": "Needs Notification?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [800, 300]
+      "position": [
+        800,
+        300
+      ]
     },
     {
       "parameters": {
@@ -89,9 +135,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "={{ $json.title }}" },
-            { "name": "Priority", "value": "={{ $json.priority }}" },
-            { "name": "Content-Type", "value": "text/plain" }
+            {
+              "name": "Title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain"
+            }
           ]
         },
         "sendBody": true,
@@ -104,23 +159,502 @@
       "name": "Send ntfy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1020, 240]
+      "position": [
+        1020,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const houzz = $input.first().json.result || {};\nconst entities = houzz.entities || [];\nconst lines = entities.map(e => `- ${e.entity_type}: ${e.current_count} rows, last synced ${Math.round(e.age_hours || 0)}h ago${e.current_count === 0 ? ' (NEVER POPULATED)' : ''}`);\nconst title = `Daily Houzz check: ${entities.filter(e => e.is_stale).length}/${entities.length} entities stale`;\nconst body = `Runs nightly at 02:00, ahead of the 03:00 daily mining engine and 06:00-07:00 morning reports, so extraction today can actually feed today's numbers.\n\nActive pilot projects: 64 Eastwood, 101 Francis, 1355 Riverside, 246 Gallo Way.\n\nHouzz Pro has no read API (verified 2026-07-02) - manual extraction is still the only path in. Please check each active project in Houzz Pro for schedule/budget/change-order/daily-log updates, especially entities marked NEVER POPULATED (purchase_orders, subcontractors, budget, messages, tasks show 0 rows system-wide - likely never captured, not necessarily empty in Houzz).\n\n${lines.join('\\n')}\n\nSubmit anything new/changed through the houzz_sync approval_queue workflow, not a direct DB write. If nothing changed on a project, a quick confirmation reply is enough - no need to re-extract everything daily if it's unchanged.`;\nreturn [{ json: { source_agent: 'n8n', target_agent: 'browser_claude', message_type: 'review_required', title, body, priority: 'medium' } }];"
+      },
+      "name": "Format CB Directive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        460
+      ],
+      "id": "houzz-cb-code-001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/gateway/ai/messages",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "name": "Send to CB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        760,
+        460
+      ],
+      "id": "houzz-cb-send-001"
     }
   ],
   "connections": {
-    "Cron Every Hour": { "main": [[{ "node": "Scan HubSpot", "type": "main", "index": 0 }]] },
-    "Cron Nightly 02:00": { "main": [[{ "node": "Scan Houzz", "type": "main", "index": 0 }]] },
-    "Scan HubSpot": { "main": [[{ "node": "Evaluate Changes", "type": "main", "index": 0 }]] },
-    "Scan Houzz": { "main": [[{ "node": "Evaluate Changes", "type": "main", "index": 0 }]] },
-    "Evaluate Changes": { "main": [[{ "node": "Needs Notification?", "type": "main", "index": 0 }]] },
+    "Cron Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Scan HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Nightly 02:00": {
+      "main": [
+        [
+          {
+            "node": "Scan Houzz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan Houzz": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Changes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format CB Directive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Changes": {
+      "main": [
+        [
+          {
+            "node": "Needs Notification?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Needs Notification?": {
       "main": [
-        [{ "node": "Send ntfy", "type": "main", "index": 0 }],
+        [
+          {
+            "node": "Send ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
+      ]
+    },
+    "Format CB Directive": {
+      "main": [
+        [
+          {
+            "node": "Send to CB",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["discovery", "connectors", "btw-10"],
-  "_hci_notes": "AUTO-CONTINUOUS-DISCOVERY — HubSpot hourly (every :00), Houzz nightly (02:00). Calls /services/continuous-discovery/scan-and-notify for each connector. Evaluates detection status: CHANGES_DETECTED → Houzz BTW-10 full flow; ERROR/STALE → ntfy alert; NO_DATA → silent. Notify only when action required."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Every Hour": {
+      "recurrenceRules": []
+    },
+    "node:Cron Nightly 02:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+  "activeVersionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+  "versionCounter": 5,
+  "triggerCount": 2,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T23:16:57.516Z",
+      "createdAt": "2026-06-27T23:16:57.516Z",
+      "role": "workflow:owner",
+      "workflowId": "2iM1eViWnnQ4I2Xv",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:02:46.361Z",
+    "createdAt": "2026-07-03T01:02:46.361Z",
+    "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+    "workflowId": "2iM1eViWnnQ4I2Xv",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 * * * *"
+              }
+            ]
+          }
+        },
+        "id": "trigger-hourly",
+        "name": "Cron Every Hour",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          100,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 2 * * *"
+              }
+            ]
+          }
+        },
+        "id": "trigger-nightly",
+        "name": "Cron Nightly 02:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          100,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/continuous-discovery/scan-and-notify?connector_name=hubspot",
+          "method": "POST",
+          "options": {},
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              }
+            ]
+          }
+        },
+        "id": "scan-hubspot",
+        "name": "Scan HubSpot",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          340,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/continuous-discovery/scan-and-notify?connector_name=houzz",
+          "method": "POST",
+          "options": {},
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              }
+            ]
+          }
+        },
+        "id": "scan-houzz",
+        "name": "Scan Houzz",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          340,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "let hubspot;\ntry {\n  hubspot = $('Scan HubSpot').first().json;\n} catch (e) {\n  hubspot = { result: { detection_status: 'SKIPPED' } };\n}\n\nlet houzz;\ntry {\n  houzz = $('Scan Houzz').first().json;\n} catch (e) {\n  houzz = { result: { detection_status: 'SKIPPED' } };\n}\n\nconst hbStatus = hubspot?.result?.detection_status || 'UNKNOWN';\nconst hzStatus = houzz?.result?.detection_status || 'UNKNOWN';\n\nconst needsAction = [hbStatus, hzStatus].some(s => ['ERROR', 'STALE', 'CHANGES_DETECTED'].includes(s));\nconst isError = [hbStatus, hzStatus].some(s => ['ERROR', 'STALE'].includes(s));\n\nconst lines = [];\nif (hbStatus === 'CHANGES_DETECTED') {\n  const n = hubspot?.result?.summary?.total_new_records_24h || 0;\n  lines.push(`HubSpot: ${n} new record(s) \u2014 syncing`);\n} else if (hbStatus === 'ERROR' || hbStatus === 'STALE') {\n  lines.push(`HubSpot: \u26a0\ufe0f ${hbStatus}`);\n} else if (hbStatus === 'SKIPPED') {\n  lines.push('HubSpot: not scheduled this run');\n} else {\n  lines.push('HubSpot: no new data');\n}\n\nif (hzStatus === 'CHANGES_DETECTED') {\n  const n = houzz?.result?.summary?.total_new_records_24h || 0;\n  lines.push(`Houzz: ${n} new record(s) \u2014 syncing`);\n} else if (hzStatus === 'NO_DATA') {\n  lines.push('Houzz: awaiting Browser extraction');\n} else if (hzStatus === 'ERROR' || hzStatus === 'STALE') {\n  lines.push(`Houzz: \u26a0\ufe0f ${hzStatus}`);\n} else if (hzStatus === 'SKIPPED') {\n  lines.push('Houzz: not scheduled this run');\n} else {\n  lines.push('Houzz: no new data');\n}\n\nreturn [{\n  json: {\n    needs_notify: needsAction,\n    is_error: isError,\n    title: isError ? '\u26a0\ufe0f Discovery Engine Alert' : (needsAction ? '\ud83d\udd04 New Data Detected' : null),\n    message: lines.join(' | '),\n    priority: isError ? 'high' : 'default',\n    hubspot_status: hbStatus,\n    houzz_status: hzStatus,\n  }\n}];"
+        },
+        "id": "evaluate-changes",
+        "name": "Evaluate Changes",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          580,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{ $json.needs_notify }}",
+                "value2": true
+              }
+            ]
+          }
+        },
+        "id": "needs-notify",
+        "name": "Needs Notification?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          800,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://ntfy.sh/hci-executive",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "={{ $json.title }}"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $json.priority }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "text/plain"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "text/plain",
+          "body": "={{ $json.message }}",
+          "options": {}
+        },
+        "id": "send-ntfy",
+        "name": "Send ntfy",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1020,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const houzz = $input.first().json.result || {};\nconst entities = houzz.entities || [];\nconst lines = entities.map(e => `- ${e.entity_type}: ${e.current_count} rows, last synced ${Math.round(e.age_hours || 0)}h ago${e.current_count === 0 ? ' (NEVER POPULATED)' : ''}`);\nconst title = `Daily Houzz check: ${entities.filter(e => e.is_stale).length}/${entities.length} entities stale`;\nconst body = `Runs nightly at 02:00, ahead of the 03:00 daily mining engine and 06:00-07:00 morning reports, so extraction today can actually feed today's numbers.\n\nActive pilot projects: 64 Eastwood, 101 Francis, 1355 Riverside, 246 Gallo Way.\n\nHouzz Pro has no read API (verified 2026-07-02) - manual extraction is still the only path in. Please check each active project in Houzz Pro for schedule/budget/change-order/daily-log updates, especially entities marked NEVER POPULATED (purchase_orders, subcontractors, budget, messages, tasks show 0 rows system-wide - likely never captured, not necessarily empty in Houzz).\n\n${lines.join('\\n')}\n\nSubmit anything new/changed through the houzz_sync approval_queue workflow, not a direct DB write. If nothing changed on a project, a quick confirmation reply is enough - no need to re-extract everything daily if it's unchanged.`;\nreturn [{ json: { source_agent: 'n8n', target_agent: 'browser_claude', message_type: 'review_required', title, body, priority: 'medium' } }];"
+        },
+        "name": "Format CB Directive",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          540,
+          460
+        ],
+        "id": "houzz-cb-code-001"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/gateway/ai/messages",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {}
+        },
+        "name": "Send to CB",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          760,
+          460
+        ],
+        "id": "houzz-cb-send-001"
+      }
+    ],
+    "connections": {
+      "Cron Every Hour": {
+        "main": [
+          [
+            {
+              "node": "Scan HubSpot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cron Nightly 02:00": {
+        "main": [
+          [
+            {
+              "node": "Scan Houzz",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Scan HubSpot": {
+        "main": [
+          [
+            {
+              "node": "Evaluate Changes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Scan Houzz": {
+        "main": [
+          [
+            {
+              "node": "Evaluate Changes",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Format CB Directive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evaluate Changes": {
+        "main": [
+          [
+            {
+              "node": "Needs Notification?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Needs Notification?": {
+        "main": [
+          [
+            {
+              "node": "Send ntfy",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Format CB Directive": {
+        "main": [
+          [
+            {
+              "node": "Send to CB",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:02:46.384Z",
+        "id": 256,
+        "workflowId": "2iM1eViWnnQ4I2Xv",
+        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.441Z",
+        "id": 288,
+        "workflowId": "2iM1eViWnnQ4I2Xv",
+        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.480Z",
+        "id": 290,
+        "workflowId": "2iM1eViWnnQ4I2Xv",
+        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:02:46.377Z",
+        "id": 255,
+        "workflowId": "2iM1eViWnnQ4I2Xv",
+        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.435Z",
+        "id": 287,
+        "workflowId": "2iM1eViWnnQ4I2Xv",
+        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.459Z",
+        "id": 289,
+        "workflowId": "2iM1eViWnnQ4I2Xv",
+        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }

@@ -1,0 +1,441 @@
+{
+  "updatedAt": "2026-07-03T01:06:45.197Z",
+  "createdAt": "2026-06-27T20:44:57.106Z",
+  "id": "MRu2VM90cURMdk7q",
+  "name": "AUTO-WEEKLY-JOB \u2014 Friday 16:00 Job Reports",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 16 * * 5"
+            }
+          ]
+        }
+      },
+      "name": "Cron Friday 16:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        300
+      ],
+      "id": "146fe10d-6731-4f0d-8f5e-56365a1f7611"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/reports/weekly/jobs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get All Job Reports",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        300,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "be02bc60-b873-4621-9380-7b78548610de"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst reports = d.reports || [];\nconst healthy = reports.filter(r => r.health === 'GREEN').length;\nconst warning = reports.filter(r => r.health === 'YELLOW').length;\nconst critical = reports.filter(r => r.health === 'RED').length;\n\nconst title = `\ud83d\udccb Weekly Job Reports \u2014 ${d.week_of || ''} (${reports.length} projects)`;\nconst body = [\n  `${critical > 0 ? '\ud83d\udd34' : warning > 0 ? '\ud83d\udfe1' : '\ud83d\udfe2'} Status: ${critical} critical, ${warning} watch, ${healthy} on track`,\n  `---`,\n  ...reports.map(r => `${r.health === 'RED' ? '\ud83d\udd34' : r.health === 'YELLOW' ? '\ud83d\udfe1' : '\ud83d\udfe2'} ${r.project_code}: ${(r.executive_summary || ['No data'])[0]}`),\n  `---`,\n  `Full reports: http://host.docker.internal:8000/leadership`\n].join('\\n');\n\nconst priority = critical > 0 ? 'high' : warning > 0 ? 'default' : 'low';\nreturn [{ json: { title, body, priority, reports } }];"
+      },
+      "name": "Format Weekly Push",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "id": "a89e9c61-7ce7-4a1f-875f-3aafd2e2d726"
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.body }}"
+            }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Push Weekly Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "f8d24037-16e0-4cf2-a181-eefb7749f2f5"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "path",
+              "value": "=reports/weekly/jobs-{{ $now.format('yyyy-MM-dd') }}.json"
+            },
+            {
+              "name": "content",
+              "value": "={{ JSON.stringify($json.reports, null, 2) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Write Reports to Disk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "43a12508-9577-45c5-90c8-3f332002e78f"
+    }
+  ],
+  "connections": {
+    "Cron Friday 16:00": {
+      "main": [
+        [
+          {
+            "node": "Get All Job Reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Job Reports": {
+      "main": [
+        [
+          {
+            "node": "Format Weekly Push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Weekly Push": {
+      "main": [
+        [
+          {
+            "node": "Push Weekly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push Weekly Summary": {
+      "main": [
+        [
+          {
+            "node": "Write Reports to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Friday 16:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "e26b47c7-7ad6-40fd-803e-607d753a93a3",
+  "activeVersionId": "e26b47c7-7ad6-40fd-803e-607d753a93a3",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T20:44:57.106Z",
+      "createdAt": "2026-06-27T20:44:57.106Z",
+      "role": "workflow:owner",
+      "workflowId": "MRu2VM90cURMdk7q",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:06:45.197Z",
+    "createdAt": "2026-07-03T01:06:45.197Z",
+    "versionId": "e26b47c7-7ad6-40fd-803e-607d753a93a3",
+    "workflowId": "MRu2VM90cURMdk7q",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 16 * * 5"
+              }
+            ]
+          }
+        },
+        "name": "Cron Friday 16:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "146fe10d-6731-4f0d-8f5e-56365a1f7611"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/reports/weekly/jobs",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get All Job Reports",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "be02bc60-b873-4621-9380-7b78548610de"
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $input.first().json;\nconst reports = d.reports || [];\nconst healthy = reports.filter(r => r.health === 'GREEN').length;\nconst warning = reports.filter(r => r.health === 'YELLOW').length;\nconst critical = reports.filter(r => r.health === 'RED').length;\n\nconst title = `\ud83d\udccb Weekly Job Reports \u2014 ${d.week_of || ''} (${reports.length} projects)`;\nconst body = [\n  `${critical > 0 ? '\ud83d\udd34' : warning > 0 ? '\ud83d\udfe1' : '\ud83d\udfe2'} Status: ${critical} critical, ${warning} watch, ${healthy} on track`,\n  `---`,\n  ...reports.map(r => `${r.health === 'RED' ? '\ud83d\udd34' : r.health === 'YELLOW' ? '\ud83d\udfe1' : '\ud83d\udfe2'} ${r.project_code}: ${(r.executive_summary || ['No data'])[0]}`),\n  `---`,\n  `Full reports: http://host.docker.internal:8000/leadership`\n].join('\\n');\n\nconst priority = critical > 0 ? 'high' : warning > 0 ? 'default' : 'low';\nreturn [{ json: { title, body, priority, reports } }];"
+        },
+        "name": "Format Weekly Push",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          300
+        ],
+        "id": "a89e9c61-7ce7-4a1f-875f-3aafd2e2d726"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "message",
+                "value": "={{ $json.body }}"
+              }
+            ]
+          },
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "={{ $json.title }}"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $json.priority }}"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "name": "Push Weekly Summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          700,
+          300
+        ],
+        "id": "f8d24037-16e0-4cf2-a181-eefb7749f2f5"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "path",
+                "value": "=reports/weekly/jobs-{{ $now.format('yyyy-MM-dd') }}.json"
+              },
+              {
+                "name": "content",
+                "value": "={{ JSON.stringify($json.reports, null, 2) }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "name": "Write Reports to Disk",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          900,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "43a12508-9577-45c5-90c8-3f332002e78f"
+      }
+    ],
+    "connections": {
+      "Cron Friday 16:00": {
+        "main": [
+          [
+            {
+              "node": "Get All Job Reports",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get All Job Reports": {
+        "main": [
+          [
+            {
+              "node": "Format Weekly Push",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Weekly Push": {
+        "main": [
+          [
+            {
+              "node": "Push Weekly Summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Push Weekly Summary": {
+        "main": [
+          [
+            {
+              "node": "Write Reports to Disk",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:06:45.208Z",
+        "id": 270,
+        "workflowId": "MRu2VM90cURMdk7q",
+        "versionId": "e26b47c7-7ad6-40fd-803e-607d753a93a3",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:06:45.206Z",
+        "id": 269,
+        "workflowId": "MRu2VM90cURMdk7q",
+        "versionId": "e26b47c7-7ad6-40fd-803e-607d753a93a3",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

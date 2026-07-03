@@ -1,0 +1,565 @@
+{
+  "updatedAt": "2026-07-03T01:06:45.459Z",
+  "createdAt": "2026-06-27T20:34:08.503Z",
+  "id": "iCTepJbZuzEORs3z",
+  "name": "AUTO-PM \u2014 Daily 06:00 AI Program Manager Review",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron 06:00 Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        300
+      ],
+      "id": "3009e662-a4de-4b3a-adc2-684b4958baa8"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/missions/blocked",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Check Blocked Missions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        300,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "fde22f32-611f-425c-8643-46e6f7127070"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/executive/escalation-check",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Run Escalation Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        300,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "62b3c31a-d347-4e51-ad32-22353a55338f"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/services/connectors/health",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Check Connector Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        300,
+        600
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "79d02321-846c-416e-b9f3-bdaf45f302fb"
+    },
+    {
+      "parameters": {
+        "jsCode": "const blocked = $('Check Blocked Missions').first().json;const escalations = $('Run Escalation Check').first().json;const connectors = $('Check Connector Health').first().json;const problems = [];if (blocked.blocked_count > 0) {  problems.push(`${blocked.blocked_count} missions BLOCKED`);}if (escalations.escalations_fired > 0) {  problems.push(`${escalations.escalations_fired} escalations fired`);}if (connectors.status !== 'ok') {  problems.push('Connector errors detected');}return [{ json: {  has_problems: problems.length > 0,  problems,  blocked_count: blocked.blocked_count,  escalations_fired: escalations.escalations_fired,  connector_status: connectors.status}}];"
+      },
+      "name": "Assess PM Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        400
+      ],
+      "id": "1d8c1bfe-05a2-4067-b346-6730c306d16c"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "id": "has_problems",
+              "leftValue": "={{ $json.has_problems }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "name": "Has Problems?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        400
+      ],
+      "id": "52e8b445-b97a-4558-aa93-11492fd2b6d8"
+    },
+    {
+      "parameters": {
+        "url": "https://ntfy.sh/hci-executive",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Title",
+              "value": "HCI AI PM Alert"
+            },
+            {
+              "name": "Tags",
+              "value": "warning,robot"
+            },
+            {
+              "name": "Actions",
+              "value": "view, Dashboard, https://speculate-armband-retinal.ngrok-free.dev/executive"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "rawBody": "={{ $json.problems.join(' | ') }}",
+        "options": {}
+      },
+      "name": "Send PM Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        900,
+        300
+      ],
+      "id": "d739c895-1f32-41c0-b785-58f6d48c636e"
+    }
+  ],
+  "connections": {
+    "Cron 06:00 Daily": {
+      "main": [
+        [
+          {
+            "node": "Check Blocked Missions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Run Escalation Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Connector Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Blocked Missions": {
+      "main": [
+        [
+          {
+            "node": "Assess PM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Escalation Check": {
+      "main": [
+        [
+          {
+            "node": "Assess PM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Connector Health": {
+      "main": [
+        [
+          {
+            "node": "Assess PM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assess PM Status": {
+      "main": [
+        [
+          {
+            "node": "Has Problems?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Problems?": {
+      "main": [
+        [
+          {
+            "node": "Send PM Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron 06:00 Daily": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+  "activeVersionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T20:34:08.504Z",
+      "createdAt": "2026-06-27T20:34:08.504Z",
+      "role": "workflow:owner",
+      "workflowId": "iCTepJbZuzEORs3z",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:06:45.459Z",
+    "createdAt": "2026-07-03T01:06:45.459Z",
+    "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+    "workflowId": "iCTepJbZuzEORs3z",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 6 * * *"
+              }
+            ]
+          }
+        },
+        "name": "Cron 06:00 Daily",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "3009e662-a4de-4b3a-adc2-684b4958baa8"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/missions/blocked",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Check Blocked Missions",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          200
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "fde22f32-611f-425c-8643-46e6f7127070"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/escalation-check",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Run Escalation Check",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          400
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "62b3c31a-d347-4e51-ad32-22353a55338f"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/connectors/health",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Check Connector Health",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          600
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "79d02321-846c-416e-b9f3-bdaf45f302fb"
+      },
+      {
+        "parameters": {
+          "jsCode": "const blocked = $('Check Blocked Missions').first().json;const escalations = $('Run Escalation Check').first().json;const connectors = $('Check Connector Health').first().json;const problems = [];if (blocked.blocked_count > 0) {  problems.push(`${blocked.blocked_count} missions BLOCKED`);}if (escalations.escalations_fired > 0) {  problems.push(`${escalations.escalations_fired} escalations fired`);}if (connectors.status !== 'ok') {  problems.push('Connector errors detected');}return [{ json: {  has_problems: problems.length > 0,  problems,  blocked_count: blocked.blocked_count,  escalations_fired: escalations.escalations_fired,  connector_status: connectors.status}}];"
+        },
+        "name": "Assess PM Status",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          400
+        ],
+        "id": "1d8c1bfe-05a2-4067-b346-6730c306d16c"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true
+            },
+            "conditions": [
+              {
+                "id": "has_problems",
+                "leftValue": "={{ $json.has_problems }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "name": "Has Problems?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          700,
+          400
+        ],
+        "id": "52e8b445-b97a-4558-aa93-11492fd2b6d8"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "HCI AI PM Alert"
+              },
+              {
+                "name": "Tags",
+                "value": "warning,robot"
+              },
+              {
+                "name": "Actions",
+                "value": "view, Dashboard, https://speculate-armband-retinal.ngrok-free.dev/executive"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "raw",
+          "rawBody": "={{ $json.problems.join(' | ') }}",
+          "options": {}
+        },
+        "name": "Send PM Alert",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          900,
+          300
+        ],
+        "id": "d739c895-1f32-41c0-b785-58f6d48c636e"
+      }
+    ],
+    "connections": {
+      "Cron 06:00 Daily": {
+        "main": [
+          [
+            {
+              "node": "Check Blocked Missions",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Run Escalation Check",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Check Connector Health",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Blocked Missions": {
+        "main": [
+          [
+            {
+              "node": "Assess PM Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Escalation Check": {
+        "main": [
+          [
+            {
+              "node": "Assess PM Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Connector Health": {
+        "main": [
+          [
+            {
+              "node": "Assess PM Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assess PM Status": {
+        "main": [
+          [
+            {
+              "node": "Has Problems?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Problems?": {
+        "main": [
+          [
+            {
+              "node": "Send PM Alert",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:06:45.468Z",
+        "id": 280,
+        "workflowId": "iCTepJbZuzEORs3z",
+        "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:06:45.465Z",
+        "id": 279,
+        "workflowId": "iCTepJbZuzEORs3z",
+        "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

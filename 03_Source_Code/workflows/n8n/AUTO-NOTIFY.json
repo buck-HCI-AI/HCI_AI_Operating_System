@@ -1,20 +1,35 @@
 {
-  "name": "AUTO-NOTIFY — Urgent Alert Push (HIGH/CRITICAL events)",
+  "updatedAt": "2026-07-03T01:06:45.099Z",
+  "createdAt": "2026-06-27T20:34:08.414Z",
+  "id": "DhmrAAEhlzKW8Y3i",
+  "name": "AUTO-NOTIFY \u2014 Urgent Alert Push (HIGH/CRITICAL events)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 */4 * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */4 * * *"
+            }
+          ]
         }
       },
       "name": "Every 4 Hours",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ],
+      "id": "25615c80-3985-405f-a31e-ee8a8da27e43"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/travel-mode",
+        "url": "http://host.docker.internal:8000/api/v1/executive/travel-mode",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -22,12 +37,21 @@
       "name": "Check Travel Mode",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [300, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        300,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "b0ca5132-5955-47fa-9d62-6145fbbbce46"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/escalation-check",
+        "url": "http://host.docker.internal:8000/api/v1/executive/escalation-check",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -36,12 +60,21 @@
       "name": "Run Escalation Check",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [500, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "7d45a7ae-a5df-4ebb-9a5e-529c2dc08f96"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/weekend-summary",
+        "url": "http://host.docker.internal:8000/api/v1/executive/weekend-summary",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -49,22 +82,262 @@
       "name": "Get Autonomy Report",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [500, 500],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        500,
+        500
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "ef1e2d34-e9e7-4f28-88a9-a0784b48b70e"
     }
   ],
   "connections": {
     "Every 4 Hours": {
-      "main": [[{ "node": "Check Travel Mode", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Travel Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Travel Mode": {
-      "main": [[
-        { "node": "Run Escalation Check", "type": "main", "index": 0 },
-        { "node": "Get Autonomy Report", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Run Escalation Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Autonomy Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "executive-ops" }, { "name": "notifications" }],
-  "_hci_notes": "Runs every 4h. Checks travel mode (>48h no activity = critical-only). Fires escalation check which sends ntfy push for unresolved items >24h (HIGH) or >72h (CRITICAL)."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Every 4 Hours": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+  "activeVersionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T20:34:08.415Z",
+      "createdAt": "2026-06-27T20:34:08.415Z",
+      "role": "workflow:owner",
+      "workflowId": "DhmrAAEhlzKW8Y3i",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:06:45.100Z",
+    "createdAt": "2026-07-03T01:06:45.100Z",
+    "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+    "workflowId": "DhmrAAEhlzKW8Y3i",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 */4 * * *"
+              }
+            ]
+          }
+        },
+        "name": "Every 4 Hours",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "25615c80-3985-405f-a31e-ee8a8da27e43"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/travel-mode",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Check Travel Mode",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "b0ca5132-5955-47fa-9d62-6145fbbbce46"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/escalation-check",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Run Escalation Check",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          500,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "7d45a7ae-a5df-4ebb-9a5e-529c2dc08f96"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/weekend-summary",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get Autonomy Report",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          500,
+          500
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "ef1e2d34-e9e7-4f28-88a9-a0784b48b70e"
+      }
+    ],
+    "connections": {
+      "Every 4 Hours": {
+        "main": [
+          [
+            {
+              "node": "Check Travel Mode",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Travel Mode": {
+        "main": [
+          [
+            {
+              "node": "Run Escalation Check",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Autonomy Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:06:45.113Z",
+        "id": 266,
+        "workflowId": "DhmrAAEhlzKW8Y3i",
+        "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.364Z",
+        "id": 284,
+        "workflowId": "DhmrAAEhlzKW8Y3i",
+        "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.409Z",
+        "id": 286,
+        "workflowId": "DhmrAAEhlzKW8Y3i",
+        "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:06:45.109Z",
+        "id": 265,
+        "workflowId": "DhmrAAEhlzKW8Y3i",
+        "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.358Z",
+        "id": 283,
+        "workflowId": "DhmrAAEhlzKW8Y3i",
+        "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:09:14.387Z",
+        "id": 285,
+        "workflowId": "DhmrAAEhlzKW8Y3i",
+        "versionId": "f2537dc7-1a13-497a-b1ab-20117628b059",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }
