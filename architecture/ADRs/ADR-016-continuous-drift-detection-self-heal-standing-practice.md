@@ -144,6 +144,35 @@ drift... build so start-ups are easy if we have an issue... build to self-heal, 
 make the same mistakes."* The check count is now 11. It should keep growing the same way —
 one real incident at a time, never removed, only added to.
 
+### Addendum 2026-07-03 — a live peer-review cycle, and a release checklist from it
+
+Same audit push, later the same night: Claude Code reported the Handbook complete and pushed
+GBT to independently verify rather than take that at face value. GBT correctly refused to
+certify from Drive search alone (it can't see git), found the same fabricated Gate 5 verdict
+file still sitting un-renamed in Drive, and found 12 stale/pending items that would greet a
+brand-new GBT session's first queue check. Claude Code fixed both (renamed the Drive file
+`[OBSOLETE - DO NOT USE - ...]`, cleared 11 of 12 stale queue items) and supplied concrete
+evidence instead of another status claim: the actual commit log, and the literal output of
+`grep -rn "Chief Architect Required\|\[Chief Architect:" architecture/Handbook/Volume_*.md`
+(zero matches) run against the real files, not against a queue doc's notes about itself. GBT
+updated its assessment based on that evidence and signed off. This is the peer-review model
+from the addendum above working exactly as intended, live, in both directions — worth recording
+as an example, not just a policy statement.
+
+GBT proposed a lightweight release checklist for any future "architecturally complete" claim
+on the Handbook or similar canonical documents, adopted here as standing practice:
+
+1. Repo grep for unresolved authoring markers (`Chief Architect Required`, `TODO`, placeholder
+   brackets) — against the real files, never against a tracker's own status notes about itself.
+2. Verify all cross-references between chapters/volumes actually resolve.
+3. Verify no obsolete draft remains reachable on the active publication path (Drive, wiki,
+   wherever consumers might find it) without being unambiguously marked obsolete.
+4. Confirm any governance statement embedded in the document (verdicts, sign-offs, approvals)
+   is backed by its canonical source and real human approval — never take a document's own
+   claim about a decision as the decision itself.
+5. Record the commit hash of the publication in the release/status notes — and per the
+   `fabricated_commit_claim` check above, that hash must actually resolve in git history.
+
 ## Verification
 
 - `python3 03_Source_Code/tests/test_ai_control_plane.py` — 140/140 passing after
