@@ -26,7 +26,7 @@ ChatGPT does NOT: edit files directly, commit to git, trigger workflows, or make
 
 Claude Code does NOT: redefine architecture without documented ChatGPT approval.
 
-### Buck Adams — Owner and Decision Authority
+### Buck Adams — PM & Superintendent (Hendrickson Construction, Inc.) / Owner (HCI-AI) — Decision Authority
 - Business decisions (vendors, contracts, awards, budget)
 - Final approval on major architectural pivots
 - Approvals for any action with external visibility (emails, HubSpot updates, payments)

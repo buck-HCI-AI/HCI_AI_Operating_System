@@ -2,7 +2,7 @@
 ## HCI AI Operating System — Autonomous Coordination Layer
 
 **Authority:** Chief Architect Directive — Automation First (2026-06-27)  
-**Owner:** Buck Adams  
+**Owner:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)  
 **Role:** Coordinates agents, routes work, surfaces only owner-level decisions to Buck
 
 ---

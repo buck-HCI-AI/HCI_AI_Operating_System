@@ -2,7 +2,7 @@
 ## HCI AI Operating System
 
 **Authority:** Chief Architect Directive — Phase II (Objective 9)  
-**Owner:** Buck Adams  
+**Owner:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)  
 **Enforced by:** base_miner.py, all ingestion services, n8n gate workflows
 
 ---

@@ -1,7 +1,7 @@
 # ACR-004: Architecture Review Report
 **Continuous Mining & Learning Engine**
 **Prepared by:** Claude Code (Builder)
-**Submitted to:** ChatGPT Chief Architect, Buck Adams (Owner)
+**Submitted to:** ChatGPT Chief Architect, Buck Adams (HCI-AI Owner / PM & SS, Hendrickson Construction)
 **Date:** 2026-06-26
 **Status:** PENDING AUTHORIZATION — continuous execution NOT enabled
 

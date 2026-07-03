@@ -97,7 +97,7 @@ def _projects():
             FROM risks
             WHERE project_id = p.id AND status = 'open'
         ) r ON true
-        WHERE p.status = 'active'
+        WHERE p.status IN ('active','design','bidding','preconstruction','monitoring')
         ORDER BY p.id
     """)
     return rows
@@ -967,7 +967,7 @@ def mission_control():
                    COUNT(*) FILTER (WHERE severity IN ('critical','high')) as high_or_critical
             FROM risks WHERE status = 'open' GROUP BY project_id
         ) rr ON rr.project_id = p.id
-        WHERE p.status = 'active'
+        WHERE p.status IN ('active','design','bidding','preconstruction','monitoring')
         ORDER BY p.id
     """)
 

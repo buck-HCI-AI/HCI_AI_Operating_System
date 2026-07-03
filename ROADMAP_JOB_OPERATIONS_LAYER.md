@@ -2,7 +2,7 @@
 ## Milestone 1: Operational Intelligence
 
 **Authority:** Milestone 1 directive (make this the next milestone.docx, 2026-06-27)  
-**Owner:** Buck Adams  
+**Owner:** Buck Adams (PM & Superintendent, Hendrickson Construction, Inc. — owned by Chris Hendrickson; Owner/operator, HCI-AI)  
 **Filter:** Every feature must serve SS Console, PM Console, Leadership Dashboard, Weekly Reports, or Project Brain  
 
 ---

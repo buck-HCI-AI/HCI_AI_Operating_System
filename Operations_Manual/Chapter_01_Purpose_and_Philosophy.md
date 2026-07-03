@@ -73,7 +73,7 @@ Everything else runs autonomously.
 
 ## 1.4 The AI Team: Who Does What
 
-**Buck Adams — Owner & Final Authority**
+**Buck Adams — PM & Superintendent, Hendrickson Construction | Owner & Final Authority, HCI-AI**
 - Reviews and approves all awards, commitments, client sends
 - Sets priorities and direction via Telegram (@hciaiossystem_bot) or Claude Code sessions
 - Reviews the morning brief and acts on red flags
@@ -109,7 +109,7 @@ These are hard limits that will never change regardless of how advanced the syst
 5. **Cannot approve change orders.** All change orders are Buck-approved.
 6. **Cannot make legal commitments on behalf of HCI.**
 
-The AI team can recommend, prepare, analyze, and draft — but all authority to act on behalf of Hendrickson Construction remains with Buck Adams.
+The AI team can recommend, prepare, analyze, and draft — but all authority to act on behalf of Hendrickson Construction in this system's operational scope remains with Buck Adams (PM & Superintendent), within the bounds set by Chris Hendrickson, the company's owner.
 
 ---
 

@@ -2,7 +2,7 @@
 ## HCI AI Operating System — All Agents
 
 **Issued:** 2026-06-30
-**Authority:** Buck Adams (Owner)
+**Authority:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)
 **Issued by:** Browser Claude (Operations Intelligence) + HCI Chief Architect (GBT)
 **Gateway Request ID:** 1ffc81be
 **Status:** ACTIVE — all agents, work through the night

@@ -2,7 +2,7 @@
 ## HCI AI Operating System v2.2
 
 **Authority:** 2nd BTW Directive — Notification Service  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Updated:** 2026-06-27
 
 ---

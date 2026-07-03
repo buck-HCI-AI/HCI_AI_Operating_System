@@ -2,7 +2,7 @@
 ## HCI AI Operating System
 **Issued:** 2026-06-30
 **Corrected:** 2026-07-01 — see ADR-010, ADR-011, `AI_TEAM/OVERNIGHT_REPORT.md`
-**Authorized by:** Buck Adams (Owner)
+**Authorized by:** Buck Adams (HCI-AI Owner; PM & Superintendent, Hendrickson Construction, Inc.)
 
 ---
 

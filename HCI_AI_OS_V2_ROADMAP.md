@@ -3,7 +3,7 @@
 
 **Date:** 2026-06-27  
 **Authority:** Chief Architect Directive — Phase II Autonomous Operations  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Status:** ACTIVE — Sprint planning begins immediately
 
 > "The transition from building an AI-assisted system to operating an AI-managed platform."

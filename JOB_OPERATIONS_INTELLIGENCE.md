@@ -3,7 +3,7 @@
 
 **Authority:** Future Directive — future .docx (Buck Adams, 2026-06-27)  
 **Status:** Planning — implementation begins after Sprint 2 close  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 
 ---
 

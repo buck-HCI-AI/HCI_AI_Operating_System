@@ -3,7 +3,7 @@
 **Issued:** 2026-06-30  
 **Updated:** 2026-06-30 (Round 2 — monitoring projects only)  
 **Issued By:** Claude Code  
-**Authorized By:** Buck Adams (Owner)  
+**Authorized By:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)  
 **Priority:** HIGH
 
 ---
@@ -161,4 +161,4 @@ Write completion summary to:
 
 ---
 
-*Authorized by Buck Adams — Hendrickson Construction, Inc.*
+*Authorized by Buck Adams — PM & Superintendent, Hendrickson Construction, Inc. / Owner, HCI-AI*

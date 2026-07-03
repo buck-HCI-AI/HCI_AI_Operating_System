@@ -15,7 +15,7 @@ This document defines exactly how ChatGPT (GBT / Chief Architect) and Claude Cod
 ## Current Architecture
 
 ```
-Buck Adams (Owner / Final Authority)
+Buck Adams (HCI-AI Owner / Final Authority)
         │
         ├── ChatGPT (GBT) — Chief Architect, Architecture Review Board
         │        │

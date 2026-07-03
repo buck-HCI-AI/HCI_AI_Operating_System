@@ -2,7 +2,7 @@
 ## HCI AI Operating System
 
 **Authority:** Job Operations Intelligence Layer Directive  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Status:** Spec — ready for Sprint 3 implementation  
 
 ---

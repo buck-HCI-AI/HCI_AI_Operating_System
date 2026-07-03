@@ -4,9 +4,11 @@ GO-LIVE AUTHORIZED by Buck Adams (Owner) 2026-06-27.
 dry_run defaults True (safe) — pass dry_run=False for live execution.
 """
 import os, sys
+import importlib.util
 
 _MINING_DIR  = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "services", "mining"))
 _SRC_DIR     = os.path.abspath(os.path.join(_MINING_DIR, "..", ".."))  # 03_Source_Code/
+_MINING_PKG_ALIAS = "_hci_mining_pkg"  # see _import_mining() docstring
 
 from fastapi import APIRouter, Query, HTTPException
 
@@ -18,30 +20,44 @@ _GO_LIVE_AUTHORIZED = True   # authorized by Buck Adams (Owner) 2026-06-27
 
 def _import_mining():
     """
-    Import services.mining, handling the sys.path collision from main.py.
-    main.py adds both 03_Source_Code/ AND 03_Source_Code/services/ to sys.path.
-    That can cause Python to cache 'services' as a namespace package that doesn't
-    include the mining subpackage.  We fix it once per process by ensuring the
-    canonical 03_Source_Code/ is first and wiping any bad cached entries.
+    Load services/mining/ directly by file path under a private sys.modules alias.
+    'services' as a dotted name is PERMANENTLY shadowed by 03_Source_Code/api/services/
+    (a small, unrelated cache/db/storage/vector helper package used by documents.py,
+    system.py, storage.py, search.py) because main.py inserts 03_Source_Code/api onto
+    sys.path ahead of the project root. Clearing sys.modules['services'] and re-importing
+    just re-triggers the same path search and finds api/services again every time -
+    this was found 2026-07-02 after discovering it made every mining run (HubSpot/
+    Houzz/Drive/Outlook sync) fail with ModuleNotFoundError, 100% of the time, since
+    api/services was added on 06-26. Loading by absolute path under a private alias
+    sidesteps the collision without touching the global 'services' name those other
+    four routers depend on.
     """
-    if _SRC_DIR not in sys.path:
-        sys.path.insert(0, _SRC_DIR)
+    alias_orch = f"{_MINING_PKG_ALIAS}.mining_orchestrator"
+    if alias_orch in sys.modules:
+        return sys.modules[alias_orch]
 
-    # If 'services' is already cached but lacks mining, clear the stale entries.
-    if "services" in sys.modules and "services.mining" not in sys.modules:
-        stale = [k for k in sys.modules if k == "services" or k.startswith("services.")]
-        for k in stale:
-            del sys.modules[k]
+    pkg_spec = importlib.util.spec_from_file_location(
+        _MINING_PKG_ALIAS, os.path.join(_MINING_DIR, "__init__.py"),
+        submodule_search_locations=[_MINING_DIR],
+    )
+    pkg_mod = importlib.util.module_from_spec(pkg_spec)
+    sys.modules[_MINING_PKG_ALIAS] = pkg_mod
+    pkg_spec.loader.exec_module(pkg_mod)
 
-    import services.mining.mining_orchestrator as _orch
-    return _orch
+    orch_spec = importlib.util.spec_from_file_location(
+        alias_orch, os.path.join(_MINING_DIR, "mining_orchestrator.py"),
+    )
+    orch_mod = importlib.util.module_from_spec(orch_spec)
+    orch_mod.__package__ = _MINING_PKG_ALIAS
+    sys.modules[alias_orch] = orch_mod
+    orch_spec.loader.exec_module(orch_mod)
+    return orch_mod
 
 
 def _pg():
     """Return the _pg context manager from base_miner (for log/summary endpoints)."""
-    _import_mining()  # ensures sys.path is correct
-    import services.mining.base_miner as _bm
-    return _bm._pg
+    _import_mining()  # ensures the private mining package alias is loaded
+    return sys.modules[f"{_MINING_PKG_ALIAS}.base_miner"]._pg
 
 
 def _get_orchestrator(dry_run: bool = True):

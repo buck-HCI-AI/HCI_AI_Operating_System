@@ -2,7 +2,7 @@
 ## HCI AI OS - System Idle Monitor + Auto-Resume Specification
 
 **Date:** 2026-07-01
-**Requested By:** Buck Adams (Owner)
+**Requested By:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)
 **Prepared By:** Browser Claude (Operations Intelligence)
 **Status:** IMPLEMENTATION-READY for Claude Code
 

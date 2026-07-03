@@ -2,7 +2,7 @@
 ## Executive Operations & Autonomous Coordination
 
 **Authority:** Chief Architect Directive — v2.2 + Notification Service Directive  
-**Owner:** Buck Adams  
+**Owner:** Buck Adams (PM & Superintendent, Hendrickson Construction, Inc. — owned by Chris Hendrickson; Owner/operator, HCI-AI)  
 **Date:** 2026-06-27  
 **Mission:** Transition HCI AI OS from coordinated AI tools into a self-managing Construction Operating System.
 

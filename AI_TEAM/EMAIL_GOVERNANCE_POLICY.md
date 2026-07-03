@@ -1,7 +1,7 @@
 # EMAIL GOVERNANCE POLICY
 ## HCI AI Operating System — Standing Directive
 
-**Authority:** Buck Adams, Owner
+**Authority:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)
 **Issued:** 2026-07-01
 **Status:** ACTIVE — PERMANENT
 **Incident:** Unauthorized live email sent regarding project 101F

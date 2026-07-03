@@ -4,7 +4,7 @@
 **Date:** YYYY-MM-DD
 **Run ID:** [mining_run_id]
 **Triggered by:** [Claude Code / AUTO-004 / Manual]
-**Authorized by:** Buck Adams (Owner)
+**Authorized by:** Buck Adams (PM & Superintendent, Hendrickson Construction, Inc.; Owner/operator, HCI-AI)
 **Directive:** Chief Architect Directive [ACR reference]
 
 ---
@@ -134,7 +134,7 @@ Top new items for Buck's review:
 
 | Role | Name | Date | Signature |
 |---|---|---|---|
-| Owner | Buck Adams | — | ⏳ Pending |
+| PM & Superintendent (HCI) / HCI-AI Owner | Buck Adams | — | ⏳ Pending |
 | Chief Architect | ChatGPT | — | ⏳ Pending |
 | Lead Implementation Engineer | Claude Code | — | Auto-generated |
 

@@ -8,7 +8,7 @@
 
 **Issued:** 2026-06-30
 **Issued by:** Browser Claude (Operations Intelligence) + HCI Chief Architect (GBT)
-**Authority:** Buck Adams (Owner)
+**Authority:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)
 **Status:** SUPERSEDED — see banner above
 
 ---

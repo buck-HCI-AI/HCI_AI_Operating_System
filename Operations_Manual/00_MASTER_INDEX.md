@@ -3,7 +3,7 @@
 > **⚠️ Manual consolidation (2026-07-02):** A full-system audit found FOUR separate documents all independently declaring themselves "the single source of truth" (this one, `HCI_AI_OS_MANUAL.md`, `BOOK_00/`, `BOOK_01/`), none referencing the others. Per Buck Adams' "fix and clean up everything" directive that day, `HCI_AI_OS_MANUAL.md` (repo root) was adopted as canonical going forward — it's the newest and most complete. This manual's content (31 chapters, procedure-style, still accurate on the facts spot-checked) is kept for reference but is no longer the primary document. Chapters 27 and 28 were never finished.
 
 ## Hendrickson Construction, Inc. — Full Operations Guide
-**Version:** 1.0 | **Ratified:** 2026-06-30 | **Authority:** Buck Adams (Owner)
+**Version:** 1.0 | **Ratified:** 2026-06-30 | **Authority:** Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner)
 **Authors:** GBT (Chief Architect) + Claude Code (Lead Implementation Engineer)
 **Classification:** Internal Operations — Confidential
 

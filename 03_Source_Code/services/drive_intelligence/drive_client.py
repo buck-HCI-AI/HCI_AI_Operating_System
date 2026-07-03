@@ -76,7 +76,11 @@ def list_folder_all(folder_id: str) -> list:
 
 
 def search_files(query: str, folder_id: str = None) -> list:
-    q = f"name contains '{query}' and trashed=false"
+    # 2026-07-02: was "name contains" only, which misses matches inside document
+    # content and even some folder-name matches - found while GBT couldn't locate a
+    # real, existing "Asbestos Report" folder for 1355R. fullText covers both name
+    # and body content in one query.
+    q = f"fullText contains '{query}' and trashed=false"
     if folder_id:
         q += f" and '{folder_id}' in parents"
     params = {

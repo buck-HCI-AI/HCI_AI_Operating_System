@@ -3,7 +3,7 @@
 
 **Date:** 2026-06-27  
 **Authority:** Chief Architect Directive — v2.1 Planning  
-**Owner:** Buck Adams  
+**Owner:** Buck Adams (PM & Superintendent, Hendrickson Construction, Inc. — owned by Chris Hendrickson; Owner/operator, HCI-AI)  
 **Prerequisite:** v2.0 Phase II complete ✅ (committed 2026-06-27)
 
 > "Reduce Buck's daily interaction to executive decisions only."

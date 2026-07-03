@@ -78,7 +78,7 @@ This key gates all write operations on the gateway. Anyone with this key can:
 
 | Role | System Access | What They Can Do |
 |------|-------------|-----------------|
-| Buck Adams (Owner) | Full admin | Approve/reject everything, access all data, override any AI decision |
+| Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner) | Full admin | Approve/reject everything, access all data, override any AI decision |
 | Claude Code | API + local filesystem | Read all data, write code, create approval items, post handoffs |
 | GBT (ChatGPT) | Gateway read endpoints + handoff write | Read all project data, send tasks to Claude Code, cannot directly write to DB or files |
 | Browser Claude | GitHub + specific Drive paths | Program repository governance, file management |

@@ -10,8 +10,8 @@
 
 ```
 Buck Adams
-CEO / Owner — Hendrickson Construction
-Final Authority
+PM & Superintendent, Hendrickson Construction (owned by Chris Hendrickson)
+Owner/Operator, HCI-AI — Final Authority on HCI-AI decisions
         │
         ▼
 Chief Architect

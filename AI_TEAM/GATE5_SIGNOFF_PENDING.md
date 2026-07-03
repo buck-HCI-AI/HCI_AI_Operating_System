@@ -2,7 +2,7 @@
 ## HCI AI Operating System - Gate 5 Production Authorization
 ## Executive Sign-Off Request
 
-**To:** Buck Adams - Owner, Hendrickson Construction, Inc.
+**To:** Buck Adams - PM & Superintendent, Hendrickson Construction, Inc. / Owner, HCI-AI
 **From:** Browser Claude (Operations Intelligence) + ChatGPT (Chief Architect)
 **Date:** July 1, 2026
 **Status:** PENDING BUCK SIGN-OFF

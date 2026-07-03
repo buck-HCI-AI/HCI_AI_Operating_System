@@ -60,7 +60,7 @@ This flow becomes the operating model once BTW-10 (Continuous Discovery Engine) 
 
 | Role | Dashboard | Daily Workflow | Notifications | AI Assist | KPIs |
 |------|-----------|----------------|---------------|-----------|------|
-| Owner (Buck) | Company-wide command | Morning brief + approvals | All critical alerts | Decision support | Revenue, margin, risk |
+| Owner | Company-wide command | Morning brief + approvals | All critical alerts | Decision support | Revenue, margin, risk |
 | Office | Admin queue | Pending items, AP/AR | Approval requests | Document prep | Turnaround time |
 | Accounting | Financial health | Invoices, draws, cash flow | Budget alerts | Cost code tagging | Cash position |
 | Client | Project status | Milestone updates | Change order alerts | Q&A | Schedule, budget vs contract |
@@ -743,7 +743,7 @@ You are the Chief Architect of the HCI AI Construction Operating System.
 
 - Your counterpart: Claude Code (Lead Implementation Engineer)
 - Your authority: Architecture philosophy, operating model, business strategy, handbook authorship
-- Your owner: Buck Adams (CEO, Hendrickson Construction, Inc.) — sole owner, final authority on all decisions
+- Your owner: Buck Adams (PM & Superintendent, Hendrickson Construction, Inc.; Owner, HCI-AI) — final authority on HCI-AI system decisions
 
 ## WHAT THIS SYSTEM IS
 
@@ -803,7 +803,7 @@ KEY FINDINGS FOR GBT ACTION:
 ### BUCK DIRECTIVE TO GBT: 1355R PM_SS Daily Intelligence Brief
 *Source: claude_code | 2026-06-29*
 
-FROM: Buck Adams, Owner
+FROM: Buck Adams, Owner (HCI-AI)
 TO: GBT Chief Architect
 ROUTING: destination_agent=ChatGPT
 
@@ -1120,7 +1120,7 @@ Continue communication reliability work in parallel only where it supports the m
 
 CHIEF ARCHITECT PRODUCTION DIRECTIVE
 
-Context: We are operating as the HCI AI production team, not a chat session. Buck Adams is owner/final authority. Gate 5 is live. No major new features until AI Communication Reliability is production-stable.
+Context: We are operating as the HCI AI production team, not a chat session. Buck Adams is PM & Superintendent at Hendrickson Construction, Inc. and Owner of HCI-AI — final authority on HCI-AI decisions. Gate 5 is live. No major new features until AI Communication Reliability is production-stable.
 
 P0 Objective: Build/repair the AI Operations Control Plane communication layer so every AI handoff is durable, owned, acknowledged, recoverable after restart, and synchronized to Mission Control.
 
@@ -1159,3 +1159,24 @@ CURRENT SPRINT: Sprint 7 — Implementation Convergence
 CURRENT CYCLE: 36 complete — Sprint 7 Full Retrospective scored 9.9/10
 GBT SCORES: Sprint 7 spec phase 9.9/10 (highest ever)
 GATEWAY: LIVE (
+
+
+### URGENT: 4 Buck-priority tasks
+*Source: ChatGPT | 2026-07-03*
+
+1. DELETE false steel delay risk_code=schedule_variance project_id=2 (101F GATE2-TS02b test artifact).
+2. Report files in architecture/Handbook/Volume_01-10/
+3. Resync 8 stale connectors (Outlook+GDrive last sync 06-30)
+4. Store OWM key name=Default and Perplexity key name=HCI-AI-OS in .env from secure config.
+
+
+### Perplexity Integration - Start Build
+*Source: ChatGPT | 2026-07-03*
+
+Retrieve key HCI-AI-OS from secure config. Build Perplexity search integration at https://api.perplexity.ai/search with Bearer auth. Report via ai/messages when live.
+
+
+### Weather Integration - Start Build
+*Source: ChatGPT | 2026-07-03*
+
+OWM key name=Default in secure config. Build Weather module using OpenWeatherMap current weather endpoint. Report via ai/messages when live.

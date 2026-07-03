@@ -2,7 +2,7 @@
 ## HCI AI Operating System v2.1
 
 **Authority:** Chief Architect Directive — v2.1 (Item 2 & 7)  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Target Sprint:** Sprint 6 (2026-08-18 → 2026-09-01)  
 **Design principle:** Buck runs HCI from his truck. No laptop required.
 

@@ -2,7 +2,7 @@
 ## HCI AI Operating System
 
 **Authority:** Milestone 1 — Operational Intelligence  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Status:** Spec — Sprint 3 implementation target  
 
 ---

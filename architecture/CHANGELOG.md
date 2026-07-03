@@ -303,7 +303,7 @@ flagged for Chief Architect reconciliation, not silently merged.
 
 ## v3.0 — 2026-06-28 | 🔒 ARCHITECTURE FREEZE v1.0
 
-**Declared by:** Buck Adams (Owner) + GBT (Chief Architect)
+**Declared by:** Buck Adams (PM & Superintendent, Hendrickson Construction, Inc.; Owner, HCI-AI) + GBT (Chief Architect)
 **Implemented by:** Claude Code
 
 **What is frozen:**

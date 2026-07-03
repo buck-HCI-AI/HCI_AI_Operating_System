@@ -2,7 +2,7 @@
 ## HCI AI Operating System — Agent Communication Layer
 
 **Authority:** Chief Architect Directive — Automation First (2026-06-27)  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Purpose:** Eliminate Buck as the message bus between agents.
 
 ---

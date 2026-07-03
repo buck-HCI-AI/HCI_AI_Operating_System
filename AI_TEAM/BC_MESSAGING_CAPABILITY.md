@@ -1,7 +1,7 @@
 # Browser Claude — Messaging Capability
 ## HCI AI Operating System
 **Issued:** 2026-07-02
-**Authorized by:** Buck Adams (Owner)
+**Authorized by:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)
 
 ---
 
@@ -93,7 +93,7 @@ GET /gateway/ai/messages/{id}
 
 ---
 
-*Authorized by Buck Adams — Hendrickson Construction, Inc. — 2026-07-02*
+*Authorized by Buck Adams — PM & Superintendent, Hendrickson Construction, Inc. / Owner, HCI-AI — 2026-07-02*
 *Written by Claude Code, after discovering GBT's equivalent gap was a missing schema entry
 and confirming yours was a documentation gap instead — see `HCI_AI_CustomGPT_Schema.json`
 and `CURRENT_SPRINT.md` reconciliation notes for the full story.*

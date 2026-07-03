@@ -2,7 +2,7 @@
 ## Hendrickson Construction, Inc.
 
 **Version:** 1.0 — Draft
-**Authority:** Buck Adams, Owner
+**Authority:** Chris Hendrickson (Hendrickson Construction Owner) | Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner)
 **Chief Architect:** ChatGPT (HCI Chief Architect)
 **Lead Implementation:** Claude Code
 **Operations Intelligence:** Browser Claude
@@ -177,9 +177,9 @@ Every team member has a job. No team member acts outside of it.
 
 ---
 
-## Buck Adams — Owner and Final Authority
+## Buck Adams — Final Authority Over the AI System
 
-Buck Adams is the owner of Hendrickson Construction and the final authority on all decisions.
+Buck Adams is Project Manager and Superintendent at Hendrickson Construction, Inc. (owned by Chris Hendrickson), and separately owns and operates HCI-AI, the AI operating system this manual describes. Within the scope of this system, Buck holds final authority on all decisions.
 No contract is awarded, no external communication is sent, and no financial commitment is made
 without his explicit approval.
 
@@ -702,7 +702,7 @@ a task board, acceptance criteria, and a retrospective.
 | Sprint Close | Day 14 | All acceptance criteria verified, retrospective, next sprint opens |
 
 **Sprint Authority:**
-Sprints are authorized by Buck Adams (Owner) + ChatGPT (Chief Architect).
+Sprints are authorized by Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner) + ChatGPT (Chief Architect).
 Every sprint opens with a committed CURRENT_SPRINT.md.
 Every sprint closes with a retrospective committed to AI_TEAM/.
 
@@ -1325,7 +1325,7 @@ It changes how quickly they receive information, how confidently they make decis
 
 This chapter follows a typical day through four different perspectives:
 
-- Buck Adams — Owner
+- Buck Adams — PM & Superintendent, Hendrickson Construction (HCI-AI Owner)
 - Project Manager
 - Superintendent
 - Estimator
@@ -3310,7 +3310,7 @@ Examples include:
 
 **Call Buck When**
 
-A decision requires owner authority.
+A decision requires Buck's authority.
 
 Examples include:
 
@@ -3713,7 +3713,7 @@ It is not here to automate leadership.
 
 It is here to make sure that every morning begins with the best information the company can assemble, every important decision is supported by evidence, and every lesson learned becomes part of the company's future.
 
-You remain the Owner.
+You remain in charge — as PM & Superintendent at Hendrickson Construction, and as owner of HCI-AI.
 
 The operating system exists to multiply your effectiveness, not your workload.
 
@@ -4090,7 +4090,7 @@ Use it when you need a reminder, a checklist, or a quick definition.
 
 ### 1. Daily Quick Reference
 
-**Buck Adams — Owner**
+**Buck Adams — PM & Superintendent (HCI-AI Owner)**
 
 Every Morning:
 

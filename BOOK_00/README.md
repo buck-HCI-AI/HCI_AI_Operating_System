@@ -42,7 +42,7 @@ It is NOT a status document (that's `AI_TEAM/00_STATUS.md`). It is NOT a task li
 ## System Overview
 
 **Company:** Hendrickson Construction, Inc. (HCI) — high-end residential remodels, Aspen CO
-**Owner/Operator:** Buck Adams
+**Owner:** Chris Hendrickson (Hendrickson Construction, Inc.) | **PM & Superintendent / HCI-AI Owner:** Buck Adams
 **Mission:** Build the permanent AI operating system that runs HCI's construction operations
 
 ### Prime Directives

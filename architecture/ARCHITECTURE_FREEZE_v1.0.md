@@ -2,7 +2,7 @@
 ## HCI AI Operating System — Foundation Declaration
 
 **Declared:** 2026-06-28
-**Declared by:** Buck Adams (Owner, Hendrickson Construction)
+**Declared by:** Buck Adams (PM & Superintendent, Hendrickson Construction, Inc.; Owner, HCI-AI)
 **Ratified by:** GBT (Chief Architect) — via handoff directive + audit completion
 **Implemented by:** Claude Code (Lead Implementation Engineer)
 **Status:** 🔒 FROZEN
@@ -153,7 +153,7 @@ Changes that do NOT require an ACR (operational changes):
 
 ## Signature
 
-**Buck Adams** — Owner, Hendrickson Construction
+**Buck Adams** — PM & Superintendent, Hendrickson Construction, Inc.; Owner, HCI-AI
 **Date:** 2026-06-28
 **Gate 5 Pilot Status:** Active through 2026-07-01
 

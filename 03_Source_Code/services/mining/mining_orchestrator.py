@@ -32,6 +32,26 @@ MINER_ORDER = [
 MINER_REGISTRY = {cls.MINER_NAME: cls for cls in MINER_ORDER}
 
 
+def _touch_connector_registry(source_systems: list) -> None:
+    """Mark connector_registry rows as freshly synced after a successful miner run.
+    Added 2026-07-02: miners never touched this before, so drift-check's dead-connector
+    rule kept flagging HubSpot/Drive/Houzz as never-synced even while mining ran fine -
+    had to set it by hand once. External sources only (google_drive/hubspot/houzz/
+    outlook) - the postgres:* sources on internal miners aren't tracked here."""
+    external = [s for s in source_systems if not s.startswith("postgres:")]
+    if not external:
+        return
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE connector_registry SET last_indexed = NOW() WHERE source_system = ANY(%s)",
+                    (external,),
+                )
+    except Exception:
+        pass  # best-effort - never let this fail the actual mining run
+
+
 class MiningOrchestrator:
     def __init__(self, dry_run: bool = True):
         self.dry_run = dry_run
@@ -53,6 +73,8 @@ class MiningOrchestrator:
                 results[MinerClass.MINER_NAME] = result.to_dict()
                 for key in totals:
                     totals[key] += getattr(result, key, 0)
+                if not self.dry_run:
+                    _touch_connector_registry(MinerClass.SOURCE_SYSTEMS)
             except Exception as e:
                 results[MinerClass.MINER_NAME] = {"status": "failed", "error": str(e)}
 
@@ -74,6 +96,8 @@ class MiningOrchestrator:
                     "available": list(MINER_REGISTRY.keys())}
         miner = cls(dry_run=self.dry_run)
         result = miner.mine()
+        if not self.dry_run:
+            _touch_connector_registry(cls.SOURCE_SYSTEMS)
         return result.to_dict()
 
     def get_status(self) -> dict:

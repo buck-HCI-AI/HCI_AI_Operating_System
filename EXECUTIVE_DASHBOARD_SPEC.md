@@ -2,7 +2,7 @@
 ## HCI AI Operating System v2.1
 
 **Authority:** Chief Architect Directive — v2.1 (Item 1)  
-**Owner:** Buck Adams  
+**Owner:** Chris Hendrickson (Hendrickson Construction) | **HCI-AI Owner / PM & SS:** Buck Adams  
 **Target Sprint:** Sprint 3 (2026-07-07 → 2026-07-21)  
 **Design principle:** Mobile-first. One screen. No scrolling for critical info.
 

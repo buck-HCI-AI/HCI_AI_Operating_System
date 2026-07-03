@@ -7,7 +7,7 @@
 
 | Role | Actor Examples | Authority Level | Description |
 |---|---|---|---|
-| `owner` | Buck Adams | 5 | Final approval authority on all decisions |
+| `owner` | Buck Adams | 5 | Final approval authority within HCI-AI (Buck Adams: PM & Superintendent, Hendrickson Construction, Inc.; Owner, HCI-AI) |
 | `administrator` | admin | 5 | System admin; user management |
 | `pm` | pm | 3 | Project manager; workflow execution |
 | `estimator` | estimator | 3 | Bid preparation and scope review |

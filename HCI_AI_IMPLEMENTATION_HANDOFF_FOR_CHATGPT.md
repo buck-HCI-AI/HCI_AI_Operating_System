@@ -11,7 +11,7 @@
 
 This is the complete state of the HCI AI Construction Operating System implementation repository. It represents approximately one week of active build work. The system is live, running on a Mac, and actively being used in a 5-day Gate 5 Pilot (2026-06-25 to 2026-07-01) across three real construction projects.
 
-The owner is **Buck Adams**, owner/operator of **Hendrickson Construction Inc (HCI)** — a custom residential general contractor based in Aspen, CO. Buck is building an AI-powered construction operating system to run preconstruction, procurement, field operations, and project intelligence.
+The owner of this repository is **Buck Adams**, PM (Project Manager) and Superintendent at **Hendrickson Construction Inc (HCI)** — a custom residential general contractor based in Aspen, CO, owned by Chris Hendrickson. Buck separately owns and operates **HCI-AI**, the AI-powered construction operating system he is building to run preconstruction, procurement, field operations, and project intelligence for HCI.
 
 ---
 

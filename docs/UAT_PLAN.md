@@ -23,7 +23,7 @@ UAT confirms that the system produces output that is correct, useful, and approp
 
 ## UAT Tester
 
-**Buck Adams** — Owner/Operator, Hendrickson Construction Inc.  
+**Buck Adams** — PM & Superintendent, Hendrickson Construction, Inc.; Owner, HCI-AI  
 Buck evaluates outputs based on whether they would genuinely replace or improve his current process of managing 4 active projects.
 
 ---

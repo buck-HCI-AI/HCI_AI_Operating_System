@@ -3,7 +3,7 @@
 ## HCI AI Operating System
 
 **Sprint:** Sprint 2 — Registry Consolidation
-**Owner:** Buck Adams
+**Owner:** Buck Adams (HCI-AI Owner; PM & Superintendent at Hendrickson Construction)
 **Chief Architect:** ChatGPT
 **Implementation:** Claude Code
 **Repository Governance:** Browser Claude

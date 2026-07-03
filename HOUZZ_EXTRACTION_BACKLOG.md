@@ -3,7 +3,7 @@
 
 **Status:** FUTURE SCOPE — not in active sprint
 **Directive:** Chief Architect Directive 2026-06-27
-**Authorized by:** Buck Adams (Owner) | HCI Chief Architect
+**Authorized by:** Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner) | HCI Chief Architect
 **Sprint Target:** Sprint 5+ (pending architecture review)
 
 ---
@@ -112,4 +112,4 @@ All analysis, pattern detection, and intelligence synthesis runs via the Mining 
 ---
 
 *HOUZZ_EXTRACTION_BACKLOG.md | HCI AI Operating System | Hendrickson Construction, Inc.*
-*Authority: Chief Architect Directive 2026-06-27 | Owner: Buck Adams*
+*Authority: Chief Architect Directive 2026-06-27 | HCI-AI Owner: Buck Adams*
