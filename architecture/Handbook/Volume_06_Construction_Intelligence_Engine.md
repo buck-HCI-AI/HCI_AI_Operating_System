@@ -129,17 +129,48 @@ Every detected risk produces a RiskRecord with: project_id, category, severity (
 **Adding a New Risk Category (requires ACR):** define the category's scope, implement `_detect_{category}_risks()` following the canonical pattern, register it in the RiskDetectionService orchestrator, define its evidence format, set initial confidence calibration, write unit tests against known data, and run in shadow mode (detect but don't surface) for two weeks before activating. New categories must not overlap existing ones — overlap creates duplicate risk records that clutter the approval queue.
 
 ### 6.4.2 Schedule Intelligence Model
-*[Chief Architect: How should the system reason about construction schedule interdependencies?]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Schedule intelligence extends beyond tracking dates. The HCI AI Operating System evaluates the dependency relationships that determine whether a project can successfully advance through construction.
+
+The model continuously analyzes predecessor and successor activities, procurement lead times, inspections, permitting requirements, owner decisions, design dependencies, subcontractor sequencing, and long-lead material availability. Individual activities are evaluated according to their impact on downstream work rather than their duration alone.
+
+Critical-path activities receive the highest level of continuous monitoring because small delays may propagate throughout the project. Non-critical activities are evaluated according to available float, downstream dependencies, and opportunities for recovery before becoming operational concerns.
+
+The objective is early awareness rather than retrospective reporting. Schedule intelligence should identify developing constraints while corrective action remains practical, allowing project teams to mitigate impacts before schedule variance becomes project delay.
 
 ### 6.4.3 Cost Intelligence Model
-*[Chief Architect: How should historical cost data inform current project predictions?
-What variance thresholds are acceptable vs alarming for HCI?]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Cost intelligence combines historical project performance with current project conditions to provide context for financial decision-making rather than replacing formal estimating or accounting processes.
+
+Historical costs establish expected performance ranges for comparable scopes of work. Current bids, procurement activity, schedule conditions, market factors, and project-specific constraints are evaluated against these historical baselines to identify meaningful variance requiring management attention.
+
+Not every variance represents risk. Minor deviations that remain within established historical experience should be surfaced as informational context rather than operational alerts. Significant departures from expected performance, rapidly changing trends, repeated overruns within a trade, or accumulating variance across multiple work packages warrant progressively higher visibility and earlier management review.
+
+The purpose of cost intelligence is to identify developing financial conditions while meaningful corrective action remains available. Historical knowledge provides context; current project conditions determine operational significance.
 
 ### 6.4.4 Vendor Intelligence Model
-*[Chief Architect: How should the system evaluate vendor performance, capacity, and reliability?]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Vendor intelligence evaluates trade partners through demonstrated operational performance rather than isolated project outcomes. Every completed project contributes measurable evidence that improves future procurement decisions.
+
+The model considers schedule reliability, responsiveness, bid completeness, quality performance, communication consistency, change-order behavior, issue resolution, historical participation, workload indicators, and demonstrated ability to perform comparable scopes of work. No single project defines vendor capability; long-term performance establishes organizational confidence.
+
+Vendor intelligence also evaluates operational capacity. A highly capable vendor with insufficient available capacity may present greater project risk than a qualified vendor able to fully support the required schedule. Procurement recommendations therefore balance demonstrated performance with current workload and project timing.
+
+The objective is informed procurement rather than automated vendor selection. AI identifies relevant history, highlights patterns, and presents supporting evidence. Project teams continue to evaluate commercial considerations, relationships, negotiations, and project-specific requirements before making award decisions.
 
 ### 6.4.5 Labor Intelligence
-*[Chief Architect: Define what labor intelligence the system should track and predict]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Labor intelligence provides operational awareness of workforce availability, productivity, and resource demand across active projects. Its purpose is to identify emerging staffing constraints before they affect project execution.
+
+The model evaluates planned versus actual staffing levels, trade sequencing, forecast labor demand, schedule-driven workforce requirements, seasonal influences, known resource constraints, and historical production performance. Labor availability is considered alongside procurement, schedule, and subcontractor readiness because construction performance depends upon the coordinated availability of all three.
+
+Historical project data continuously improves workforce planning by identifying typical staffing patterns for comparable project types, recognizing recurring bottlenecks, and highlighting periods where labor shortages have historically affected project delivery.
+
+Labor intelligence supports planning rather than directing personnel assignments. Final staffing decisions remain the responsibility of project leadership, who balance operational priorities, individual capabilities, safety, subcontractor commitments, and changing field conditions. The platform provides visibility into developing workforce needs so decisions can be made earlier, with better information, and with fewer operational surprises.
 
 ### 6.4.6 Client Intelligence
 *[Chief Architect: Define how the system should track and surface client relationship signals]*

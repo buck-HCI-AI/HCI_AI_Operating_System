@@ -186,12 +186,12 @@ closing out the 2026-06-27 queue (18 chapters) plus the 6 real gaps found after 
 Drive reconciliation (7.0/7.1, 8.1, 9.3, 9.5, 10.2/10.3, 10.4/10.6) — all authored live by GBT in
 this session, none duplicated from the Drive backlog.
 
-**Honest exception, not swept under the rug:** a handful of *sub-section* placeholders below the
-chapter level were never in this queue's top-level list and are still open — Vol III §3.3.17
-(Project Brain future evolution), Vol VI §6.4.2-6.4.7 (schedule/cost/vendor/labor/client
-intelligence models, prediction confidence thresholds), Vol VII §7.6.1-7.6.3 (self-healing
-architecture, continuous monitoring, workflow orchestration), Vol VIII §8.8.1-8.8.3 (release
-management, CD pipeline, governance-at-scale). These are real, smaller open items for a future
-authoring pass, not fabricated as done. Also open: Volume IX §9.2's Gate 5 verdict is genuinely
-pending Buck's sign-off — that is real-world status, not a missing chapter, and should never be
-"closed" by anyone other than Buck.
+**Sub-section placeholders (2026-07-02 21:40 update):** these were never in this queue's
+top-level list; GBT is closing them out in 3 batches this session. Batch 1 done and published:
+Vol III §3.3.17 (Project Brain future evolution), Vol VI §6.4.2-6.4.5 (schedule/cost/vendor/labor
+intelligence models). Still open, Batches 2-3 in progress: Vol VI §6.4.6-6.4.7 (client
+intelligence, prediction confidence thresholds), Vol VII §7.6.1-7.6.3 (self-healing architecture,
+continuous monitoring, workflow orchestration), Vol VIII §8.8.1-8.8.3 (release management, CD
+pipeline, governance-at-scale). Also open: Volume IX §9.2's Gate 5 verdict is genuinely pending
+Buck's sign-off — that is real-world status, not a missing chapter, and should never be "closed"
+by anyone other than Buck.

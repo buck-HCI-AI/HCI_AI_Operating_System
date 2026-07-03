@@ -171,7 +171,15 @@ TABLE project_brain_snapshots (
 ✅ `services/cross_project/routes.py` — vendor overlap, procurement comparison, schedule trends
 
 ### 3.3.17 Future Evolution
-*[Chief Architect: Define how the Project Brain should grow over time]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+The Project Brain is designed as a continuously improving construction intelligence model rather than a static project database. Every completed project should permanently increase the quality, accuracy, and usefulness of future Project Brains without requiring fundamental changes to the underlying architecture.
+
+As additional projects are completed, the Project Brain accumulates organizational knowledge about procurement performance, schedule outcomes, vendor reliability, cost variance, design coordination, construction sequencing, risk indicators, successful mitigation strategies, and operational lessons. This knowledge becomes part of the platform's permanent intelligence rather than remaining isolated within archived project files.
+
+Future Project Brains should initialize with progressively richer context. New projects inherit relevant historical context, and progress is measured by increasing organizational understanding rather than increasing data volume. Every completed project should improve recommendation quality, reduce uncertainty, strengthen prediction accuracy, and shorten the time required for project teams to recognize emerging conditions.
+
+The Project Brain succeeds when each new project begins with the accumulated experience of every project completed before it.
 
 ---
 
