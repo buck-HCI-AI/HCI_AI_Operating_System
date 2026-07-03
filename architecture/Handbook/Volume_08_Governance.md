@@ -125,11 +125,38 @@ The objective of the governance model is to maximize the speed of routine work w
 ## 8.8 Sections Requiring Chief Architect Input (⚠️)
 
 ### 8.8.1 Release Management Process
-*[Chief Architect: How should the platform transition from local-only to production/cloud?
-Define staging, testing, and release gate criteria.]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Every release of the HCI AI Operating System is a governance event as well as a technical event. The objective of release management is to ensure that new capabilities improve operational reliability without disrupting active construction projects or compromising organizational trust.
+
+Development begins within local implementation environments where architectural changes, new services, schema updates, and workflow modifications can evolve without affecting production operations. Once individual components demonstrate functional correctness, they progress through integration testing, architecture review, operational validation, and governance verification before becoming candidates for production deployment.
+
+Production releases are evaluated against four criteria: architectural consistency, operational reliability, governance compliance, and measurable user value. Features that satisfy technical requirements but increase complexity, reduce transparency, or weaken governance do not advance until those concerns are resolved.
+
+Every production release should be reversible, documented, traceable, and understandable. The organization must always be able to determine what changed, why it changed, who approved the release, and how recovery will occur should unexpected behavior be observed.
+
+The objective is predictable operational evolution through disciplined release governance rather than rapid deployment alone.
 
 ### 8.8.2 Continuous Deployment Vision
-*[Chief Architect: Define the target CD pipeline for the platform]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+The long-term objective of continuous deployment is continuous confidence rather than continuous change. Automation should reduce the effort required to deliver reliable improvements while preserving the governance principles that define the HCI AI Operating System.
+
+The target deployment pipeline begins with automated validation of source code, architecture rules, documentation consistency, workflow integrity, and integration health. Successful validation progresses through repeatable testing, controlled staging environments, operational verification, and governance review before authorized production deployment.
+
+As confidence in the platform increases, routine infrastructure improvements, monitoring enhancements, documentation updates, and other low-risk operational changes may become increasingly automated. Higher-impact architectural changes, governance modifications, data migrations, or capabilities affecting construction operations continue to require explicit human review regardless of deployment maturity.
+
+Continuous deployment therefore becomes a controlled extension of the governance model rather than an exception to it. Automation accelerates delivery; governance determines readiness.
+
+The desired outcome is a platform capable of improving continuously while remaining operationally stable, understandable, and trusted by every user who depends upon it.
 
 ### 8.8.3 Operational Governance as the Platform Scales
-*[Chief Architect: How does governance evolve when the platform manages more projects or companies?]*
+*Authored by: Chief Architect (ChatGPT) — 2026-07-02*
+
+Governance must scale with the platform without becoming a barrier to operational effectiveness. As the HCI AI Operating System expands to additional projects, users, offices, or organizations, the principles of governance remain constant even though the mechanisms supporting them become increasingly sophisticated.
+
+Growth should increase standardization rather than complexity. Architectural principles, approval boundaries, role responsibilities, operational policies, and authority models remain consistent regardless of the number of projects or companies managed by the platform. New capabilities extend the existing governance framework instead of creating exceptions to it at the project level.
+
+As organizational scale increases, authority may be delegated, but responsibility remains explicit. Every significant action continues to identify its origin, approval path, execution history, and operational impact. Traceability becomes more valuable as complexity increases because it preserves confidence in both the platform and the decisions made through it.
+
+The ultimate measure of scalable governance is consistency. Whether supporting a single project, an entire construction company, or multiple independent organizations, the HCI AI Operating System should operate according to the same foundational principles: transparent intelligence, governed automation, human authority, and continuously improving organizational knowledge.
