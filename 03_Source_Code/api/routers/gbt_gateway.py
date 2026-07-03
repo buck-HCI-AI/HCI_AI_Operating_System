@@ -1795,6 +1795,18 @@ def role_accounting():
         total_awarded = sum(float(p["awarded"]) for p in projects)
         total_pending = sum(float(p["pending_bids"]) for p in projects)
 
+        # Found 2026-07-03: a project can have bid_packages.status='awarded' (with a
+        # real vendor name on the package) while having zero corresponding bid_entries
+        # rows, so the dollar total silently reads $0 even though real awards exist -
+        # a data-entry gap from that project's import path, not a live bug. Surface it
+        # honestly instead of implying "$0 committed" is a real, verified number.
+        for p in projects:
+            if p["awarded_packages"] > 0 and float(p["awarded"]) == 0:
+                p["data_gap_warning"] = (
+                    f"{p['awarded_packages']} package(s) marked awarded with no bid_entries "
+                    f"dollar amount recorded - awarded total below is understated, not $0"
+                )
+
         return _response("/role/accounting", {
             "role": "Accounting",
             "as_of": time.strftime("%Y-%m-%d"),
@@ -3053,6 +3065,36 @@ def system_drift_check():
             })
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Test-data-leak check errored: {e}"})
+
+    # 12. Bid packages marked awarded with no corresponding bid_entries dollar amount -
+    #     found 2026-07-03 on 246GW (19 packages, real vendor names on each, all imported
+    #     via a different path than the other 3 pilot projects) - the accounting console
+    #     silently read "$0 awarded" for a project with real committed work, which is a
+    #     financial blind spot, not a $0 fact. This is a real data-entry gap requiring a
+    #     human to enter the actual awarded amounts, not something to auto-fill with a
+    #     guess - flagged here so it can't sit silent on a future project either.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_code, COUNT(*) c
+                    FROM bid_packages bp
+                    JOIN projects p ON p.id = bp.project_id
+                    LEFT JOIN bid_entries be ON be.bid_package_id = bp.id AND be.status = 'awarded'
+                    WHERE bp.status = 'awarded' AND be.id IS NULL
+                      AND p.status IN ('active','design','bidding','preconstruction','monitoring')
+                    GROUP BY p.project_code
+                """)
+                gaps = cur.fetchall()
+        if gaps:
+            findings.append({
+                "severity": "high",
+                "category": "awarded_package_missing_bid_entry",
+                "detail": f"{len(gaps)} project(s) have bid_packages marked 'awarded' with no matching bid_entries row - accounting/owner dollar totals for these projects are understated, not accurate zeros. Needs a human to enter the real awarded amounts.",
+                "items": [f"{r['project_code']}: {r['c']} package(s)" for r in gaps],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Awarded-package data-gap check errored: {e}"})
 
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
