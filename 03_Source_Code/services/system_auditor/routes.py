@@ -336,11 +336,15 @@ class SystemAuditor(BaseIntelligenceService):
         fixme_count = 0
         hack_count = 0
 
+        # Anchored to an actual comment marker (# TODO ...) so the scanner doesn't
+        # count its own pattern definitions/messages below as findings against itself
+        # (found 2026-07-02: reported "3 FIXME + 3 HACK" that were entirely this
+        # file's own regex source and debt_summary strings, scanning itself).
         patterns = [
-            (re.compile(r'\bTODO\b', re.IGNORECASE), "todo"),
-            (re.compile(r'\bFIXME\b', re.IGNORECASE), "fixme"),
-            (re.compile(r'\bHACK\b', re.IGNORECASE), "hack"),
-            (re.compile(r'\bXXX\b'), "xxx"),
+            (re.compile(r'#\s*TODO\b', re.IGNORECASE), "todo"),
+            (re.compile(r'#\s*FIXME\b', re.IGNORECASE), "fixme"),
+            (re.compile(r'#\s*HACK\b', re.IGNORECASE), "hack"),
+            (re.compile(r'#\s*XXX\b'), "xxx"),
         ]
 
         scan_dirs = [_SVC_DIR, _API_DIR / "routers"]
@@ -348,7 +352,7 @@ class SystemAuditor(BaseIntelligenceService):
             if not scan_dir.exists():
                 continue
             for py_file in scan_dir.rglob("*.py"):
-                if "__pycache__" in str(py_file):
+                if "__pycache__" in str(py_file) or py_file.resolve() == Path(__file__).resolve():
                     continue
                 try:
                     content = py_file.read_text(errors="replace")
