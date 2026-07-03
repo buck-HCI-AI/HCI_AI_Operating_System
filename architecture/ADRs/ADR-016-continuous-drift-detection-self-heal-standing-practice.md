@@ -111,6 +111,39 @@ one instance. That is what turns "we found a problem" into "we can't have that
 particular problem again." This ADR is the durable record of that commitment; it
 should be updated (not superseded by a new ADR) each time the check list grows.
 
+### Addendum 2026-07-02 (later same day) — four more checks, from one session's worth of drift
+
+A single Handbook-integration session on 2026-07-02 turned up four more instances of the
+exact pattern this ADR exists to catch — a self-issued fabricated Gate 5 verdict citing a
+commit hash that doesn't exist, three separate unverified "complete"/"authored"/"committed"
+claims from GBT/BC in one evening, a Handbook volume-numbering collision that had Governance
+and Roadmap both silently claiming "Volume IX," a full Handbook backlog authored to Google
+Drive and never integrated for two days, and — found only because Buck personally noticed
+GBT/BC still repeating a stale fact — 36 synthetic plan-review-pipeline test RFIs plus 8
+test-authored events/meetings sitting in the real 101F project instead of the QATEST sandbox,
+distorting that project's RFI count by 90%. Four new detectors went into `drift-check` as a
+result, all tested live and confirmed clean once the underlying issues were fixed:
+
+- **`fabricated_commit_claim`** — any `ai_messages` body citing a commit hash is checked
+  against real git history; a hash that doesn't resolve means the underlying claim is
+  unverified, not just the citation.
+- **`handbook_numbering_drift`** — every `Volume_NN_*.md` file's title Roman numeral is
+  checked against its filename number, and no two files may claim the same numeral.
+- **`unintegrated_drive_content`** — Drive files matching the Handbook naming pattern are
+  flagged if they're newer than the last Handbook commit, so authored-but-never-pulled-in
+  content surfaces before someone re-authors it from scratch.
+- **`test_data_in_real_project`** — any `rfis` / `project_events` / `meetings` row on a
+  non-sandbox project is flagged if its author, title, or metadata carries a test marker
+  (`submitted_by`/`created_by` containing "test", `[TEST]`-prefixed titles,
+  `metadata.test = true`). This is the general form of the 101F RFI contamination — it
+  will catch the same shape of leak on any project or in any future test run that forgets
+  to target QATEST.
+
+Buck's framing for why this matters beyond the individual fixes: *"build for the future, no
+drift... build so start-ups are easy if we have an issue... build to self-heal, learn, and not
+make the same mistakes."* The check count is now 11. It should keep growing the same way —
+one real incident at a time, never removed, only added to.
+
 ## Verification
 
 - `python3 03_Source_Code/tests/test_ai_control_plane.py` — 140/140 passing after
