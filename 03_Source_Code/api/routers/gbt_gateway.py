@@ -2978,6 +2978,46 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Unintegrated Drive content check errored: {e}"})
 
+    # 11. Test-authored records leaking into real (non-sandbox) projects - the exact
+    #     2026-07-02 pattern where 36 synthetic RFIs from plan-review pipeline testing
+    #     (submitted_by = test_suite/test_pdf_upload) sat in 101F's real rfis table
+    #     for days, plus [TEST]-titled meetings and test_suite decision events, none of
+    #     it in the QATEST sandbox project where it belonged. Catches the same shape of
+    #     issue anywhere it recurs: a project marked active/monitoring/reference with
+    #     rows whose author/title/content flags them as test data.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_code, 'rfis' AS tbl, COUNT(*) c
+                    FROM rfis r JOIN projects p ON p.id = r.project_id
+                    WHERE p.status != 'sandbox'
+                      AND (r.submitted_by ILIKE '%test%' OR r.subject ILIKE '[test]%' OR r.question ILIKE 'test%')
+                    GROUP BY p.project_code
+                    UNION ALL
+                    SELECT p.project_code, 'project_events', COUNT(*)
+                    FROM project_events pe JOIN projects p ON p.id = pe.project_id
+                    WHERE p.status != 'sandbox'
+                      AND (pe.created_by ILIKE '%test%' OR pe.title ILIKE '%[test]%' OR pe.title ILIKE '%test suite%'
+                           OR (pe.metadata->>'test') = 'true')
+                    GROUP BY p.project_code
+                    UNION ALL
+                    SELECT p.project_code, 'meetings', COUNT(*)
+                    FROM meetings m JOIN projects p ON p.id = m.project_id
+                    WHERE p.status != 'sandbox' AND m.title ILIKE '%[test]%'
+                    GROUP BY p.project_code
+                """)
+                leaks = cur.fetchall()
+        if leaks:
+            findings.append({
+                "severity": "high",
+                "category": "test_data_in_real_project",
+                "detail": f"{len(leaks)} project/table combination(s) with test-authored records outside the QATEST sandbox - verify and purge, these get read as real by every agent and endpoint",
+                "items": [f"{r['project_code']}.{r['tbl']}: {r['c']} row(s)" for r in leaks],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Test-data-leak check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
