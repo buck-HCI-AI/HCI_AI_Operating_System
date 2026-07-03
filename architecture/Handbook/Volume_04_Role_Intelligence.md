@@ -24,7 +24,7 @@ The cognitive model for each role is different. Buck makes portfolio-level strat
 
 **The Design Principle:** Each role console presents exactly the information most relevant to the decisions that role makes — nothing more, nothing less. A console that buries the critical alert in a sea of non-urgent data has failed. A console that omits important context has also failed.
 
-**The Shared Foundation:** All role consoles draw from the same underlying intelligence layer. When a risk is detected, it appears in every console that needs to know about it — not just the one that seems most relevant. The PM needs to know about the same steel delay that Buck sees in the Owner Console. Different framing, same underlying fact.
+**The Shared Foundation:** All role consoles draw from the same underlying intelligence layer. When a risk is detected, it appears in every console that needs to know about it — not just the one that seems most relevant. The PM needs to know about the same schedule risk that Buck sees in the Owner Console. Different framing, same underlying fact.
 
 **Trust Through Consistency:** When different consoles show consistent information about the same project, it builds trust. When the Owner Console shows a risk that the PM Console doesn't mention, it erodes trust. Consistency across consoles is a design requirement, not just a nice-to-have.
 
@@ -228,10 +228,12 @@ Auto-selected by active trade (from `houzz_subcontractors` + `houzz_schedule_ite
 3. Critical/high severity risks across ALL active projects
 4. Per-project summary: health, schedule variance, open risks, committed vs contract
 
-**Live data as of 2026-06-29:**
+**Example data snapshot, 2026-06-29** (illustrative — pull `GET /gateway/role/owner` for current numbers, not this table):
 - $9.84M total contract value tracked across 4 active projects
 - 1,039 unique pending approvals
-- 1 critical risk: 101F steel delay (-5 days)
+- Note: that day's snapshot showed 1 critical risk, a 101F schedule variance later traced to a test
+  daily-log entry rather than a real field condition — cleared from live data by 2026-07-01. Kept
+  here only as an example of what a critical-risk line item looks like, not as a current fact.
 
 ---
 

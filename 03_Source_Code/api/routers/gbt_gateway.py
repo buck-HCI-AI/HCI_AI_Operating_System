@@ -2679,6 +2679,7 @@ def system_drift_check():
     GBT's CYCLE files and the real CURRENT_SPRINT.md. Intended to run on a
     schedule (n8n, weekly) and report findings via /ai/messages, not just
     sit here waiting to be polled."""
+    import subprocess
     t0 = time.time()
     findings = []
     try:
@@ -2869,6 +2870,113 @@ def system_drift_check():
                     })
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Permit-phase mismatch check errored: {e}"})
+
+    # 8. Fabricated commit-hash claims - the exact "GATE 5: GO, signed, commit 8e003ec"
+    #    pattern found 2026-07-02, where an agent cited a specific commit as proof of a
+    #    claim and the commit did not exist anywhere in git history. Any ai_message body
+    #    that cites what looks like a commit hash gets that hash checked against the
+    #    real repo; a hash that doesn't resolve is a fabricated verification, not a typo.
+    try:
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        hash_pattern = _re.compile(r"\bcommit[:\s]+([0-9a-f]{7,40})\b", _re.IGNORECASE)
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, source_agent, title, body, created_at FROM ai_messages
+                    WHERE body ~* 'commit[:\\s]+[0-9a-f]{7,40}'
+                    ORDER BY created_at DESC LIMIT 100
+                """)
+                candidates = cur.fetchall()
+        fabricated = []
+        for r in candidates:
+            for m in hash_pattern.finditer(r["body"]):
+                h = m.group(1)
+                check = subprocess.run(["git", "cat-file", "-t", h], cwd=repo_root,
+                                        capture_output=True, text=True, timeout=5)
+                if check.returncode != 0:
+                    fabricated.append(f"#{r['id']} ({r['source_agent']}, {r['created_at'].date()}): "
+                                       f"cites commit {h} - not in git history - \"{r['title']}\"")
+        if fabricated:
+            findings.append({
+                "severity": "high",
+                "category": "fabricated_commit_claim",
+                "detail": f"{len(fabricated)} ai_message(s) cite a commit hash as verification that does not exist in git log - treat the underlying claim as unverified, not just the hash",
+                "items": fabricated,
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Fabricated commit-hash check errored: {e}"})
+
+    # 9. Handbook volume filename/title numbering drift - the exact bug found 07-02
+    #    where Volume_06/07/08's internal titles said "Volume VII/VIII/IX" (one Roman
+    #    numeral too high), and Governance + Roadmap both silently claimed "Volume IX."
+    try:
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        handbook_dir = os.path.join(repo_root, "architecture", "Handbook")
+        roman = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X"}
+        numbering_issues = []
+        seen_titles = {}
+        if os.path.isdir(handbook_dir):
+            for fname in sorted(os.listdir(handbook_dir)):
+                m = _re.match(r"Volume_(\d\d)_", fname)
+                if not m or not fname.endswith(".md"):
+                    continue
+                n = int(m.group(1))
+                expected = roman.get(n)
+                with open(os.path.join(handbook_dir, fname)) as f:
+                    first_line = f.readline().strip()
+                title_m = _re.search(r"Volume\s+([IVX]+)\s*—", first_line)
+                actual = title_m.group(1) if title_m else None
+                if expected and actual and actual != expected:
+                    numbering_issues.append(f"{fname}: filename implies Volume {expected}, title says Volume {actual}")
+                if actual:
+                    seen_titles.setdefault(actual, []).append(fname)
+        for roman_num, files in seen_titles.items():
+            if len(files) > 1:
+                numbering_issues.append(f"Volume {roman_num} claimed by {len(files)} files: {', '.join(files)}")
+        if numbering_issues:
+            findings.append({
+                "severity": "medium",
+                "category": "handbook_numbering_drift",
+                "detail": f"{len(numbering_issues)} Handbook volume(s) with filename/title mismatch or duplicate Roman numeral",
+                "items": numbering_issues,
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Handbook numbering check errored: {e}"})
+
+    # 10. Unintegrated Drive Handbook content - the exact 07-02 root cause: GBT+BC
+    #     authored real Handbook chapters, saved them to Drive marked "PUBLISHED," and
+    #     they sat there for 2+ days never pulled into the repo, so a later session
+    #     nearly re-authored the same chapters from scratch. Flags Drive files matching
+    #     the Handbook naming pattern that are newer than the last Handbook commit.
+    try:
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        last_commit = subprocess.run(
+            ["git", "log", "-1", "--format=%ct", "--", "architecture/Handbook/"],
+            cwd=repo_root, capture_output=True, text=True, timeout=5,
+        )
+        last_commit_ts = int(last_commit.stdout.strip()) if last_commit.returncode == 0 and last_commit.stdout.strip() else 0
+        drive_data = _proxy("/services/drive-intelligence/search", {"q": "HANDBOOK"})
+        drive_files = (drive_data or {}).get("files", [])
+        unintegrated = []
+        for f in drive_files:
+            modified = f.get("modified")
+            if not modified:
+                continue
+            try:
+                mod_ts = datetime.fromisoformat(modified).timestamp()
+            except Exception:
+                continue
+            if mod_ts > last_commit_ts:
+                unintegrated.append(f"{f.get('name')} (Drive-modified {modified}, after last Handbook commit)")
+        if unintegrated:
+            findings.append({
+                "severity": "high",
+                "category": "unintegrated_drive_content",
+                "detail": f"{len(unintegrated)} Drive file(s) matching Handbook naming are newer than the last Handbook commit - verify they aren't real authored content sitting un-integrated before authoring anything new",
+                "items": unintegrated,
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Unintegrated Drive content check errored: {e}"})
 
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),

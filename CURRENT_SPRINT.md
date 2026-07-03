@@ -156,7 +156,7 @@ Three pillars:
 | Item | Status |
 |---|---|
 | 64 Eastwood | 🟡 2 open risks (test data); gateway endpoints all PASS |
-| 101 Francis | 🟡 Critical risk (steel delay from test log); gateway endpoints all PASS |
+| 101 Francis | 🟢 0-day schedule variance as of 2026-07-02 (the "steel delay" critical risk noted here on 06-28/06-29 came from a test log entry, not a real field condition, and cleared from live data by 07-01); gateway endpoints all PASS |
 | 1355 Riverside | 🟢 No field data — GREEN is empty not confirmed |
 | 246 Gallo Way | 🟢 Initialized: 280 schedule items, 44 bid packages, all endpoints live |
 | 83 Sagebrusch | 🟢 In OS; pending activation |

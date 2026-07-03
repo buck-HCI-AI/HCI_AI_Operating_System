@@ -340,7 +340,11 @@ finally:
     _msgraph._request = _real_request
 
 # ── 18. role_owner snapshot fallback (2026-07-01: null-until-nightly-job bug) ──
-print("\n18. GET /gateway/role/owner — 101F shows real data, not null/blank")
+# Was hardcoded to == -5, the value from a 06-29/06-30 test daily-log entry that has since
+# cleared from live data (see LIVE_PROJECT_STATE.md 2026-07-02 correction note). Fixed 2026-07-02
+# to cross-check against the executive report's own signed value instead of a frozen number, same
+# pattern as check 13 above - this asserts the two endpoints agree, not what the number should be.
+print("\n18. GET /gateway/role/owner — 101F shows real data, consistent with executive report")
 code, d = get("/role/owner")
 check("Returns 200", code == 200, code)
 p101 = next((p for p in d.get("payload", {}).get("projects", []) if p.get("project_code") == "101F"), None)
@@ -348,8 +352,12 @@ check("101F present", p101 is not None)
 if p101:
     check("health is not null", p101.get("health") is not None, p101)
     check("schedule_variance_days is not null", p101.get("schedule_variance_days") is not None, p101)
-    check("schedule_variance_days matches executive report sign convention",
-          p101.get("schedule_variance_days") == -5, p101.get("schedule_variance_days"))
+    _, exec_d = get("/executive/report")
+    exec_p101 = next((p for p in exec_d.get("payload", {}).get("projects", []) if p.get("project_code") == "101F"), None)
+    if exec_p101:
+        check("schedule_variance_days matches executive report sign convention",
+              p101.get("schedule_variance_days") == exec_p101.get("schedule_variance_days"),
+              (p101.get("schedule_variance_days"), exec_p101.get("schedule_variance_days")))
 
 # ── 19. Plan-review-to-RFI pipeline (2026-07-01: formalizes the RFI-batch incident) ─
 print("\n19. POST /gateway/plan-review/analyze — gaps become logged RFIs, never emailed")

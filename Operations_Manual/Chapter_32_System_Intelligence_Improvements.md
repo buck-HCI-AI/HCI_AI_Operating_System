@@ -31,7 +31,7 @@
 
 **Finding:** The system correctly identified that the live projects are in procurement distress:
 - 64EW: 6% bid coverage (2/35 packages) → **EMERGENCY — needs sub outreach immediately**
-- 101F: 41% bid coverage + steel delay + 1 critical risk → **HIGH**
+- 101F: 41% bid coverage → **HIGH** (the "steel delay + 1 critical risk" originally listed here traced back to a test daily-log entry, not a real field condition — removed 2026-07-02)
 - 1355R: 62% bid coverage + 5 open risks → **ELEVATED**
 
 **What the system can't do yet:** Tell Buck WHICH specific packages don't have bids, WHICH subs to invite, and DRAFT the invitation emails automatically.

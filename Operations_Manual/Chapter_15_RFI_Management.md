@@ -8,7 +8,7 @@
 
 An RFI (Request for Information) is a formal question to the design team when the drawings, specs, or field conditions don't give the sub or PM enough to proceed correctly. RFIs exist because guessing on an ambiguous detail is how a wall ends up in the wrong place or a structural connection gets built wrong.
 
-An open RFI blocking active work is one of the fastest ways a project goes from GREEN to RED — see 101F's steel delay pattern in Chapter 10, and 1355R's Axis B beam pocket RFI below.
+An open RFI blocking active work is one of the fastest ways a project goes from GREEN to RED — see 1355R's Axis B beam pocket RFI below. (An earlier version of this chapter cited a 101F steel-delay RFI as a second example; that reading traced back to a test daily-log entry rather than a real field condition and was removed 2026-07-02.)
 
 ---
 

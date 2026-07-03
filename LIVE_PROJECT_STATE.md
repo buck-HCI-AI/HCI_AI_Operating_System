@@ -1,8 +1,8 @@
 # LIVE_PROJECT_STATE.md
 ## HCI AI Operating System — Current Live State
 
-**Organization:** Hendrickson Construction, Inc.
-**Owner:** @buck-HCI-AI (Buck Adams)
+**Organization:** Hendrickson Construction, Inc. (owned by Chris Hendrickson)
+**Owner:** @buck-HCI-AI (Buck Adams) — PM & Superintendent at Hendrickson Construction; owner/operator of HCI-AI, this repository
 **Last Updated:** 2026-07-02T15:35 UTC
 **Updated By:** Claude Code — full system audit + plan-review pipeline extensions (this session). See handoff block below.
 **Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
@@ -120,15 +120,25 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 
 ## [STATE CHANGE 2026-06-30] Gate 5 GO — AUTHORIZED by Buck Adams
 
+> **⚠️ DISPUTED — 2026-07-02, Claude Code:** This entry's "AUTHORIZED by Buck Adams" claim is
+> contradicted by every later, more careful record: the 2026-07-01 entry below (line ~423) still
+> lists "Gate 5 Pilot window closes today — pilot review/go-forward decision is Buck's" as a
+> pending decision, and `AI_TEAM/GATE5_SIGNOFF_PENDING.md` + `AI_TEAM/GATE5_CLOSE_2026-07-01.md`
+> (both dated 07-01, i.e. written after this entry) explicitly say "VERDICT PENDING BUCK
+> SIGN-OFF" and ask Buck to respond with his own authorization. This matches a pattern found
+> elsewhere this session (2026-07-02) of a self-issued "GATE 5: GO" verdict with a fabricated
+> commit hash. Per the append-only rule this entry is not deleted, but it should not be treated
+> as real until Buck confirms he actually authorized this on 06-30 — flagged to him directly.
+
 **Gate 5 Verdict: GO — Full Production Authorization**
 **Authorization Date:** 2026-06-30
-**Authorized By:** Buck Adams (Owner)
+**Authorized By:** Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner)
 
 ### Live Production Projects
 | ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
 |---|---|---|---|---|---|---|---|---|
 | 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | 0 days |
-| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 41 | 2 | -5 days (steel delay) |
+| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 41 | 2 | 0 days |
 | 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🔴 RED | 73 | 5 | 0 days |
 
 ### Monitored / Staged
@@ -145,8 +155,14 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 | 13 | ASPN-MC | 200 E Hopkins | Learning/reference |
 | 14+ | Various | 18+ additional | Learning/reference — no operational writes |
 
-**Active risks:** 64EW (2 open risks), 101F (steel delay -5 days critical)
+**Active risks:** 64EW (2 open risks), 101F (2 open risks)
 **Total open risks:** 4 | **Open RFIs:** 0
+
+*Note (2026-07-02): an earlier version of this doc listed a "101F steel delay -5 days" as an
+active risk. That came from a test daily-log entry, not a real field condition — CURRENT_SPRINT.md
+itself flags it as "steel delay from test log," and the live schedule_variance table and daily
+project_brain_snapshots have shown 0 days for 101F since 2026-07-01. Corrected here so it stops
+being repeated as current fact.*
 
 ---
 
@@ -293,7 +309,7 @@ IMPLEMENTATION_INTEGRATION_PLAN.md + 6 Houzz workstream docs
 
 ## 🔨 Mining Engine Status (ACR-004 — LIVE 2026-06-27)
 
-**Authorization:** Buck Adams (Owner) — 2026-06-27 | ACR: ChatGPT via GBT Reconnect Directive
+**Authorization:** Buck Adams (PM & SS, Hendrickson Construction; HCI-AI Owner) — 2026-06-27 | ACR: ChatGPT via GBT Reconnect Directive
 **Schedule:** 03:00 daily (n8n AUTO-004)
 **Dry-run default:** True (explicit `dry_run=False` required for writes)
 

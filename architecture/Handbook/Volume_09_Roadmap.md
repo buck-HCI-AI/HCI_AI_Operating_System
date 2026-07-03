@@ -100,7 +100,9 @@ Every subsequent phase should satisfy a single test: does it make the operating 
 
 **Gate 5 Pilot (Closed 2026-07-01 — verdict pending Buck's sign-off, see §9.2):**
 - Projects: 64 Eastwood, 101 Francis, 1355 Riverside
-- Current health: 64EW YELLOW, 101F YELLOW (-5d steel delay), 1355R GREEN
+- Current health (2026-07-02): 64EW YELLOW, 101F GREEN (0-day schedule variance — an earlier
+  "steel delay" reading traced back to a test daily-log entry, not a real field condition, and
+  cleared from live data by 07-01), 1355R GREEN
 
 **Remaining blockers before full go-live:**
 1. Houzz Browser Extraction (15 min × 3 projects — unlocks BTW-7 + all Houzz tables)
