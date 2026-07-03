@@ -60,20 +60,41 @@ def _gather_data(project_number: str) -> dict:
     data = {"project_number": project_number}
 
     try:
-        from project_brain_svc import ProjectBrainService
-        data["brain"] = ProjectBrainService(project_number).snapshot()
+        # No project_brain_svc module exists (dead import found 2026-07-02 - this
+        # silently returned {"error": ...} for every single call, which is why every
+        # PM review ever produced showed "project": "N/A" and generic placeholder
+        # content regardless of how much real data existed). Pull the same fields
+        # directly - name/status/contract value are all this prompt actually needs
+        # from "brain" and don't require the full intelligence engine.
+        conn = _pg()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name, status, scope, contract_value, hubspot_deal_id FROM projects "
+            "WHERE name ILIKE %s LIMIT 1",
+            (f"%{project_number.split()[0]}%",)
+        )
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            data["brain"] = {
+                "project": {"name": row["name"]},
+                "deal_stage": row["status"],
+                "deal_amount": row["contract_value"],
+            }
+        else:
+            data["brain"] = {"error": f"no project matched '{project_number}'"}
     except Exception as e:
         data["brain"] = {"error": str(e)}
 
     try:
         from bid_intelligence_svc import BidIntelligenceService
-        data["bids"] = BidIntelligenceService.bid_summary(project_number)
+        data["bids"] = BidIntelligenceService.summary(project_number)
     except Exception as e:
         data["bids"] = {"error": str(e)}
 
     try:
         from procurement_svc import ProcurementService
-        data["procurement"] = ProcurementService.status(project_number)
+        data["procurement"] = ProcurementService.procurement_status(project_number)
     except Exception as e:
         data["procurement"] = {"error": str(e)}
 

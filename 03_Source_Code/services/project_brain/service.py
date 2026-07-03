@@ -233,6 +233,25 @@ class ProjectBrainService(BaseIntelligenceService):
                 f"LAST DAILY LOG ({dl.get('log_date')}): {str(dl.get('work_performed', ''))[:300]}"
             )
 
+        # Open risks - found missing 2026-07-02: this method's context never included
+        # risk data at all, so Ask Project Brain honestly (correctly) said it had no
+        # access to risk registers even when the project had real, current open risks.
+        if project.get("id"):
+            try:
+                open_risks = self.pg_query(
+                    "SELECT severity, risk_type, description FROM risks "
+                    "WHERE project_id=%s AND status='open' "
+                    "ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 "
+                    "WHEN 'medium' THEN 2 ELSE 3 END LIMIT 8",
+                    (project["id"],)
+                )
+                if open_risks:
+                    risk_lines = [f"  [{r['severity'].upper()}] ({r['risk_type']}) {r['description'][:200]}"
+                                  for r in open_risks]
+                    context_lines.append("OPEN RISKS:\n" + "\n".join(risk_lines))
+            except Exception:
+                pass
+
         for r in all_results:
             text = r.get("payload", {}).get("text") or r.get("text", "")
             src  = r.get("payload", {}).get("source") or r.get("payload", {}).get("original_filename", "")

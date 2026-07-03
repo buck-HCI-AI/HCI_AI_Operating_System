@@ -312,7 +312,7 @@ async function loadProject(project) {
   // Bid stats
   const bids = snap.bid_packages || [];
   const totalPkgs = bids.length;
-  const totalBidsIn = bids.reduce((acc, bp) => acc + (bp.entry_count || 0), 0);
+  const totalBidsIn = bids.reduce((acc, bp) => acc + (bp.bid_count || 0), 0);
   document.getElementById('stat-pkgs').textContent = totalPkgs;
   document.getElementById('stat-bids').textContent = totalBidsIn;
   const pct = totalPkgs > 0 ? Math.round(100 * totalBidsIn / totalPkgs) : 0;
@@ -320,7 +320,7 @@ async function loadProject(project) {
   document.getElementById('bid-bar').style.width   = `${Math.min(pct,100)}%`;
 
   // Risk count
-  const openRisks = (risks.open_risks || []).length;
+  const openRisks = (risks.risks || []).filter(r => (r.status || 'open') === 'open').length;
   document.getElementById('stat-risks').textContent = openRisks;
 
   // Action items
@@ -365,7 +365,7 @@ async function loadProject(project) {
     </div>`).join('') : '<div class="empty">No schedule variance detected.</div>';
 
   // Risks
-  const riskList = risks.open_risks || [];
+  const riskList = (risks.risks || []).filter(r => (r.status || 'open') === 'open');
   document.getElementById('risks-list').innerHTML = riskList.length ? `
     <table class="log-table">
       <tr><th>Severity</th><th>Description</th><th>Type</th><th>Date</th></tr>
