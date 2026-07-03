@@ -3075,19 +3075,43 @@ async def system_self_heal(request: Request):
     t0 = time.time()
     actions_taken = []
     try:
-        import subprocess
+        import subprocess, shutil
+        # launchd's minimal PATH doesn't include /usr/local/bin or /opt/homebrew/bin,
+        # so a bare "docker" fails with FileNotFoundError under this service - same
+        # class of bug as the pdftoppm PATH issue fixed earlier. Found 2026-07-03 when
+        # this endpoint silently did nothing during a live SQLITE_IOERR incident.
+        docker_bin = shutil.which("docker") or "/usr/local/bin/docker"
+        if not os.path.exists(docker_bin):
+            for candidate in ("/opt/homebrew/bin/docker", "/usr/bin/docker"):
+                if os.path.exists(candidate):
+                    docker_bin = candidate
+                    break
+
         n8n_key = os.environ.get("N8N_API_KEY", "")
         resp = requests.get("http://localhost:5678/api/v1/workflows", headers={"X-N8N-API-KEY": n8n_key},
                              params={"limit": 1}, timeout=8)
-        body_text = resp.text if resp.status_code != 200 else ""
-        if resp.status_code != 200 and "SQLITE_IOERR" in body_text:
-            subprocess.run(
-                ["docker", "compose", "-f",
-                 os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "docker-compose.yml")),
-                 "restart", "n8n"],
-                capture_output=True, timeout=60,
-            )
-            actions_taken.append("Restarted n8n container - detected SQLITE_IOERR on its API, same signature as ADR-015")
+        # Original check only looked for "SQLITE_IOERR" literally in the API response
+        # body - but a live incident 2026-07-03 showed a plain 401 with no error text
+        # at all; the SQLITE_IOERR signature only ever appeared in `docker logs n8n`,
+        # never in the HTTP response. Check the actual container logs instead.
+        needs_restart = False
+        reason = ""
+        if resp.status_code != 200:
+            log_check = subprocess.run([docker_bin, "logs", "--since", "5m", "n8n"],
+                                        capture_output=True, text=True, timeout=15)
+            log_text = (log_check.stdout or "") + (log_check.stderr or "")
+            if "SQLITE_IOERR" in log_text:
+                needs_restart = True
+                reason = f"n8n API returned {resp.status_code} and SQLITE_IOERR found in recent container logs"
+            elif resp.status_code in (401, 403):
+                # Not a self-heal case by itself (could be a real rotated/revoked key,
+                # which needs a human to regenerate it) - report, don't restart blind.
+                actions_taken.append(f"n8n API returned {resp.status_code} but no SQLITE_IOERR in recent logs - "
+                                      f"not auto-restarting (could be a genuinely revoked API key, needs human check)")
+
+        if needs_restart:
+            subprocess.run([docker_bin, "restart", "n8n"], capture_output=True, timeout=60)
+            actions_taken.append(f"Restarted n8n container - {reason}, same signature as ADR-015")
     except Exception as e:
         actions_taken.append(f"n8n health check/restart attempt errored: {e}")
 
