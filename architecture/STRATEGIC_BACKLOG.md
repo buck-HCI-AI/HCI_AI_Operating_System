@@ -158,36 +158,44 @@ in `executive_inbox`, showing up as fake client decisions in `client_comms`. Res
 ---
 
 ### BTW-9 — Company Knowledge Graph
-**Mission:** BTW-009 | **Priority:** HIGH | **Status:** OPEN
+**Mission:** BTW-009 | **Priority:** HIGH | **Status:** COMPLETE (verified 2026-07-06)
 
-**Nothing pre-built** — this is a new capability.
+Fifth instance of the same drift found this session — this said "Nothing pre-built,"
+but `services/knowledge_graph/` (`graph.py`, 14.8KB) is a real, live, substantial
+implementation. Verified with real API calls: `GET /services/knowledge-graph/graph`
+returns a real graph — 3,064 nodes, 433 edges across project/vendor/contact/rfi/
+change_order/bid types. Three of the four example queries below are directly
+implemented and confirmed working: `/vendor?name=X` (every project a vendor worked),
+`/issues?q=X` (similar issues across projects — tested with "waterproofing," returned
+real matching RFIs), and `/product?q=X` (who installed/ordered a product — endpoint
+works, returned empty for the one term tested, likely a data-population gap not a
+missing-capability gap). The 4th example ("decisions made on rainy days") has no
+dedicated endpoint and would need new work, but the core capability is real, not new.
 
 **Foundation available:**
 - Qdrant vector search (13 collections) ✅
 - `background_learning_records` (406 records) ✅
 - All entity tables (projects, contacts, vendors, subcontractors, documents) ✅
+- Entity/relationship graph, vendor/issue/product query endpoints ✅ (see above)
 
-**To build:**
-```
-knowledge_graph service
-    ├── Entity nodes: projects, clients, employees, vendors, subs, materials
-    ├── Relationship edges: worked_on, supplied_to, installed, inspected, decided
-    ├── Semantic search: "similar waterproofing issues" → Qdrant cosine similarity
-    └── Natural language queries: "Who installed product X before?" → graph traversal + LLM
-```
-
-**Enables queries like:**
-- "Show me every project where Vendor X worked"
-- "Find similar waterproofing issues across all projects"
-- "Who has installed this product before?"
-- "What decisions were made on rainy days in 2025?"
-
-**Handbook:** Vol IX (Roadmap) — depends on CA authorship; Vol II — intelligence model philosophy needed
+**Handbook:** Vol IX (Roadmap) — depends on CA authorship; Vol II — intelligence model philosophy needed (doc catch-up only, core code is done)
 
 ---
 
 ### BTW-10 — Continuous Discovery Engine
-**Mission:** BTW-010 | **Priority:** HIGH | **Status:** OPEN
+**Mission:** BTW-010 | **Priority:** HIGH | **Status:** PARTIAL (checked 2026-07-06)
+
+Checked before assuming "nothing built" (per the pattern found in BTW-4/5/8/9):
+`services/continuous_discovery/detection.py` (8.1KB) is real and live -
+`GET /services/continuous-discovery/detect` works now, checking houzz + hubspot
+connectors for staleness/changes. So the manual "run detection" piece already exists.
+What's still genuinely missing, and matches this section's own blockers below: the
+*automatic/scheduled* triggering (nothing currently calls `/detect` on a schedule -
+same class of gap BTW-4's daily-summary fix just closed, could use the same pattern
+once the blockers clear) and the full closed loop through Architecture Sync/Handbook/
+missions table, which wasn't verified to exist. Not marking this complete - the real
+blockers below are still real (confirmed live: `houzz_tasks`/`houzz_files` both 0 rows,
+n8n API key currently 401) - but "nothing pre-built" undersold what's actually there.
 
 **Architecture designed** — the Browser Agent Standard and connector framework define this flow. The continuous discovery piece (automatic triggering) is not yet built.
 
