@@ -22,7 +22,7 @@ _HS_BASE = "https://api.hubapi.com"
 
 _CONTACT_PROPS  = ["firstname","lastname","email","phone","jobtitle","company","hs_lead_status","lifecyclestage","lastmodifieddate"]
 _COMPANY_PROPS  = ["name","domain","phone","industry","type","city","state","zip","lastmodifieddate"]
-_DEAL_PROPS     = ["dealname","amount","dealstage","pipeline","closedate","hci_project_code","lastmodifieddate"]
+_DEAL_PROPS     = ["dealname","amount","dealstage","pipeline","closedate","hci_project_code","lastmodifieddate","hubspot_owner_id"]
 _CALL_PROPS     = ["hs_call_title","hs_call_body","hs_call_duration","hs_call_disposition","hs_timestamp","hs_lastmodifieddate"]
 _EMAIL_PROPS    = ["hs_email_subject","hs_email_text","hs_timestamp","hs_lastmodifieddate"]
 _MEETING_PROPS  = ["hs_meeting_title","hs_meeting_body","hs_timestamp","hs_meeting_outcome","hs_lastmodifieddate"]
@@ -63,6 +63,37 @@ def _hs_request(path: str, method: str = "GET", body: Optional[dict] = None) -> 
     ctx = ssl.create_default_context(cafile=certifi.where())
     with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
         return json.loads(resp.read().decode())
+
+
+_owners_cache: Optional[dict] = None
+
+def _get_owner_name(owner_id: Optional[str]) -> Optional[str]:
+    """Resolve a HubSpot hubspot_owner_id to a real name via /crm/v3/owners.
+    Found 2026-07-06: hubspot_deals.owner had been blank for all 310 synced deals
+    because _DEAL_PROPS never requested hubspot_owner_id and _persist_deal never
+    wrote an owner column at all - not a HubSpot data gap, a sync gap. Confirmed
+    via live HubSpot UI check (Buck/GBT) that owners ARE populated for most deals
+    (Chris Hendrickson, Tim Johns, Michael Mount, Trafford Melville, Frankie
+    Arvesen) - only 2 deals (101F Roofing, 101F Windows) are genuinely ownerless."""
+    global _owners_cache
+    if not owner_id:
+        return None
+    if _owners_cache is None:
+        _owners_cache = {}
+        try:
+            after = None
+            while True:
+                params = "?limit=100" + (f"&after={after}" if after else "")
+                r = _hs_request(f"/crm/v3/owners{params}")
+                for o in r.get("results", []):
+                    name = f"{o.get('firstName','')} {o.get('lastName','')}".strip() or o.get("email", "")
+                    _owners_cache[str(o["id"])] = name
+                after = r.get("paging", {}).get("next", {}).get("after")
+                if not after:
+                    break
+        except Exception as e:
+            logger.error("hubspot owners fetch error: %s", e)
+    return _owners_cache.get(str(owner_id))
 
 
 def _fetch_objects(object_type: str, properties: list, since_ms: Optional[str] = None, limit: int = 100) -> list:
@@ -164,6 +195,8 @@ class HubSpotConnector(BaseConnector):
                             k: r["properties"].get(k) for k in
                             ["dealname","amount","dealstage","pipeline","closedate"]
                         }, "project_code": r["properties"].get("hci_project_code"),
+                        "owner": _get_owner_name(r["properties"].get("hubspot_owner_id"))
+                                 or r["properties"].get("hubspot_owner_id"),
                         "raw_properties": r["properties"]}
                         for r in raw
                     ]
@@ -279,8 +312,8 @@ class HubSpotConnector(BaseConnector):
     def _persist_deal(self, r: dict, cur) -> bool:
         return self._upsert(cur, """
             INSERT INTO hubspot_deals
-                (hubspot_id, dealname, amount, dealstage, pipeline, closedate, project_code, raw_properties, synced_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
+                (hubspot_id, dealname, amount, dealstage, pipeline, closedate, project_code, owner, raw_properties, synced_at, updated_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
             ON CONFLICT (hubspot_id) DO UPDATE SET
                 dealname       = EXCLUDED.dealname,
                 amount         = COALESCE(EXCLUDED.amount, hubspot_deals.amount),
@@ -288,13 +321,14 @@ class HubSpotConnector(BaseConnector):
                 pipeline       = EXCLUDED.pipeline,
                 closedate      = COALESCE(EXCLUDED.closedate, hubspot_deals.closedate),
                 project_code   = COALESCE(EXCLUDED.project_code, hubspot_deals.project_code),
+                owner          = COALESCE(EXCLUDED.owner, hubspot_deals.owner),
                 raw_properties = EXCLUDED.raw_properties,
                 synced_at      = NOW(),
                 updated_at     = NOW()
             RETURNING (xmax=0) AS is_insert
         """, (
             r["hubspot_id"], r.get("dealname"), r.get("amount"), r.get("dealstage"),
-            r.get("pipeline"), r.get("closedate"), r.get("project_code"),
+            r.get("pipeline"), r.get("closedate"), r.get("project_code"), r.get("owner"),
             json.dumps(r.get("raw_properties") or {}),
         ))
 

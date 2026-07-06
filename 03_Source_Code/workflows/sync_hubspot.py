@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "integrations")
 
 import psycopg2, psycopg2.extras
 from datetime import datetime
-from hubspot import _request
+from hubspot import _request, get_owner_name
 from memory_utils import upsert_one
 
 DB = dict(
@@ -28,7 +28,7 @@ def pg():
 # ── Pull all deals ─────────────────────────────────────────────────────────────
 
 def get_all_deals():
-    props = "dealname,dealstage,amount,closedate,hs_lastmodifieddate,description"
+    props = "dealname,dealstage,amount,closedate,hs_lastmodifieddate,description,hubspot_owner_id"
     results, after = [], None
     while True:
         url = f"/crm/v3/objects/deals?limit=100&properties={props}"
@@ -90,10 +90,12 @@ def upsert_deal(cur, deal: dict) -> int:
     except (ValueError, TypeError):
         amount = None
 
+    owner = get_owner_name(p.get("hubspot_owner_id")) or p.get("hubspot_owner_id")
+
     cur.execute("""
         INSERT INTO hubspot_deals (hubspot_deal_id, deal_name, stage, amount,
-                                   close_date, last_modified, raw_properties, synced_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                                   close_date, last_modified, raw_properties, owner, synced_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (hubspot_deal_id) DO UPDATE SET
             deal_name     = EXCLUDED.deal_name,
             stage         = EXCLUDED.stage,
@@ -101,6 +103,7 @@ def upsert_deal(cur, deal: dict) -> int:
             close_date    = EXCLUDED.close_date,
             last_modified = EXCLUDED.last_modified,
             raw_properties= EXCLUDED.raw_properties,
+            owner         = COALESCE(EXCLUDED.owner, hubspot_deals.owner),
             synced_at     = NOW()
         RETURNING id
     """, (
@@ -111,6 +114,7 @@ def upsert_deal(cur, deal: dict) -> int:
         p.get("closedate"),
         p.get("hs_lastmodifieddate"),
         json.dumps(p),
+        owner,
     ))
     return cur.fetchone()["id"]
 

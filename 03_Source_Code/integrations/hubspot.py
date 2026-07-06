@@ -84,6 +84,41 @@ def create_deal(name: str, stage_key: str = "not_started", amount: float = None)
     return _request("POST", "/crm/v3/objects/deals", {"properties": props})
 
 
+_owners_cache: dict | None = None
+
+def get_owner_name(owner_id: str | None) -> str | None:
+    """Resolve a HubSpot hubspot_owner_id to a real name via /crm/v3/owners.
+    Found 2026-07-06: hubspot_deals.owner was blank for all 310 synced deals -
+    sync_hubspot.py's get_all_deals()/upsert_deal() never requested or stored
+    hubspot_owner_id at all. Not a HubSpot data gap - confirmed via live HubSpot UI
+    (Buck/GBT) that owners ARE populated for most deals (Chris Hendrickson, Tim
+    Johns, Michael Mount, Trafford Melville, Frankie Arvesen); only 101F Roofing
+    and 101F Windows are genuinely ownerless. This app's token lacks the Owners
+    API scope (confirmed: 403 on /crm/v3/owners) - falls back to the raw numeric
+    ID so at least *something* non-blank is stored until that scope is granted."""
+    global _owners_cache
+    if not owner_id:
+        return None
+    if _owners_cache is None:
+        _owners_cache = {}
+        try:
+            after = None
+            while True:
+                path = "/crm/v3/owners?limit=100" + (f"&after={after}" if after else "")
+                r, err = _request("GET", path)
+                if err or not r:
+                    break
+                for o in r.get("results", []):
+                    name = f"{o.get('firstName','')} {o.get('lastName','')}".strip() or o.get("email", "")
+                    _owners_cache[str(o["id"])] = name
+                after = (r.get("paging") or {}).get("next", {}).get("after")
+                if not after:
+                    break
+        except Exception:
+            pass
+    return _owners_cache.get(str(owner_id))
+
+
 def get_overdue_tasks(limit: int = 20) -> list:
     import time
     now_ms = int(time.time() * 1000)
