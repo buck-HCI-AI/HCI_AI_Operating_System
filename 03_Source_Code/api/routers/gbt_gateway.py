@@ -3179,6 +3179,39 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Stale-test-approval check errored: {e}"})
 
+    # 14. project_brain_snapshots.health (algorithmic, from ProjectIntelligenceEngine's
+    #     detect_risks() heuristics) disagreeing with the real risks table - the exact
+    #     drift executive.py's mission-control fixed on 2026-07-01 (1355R showed
+    #     GREEN/0-risk there while risks had 4 open/2 high rows) and that this session
+    #     found had never propagated to cross_project's company-snapshot endpoint,
+    #     fixed 2026-07-06. General check so a THIRD endpoint reading the unreconciled
+    #     snapshot health can't silently reintroduce the same disagreement.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_code, pbs.health AS snapshot_health,
+                           COUNT(r.id) FILTER (WHERE r.severity IN ('critical','high')) AS high_or_critical
+                    FROM projects p
+                    JOIN project_brain_snapshots pbs ON pbs.project_id = p.id
+                        AND pbs.snapshot_date = CURRENT_DATE
+                    LEFT JOIN risks r ON r.project_id = p.id AND r.status = 'open'
+                    WHERE p.status IN ('active','design','bidding','preconstruction','monitoring')
+                    GROUP BY p.project_code, pbs.health
+                    HAVING (COUNT(r.id) FILTER (WHERE r.severity IN ('critical','high')) > 0
+                            AND pbs.health != 'RED')
+                """)
+                mismatches = cur.fetchall()
+        if mismatches:
+            findings.append({
+                "severity": "high",
+                "category": "snapshot_risk_reconciliation_drift",
+                "detail": f"{len(mismatches)} project(s) have a project_brain_snapshots health that disagrees with the real risks table - any endpoint reading the snapshot directly (not reconciled) will show a falsely-clean status.",
+                "items": [f"{r['project_code']}: snapshot says {r['snapshot_health']}, risks table has {r['high_or_critical']} high/critical open" for r in mismatches],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Snapshot-reconciliation check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
