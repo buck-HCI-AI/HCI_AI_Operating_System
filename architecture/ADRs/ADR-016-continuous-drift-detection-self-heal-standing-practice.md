@@ -248,3 +248,37 @@ there's no Exchange transport-rule/admin API configured here, only `/me`-scoped 
 That remains a policy question (agents must never compose-and-send directly, only ever via
 `/email/draft` + `/email/send`), not a code gap — recorded here so it isn't rediscovered as if
 new next time, and reinforced directly to Browser Claude via `ai_messages`.
+
+## Addendum, 2026-07-06 (later same session) — detector #17, backlog-vs-code drift
+
+Picked up the next unblocked backlog item per this ADR's own "no blocking issue, continue
+automatically" directive, starting with BTW-4 (lowest-lift per `STRATEGIC_BACKLOG.md`'s own
+sequencing table). Before building anything, checked the real code first — and found BTW-4's
+"remaining to build" list was three-quarters already shipped (Event Timeline, Conversation
+Memory, Document Relationships all live as gateway endpoints), just never checked off. Kept
+checking down the list before building each time, and the pattern held for BTW-8 (both
+"remaining" items already live in `/pm/{id}/weekly`, code even has `# BTW-8` comments) and
+BTW-5 (all 5 "remaining" role consoles already built and live). Three false starts avoided by
+checking first — this would have been three separate instances of re-authoring already-shipped
+work from scratch, the exact failure shape detector #10 exists to catch for Handbook docs, just
+never generalized to code-level backlog claims.
+
+Added detector #17: for any `STRATEGIC_BACKLOG.md` item still marked OPEN/PARTIAL, extract every
+backtick-quoted `/path/...` in its section and check whether a router file already defines that
+exact route (normalizing `{id}`-style path params so a naming mismatch like `{id}` vs
+`{project_id}` still matches). Verified live: correctly flags nothing now that BTW-4/5/8 are
+corrected in the doc, and would have caught all three had it existed before this session.
+
+Also found and fixed a live instance of the test-data-in-real-table pattern while verifying
+BTW-8: 3 "[DEFERRED] Defer test" rows from same-session test reruns were sitting `pending` in
+`executive_inbox`, surfacing as fake client decisions in `/pm/{id}/weekly`'s `client_comms`.
+Resolved and extended detector #13 (previously `pending_approvals`-only) to cover
+`executive_inbox` too — same shape of issue, different table, worth checking both from now on.
+
+One genuine gap survived the sweep: BTW-6's Monthly Business Review has zero code anywhere and,
+unlike everything else found stale this session, isn't a mechanical fill-in — "client
+satisfaction" has no existing data source (no survey/NPS table in the schema) and needs a human
+decision on what to measure before it's built, not a guess. Flagged to Buck rather than building
+something that might not match what he actually wants. (Partial good news: `/owner/dashboard`'s
+`ai_roi` field turned out to already be a live "hours saved" metric, so AI ROI — the other metric
+originally thought to have no source — actually does.)
