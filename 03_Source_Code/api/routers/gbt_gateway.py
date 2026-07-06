@@ -2194,6 +2194,18 @@ class EmailDraftRequest(BaseModel):
     subject: str
     body_html: str
     reply_to_message_id: Optional[str] = None
+    cc: Optional[list] = None  # [{"name": "...", "email": "..."}] - additional team CCs
+
+# GBT/Buck SOP directive 2026-07-06 (see Agent_Handoff SOP Violation handoff): every
+# automated/system-sent email must copy Buck so he can see it and track vendor replies,
+# regardless of who else is CC'd. Skipped only when Buck himself is the recipient.
+_BUCK_EMAIL = ("Buck Adams", "buck@hendricksoninc.com")
+
+def _with_buck_cc(to_email: str, extra_cc: Optional[list]) -> list[tuple[str, str]]:
+    cc = [(c.get("name", ""), c["email"]) for c in (extra_cc or []) if c.get("email")]
+    if to_email.lower() != _BUCK_EMAIL[1].lower() and not any(e.lower() == _BUCK_EMAIL[1].lower() for _, e in cc):
+        cc.append(_BUCK_EMAIL)
+    return cc
 
 @router.post("/email/draft")
 def create_email_draft(req: EmailDraftRequest, request: Request):
@@ -2201,16 +2213,18 @@ def create_email_draft(req: EmailDraftRequest, request: Request):
     Create an Outlook draft email (does NOT send). GBT/Browser Claude calls this to stage
     a client/vendor email. Nothing sends from this endpoint under any circumstance —
     sending requires Buck's explicit Telegram approval via POST /email/send (see below).
+    Always CCs Buck (see _with_buck_cc) so he can see and track every automated send.
     """
     _require_key(request)
     t0 = time.time()
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
         from microsoft_graph import create_draft, create_reply_draft
+        cc = _with_buck_cc(req.to_email, req.cc)
         if req.reply_to_message_id:
             draft = create_reply_draft(req.reply_to_message_id, req.body_html)
         else:
-            draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)])
+            draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)], cc=cc)
         draft_id = draft.get("id", "")
         return _response("/email/draft", {
             "draft_id":   draft_id,
@@ -2277,7 +2291,11 @@ def send_email_now(req: EmailSendRequest, request: Request):
             draft = create_reply_draft(req.reply_to_message_id, req.body_html)
             draft_id = draft.get("id", "")
         else:
-            draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)])
+            # req.cc existed on this model but was never actually applied to the draft -
+            # found 2026-07-06 responding to GBT/Buck's SOP-violation handoff asking that
+            # every automated send CC Buck. Now always CCs Buck plus any explicit cc list.
+            cc = _with_buck_cc(req.to_email, req.cc)
+            draft = create_draft(req.subject, req.body_html, [(req.to_name, req.to_email)], cc=cc)
             draft_id = draft.get("id", "")
         if not draft_id:
             raise ValueError("Draft creation returned no ID — cannot queue for approval")

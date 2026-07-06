@@ -64,7 +64,8 @@ def download_attachment_bytes(msg_id: str, att_id: str) -> bytes:
     return base64.b64decode(r.get("contentBytes", ""))
 
 
-def create_draft(subject: str, html_body: str, to: list[tuple[str, str]]) -> dict:
+def create_draft(subject: str, html_body: str, to: list[tuple[str, str]],
+                  cc: list[tuple[str, str]] = None) -> dict:
     """to: [(name, email), ...]"""
     msg = {
         "subject": subject,
@@ -72,6 +73,8 @@ def create_draft(subject: str, html_body: str, to: list[tuple[str, str]]) -> dic
         "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
         "isDraft": True,
     }
+    if cc:
+        msg["ccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in cc]
     r, err = _request("POST", "/me/messages", body=msg)
     if err:
         raise RuntimeError(err)
