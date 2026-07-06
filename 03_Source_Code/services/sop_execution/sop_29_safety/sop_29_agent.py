@@ -60,7 +60,12 @@ Return JSON:
 }}
 Return ONLY the JSON object."""
         try:
-            raw = cls.ask_claude(prompt, system=SYSTEM_PROMPT, max_tokens=1500)
+            # 1500 was too tight - found 2026-07-06 via a conditional test warning
+            # (UT-29-03): the response was getting truncated mid-JSON-string right
+            # at the token boundary (parse error at char 5828, ~1500 tokens in),
+            # silently producing hazards=0 - a manual-JHA fallback for what was
+            # actually an output-budget bug, not a real absence of hazards.
+            raw = cls.ask_claude(prompt, system=SYSTEM_PROMPT, max_tokens=3000)
             return cls.parse_json_response(raw)
         except Exception as e:
             return {"error": str(e), "hazards": [], "ai_note": "AI safety plan failed — conduct manual JHA"}

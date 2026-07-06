@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-06-26T17:21:58.726195",
+  "run_at": "2026-07-06T20:11:04.926405",
   "summary": {
     "pass": 69,
     "conditional": 2,
@@ -11,7 +11,7 @@
       "id": "UT-17-01",
       "name": "Create SOP 17 Project Schedule",
       "status": "PASS",
-      "note": "id=218, status=In Progress"
+      "note": "id=391, status=In Progress"
     },
     {
       "id": "UT-17-02",
@@ -41,7 +41,7 @@
       "id": "UT-18-01",
       "name": "Create SOP 18 Long-Lead Log",
       "status": "PASS",
-      "note": "id=219"
+      "note": "id=392"
     },
     {
       "id": "UT-18-02",
@@ -53,7 +53,7 @@
       "id": "UT-18-03",
       "name": "Add long-lead item (16 wk structural steel)",
       "status": "PASS",
-      "note": "output_id=310"
+      "note": "output_id=521"
     },
     {
       "id": "UT-18-04",
@@ -71,7 +71,7 @@
       "id": "UT-20-01",
       "name": "Create SOP 20 Contract Setup",
       "status": "PASS",
-      "note": "id=220"
+      "note": "id=393"
     },
     {
       "id": "UT-20-02",
@@ -95,13 +95,13 @@
       "id": "UT-20-05",
       "name": "PM approve (blocked if items pending)",
       "status": "PASS",
-      "note": "status=Approved"
+      "note": "status=blocked"
     },
     {
       "id": "UT-21-01",
       "name": "Create SOP 21 Compliance Log",
       "status": "PASS",
-      "note": "id=221"
+      "note": "id=394"
     },
     {
       "id": "UT-21-02",
@@ -131,7 +131,7 @@
       "id": "UT-22-01",
       "name": "Create SOP 22 COI collection",
       "status": "PASS",
-      "note": "id=222"
+      "note": "id=395"
     },
     {
       "id": "UT-22-02",
@@ -173,7 +173,7 @@
       "id": "UT-23-01",
       "name": "Create SOP 23 Project Startup",
       "status": "PASS",
-      "note": "id=223"
+      "note": "id=396"
     },
     {
       "id": "UT-23-02",
@@ -203,7 +203,7 @@
       "id": "UT-24-01",
       "name": "Create SOP 24 Super Dashboard",
       "status": "PASS",
-      "note": "id=224"
+      "note": "id=397"
     },
     {
       "id": "UT-24-02",
@@ -215,7 +215,7 @@
       "id": "UT-24-03",
       "name": "Update schedule metric (GREEN)",
       "status": "PASS",
-      "note": "output_id=321"
+      "note": "output_id=545"
     },
     {
       "id": "UT-24-04",
@@ -227,7 +227,7 @@
       "id": "UT-25-01",
       "name": "Create SOP 25 Daily Log",
       "status": "PASS",
-      "note": "id=225"
+      "note": "id=398"
     },
     {
       "id": "UT-25-02",
@@ -239,7 +239,7 @@
       "id": "UT-25-03",
       "name": "Create daily log entry with AI risk analysis",
       "status": "PASS",
-      "note": "output_id=323"
+      "note": "output_id=547"
     },
     {
       "id": "UT-25-04",
@@ -257,7 +257,7 @@
       "id": "UT-26-01",
       "name": "Create SOP 26 Field Coordination log",
       "status": "PASS",
-      "note": "id=226"
+      "note": "id=399"
     },
     {
       "id": "UT-26-02",
@@ -269,13 +269,13 @@
       "id": "UT-26-03",
       "name": "Add RFI item (HIGH priority)",
       "status": "PASS",
-      "note": "output_id=325"
+      "note": "output_id=549"
     },
     {
       "id": "UT-26-04",
       "name": "AI draft RFI response",
       "status": "PASS",
-      "note": "draft_len=893"
+      "note": "draft_len=867"
     },
     {
       "id": "UT-26-05",
@@ -287,7 +287,7 @@
       "id": "UT-27-01",
       "name": "Create SOP 27 QC log",
       "status": "PASS",
-      "note": "id=227"
+      "note": "id=400"
     },
     {
       "id": "UT-27-02",
@@ -317,7 +317,7 @@
       "id": "UT-28-01",
       "name": "Create SOP 28 QC Detail Card",
       "status": "PASS",
-      "note": "id=228"
+      "note": "id=401"
     },
     {
       "id": "UT-28-02",
@@ -347,7 +347,7 @@
       "id": "UT-29-01",
       "name": "Create SOP 29 Safety Plan",
       "status": "PASS",
-      "note": "id=229"
+      "note": "id=402"
     },
     {
       "id": "UT-29-02",
@@ -359,7 +359,7 @@
       "id": "UT-29-03",
       "name": "AI generate safety hazard plan",
       "status": "CONDITIONAL",
-      "note": "hazards=0 (AI JSON parse may have failed: Expecting property name enclosed in double quotes: line 103 )"
+      "note": "hazards=0 (AI JSON parse may have failed: Unterminated string starting at: line 217 column 5 (char 113)"
     },
     {
       "id": "UT-29-04",
@@ -377,7 +377,7 @@
       "id": "UT-30-01",
       "name": "Create SOP 30 Inspection Log",
       "status": "PASS",
-      "note": "id=230"
+      "note": "id=403"
     },
     {
       "id": "UT-30-02",
@@ -389,7 +389,7 @@
       "id": "UT-30-03",
       "name": "Schedule foundation inspection",
       "status": "PASS",
-      "note": "output_id=326"
+      "note": "output_id=550"
     },
     {
       "id": "UT-30-04",

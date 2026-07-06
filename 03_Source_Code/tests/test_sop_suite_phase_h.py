@@ -27,7 +27,10 @@ def _req(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
         headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        # Bumped from 15s - found 2026-07-06 that the SOP 29 safety-hazard-plan
+        # endpoint's max_tokens went 1500 -> 3000 to fix real truncated-JSON output
+        # (see sop_29_agent.py); the longer generation now legitimately exceeds 15s.
+        with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.status, json.loads(resp.read())
     except urllib.error.HTTPError as e:
         try:
