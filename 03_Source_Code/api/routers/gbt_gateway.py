@@ -2521,6 +2521,59 @@ def handoff_document_types():
     }, start=t0)
 
 
+@router.get("/agent/handoff/{request_id}")
+def agent_handoff_lookup(request_id: str):
+    """Look up a specific handoff by its request ID (the trailing hex suffix in its
+    filename, e.g. '33259ccc' from 'GBT_HANDOFF_2026-07-06_..._33259ccc.md') without
+    needing folder access. Added 2026-07-06 - across one session, specific handoff IDs
+    got referenced back and forth between Claude Code and GBT at least 6 times, each
+    requiring a manual `find -iname` across Inbox/Processed/Failed. Searches all three
+    folders and reports which one the file is currently in - Inbox means still
+    unprocessed, Processed/Failed means it was handled (or handling failed). Registered
+    after /agent/handoff/document-types on purpose - a path-parameter route ahead of a
+    literal one would shadow it in FastAPI's routing order."""
+    t0 = time.time()
+    base = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), "..", "..", "..",
+        "Architecture", "Agent_Handoff"
+    ))
+    request_id = request_id.strip().lower()
+    for folder in ("Inbox", "Processed", "Failed"):
+        d = os.path.join(base, folder)
+        if not os.path.isdir(d):
+            continue
+        for fname in os.listdir(d):
+            if not fname.lower().endswith(f"{request_id}.md"):
+                continue
+            fpath = os.path.join(d, fname)
+            try:
+                with open(fpath) as f:
+                    raw = f.read()
+                lines = raw.split("\n")
+                meta = {}
+                body_start = 0
+                if lines and lines[0].strip() == "---":
+                    for i, line in enumerate(lines[1:], 1):
+                        if line.strip() == "---":
+                            body_start = i + 1
+                            break
+                        if ":" in line:
+                            k, v = line.split(":", 1)
+                            meta[k.strip()] = v.strip()
+                body = "\n".join(lines[body_start:]).strip()
+                return _response(f"/agent/handoff/{request_id}", {
+                    "found": True, "folder": folder, "filename": fname,
+                    "title": meta.get("title", fname),
+                    "source_agent": meta.get("source_agent", "unknown"),
+                    "priority": meta.get("priority", "medium"),
+                    "created_at": meta.get("created_at", ""),
+                    "body": body,
+                }, start=t0)
+            except Exception as e:
+                return _response(f"/agent/handoff/{request_id}", {}, errors=[str(e)], start=t0)
+    return _response(f"/agent/handoff/{request_id}", {"found": False}, start=t0)
+
+
 # ── Drive Write ───────────────────────────────────────────────────────────────
 
 class DriveWritePayload(BaseModel):
