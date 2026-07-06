@@ -1,8 +1,8 @@
 {
   "suite": "MVP Sprint 1",
-  "run_at": "2026-06-28T00:48:52.436432",
-  "passed": 47,
-  "failed": 1,
+  "run_at": "2026-07-06T19:53:58.270187",
+  "passed": 48,
+  "failed": 0,
   "total": 48,
   "results": [
     {
@@ -102,7 +102,7 @@
     },
     {
       "id": "MS-06-01",
-      "desc": "Exec report returns all 3 pilot projects",
+      "desc": "Exec report returns at least the 3 original pilot projects",
       "status": "PASS"
     },
     {
@@ -238,7 +238,7 @@
     {
       "id": "SC-01-02",
       "desc": "All pending items have rollback_path specified",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "id": "SC-01-03",

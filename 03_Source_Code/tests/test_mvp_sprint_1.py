@@ -126,7 +126,11 @@ for code in ("64EW", "101F", "1355R"):
 print("\n── Executive Reporting (MVP Workflow 6) ────────────────────────────────")
 
 d, s = req("GET", "/mvp/exec-report")
-check("MS-06-01", "Exec report returns all 3 pilot projects", s == 200 and len(d.get("projects", {})) == 3)
+# Was hardcoded == 3 from when only 3 pilot projects existed - found 2026-07-06
+# this had been silently failing since PILOT_PROJECTS grew to 8 non-test entries
+# (64EW/101F/1355R/83SB/246GW/ASPN-NEW/ASPN-REM/ASPN-MC). Real projects only ever
+# get added here, never removed, so >= 3 is the durable assertion going forward.
+check("MS-06-01", "Exec report returns at least the 3 original pilot projects", s == 200 and len(d.get("projects", {})) >= 3)
 check("MS-06-02", "Exec report has summary with risk totals", "summary" in d and "total_open_risks" in d.get("summary", {}))
 check("MS-06-03", "Exec report mode is read_only", d.get("mode") == "read_only")
 check("MS-06-04", "Exec report includes ROI", "roi" in d)
