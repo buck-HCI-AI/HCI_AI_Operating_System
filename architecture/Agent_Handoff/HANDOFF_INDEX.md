@@ -96,3 +96,7 @@
 | 2026-07-06 14:50 | GBT_HANDOFF_2026-07-06_Good_Progress_-_Continue_Remaining_Prior_ed67e6f7.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-06 14:50 | GBT_HANDOFF_2026-07-06_CRITICAL_-_Telegram_Ingestion_Broken_Sin_eae28d07.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-06 14:55 | GBT_HANDOFF_2026-07-06_Full_Deep_Dive_Required_-_ALL_11_Jobs__N_fc6fa42c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 16:15 | GBT_HANDOFF_2026-07-06_STILL_BROKEN_-_Telegram_Ingestion_Confir_b914b643.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 16:30 | GBT_HANDOFF_2026-07-06_Full_100__Readiness_Audit_-_Handbook__In_f40f8674.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 16:35 | GBT_HANDOFF_2026-07-06_LIVE_FAILED_TEST_-_Buck_Sent_Telegram_Me_ec1897b5.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 16:45 | GBT_HANDOFF_2026-07-06_CONTRADICTION_-_Telegram_Claim_vs_Live_E_86e7f2ae.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |

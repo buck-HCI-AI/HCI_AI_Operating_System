@@ -215,11 +215,20 @@ class SystemAuditor(BaseIntelligenceService):
             active = [w for w in workflows if w.get("active")]
             inactive = [w for w in workflows if not w.get("active")]
 
-            # Cross-check: workflows on disk that might be missing from n8n
+            # Cross-check: workflows on disk that might be missing from n8n. Normalize
+            # both sides to alphanumeric-only tokens first - repo filenames use
+            # underscores ("AUTO-SELFHEAL_15min_n8n_Health_Check.json") while n8n's
+            # real workflow names use spaces/em-dashes ("AUTO-SELFHEAL — 15min n8n
+            # Health Check"), so a raw substring check flagged nearly every correctly-
+            # imported workflow as "missing" (found 2026-07-06 auditing workflow_health
+            # itself - a real detector bug, not a real import gap).
+            import re as _re_wf
+            def _wf_norm(s: str) -> str:
+                return _re_wf.sub(r"[^A-Z0-9]+", " ", s.upper()).strip()
             disk_workflows = list((_WORKFLOWS_DIR / "n8n").glob("*.json")) if (_WORKFLOWS_DIR / "n8n").exists() else []
-            disk_names = {f.stem.upper() for f in disk_workflows}
-            n8n_names = {w.get("name","").upper() for w in workflows}
-            not_imported = [n for n in disk_names if not any(n in nn for nn in n8n_names)]
+            disk_names = {f.stem for f in disk_workflows}
+            n8n_names_norm = [_wf_norm(w.get("name","")) for w in workflows]
+            not_imported = [n for n in disk_names if not any(_wf_norm(n) in nn for nn in n8n_names_norm)]
 
             score = round(len(active) / max(len(workflows), 1) * 100) if workflows else 50
             return {

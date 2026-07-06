@@ -7332,9 +7332,23 @@ async def telegram_messages_for_agent(agent: str = Query(..., description="chatg
                 last_ack_id = (row["metadata"] or {}).get("last_telegram_ack_id", 0) if row else 0
 
                 cur.execute("""
+                    SELECT COUNT(*) AS c FROM platform_events
+                    WHERE event_type = 'buck_message' AND id > %s
+                """, (last_ack_id,))
+                backlog_count = cur.fetchone()["c"]
+
+                # Return the MOST RECENT messages first, not the oldest-unread-first
+                # (fixed 2026-07-06 - found live via GBT's own onboarding audit: an
+                # agent that falls behind on acking never catches up to "now", it just
+                # sees the same old backlog page forever no matter how many times it
+                # polls, since ORDER BY id ASC LIMIT N always returns the same oldest N
+                # until every prior message is acked one page at a time. A "what has
+                # Buck said" query should surface current state first; the backlog
+                # count is still reported so nothing is silently hidden.
+                cur.execute("""
                     SELECT id, payload, published_at FROM platform_events
                     WHERE event_type = 'buck_message' AND id > %s
-                    ORDER BY id ASC LIMIT %s
+                    ORDER BY id DESC LIMIT %s
                 """, (last_ack_id, limit))
                 rows = cur.fetchall()
         messages = [{
@@ -7342,8 +7356,9 @@ async def telegram_messages_for_agent(agent: str = Query(..., description="chatg
             "from": "Buck Adams", "text": (r["payload"] or {}).get("text") or (r["payload"] or {}).get("body"),
             "timestamp": r["published_at"].isoformat(),
         } for r in rows]
+        messages.reverse()  # oldest-of-this-batch first for readable chronological order
         return _response("/telegram/messages", {
-            "agent": key, "last_ack_id": last_ack_id,
+            "agent": key, "last_ack_id": last_ack_id, "backlog_count": backlog_count,
             "count": len(messages), "messages": messages,
         }, start=t0)
     except Exception as e:

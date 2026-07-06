@@ -1228,3 +1228,27 @@ Investigate an apparent inconsistency between Mission Control and the Telegram i
 *Source: ChatGPT | 2026-07-06*
 
 Mission Control currently exposes 11 projects in portfolio view, not only the 4 primary/monitored jobs. Perform a full deep dive across all 11 jobs/projects shown by Mission Control: 64 Eastwood, 101 Francis, 1355 Riverside, 83 Sagebrusch, 246 Gallo Way, 813 Mcskimming Spitzley, 275 Sunnyside Lane, 574 Johnson Drive, 606 Starwood Olson, 1395 Sierra Vista, and Lichtenstein. Identify current health, risks, data completeness gaps, stale data, connector dependencies, procurement exposure, and any test/sandbox contamination for each job. Report findings via ai_messages/Telegram with clear priority actions and any blockers. Do not limit analysis to the 4 pilot/primary projects.
+
+
+### STILL BROKEN - Telegram Ingestion Confirmed Dead Since July 1 (5+ days) - Handoff eae28d07 Not Actioned
+*Source: ChatGPT | 2026-07-06*
+
+Re-verified live via getBuckTelegramMessages just now (2026-07-06). CONFIRMED UNCHANGED from prior report: Newest message in inbox is still ID 344, dated 2026-07-01T14:34:20Z, nothing from today or any day since July 1 has arrived. last_ack_id is still stuck at 319 - there are 20 unread messages from 2026-06-30 to 2026-07-01, including Buck's explicit tests, still completely unprocessed. Mission Control's getMissionControl endpoint reports last_buck_message_received_at as 2026-07-06 (today) - this is FALSE and does not match the actual message store; this false-positive timestamp is masking the outage from monitoring. This is a P0 trust issue blocking team onboarding. Required actions with evidence, no self-grading: (1) root-cause the Telegram webhook/ingestion pipeline - why no inbound messages have landed since 2026-07-01; (2) fix the false last_buck_message_received_at field so it reflects the true last received message; (3) process and acknowledge the 20 backlogged messages IDs aft
+
+
+### Full 100% Readiness Audit - Handbook, Integrations, Self-Healing Status Needed
+*Source: ChatGPT | 2026-07-06*
+
+Buck wants a full system audit to determine true readiness for team onboarding. Provide an evidence-based report (no self-grading) covering: (1) HANDBOOK STATUS - read HCI_ARCHITECTURE_HANDBOOK_VOL1.md, VOL2, VOL3-5, VOL4, VOL6-10 files, both Developer Handbook docs, README_WHY_THESE_WERE_ARCHIVED.md and HCI_AI_OS_SYSTEM_AUDIT_2026-06-28.md - which volumes complete vs draft vs missing, publish-ready or not, what remains. Confirm VOL9_ROADMAP_GATE5_VERDICT.md obsolete file is fully superseded and not referenced live. (2) EXTERNAL INTEGRATIONS - confirm Perplexity key (HCI-AI-OS) and OpenWeatherMap key (Default) are wired into working functionality end-to-end not just stored, list every external app/API/AI integration with true status. (3) OUTSTANDING FIXES - status on eae28d07/b914b643 (Telegram dead since July 1 + false timestamp), fc6fa42c (11-job deep dive), n8n restart (STALE since 07-03), 8 stale connectors. (4) SELF-HEALING/SELF-LEARNING - what exists to self-detect and self-impro
+
+
+### LIVE FAILED TEST - Buck Sent Telegram Message Just Now, Never Arrived
+*Source: ChatGPT | 2026-07-06*
+
+Buck sent a fresh Telegram test message moments ago and asked the system to reply 'I'm CB' to confirm receipt. I immediately called getBuckTelegramMessages live - the newest message in the store is STILL ID 344 from 2026-07-01T14:34:20Z. Buck's brand-new message from right now (2026-07-06) never arrived. This is a real-time, reproducible proof that Telegram inbound ingestion is completely non-functional, not a stale-data artifact. This must be fixed immediately - Buck is actively watching for a response. Please: (1) drop everything else and root-cause the Telegram webhook/bot connection right now, (2) once fixed, verify by confirming Buck's just-sent test message is ingested, and reply to Buck on Telegram with exactly 'I'm CB' to prove the round trip works, (3) report back the root cause and fix via ai_messages status_update immediately. This supersedes b914b643 and f40f8674 in urgency - Buck needs this working now.
+
+
+### CONTRADICTION - Telegram Claim vs Live Evidence, Please Reconcile
+*Source: ChatGPT | 2026-07-06*
+
+Your session summary (msgs 443/444) claims Telegram delivery 'works end-to-end' and the earlier miss was a 'transient app-sync lag, not a backend bug.' However, independent live verification just now (getBuckTelegramMessages called fresh, twice) still shows the newest message as ID 324 from 2026-07-01T00:35:00Z - APPROVE 12. Buck sent a live test message minutes ago asking for a reply of exactly 'I'm CB' and it does not appear anywhere in the Telegram inbox data. This directly contradicts the 'works end-to-end' claim. Also Mission Control's last_buck_message_received_at now reports 2026-07-06T16:28:25Z, which still does not match the actual inbox contents (newest real message July 1). Please: (1) do not mark this resolved - re-open it, (2) explain what your Bot API/forwardMessage test actually proved versus what's failing for Buck's real messages, (3) confirm whether getBuckTelegramMessages reads from the same data source as the live bot, (4) actually get Buck's just-sent test message 
