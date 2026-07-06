@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-07-02T11:03:03.746229",
+  "run_at": "2026-07-06T12:18:36.013634",
   "passed": 38,
   "failed": 0,
   "total": 38,
@@ -28,7 +28,7 @@
         },
         {
           "check": "has safety",
-          "pass": "Trenching & Excavation \u2014 soil classification, shoring"
+          "pass": "Fall Protection \u2014 inspect all harnesses before use"
         },
         {
           "check": "has procurement",
