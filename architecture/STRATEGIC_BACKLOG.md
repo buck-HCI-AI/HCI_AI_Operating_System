@@ -82,18 +82,31 @@ just never checked off here:
 ---
 
 ### BTW-6 — Executive Command Center: Weekly/Monthly Reports
-**Mission:** BTW-006 | **Priority:** MEDIUM | **Status:** OPEN
+**Mission:** BTW-006 | **Priority:** MEDIUM | **Status:** PARTIAL (checked 2026-07-06)
+
+Checked before building (after finding BTW-4/BTW-8 already done): the Weekly Executive
+Report half of this already exists — `POST /workflows/wf-report/exec-health`
+(`wf_report.py:executive_health_report`, docstring "Run every Friday PM") is a real,
+company-wide, weekly, all-projects health table that already emails Buck (confirmed
+real "HCI Executive Project Health — Week of June 25, 2026" in Sent Items). It may not
+hit every sub-bullet below (explicit "decisions made / upcoming decisions" sections
+weren't confirmed) but the core capability is live, not a from-scratch build.
+
+**Monthly Business Review is genuinely NOT built** — zero references anywhere in the
+codebase. This is also the one piece of this backlog item that isn't a mechanical
+gap-fill: "client satisfaction" and "AI ROI" don't have an obvious existing data
+source the way financials/pipeline/team-performance do, so building it well needs a
+decision on what those two actually measure here before writing code that guesses.
 
 **Already built (pre-delivered):**
 - Executive Mission Control — 11 sections ✅
 - Morning Brief (daily, 6AM push) ✅
 - Leadership Dashboard ✅
 - All executive endpoints ✅
+- Weekly Executive Report — `wf-report/exec-health`, weekly, all-projects ✅ (verify sub-bullets before calling 100% done)
 
 **Remaining to build:**
-- Weekly Executive Report (n8n workflow `AUTO-WEEKLY-EXEC`) — company performance summary, highlights, decisions made, upcoming decisions
-- Monthly Business Review (n8n `AUTO-MONTHLY-REVIEW`) — financials, pipeline, client satisfaction, team performance, AI ROI
-- Both delivered via ntfy + stored as reports in the platform
+- Monthly Business Review (n8n `AUTO-MONTHLY-REVIEW`) — financials, pipeline, client satisfaction, team performance, AI ROI. Needs a data-source decision for client satisfaction + AI ROI before building.
 
 **Handbook:** Volume V (Executive Intelligence) — implementation refs ready; philosophy pending CA
 
