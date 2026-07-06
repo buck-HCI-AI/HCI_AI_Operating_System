@@ -3135,6 +3135,7 @@ def system_drift_check():
                     FROM project_events pe JOIN projects p ON p.id = pe.project_id
                     WHERE p.status != 'sandbox'
                       AND (pe.created_by ILIKE '%test%' OR pe.title ILIKE '%[test]%' OR pe.title ILIKE '%test suite%'
+                           OR pe.title ILIKE '%: test' OR pe.description = 'test'
                            OR (pe.metadata->>'test') = 'true')
                     GROUP BY p.project_code
                     UNION ALL
