@@ -106,10 +106,38 @@ class ProjectIntelligenceEngine(BaseIntelligenceService):
         risks.extend(self._decision_risks())
         risks.extend(self._budget_risks())
         risks.extend(self._data_gap_risks())
+        risks.extend(self._registered_risks())
         # Sort by severity
         sev_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
         risks.sort(key=lambda r: sev_order.get(r["severity"], 4))
         return risks
+
+    def _registered_risks(self) -> list:
+        """Real, manually/officially logged risks from the `risks` table - separate
+        from everything else in detect_risks(), which is purely inferred from
+        procurement/schedule/decision/budget data patterns and never queried this
+        table. Found 2026-07-06: executive.py's mission-control had already worked
+        around this exact gap on 2026-07-01 by reconciling at the call site, but
+        every OTHER caller of health()/detect_risks() (project_brain/routes.py's
+        public /health and /risks endpoints, cross_project's company-snapshot)
+        showed a falsely-clean status for any project with real registered risks
+        and no inferred ones - 1355R showed GREEN/1-risk here while risks had 4
+        open rows, 2 high/critical. Fixed at the source so every caller inherits
+        the real data instead of patching each call site."""
+        rows = self.pg_query("""
+            SELECT risk_type, severity, description
+            FROM risks WHERE project_id=%s AND status='open'
+        """, (self.project_id,))
+        return [{
+            "risk_code": f"REG-{r.get('risk_type','GEN')[:4].upper()}",
+            "risk_type": r.get("risk_type") or "general",
+            "severity": r.get("severity") or "medium",
+            "title": (r.get("description") or "")[:100],
+            "description": r.get("description") or "",
+            "evidence": {"source": "risks table - manually/officially logged, not inferred"},
+            "confidence": 1.0,
+            "mitigation": "See risk register for assigned owner and mitigation plan",
+        } for r in rows]
 
     def health(self) -> dict:
         """Lightweight health check — no AI, fast."""
@@ -358,19 +386,21 @@ class ProjectIntelligenceEngine(BaseIntelligenceService):
     # ── Supporting Computations ─────────────────────────────────────────────────
 
     def _compute_health(self, risks: list) -> tuple:
+        # Threshold aligned 2026-07-06 with the convention executive.py's
+        # mission-control already established on 2026-07-01 (that fix's own comment):
+        # high-or-critical severity -> RED, not critical-only. Before this, a
+        # project with only "high" risks (no "critical" ones) showed YELLOW here
+        # while Mission Control/PM Console/role_owner all showed RED for the exact
+        # same risks - a second, smaller instance of the same inconsistency the
+        # detect_risks()/risks-table merge above just fixed.
         factors = []
         has_critical = any(r["severity"] == "critical" for r in risks)
         has_high = any(r["severity"] == "high" for r in risks)
 
-        if has_critical:
+        if has_critical or has_high:
             health = "RED"
             for r in risks:
-                if r["severity"] == "critical":
-                    factors.append(r["title"])
-        elif has_high:
-            health = "YELLOW"
-            for r in risks:
-                if r["severity"] == "high":
+                if r["severity"] in ("critical", "high"):
                     factors.append(r["title"])
         else:
             health = "GREEN"
