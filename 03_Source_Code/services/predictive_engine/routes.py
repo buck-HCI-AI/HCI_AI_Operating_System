@@ -926,12 +926,19 @@ class CompanyPredictiveEngine(BaseIntelligenceService):
 
     def company_predictions(self) -> dict:
         projects = self.pg_query("SELECT id, name FROM projects WHERE status='active' ORDER BY name")
-        results = []
-        for p in projects:
+
+        # Each project's predictions are fully independent (own PredictiveEngine
+        # instance, own DB connection via BaseIntelligenceService) - found 2026-07-06
+        # this endpoint ran the same sequential per-project loop that made 4 dashboard
+        # endpoints take 500ms-1.4s. Running them concurrently instead of one-at-a-time
+        # is a pure orchestration change (identical per-project logic and output),
+        # not a behavior change, so it carries far less regression risk than touching
+        # the prediction methods themselves. executor.map preserves input order.
+        def _one(p):
             try:
                 engine = PredictiveEngine(p["id"])
                 preds = engine.all_predictions()
-                results.append({
+                return {
                     "project_id": p["id"],
                     "project_name": p["name"],
                     "overall_risk": preds["overall_risk"],
@@ -941,14 +948,21 @@ class CompanyPredictiveEngine(BaseIntelligenceService):
                         {"type": pr["prediction_type"], "risk": pr["risk_level"], "title": pr["title"]}
                         for pr in preds["predictions"] if pr["risk_level"] in ("HIGH", "MEDIUM")
                     ][:3],
-                })
+                }
             except Exception as e:
-                results.append({
+                return {
                     "project_id": p["id"],
                     "project_name": p["name"],
                     "overall_risk": "UNKNOWN",
                     "error": str(e),
-                })
+                }
+
+        if projects:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(projects), 8)) as ex:
+                results = list(ex.map(_one, projects))
+        else:
+            results = []
 
         high_projects = [r for r in results if r.get("overall_risk") == "HIGH"]
         company_risk = "HIGH" if high_projects else ("MEDIUM" if any(r.get("overall_risk") == "MEDIUM" for r in results) else "LOW")

@@ -23,12 +23,14 @@ class CrossProjectIntelligence(BaseIntelligenceService):
         if not projects:
             return {"error": "No active projects found"}
 
-        # Per-project intelligence from existing data
-        project_cards = []
-        for p in projects:
-            pid = p["id"]
-            card = self._project_card(pid, p)
-            project_cards.append(card)
+        # Per-project intelligence from existing data. Each call is independent
+        # (self.pg_query/pg_one are @staticmethods that open a fresh connection per
+        # call, no shared mutable state on self) - found 2026-07-06 this sequential
+        # per-project loop was a real contributor to company_snapshot's 1.2s+ latency.
+        # Parallelizing is a pure orchestration change, not a logic change.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(projects), 8)) as ex:
+            project_cards = list(ex.map(lambda p: self._project_card(p["id"], p), projects))
 
         # Sort: RED first, then YELLOW, then GREEN
         sev_order = {"RED": 0, "YELLOW": 1, "GREEN": 2}
@@ -76,6 +78,36 @@ class CrossProjectIntelligence(BaseIntelligenceService):
             health = "UNKNOWN"
             top_risk = None
             h = {}
+
+        # Reconcile against the real `risks` table - same fix already applied to
+        # executive.py's mission-control on 2026-07-01 (that fix's own comment
+        # documents the exact bug: ProjectIntelligenceEngine's algorithmic
+        # detect_risks() can go stale relative to the persisted risks table, e.g.
+        # 1355R showing GREEN/0 here while risks table has real open critical rows).
+        # That reconciliation never propagated to this sibling endpoint - found
+        # 2026-07-06 while verifying a performance change, confirmed reproducible
+        # and unrelated to that change. Take the worse-of both signals, same logic
+        # as executive.py's _reconcile_health.
+        try:
+            rr = self.pg_one("""
+                SELECT COUNT(*) as open_risks,
+                       COUNT(*) FILTER (WHERE severity='critical') as critical,
+                       COUNT(*) FILTER (WHERE severity IN ('critical','high')) as high_or_critical
+                FROM risks WHERE project_id=%s AND status='open'
+            """, (project_id,))
+            open_risks = int((rr or {}).get("open_risks") or 0)
+            critical = int((rr or {}).get("critical") or 0)
+            high_or_critical = int((rr or {}).get("high_or_critical") or 0)
+            if high_or_critical > 0:
+                health = "RED"
+            elif open_risks > 0 and health == "GREEN":
+                health = "YELLOW"
+            # Keep the displayed counts consistent with the reconciled color - a card
+            # reading "RED, 0 critical risks" would be as misleading as the bug just fixed.
+            h["critical_risks"] = max(h.get("critical_risks", 0), critical)
+            h["high_risks"] = max(h.get("high_risks", 0), high_or_critical - critical)
+        except Exception:
+            pass
 
         # Quick procurement stats
         proc = self.pg_one("""
