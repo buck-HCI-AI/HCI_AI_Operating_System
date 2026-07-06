@@ -403,10 +403,15 @@ class SystemAuditor(BaseIntelligenceService):
         if empty_count > 5:
             debt_summary.append(f"{empty_count} empty DB tables — may indicate missing data pipeline")
 
-        # Services with no routes or placeholder status
+        # Services with no routes or placeholder status. Skip system_auditor's own
+        # routes.py - this exact check's source contains the literal strings it's
+        # searching for ('"status": "planned"' / "'planned'"), so without this
+        # exclusion the auditor permanently flags itself as a placeholder service
+        # (found 2026-07-06, same self-referential class as the earlier TODO/FIXME
+        # self-exclusion above, just a different scan that hadn't been given one yet).
         placeholder_services = []
         for svc_dir in _SVC_DIR.iterdir():
-            if not svc_dir.is_dir() or svc_dir.name.startswith("_"):
+            if not svc_dir.is_dir() or svc_dir.name.startswith("_") or svc_dir.name == "system_auditor":
                 continue
             routes_file = svc_dir / "routes.py"
             if routes_file.exists():
