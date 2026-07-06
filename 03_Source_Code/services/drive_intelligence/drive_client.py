@@ -152,6 +152,23 @@ def get_file_content(file_id: str) -> dict:
         return {"file_id": file_id, "file_name": name, "mime_type": mime,
                 "content": content, "char_count": len(content), "source": "export_link"}
 
+    # Plain-text-family files uploaded as-is (not native Google Docs) need a direct
+    # media download, not the export API above - export only applies to converting a
+    # native Google Doc/Sheet/Slide into another format. Found 2026-07-06: a raw
+    # text/plain file (Drive-uploaded .txt, real mimeType confirmed via metadata) fell
+    # through both branches above straight to the "binary, needs OCR" fallback, even
+    # though it's the simplest possible format - GBT hit exactly this trying to read
+    # a real SOW/contact-directory file for a live 1355R electrical re-bid.
+    if mime.startswith("text/") or mime in ("application/json", "application/csv"):
+        url = f"{BASE_URL}/files/{file_id}"
+        params = {"alt": "media", "supportsAllDrives": "true"}
+        url_with_params = url + "?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url_with_params, headers={"Authorization": f"Bearer {_token()}"})
+        with urllib.request.urlopen(req, context=SSL_CTX, timeout=60) as r:
+            content = r.read().decode("utf-8", errors="replace")
+        return {"file_id": file_id, "file_name": name, "mime_type": mime,
+                "content": content, "char_count": len(content), "source": "direct_download"}
+
     return {"file_id": file_id, "file_name": name, "mime_type": mime,
             "content": "", "char_count": 0,
             "source": "none",
