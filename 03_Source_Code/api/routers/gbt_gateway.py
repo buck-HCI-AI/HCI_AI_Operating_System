@@ -2282,14 +2282,21 @@ def send_email_now(req: EmailSendRequest, request: Request):
         if not draft_id:
             raise ValueError("Draft creation returned no ID — cannot queue for approval")
 
-        msg_id = _create_ai_message(
-            req.source_agent, "buck", "approval_request",
-            f"Send email: {req.subject[:80]}",
-            f"To: {req.to_name} <{req.to_email}>\nSubject: {req.subject}\n\n{req.body_html[:500]}",
-            requires_buck_approval=True, approval_type="email_send",
-            related_file=draft_id,
-        )
+        # Fixed 2026-07-06: this used to call _create_ai_message() directly AND THEN
+        # _notify_agents() (which calls _create_ai_message() again internally) - every
+        # real /email/send created two separate ai_messages rows for the same approval
+        # request. Only the second (from _notify_agents) ever got the Telegram
+        # APPROVE/REJECT buttons; the first sat orphaned at NEEDS_BUCK_APPROVAL forever.
+        # Found while checking the Pella follow-up email this created (id 506 orphaned,
+        # 507 real). Single call now, same as every other caller of _notify_agents.
         if req.skip_notify:
+            msg_id = _create_ai_message(
+                req.source_agent, "buck", "approval_request",
+                f"Send email: {req.subject[:80]}",
+                f"To: {req.to_name} <{req.to_email}>\nSubject: {req.subject}\n\n{req.body_html[:500]}",
+                requires_buck_approval=True, approval_type="email_send",
+                related_file=draft_id,
+            )
             sent = {"id": msg_id}
         else:
             sent = _notify_agents(req.source_agent, "buck", "approval_request",
@@ -2300,7 +2307,7 @@ def send_email_now(req: EmailSendRequest, request: Request):
 
         return _response("/email/send", {
             "status":     "queued_for_approval",
-            "message_id": sent.get("id", msg_id),
+            "message_id": sent.get("id"),
             "draft_id":   draft_id,
             "to_email":   req.to_email,
             "subject":    req.subject,
