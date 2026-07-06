@@ -3007,6 +3007,9 @@ def system_drift_check():
         drive_files = (drive_data or {}).get("files", [])
         unintegrated = []
         for f in drive_files:
+            name = f.get("name") or ""
+            if name.upper().startswith("[OBSOLETE"):
+                continue  # already marked obsolete - not un-integrated content, don't re-flag it forever
             modified = f.get("modified")
             if not modified:
                 continue
@@ -3015,7 +3018,7 @@ def system_drift_check():
             except Exception:
                 continue
             if mod_ts > last_commit_ts:
-                unintegrated.append(f"{f.get('name')} (Drive-modified {modified}, after last Handbook commit)")
+                unintegrated.append(f"{name} (Drive-modified {modified}, after last Handbook commit)")
         if unintegrated:
             findings.append({
                 "severity": "high",
@@ -3640,10 +3643,10 @@ Respond with a JSON object only, no other text, in this exact format:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT lower(csi_division), lower(package_name) FROM bid_packages
+                SELECT lower(csi_division) AS csi, lower(package_name) AS pkg FROM bid_packages
                 WHERE project_id = %s AND status NOT IN ('awarded', 'cancelled')
             """, (pid,))
-            existing = {(row[0], row[1]) for row in cur.fetchall()}
+            existing = {(row["csi"], row["pkg"]) for row in cur.fetchall()}
             for pkg in packages:
                 key = (pkg.get("csi_division", "").lower(), pkg.get("package_name", "").lower())
                 if key in existing:

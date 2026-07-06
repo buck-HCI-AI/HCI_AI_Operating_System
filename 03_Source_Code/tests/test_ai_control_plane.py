@@ -467,9 +467,17 @@ if p.get("packages"):
 # with RETURNING — take only the first line, or the id gets concatenated with that
 # footer into one malformed string (found 2026-07-02: this silently broke the INSERTs
 # below, making the whole synthetic-conflict test a false negative).
+# Vendor choice matters (found 2026-07-06): bid-package-vendor-matches only returns the
+# top 5 vendors per division ranked by tier/win_rate/bid_count. Probuild dba Builders
+# FirstSource used to rank in that top 5 but drifted to 6th as real win-rate/bid-count
+# data changed, making this test a false negative unrelated to the actual conflict-join
+# logic. Use Aspen Craftwork LLC instead — comfortably mid-pack (60% win rate, 5 bids)
+# for CSI 09, first-name token "Aspen" (5 chars) passes the short-name guard, and its
+# other real awards are on different projects (ASPN-NEW/REM/MC) so they can't spuriously
+# collide with the schedule window this test creates on project_id=2.
 _pb_row = subprocess.run(
     ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os", "-t", "-A",
-     "-c", "SELECT id FROM vendors WHERE company_name ILIKE 'Probuild dba%' LIMIT 1"],
+     "-c", "SELECT id FROM vendors WHERE company_name = 'Aspen Craftwork LLC' LIMIT 1"],
     capture_output=True, text=True, timeout=10,
 ).stdout.strip().split("\n")[0]
 if _pb_row:
@@ -487,7 +495,7 @@ if _pb_row:
     subprocess.run(
         ["docker", "exec", "hci_postgres", "psql", "-U", "hci_admin", "-d", "hci_os",
          "-c", "INSERT INTO project_schedule_items (activity_id, project_id, title, start_date, end_date, status, assignee) "
-               "VALUES ('TEST-SYNTH-CONFLICT', '2', '[TEST-SYNTH] activity', '2026-09-05', '2026-09-20', 'active', 'Probuild dba Builders FirstSource')"],
+               "VALUES ('TEST-SYNTH-CONFLICT', '2', '[TEST-SYNTH] activity', '2026-09-05', '2026-09-20', 'active', 'Aspen Craftwork LLC')"],
         capture_output=True, text=True, timeout=10,
     )
     post("/plan-review/generate-packages", {
@@ -497,7 +505,7 @@ if _pb_row:
     post("/plan-review/generate-schedule", {"project_code": "QATEST", "start_date": "2026-09-01", "reviewed_by": "test_suite"})
     code, d = get("/project/QATEST/bid-package-vendor-matches")
     p = d.get("payload", {})
-    pb_matches = [v for pkg in p.get("packages", []) for v in pkg["vendor_matches"] if v["company_name"].startswith("Probuild dba")]
+    pb_matches = [v for pkg in p.get("packages", []) for v in pkg["vendor_matches"] if v["company_name"] == "Aspen Craftwork LLC"]
     check("Capacity conflict correctly detected for synthetic overlap",
           any(v.get("capacity_conflict") for v in pb_matches), pb_matches)
     ss_matches = [v for pkg in p.get("packages", []) for v in pkg["vendor_matches"] if v["company_name"] == "S & S Construction"]
