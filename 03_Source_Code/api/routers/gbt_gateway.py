@@ -3393,6 +3393,53 @@ async def system_self_heal(request: Request):
     }, start=t0)
 
 
+@router.post("/admin/daily-project-summaries")
+async def generate_daily_project_summaries(request: Request):
+    """BTW-4's last remaining piece: 'Daily Project Summary auto-generation (scheduled,
+    not on-demand)'. The compute + persistence already existed - ProjectIntelligenceEngine
+    .intelligence() upserts a full row (health, risks, schedule variance, ai_summary, etc.)
+    into project_brain_snapshots, keyed unique on (project_id, snapshot_date) - it just only
+    ever ran when someone happened to call a brain/intelligence endpoint that day. Confirmed
+    2026-07-06: several active projects had multi-day gaps with no snapshot at all (e.g.
+    project_id=4 had rows for 06-28 and 07-02 only, nothing between). This endpoint is the
+    scheduled trigger that was missing - call once daily (meant to be wired to a launchd job,
+    matching com.hci.morning-brief's pattern) to generate today's snapshot for every active
+    project regardless of whether anyone queries it on-demand."""
+    _require_key(request)
+    t0 = time.time()
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "project_brain"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
+    from intelligence import ProjectIntelligenceEngine
+    results = []
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, project_code, name FROM projects
+                    WHERE status IN ('active','design','bidding','preconstruction','monitoring')
+                      AND name NOT LIKE 'TEST-%%'
+                    ORDER BY id
+                """)
+                projects = cur.fetchall()
+        for p in projects:
+            try:
+                snap = ProjectIntelligenceEngine(p["id"]).intelligence(include_ai_summary=False)
+                results.append({"project_code": p["project_code"], "health": snap.get("health"), "status": "ok"})
+            except Exception as e:
+                results.append({"project_code": p["project_code"], "status": "error", "error": str(e)})
+    except Exception as e:
+        return _response("/admin/daily-project-summaries", {}, errors=[str(e)], start=t0)
+
+    ok_count = sum(1 for r in results if r["status"] == "ok")
+    return _response("/admin/daily-project-summaries", {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "projects_processed": len(results),
+        "succeeded": ok_count,
+        "failed": len(results) - ok_count,
+        "results": results,
+    }, start=t0)
+
+
 @router.post("/admin/purge-email-noise")
 async def purge_email_noise(request: Request):
     """Permanently deletes messages from the 'System Noise (auto-purge 30d)' Outlook
