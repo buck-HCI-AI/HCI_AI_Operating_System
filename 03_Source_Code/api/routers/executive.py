@@ -76,24 +76,34 @@ def _system_health():
 
 
 def _projects():
+    # health_status used to come from kpi_snapshots.PROJECT_HEALTH - found 2026-07-06
+    # that KPI code has zero rows for any project, ever (confirmed via a live query:
+    # only 8 distinct kpi_codes exist in the table and PROJECT_HEALTH isn't one of
+    # them). COALESCE(..., 'unknown') silently caught this, and the morning-brief
+    # icon logic treats any non-green/yellow status as red - meaning every project,
+    # every single day, showed a red icon regardless of actual health, alongside text
+    # that could say "On track". Computed directly from the real risks table instead,
+    # same high-or-critical=RED / any-open-risk=YELLOW convention already established
+    # and reconciled across Mission Control, PM Console, and Project Brain this session.
     rows = _q("""
         SELECT p.id, p.name, p.status, p.hubspot_deal_id,
-               COALESCE(k.health_status, 'unknown') as health_status,
+               CASE WHEN r.high_or_critical > 0 THEN 'red'
+                    WHEN r.open_risks > 0 THEN 'yellow'
+                    ELSE 'green' END as health_status,
                COALESCE(k.schedule_variance_days, 0) as schedule_variance_days,
                COALESCE(r.open_risks, 0) as open_risks
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
                 MAX(CASE WHEN kpi_code = 'SCHEDULE_VARIANCE' THEN value::int ELSE NULL END)
-                    AS schedule_variance_days,
-                MAX(CASE WHEN kpi_code = 'PROJECT_HEALTH' THEN status ELSE NULL END)
-                    AS health_status
+                    AS schedule_variance_days
             FROM kpi_snapshots
             WHERE project_id = p.id
               AND period_end >= CURRENT_DATE - 30
         ) k ON true
         LEFT JOIN LATERAL (
-            SELECT COUNT(*) AS open_risks
+            SELECT COUNT(*) AS open_risks,
+                   COUNT(*) FILTER (WHERE severity IN ('critical','high')) AS high_or_critical
             FROM risks
             WHERE project_id = p.id AND status = 'open'
         ) r ON true
