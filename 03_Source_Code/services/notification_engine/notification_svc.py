@@ -38,8 +38,23 @@ class NotificationService:
         action_url: str | None = None,
         topic: str | None = None,
         actions: list[dict] | None = None,
+        skip_notify: bool = False,
     ) -> dict:
         providers = POLICY.get(severity.upper(), ["email"])
+        # Test-mode bypass - found 2026-07-06 that test_sprint3_sprint4.py's
+        # notification tests had no way to avoid real sends, same class of bug
+        # already fixed for /email/send and /ai/messages (both took skip_notify
+        # for exactly this reason) - this file just never got the same fix, so
+        # every run of that suite pushed 2 real test notifications to Buck's phone.
+        # Still reports the action count so a test can verify the notification was
+        # CONSTRUCTED correctly (e.g. 3 approval buttons) without it actually firing.
+        if skip_notify:
+            return {
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "severity": severity,
+                "providers_attempted": providers,
+                "results": {p: {"status": "skipped_test_mode", "actions": len(actions or [])} for p in providers},
+            }
         results = {}
         for provider in providers:
             try:
@@ -71,6 +86,7 @@ class NotificationService:
         defer_token: str,
         deadline: str | None = None,
         confidence: str = "High",
+        skip_notify: bool = False,
     ) -> dict:
         """Actionable approval notification with Approve/Reject/Defer buttons."""
         base = _public_url()
@@ -97,6 +113,7 @@ class NotificationService:
             tags=["rotating_light", "construction"],
             action_url=approve_url,
             actions=actions,
+            skip_notify=skip_notify,
         )
 
     @staticmethod

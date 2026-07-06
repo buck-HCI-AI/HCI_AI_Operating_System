@@ -17,6 +17,7 @@ class NotificationPayload(BaseModel):
     action_url: Optional[str] = None
     topic: Optional[str] = None
     actions: Optional[list[dict]] = None
+    skip_notify: bool = False
 
 
 class ApprovalPayload(BaseModel):
@@ -27,6 +28,7 @@ class ApprovalPayload(BaseModel):
     defer_token: str
     deadline: Optional[str] = None
     confidence: str = "High"
+    skip_notify: bool = False
 
 
 @router.post("/send")
@@ -39,6 +41,7 @@ def send_notification(payload: NotificationPayload):
         action_url=payload.action_url,
         topic=payload.topic,
         actions=payload.actions,
+        skip_notify=payload.skip_notify,
     )
 
 
@@ -53,6 +56,7 @@ def notify_approval_required(payload: ApprovalPayload):
         defer_token=payload.defer_token,
         deadline=payload.deadline,
         confidence=payload.confidence,
+        skip_notify=payload.skip_notify,
     )
 
 

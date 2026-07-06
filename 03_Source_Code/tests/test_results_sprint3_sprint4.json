@@ -1,6 +1,6 @@
 {
   "suite": "Sprint 3 & 4",
-  "run_at": "2026-06-28T00:47:43.495393+00:00",
+  "run_at": "2026-07-06T20:01:26.516441+00:00",
   "summary": {
     "total": 35,
     "passed": 35,
@@ -31,7 +31,7 @@
     {
       "test": "Dashboard projects list",
       "status": "PASS",
-      "detail": "count=4"
+      "detail": "count=11"
     },
     {
       "test": "Dashboard ROI present",
@@ -51,7 +51,7 @@
     {
       "test": "Driving brief text",
       "status": "PASS",
-      "detail": "chars=398"
+      "detail": "chars=744"
     },
     {
       "test": "Driving brief is markdown-free",
@@ -71,7 +71,7 @@
     {
       "test": "Morning brief structure",
       "status": "PASS",
-      "detail": "inbox_count=2"
+      "detail": "inbox_count=3"
     },
     {
       "test": "Blocked missions endpoint",
@@ -121,7 +121,7 @@
     {
       "test": "Escalation check runs",
       "status": "PASS",
-      "detail": "fired=2"
+      "detail": "fired=3"
     },
     {
       "test": "approval_required endpoint works",
@@ -131,7 +131,7 @@
     {
       "test": "approval notification has 3 action buttons",
       "status": "PASS",
-      "detail": "{'status': 'sent', 'http_status': 200, 'topic': 'hci-executive', 'actions': 3}"
+      "detail": "{'status': 'skipped_test_mode', 'actions': 3}"
     },
     {
       "test": "HIGH severity \u2192 ntfy attempted",
@@ -141,7 +141,7 @@
     {
       "test": "ntfy delivery success",
       "status": "PASS",
-      "detail": "{'status': 'sent', 'http_status': 200, 'topic': 'hci-executive', 'actions': 0}"
+      "detail": "{'status': 'skipped_test_mode', 'actions': 0}"
     },
     {
       "test": "LOW severity \u2192 no providers (digest only)",

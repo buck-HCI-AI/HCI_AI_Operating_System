@@ -295,6 +295,7 @@ class TestNotificationEngine(unittest.TestCase):
             "title": "Test LOW notification",
             "message": "This should go to digest only.",
             "severity": "LOW",
+            "skip_notify": True,
         })
         ok = code == 200 and d.get("providers_attempted") == []
         record("LOW severity → no providers (digest only)", ok)
@@ -305,6 +306,7 @@ class TestNotificationEngine(unittest.TestCase):
             "title": "Test MEDIUM notification",
             "message": "Email only.",
             "severity": "MEDIUM",
+            "skip_notify": True,
         })
         ok = code == 200 and "email" in d.get("providers_attempted", [])
         record("MEDIUM severity → email provider attempted", ok)
@@ -316,9 +318,10 @@ class TestNotificationEngine(unittest.TestCase):
             "message": "Automated test — HIGH severity notification.",
             "severity": "HIGH",
             "tags": ["test_tube"],
+            "skip_notify": True,
         })
         ok = code == 200 and "ntfy" in d.get("providers_attempted", [])
-        ntfy_ok = d.get("results", {}).get("ntfy", {}).get("status") == "sent"
+        ntfy_ok = d.get("results", {}).get("ntfy", {}).get("status") == "skipped_test_mode"
         record("HIGH severity → ntfy attempted", ok)
         record("ntfy delivery success", ntfy_ok, str(d.get("results", {}).get("ntfy")))
         self.assertTrue(ok)
@@ -332,6 +335,7 @@ class TestNotificationEngine(unittest.TestCase):
             "reject_token":  "test_reject_token",
             "defer_token":   "test_defer_token",
             "confidence": "High",
+            "skip_notify": True,
         })
         ok = code == 200
         ntfy = d.get("results", {}).get("ntfy", {})
