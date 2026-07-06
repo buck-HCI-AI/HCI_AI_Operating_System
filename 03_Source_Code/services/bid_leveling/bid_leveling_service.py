@@ -150,8 +150,16 @@ def _drive_create_folder(parent_id: str, name: str, token: str) -> str:
         "mimeType": "application/vnd.google-apps.folder",
         "parents": [parent_id],
     }).encode()
+    # supportsAllDrives=true is required on writes targeting a Shared Drive parent,
+    # not just reads - found 2026-07-06 via a real 404 when creating a division
+    # folder inside 1355R's bids folder (which lives in a Shared Drive, ID
+    # 0AAI3pETbQDUUUk9PVA). _drive_list already had this param; this write path
+    # and the two below never did, so any project whose Drive folder is a Shared
+    # Drive (not "My Drive") would fail here the moment a live (non-dry-run) run
+    # tried to actually create/upload anything.
+    url = "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true"
     req = urllib.request.Request(
-        "https://www.googleapis.com/drive/v3/files",
+        url,
         data=payload, method="POST",
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "application/json"},
@@ -172,7 +180,7 @@ def _drive_upload(parent_id: str, filename: str, content: bytes,
         + content
         + f"\r\n--{boundary}--".encode()
     )
-    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true"
     req = urllib.request.Request(
         url, data=body, method="POST",
         headers={
@@ -186,7 +194,7 @@ def _drive_upload(parent_id: str, filename: str, content: bytes,
 
 def _drive_update_file(file_id: str, content: bytes, mime_type: str, token: str) -> str:
     """Updates an existing Drive file's content. Returns file ID."""
-    url = f"https://www.googleapis.com/upload/drive/v3/files/{file_id}?uploadType=media"
+    url = f"https://www.googleapis.com/upload/drive/v3/files/{file_id}?uploadType=media&supportsAllDrives=true"
     req = urllib.request.Request(
         url, data=content, method="PATCH",
         headers={"Authorization": f"Bearer {token}", "Content-Type": mime_type},
@@ -746,9 +754,14 @@ class BidLevelingService:
         pkg_detail  = cls.read_package_detail(sheet_id, token_sheets)
 
         if divisions_filter:
-            bid_data    = {k: v for k, v in bid_data.items() if k in divisions_filter}
-            div_summary = {k: v for k, v in div_summary.items() if k in divisions_filter}
-            pkg_detail  = {k: v for k, v in pkg_detail.items() if k in divisions_filter}
+            bid_data        = {k: v for k, v in bid_data.items() if k in divisions_filter}
+            div_summary     = {k: v for k, v in div_summary.items() if k in divisions_filter}
+            pkg_detail      = {k: v for k, v in pkg_detail.items() if k in divisions_filter}
+            # Drive-sourced divisions were never filtered here (found 2026-07-06 via
+            # test_bid_leveling.py's BL-DRY-04) - a caller asking for divisions
+            # ["16","15"] still got every division that had a Drive-sourced bid,
+            # since drive_bids_by_div was merged in below unconditionally.
+            drive_bids_by_div = {k: v for k, v in drive_bids_by_div.items() if k in divisions_filter}
 
         # Include Drive-sourced divisions even if not in Sheet
         drive_div_keys = list(drive_bids_by_div.keys()) if drive_bids_by_div else []
