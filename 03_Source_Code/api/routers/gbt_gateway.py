@@ -3184,6 +3184,24 @@ async def system_self_heal(request: Request):
         if needs_restart:
             subprocess.run([docker_bin, "restart", "n8n"], capture_output=True, timeout=60)
             actions_taken.append(f"Restarted n8n container - {reason}, same signature as ADR-015")
+
+        # Touch n8n's ai_agent_heartbeat row on every successful reachability check
+        # (found 2026-07-06 via GBT's own re-verification: the heartbeat was stuck at
+        # 2026-07-03 08:00 - n8n itself and this 15-min self-heal cron were both
+        # actually running fine, but nothing had ever updated n8n's heartbeat row, so
+        # any dashboard reading it looked 3+ days stale). This endpoint already runs
+        # every 15 minutes via AUTO-SELFHEAL, making it the natural proof-of-life touch
+        # point - still container/monitoring-level only, no business data involved.
+        if resp.status_code == 200:
+            try:
+                with _pg() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            UPDATE ai_agent_heartbeat SET status='ONLINE', last_seen_at=NOW()
+                            WHERE agent='n8n'
+                        """)
+            except Exception:
+                pass
     except Exception as e:
         actions_taken.append(f"n8n health check/restart attempt errored: {e}")
 
