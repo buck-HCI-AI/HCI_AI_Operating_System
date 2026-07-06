@@ -193,6 +193,20 @@ reconciled against the canonical `CURRENT_SPRINT.md` (Sprint 3, active since 202
 class of issue as the Handbook volume-numbering collision, same fix pattern (mark superseded,
 point to the canonical source, never let two documents both claim authority silently).
 
+Separately, the same audit pass ran the full `system-auditor` report (not just `drift-check`)
+and found `constitution_compliance` reporting **NON-COMPLIANT** — "3 approvals pending >72
+hours." Those 3 rows turned out to be leftover test fixtures in `pending_approvals` from
+2026-06-30 ("Test approval - verify loop works", etc.), never resolved, sitting in the real
+approval queue since initial development. This is the exact `test_data_in_real_project` pattern
+(2026-07-02 addendum above) recurring in a third table — a synthetic row left in a real
+governance queue reads as a genuine overdue-approval violation to any downstream consumer
+(the constitution checker, executive dashboards, Buck). Resolved the 3 rows with an audit-trail
+note and added detector #13, `test_data_in_approval_queue`, to `drift-check` so this can't sit
+silently again. `overall_health_score` moved 85 → 87, `constitution_compliance` 85 → 100 after
+the fix. Also cleaned an orphaned `connector_sync_state` row (`connector_name='project_brain'`)
+that no code path writes or reads anymore — it was permanently dragging `connector_health` down
+with no way to ever resolve itself since nothing updates it.
+
 ## Verification
 
 - `python3 03_Source_Code/tests/test_ai_control_plane.py` — 140/140 passing after

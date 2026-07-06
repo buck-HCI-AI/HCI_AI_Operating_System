@@ -3099,6 +3099,33 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Awarded-package data-gap check errored: {e}"})
 
+    # 13. Stale test-titled rows in pending_approvals - found 2026-07-06 via the
+    #     system-auditor's constitution_compliance check flagging "3 approvals pending
+    #     >72 hours" as a NON-COMPLIANT governance violation, when they were actually 3
+    #     leftover test fixtures from 2026-06-30 ("Test approval - verify loop works",
+    #     etc.) that nobody ever resolved. A synthetic test row left in a real approval
+    #     queue reads as a genuine overdue-approval violation to any downstream
+    #     consumer (constitution checker, executive dashboards, Buck) - same shape of
+    #     issue as test_data_in_real_project above, different table.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, title, created_at FROM pending_approvals
+                    WHERE status = 'pending'
+                      AND (title ILIKE '%test%' OR requested_by ILIKE '%test%')
+                """)
+                stale_test_approvals = cur.fetchall()
+        if stale_test_approvals:
+            findings.append({
+                "severity": "medium",
+                "category": "test_data_in_approval_queue",
+                "detail": f"{len(stale_test_approvals)} test-titled row(s) sitting 'pending' in pending_approvals - reads as a real overdue governance violation to constitution_compliance and any dashboard, resolve or purge them.",
+                "items": [f"id={r['id']}: {r['title']}" for r in stale_test_approvals],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Stale-test-approval check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
