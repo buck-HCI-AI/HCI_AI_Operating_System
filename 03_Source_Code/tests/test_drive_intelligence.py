@@ -22,7 +22,11 @@ def check(label, condition, detail=""):
         print(f"  ❌ {label}{': ' + str(detail) if detail else ''}")
 
 def get(path, params=None):
-    r = requests.get(f"{API}{path}", headers=HEADERS, params=params, timeout=30)
+    # /tree walks the whole folder structure recursively, one Drive API call per
+    # folder - confirmed 2026-07-06 it genuinely takes ~42s against the real HCI
+    # Drive (83 folders), well past the old 30s timeout. Real latency, not a hang -
+    # bumped rather than masking it; see project memory for the parallelization note.
+    r = requests.get(f"{API}{path}", headers=HEADERS, params=params, timeout=60)
     return r.status_code, r.json() if r.ok else {}
 
 def post(path, params=None):

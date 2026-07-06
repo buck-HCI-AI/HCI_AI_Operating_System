@@ -1,6 +1,6 @@
 {
   "suite": "platform_integration",
-  "run_at": "2026-07-01T05:22:47.565430",
+  "run_at": "2026-07-06T23:06:45.354170",
   "total": 39,
   "passed": 39,
   "failed": 0,
@@ -58,13 +58,13 @@
       "id": "PT-02-01",
       "name": "Publish domain event returns event_id",
       "status": "PASS",
-      "detail": "Event published, id=331"
+      "detail": "Event published, id=746"
     },
     {
       "id": "PT-02-02",
       "name": "Publish multiple event types succeeds",
       "status": "PASS",
-      "detail": "Published 3 more events, ids=[332, 333, 334]"
+      "detail": "Published 3 more events, ids=[747, 748, 749]"
     },
     {
       "id": "PT-02-03",
@@ -82,13 +82,13 @@
       "id": "PT-02-05",
       "name": "SOP-specific event query endpoint works",
       "status": "PASS",
-      "detail": "28 events for SOP instance 9999"
+      "detail": "36 events for SOP instance 9999"
     },
     {
       "id": "PT-03-01",
       "name": "Create approval_required notification",
       "status": "PASS",
-      "detail": "Approval notification created, id=38"
+      "detail": "Approval notification created, id=50"
     },
     {
       "id": "PT-03-02",
@@ -100,7 +100,7 @@
       "id": "PT-03-03",
       "name": "Get notifications for recipient returns correct count",
       "status": "PASS",
-      "detail": "28 total, 4 unread"
+      "detail": "36 total, 4 unread"
     },
     {
       "id": "PT-03-04",
@@ -112,7 +112,7 @@
       "id": "PT-03-05",
       "name": "Mark single notification as read",
       "status": "PASS",
-      "detail": "Notification 38 marked read; 3 still unread"
+      "detail": "Notification 50 marked read; 3 still unread"
     },
     {
       "id": "PT-03-06",
@@ -124,13 +124,13 @@
       "id": "PT-03-07",
       "name": "All-unread summary shows recipients with unread notifications",
       "status": "PASS",
-      "detail": "Summary: {'Buck Adams': 14}"
+      "detail": "Summary: {'Buck Adams': 18}"
     },
     {
       "id": "PT-04-01",
       "name": "Write audit record returns audit_id",
       "status": "PASS",
-      "detail": "Audit record written, id=524"
+      "detail": "Audit record written, id=563"
     },
     {
       "id": "PT-04-02",
@@ -142,7 +142,7 @@
       "id": "PT-04-03",
       "name": "Query audit by source=sop returns only sop records",
       "status": "PASS",
-      "detail": "7 sop records, all_sop=True"
+      "detail": "9 sop records, all_sop=True"
     },
     {
       "id": "PT-04-04",
@@ -154,25 +154,25 @@
       "id": "PT-04-05",
       "name": "SOP audit trail endpoint returns combined event view",
       "status": "PASS",
-      "detail": "SOP 9999 trail: 7 total events, 7 platform"
+      "detail": "SOP 9999 trail: 9 total events, 9 platform"
     },
     {
       "id": "PT-04-06",
       "name": "Project timeline endpoint returns multi-source event view",
       "status": "PASS",
-      "detail": "Project 1 timeline: 137 events in last 24h"
+      "detail": "Project 1 timeline: 139 events in last 24h"
     },
     {
       "id": "PT-04-07",
       "name": "Audit summary returns event counts by source",
       "status": "PASS",
-      "detail": "24h summary: {'identity': 1, 'notification': 1, 'sop': 1, 'workflow': 1}"
+      "detail": "24h summary: {'approval_queue': 17, 'mvp_ops': 12, 'sop': 3, 'identity': 2, 'notification': 2, 'workflow': 2}"
     },
     {
       "id": "PT-04-08",
       "name": "Audit query with since_hours filter works",
       "status": "PASS",
-      "detail": "4 audit events in last hour"
+      "detail": "23 audit events in last hour"
     },
     {
       "id": "PT-05-01",
@@ -214,19 +214,19 @@
       "id": "PT-05-07",
       "name": "Multi-source search completes without Postgres errors",
       "status": "PASS",
-      "detail": "19 results, errors=None"
+      "detail": "20 results, errors=None"
     },
     {
       "id": "PT-IT-01",
       "name": "Full approval flow: permission check \u2192 event \u2192 notification \u2192 audit",
       "status": "PASS",
-      "detail": "Full flow complete: event=335, notif=43, audit=528, Buck_unread=15"
+      "detail": "Full flow complete: event=750, notif=55, audit=567, Buck_unread=19"
     },
     {
       "id": "PT-IT-02",
       "name": "Search vendor then search related SOPs",
       "status": "PASS",
-      "detail": "Vendor 'Architectural Concrete Finishes' found; SOP search returned 0 results"
+      "detail": "Vendor 'All Valley Concrete' found; SOP search returned 0 results"
     },
     {
       "id": "PT-IT-03",
@@ -238,7 +238,7 @@
       "id": "PT-IT-04",
       "name": "Audit trail aggregates events from multiple sources",
       "status": "PASS",
-      "detail": "28 records from sources: {'sop', 'identity', 'workflow', 'notification'}"
+      "detail": "36 records from sources: {'identity', 'sop', 'notification', 'workflow'}"
     }
   ]
 }

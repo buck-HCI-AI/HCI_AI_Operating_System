@@ -1,6 +1,6 @@
 {
   "suite": "Sprint 3 & 4",
-  "run_at": "2026-07-06T20:01:26.516441+00:00",
+  "run_at": "2026-07-06T23:09:26.874709+00:00",
   "summary": {
     "total": 35,
     "passed": 35,
@@ -71,7 +71,7 @@
     {
       "test": "Morning brief structure",
       "status": "PASS",
-      "detail": "inbox_count=3"
+      "detail": "inbox_count=2"
     },
     {
       "test": "Blocked missions endpoint",

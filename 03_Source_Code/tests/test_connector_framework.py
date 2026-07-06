@@ -397,7 +397,7 @@ class TestAllEntityTypes:
     SAMPLES = {
         "projects":        {"houzz_project_id": "T", "name": "Test", "budget": "100000"},
         "daily_logs":      {"houzz_log_id": "T", "project_id": "T", "log_date": "2026-06-27", "crew_size": "6"},
-        "schedule_items":  {"houzz_item_id": "T", "project_id": "T", "completion_pct": "75"},
+        "schedule_items":  {"activity_id": "T", "project_id": "T", "completion_pct": "75"},
         "files":           {"houzz_file_id": "T", "houzz_project_id": "T", "file_type": "photo"},
         "time_entries":    {"houzz_entry_id": "T", "houzz_project_id": "T", "hours": "8"},
         "tasks":           {"houzz_task_id": "T", "houzz_project_id": "T", "title": "Task"},

@@ -95,12 +95,15 @@ valid_header = {
 ok, msg = hp.validate_handoff(valid_header)
 check("Valid header passes", ok, msg)
 
-# Missing field
+# Missing field - use a genuinely required one. created_at/summary are deliberately
+# NOT in REQUIRED_FIELDS (auto-injected if absent, see handoff_processor.py comment) -
+# this test used to delete "summary" and expect a failure that correctly no longer
+# happens now that auto-injection exists. Found 2026-07-06 re-running the full suite.
 bad = {**valid_header}
-del bad["summary"]
+del bad["status"]
 ok2, msg2 = hp.validate_handoff(bad)
 check("Missing field fails", not ok2)
-check("Error mentions missing field", "summary" in msg2)
+check("Error mentions missing field", "status" in msg2)
 
 # Unknown document type
 bad2 = {**valid_header, "document_type": "unknown_type"}
@@ -122,8 +125,11 @@ for doc_type in hp.VALID_TYPES:
 # ── 5. Routing Map Coverage ───────────────────────────────────────────────────
 print("\n5. Routing Coverage")
 check("All types have routing entry", len(hp.ROUTING) == len(hp.VALID_TYPES))
-check("browser_discovery routes to Platform_Intelligence",
-      hp.ROUTING.get("browser_discovery") is not None)
+# browser_discovery deliberately routes to None in ROUTING - it's resolved
+# dynamically per related_system via SYSTEM_CURRENT_DIRS instead of one flat
+# directory. Test used to assert the opposite; fixed 2026-07-06.
+check("browser_discovery resolves dynamically via SYSTEM_CURRENT_DIRS",
+      hp.ROUTING.get("browser_discovery") is None and len(hp.SYSTEM_CURRENT_DIRS) > 0)
 check("chief_architect_directive routes to Handbook/Drafts",
       "Drafts" in str(hp.ROUTING.get("chief_architect_directive", "")))
 check("implementation_request routing is None (append mode)",
@@ -169,10 +175,15 @@ hp.FAILED = orig_failed
 shutil.rmtree(tmp_dir)
 
 # ── 7. Required Fields List ───────────────────────────────────────────────────
+# created_at/summary are deliberately excluded - auto-injected if absent rather than
+# hard-required (see handoff_processor.py's REQUIRED_FIELDS comment). Test used to
+# expect 7 fields including those two; fixed 2026-07-06.
 print("\n7. Required Fields")
-check("7 required fields defined", len(hp.REQUIRED_FIELDS) == 7)
-for f in ["source_agent", "destination_agent", "document_type", "priority", "status", "created_at", "summary"]:
+check("5 required fields defined", len(hp.REQUIRED_FIELDS) == 5)
+for f in ["source_agent", "destination_agent", "document_type", "priority", "status"]:
     check(f"'{f}' is required", f in hp.REQUIRED_FIELDS)
+for f in ["created_at", "summary"]:
+    check(f"'{f}' is auto-injected, not hard-required", f not in hp.REQUIRED_FIELDS)
 
 # ── Results ───────────────────────────────────────────────────────────────────
 print(f"\n{'='*50}")

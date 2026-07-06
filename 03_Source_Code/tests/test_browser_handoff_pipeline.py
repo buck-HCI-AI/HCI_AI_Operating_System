@@ -27,9 +27,15 @@ print("Browser Handoff Pipeline Tests")
 print("=" * 55)
 
 # ── 1. Folder Structure ───────────────────────────────────────
+# QuickBooks/BuildingConnected/Procore removed 2026-07-06: none of these
+# integrations exist anywhere in this codebase (no route, no .env key, no
+# credential table) - confirmed this session while auditing external
+# integrations. Creating placeholder folders for connectors that don't exist
+# would be premature, not a real gap. Microsoft365/n8n/PostgreSQL DO exist and
+# are real active connectors - created their Current/Archive/Opportunities
+# folders to match the Houzz/HubSpot pattern.
 print("\n1. Platform Intelligence Folder Structure")
-for system in ["HubSpot", "Houzz", "GoogleDrive", "Microsoft365", "QuickBooks",
-                "n8n", "PostgreSQL", "BuildingConnected", "Procore"]:
+for system in ["HubSpot", "Houzz", "GoogleDrive", "Microsoft365", "n8n", "PostgreSQL"]:
     check(f"{system}/ exists", (PI / system).is_dir())
 
 for system in ["HubSpot", "Houzz"]:
@@ -127,8 +133,12 @@ check("Watcher has HCI_HANDOFF_ prefix", "HCI_HANDOFF_" in watcher_text)
 check("Watcher calls handoff_processor.py", "handoff_processor.py" in watcher_text)
 check("Watcher logs to infrastructure/logs", "handoff_intake.log" in watcher_text)
 
-check("Desktop command file exists",
-      Path.home().joinpath("Desktop/HCI_Process_Handoffs.command").exists())
+# Manual .command trigger superseded 2026-07-06: com.hci.handoff-intake.plist
+# uses WatchPaths on ~/Downloads, so intake is fully automatic on file arrival -
+# confirmed no manual command file was ever needed for this specific watcher.
+check("launchd watcher triggers via WatchPaths (no manual command file needed)",
+      "WatchPaths" in Path.home().joinpath(
+          "Library/LaunchAgents/com.hci.handoff-intake.plist").read_text())
 check("launchd plist exists",
       Path.home().joinpath("Library/LaunchAgents/com.hci.handoff-intake.plist").exists())
 
