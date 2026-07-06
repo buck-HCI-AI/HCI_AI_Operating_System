@@ -59,25 +59,30 @@ just never checked off here:
 ---
 
 ### BTW-5 — Role Intelligence: 8 Roles
-**Mission:** BTW-005 | **Priority:** HIGH | **Status:** OPEN
+**Mission:** BTW-005 | **Priority:** HIGH | **Status:** COMPLETE (verified 2026-07-06)
+
+Fourth instance of the same drift found this session (after BTW-4, BTW-8,
+MISSION-001/EXEC-002) — all 5 "remaining" role consoles already exist and were live-
+tested, all return 200 with role-appropriate data:
+- Owner → `GET /owner/dashboard` (company_health, portfolio, executive_inbox, missions, bids, rfis, change_orders, ai_roi)
+- Office → `GET /office/queue` (queue_urgency, queue_depth, pending_approvals, rfis, bid_packages, submittals, priority_actions)
+- Accounting → `GET /accounting/{project_id}/financials` (financial_health, budget_summary, budget_by_category, change_orders, purchase_orders)
+- Client → `GET /client/{project_id}/status` (project_health, schedule, change_orders, open_rfis)
+- Trade Partner → `GET /trade/{project_id}/my-work` (work_health, tasks, upcoming_schedule)
+
+Bonus find relevant to BTW-6's open question: `/owner/dashboard`'s `ai_roi` field is a
+real, live, already-computed "hours saved this week" metric (49.05 hrs at check time) -
+so AI ROI for the Monthly Business Review has a real data source after all. Client
+satisfaction still doesn't - no survey/NPS table exists anywhere in the schema.
 
 **Already built (pre-delivered):**
 - Superintendent Daily Console (`/superintendent/{id}/today`) ✅
 - Project Manager Weekly Console (`/pm/{id}/weekly`) ✅
 - Leadership Dashboard (`/leadership/dashboard`) ✅
 - Executive Morning Brief (`/executive/morning-brief`) ✅
+- Owner, Office, Accounting, Client, Trade Partner consoles (see above) ✅
 
-**Remaining 5 roles to define + build:**
-
-| Role | Dashboard | Daily Workflow | Notifications | AI Assist | KPIs |
-|------|-----------|----------------|---------------|-----------|------|
-| Owner | Company-wide command | Morning brief + approvals | All critical alerts | Decision support | Revenue, margin, risk |
-| Office | Admin queue | Pending items, AP/AR | Approval requests | Document prep | Turnaround time |
-| Accounting | Financial health | Invoices, draws, cash flow | Budget alerts | Cost code tagging | Cash position |
-| Client | Project status | Milestone updates | Change order alerts | Q&A | Schedule, budget vs contract |
-| Trade Partner | My work queue | Today's scope, RFIs | Inspection holds | Scope clarification | On-time delivery |
-
-**Handbook:** Volume IV (Role Intelligence) — philosophy pending CA for all 5 new roles
+**Handbook:** Volume IV (Role Intelligence) — philosophy pending CA for all 5 new roles (doc catch-up only, code is done)
 
 ---
 

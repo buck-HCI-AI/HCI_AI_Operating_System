@@ -3323,6 +3323,54 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Test-artifact-email check errored: {e}"})
 
+    # 17. Backlog-vs-code drift - found 2026-07-06 picking up the next unblocked BTW
+    #     item per the Definition of Done directive: STRATEGIC_BACKLOG.md marked BTW-4,
+    #     BTW-5, and BTW-8 all "OPEN" with specific remaining sub-items, but the exact
+    #     routes those sub-items named were already built and live (verified with real
+    #     API calls) - three separate near-misses of re-authoring already-shipped work
+    #     from scratch, the same failure shape as detector #10's Handbook-content case
+    #     but for code instead of docs. Generalizes the manual check: for any backlog
+    #     item still marked OPEN/PARTIAL, pull every backtick-quoted `/path/...` in its
+    #     section and check whether a router file already defines that exact route -
+    #     if so, the backlog claim is stale and needs re-verifying before anything gets
+    #     built against it.
+    try:
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        backlog_path = os.path.join(repo_root, "architecture", "STRATEGIC_BACKLOG.md")
+        router_dir = os.path.dirname(__file__)
+        with open(backlog_path) as f:
+            backlog_text = f.read()
+        router_source = ""
+        for fname in os.listdir(router_dir):
+            if fname.endswith(".py"):
+                with open(os.path.join(router_dir, fname)) as rf:
+                    router_source += rf.read() + "\n"
+
+        sections = _re.split(r"(?=^### BTW-\d+)", backlog_text, flags=_re.M)
+        stale_backlog_claims = []
+        for sec in sections:
+            m = _re.match(r"### (BTW-\d+[^\n]*).*?Status:\*\*\s*(OPEN|PARTIAL)", sec, _re.S)
+            if not m:
+                continue
+            title, status = m.groups()
+            paths = set(_re.findall(r"`(/[a-zA-Z0-9_{}/-]+)`", sec))
+            for p in paths:
+                # normalize {code}/{id}/{project_id} etc. so a param-name mismatch
+                # (backlog says {id}, code says {project_id}) still matches
+                pattern = _re.escape(p)
+                pattern = _re.sub(r"\\\{[a-zA-Z_]+\\\}", r"\\{[a-zA-Z_]+\\}", pattern)
+                if _re.search(rf'@router\.(get|post)\("{pattern}"', router_source):
+                    stale_backlog_claims.append(f"{title.strip()}: `{p}` already has a live route")
+        if stale_backlog_claims:
+            findings.append({
+                "severity": "medium",
+                "category": "backlog_marked_open_but_code_exists",
+                "detail": f"{len(stale_backlog_claims)} STRATEGIC_BACKLOG.md item(s) marked OPEN/PARTIAL reference a route that already exists - verify against live code before building, the backlog status may be stale.",
+                "items": stale_backlog_claims,
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Backlog-vs-code drift check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
