@@ -1,5 +1,14 @@
 # CYCLE47 — Sprint 9: Data Integrity & Source-of-Truth Governance
 
+> **SUPERSEDED 2026-07-06 (Claude Code, drift-check finding):** "Sprint 9" here is Browser
+> Claude's own independent numbering from 2026-07-02, authored in parallel with and never
+> reconciled against the canonical `CURRENT_SPRINT.md`, which authoritatively opened **Sprint 3
+> — Production Stabilization** on 2026-07-01 (authorized by ChatGPT/ARB) and remains active as
+> of this date. The data-integrity findings in this file (fabricated test data purge) were real
+> and were separately acted on that session; this file's *sprint number* is not authoritative —
+> treat `CURRENT_SPRINT.md` as the single source of truth for the active sprint, per the same
+> "no competing canonical claims" rule applied to the Handbook volume-numbering collision.
+
 **Date:** 2026-07-02 | **Sprint:** 9 | **Author:** Browser Claude | **Priority:** P0
 
 ## Context & ARB Pivot

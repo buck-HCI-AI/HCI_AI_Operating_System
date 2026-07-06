@@ -1180,3 +1180,51 @@ Retrieve key HCI-AI-OS from secure config. Build Perplexity search integration a
 *Source: ChatGPT | 2026-07-03*
 
 OWM key name=Default in secure config. Build Weather module using OpenWeatherMap current weather endpoint. Report via ai/messages when live.
+
+
+### Backup - Run Now
+*Source: ChatGPT | 2026-07-03*
+
+Run SETUP_DAILY_BACKUP.command or rsync+pg_dump immediately. Do not wait for 2AM cron. Verify backup completed and report timestamp and destination via ai/messages.
+
+
+### BC Ready - Full Mission On - Fix Sandbox - 100% Field Test + Onboarding
+*Source: ChatGPT | 2026-07-03*
+
+Browser Claude is ready for full mission execution. Coordinate implementation to resolve sandbox issues, complete field-test readiness, support onboarding, and report concrete progress, blockers, and completion status via ai_messages. Use verified system state and evidence for all status updates.
+
+
+### CRITICAL - n8n STALE - Restart Required
+*Source: ChatGPT | 2026-07-03*
+
+Mission Control reports the n8n automation service is STALE. Investigate the cause, restart the n8n service if appropriate, verify workflows resume normally, confirm connector health after restart, and report root cause, actions taken, and final status via ai_messages.
+
+
+### CHANNEL CHANGE - All Updates to Telegram Now
+*Source: ChatGPT | 2026-07-03*
+
+Buck channel-change directive: send all material status updates, completions, blockers, and review-required notices to Telegram / ai_messages notification path going forward. Do not rely only on repo files, Drive notes, or internal handoff files for urgent coordination. Confirm receipt and apply immediately across Claude Code task reporting.
+
+
+### URGENT - Break the Stall - Bypass n8n if Needed
+*Source: ChatGPT | 2026-07-03*
+
+Mission Control shows Claude Code online but implementation progress is not yet reflected, while n8n remains STALE. If n8n is blocking execution, bypass it where feasible and proceed directly with implementation tasks. Prioritize: (1) remove the false 101 Francis schedule_variance steel-delay test artifact, (2) restore or work around stale connector functionality, (3) continue Weather, Perplexity, backup, and Handbook tasks. Report concrete progress, blockers, and any required Buck decisions via ai_messages/Telegram.
+
+
+### Good Progress - Continue Remaining Priority Items
+*Source: ChatGPT | 2026-07-06*
+
+Good progress confirmed. Continue with the remaining priority work: (1) investigate and restore the stale Outlook and Google Drive connectors, (2) investigate and restore n8n from STALE to healthy operation, (3) continue verification that no additional test/sandbox data remains in production-facing views, and (4) report concrete progress, remaining blockers, and completion status via ai_messages/Telegram after each major milestone.
+
+
+### CRITICAL - Telegram Ingestion Broken Since July 1 + Mission Control False Timestamp
+*Source: ChatGPT | 2026-07-06*
+
+Investigate an apparent inconsistency between Mission Control and the Telegram inbox. Mission Control reports recent Buck message timestamps (including 2026-07-06), but getBuckTelegramMessages returns no inbound messages newer than 2026-07-01. Verify whether Telegram ingestion is stalled, whether Mission Control is displaying an incorrect or derived timestamp, reconcile the two data sources, repair the ingestion pipeline if needed, and report root cause, validation steps, and final status via ai_messages/Telegram.
+
+
+### Full Deep Dive Required - ALL 11 Jobs, Not Just 4
+*Source: ChatGPT | 2026-07-06*
+
+Mission Control currently exposes 11 projects in portfolio view, not only the 4 primary/monitored jobs. Perform a full deep dive across all 11 jobs/projects shown by Mission Control: 64 Eastwood, 101 Francis, 1355 Riverside, 83 Sagebrusch, 246 Gallo Way, 813 Mcskimming Spitzley, 275 Sunnyside Lane, 574 Johnson Drive, 606 Starwood Olson, 1395 Sierra Vista, and Lichtenstein. Identify current health, risks, data completeness gaps, stale data, connector dependencies, procurement exposure, and any test/sandbox contamination for each job. Report findings via ai_messages/Telegram with clear priority actions and any blockers. Do not limit analysis to the 4 pilot/primary projects.

@@ -88,3 +88,11 @@
 | 2026-07-03 00:45 | GBT_HANDOFF_2026-07-03_URGENT__4_Buck-priority_tasks_2554a017.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-03 00:50 | GBT_HANDOFF_2026-07-03_Perplexity_Integration_-_Start_Build_1b7b3e7b.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-03 00:50 | GBT_HANDOFF_2026-07-03_Weather_Integration_-_Start_Build_f9f7c944.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-03 00:55 | GBT_HANDOFF_2026-07-03_Backup_-_Run_Now_0ed8cd0d.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-03 01:05 | GBT_HANDOFF_2026-07-03_BC_Ready_-_Full_Mission_On_-_Fix_Sandbox_9b23d424.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-03 01:10 | GBT_HANDOFF_2026-07-03_CRITICAL_-_n8n_STALE_-_Restart_Required_bc45dc65.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-03 01:15 | GBT_HANDOFF_2026-07-03_CHANNEL_CHANGE_-_All_Updates_to_Telegram_d2ce0f98.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-03 18:20 | GBT_HANDOFF_2026-07-03_URGENT_-_Break_the_Stall_-_Bypass_n8n_if_7077a821.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 14:50 | GBT_HANDOFF_2026-07-06_Good_Progress_-_Continue_Remaining_Prior_ed67e6f7.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 14:50 | GBT_HANDOFF_2026-07-06_CRITICAL_-_Telegram_Ingestion_Broken_Sin_eae28d07.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-06 14:55 | GBT_HANDOFF_2026-07-06_Full_Deep_Dive_Required_-_ALL_11_Jobs__N_fc6fa42c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |

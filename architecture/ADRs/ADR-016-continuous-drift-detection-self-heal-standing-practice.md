@@ -173,6 +173,26 @@ on the Handbook or similar canonical documents, adopted here as standing practic
 5. Record the commit hash of the publication in the release/status notes — and per the
    `fabricated_commit_claim` check above, that hash must actually resolve in git history.
 
+### Addendum 2026-07-06 — weekly self-heal cadence was too slow; added a 15-minute cron
+
+A live incident this session: n8n's SQLITE_IOERR (the exact ADR-015 signature) recurred and ran
+undetected for **4.5 hours** (10:15–14:47) before a manual `drift-check` caught it — 13 active
+workflows failing 100% of their last 3+ runs, 99/100 recent executions errored. `POST
+/gateway/admin/self-heal` fixed it instantly once called (confirmed: the next scheduled run of
+the worst-hit workflow succeeded cleanly within 90 seconds of the restart) — the fix was never
+the problem, only the *detection cadence* was. `AUTO-DRIFT-CHECK` only runs weekly (Monday 07:00),
+which is far too coarse for a same-day infra flap. Added `AUTO-SELFHEAL — 15min n8n Health Check`
+(n8n workflow `U0YWuR0UoLvfTZPU`, active, calls `/gateway/admin/self-heal` every 15 minutes) so
+this specific failure mode is caught and fixed within 15 minutes going forward instead of waiting
+for a human to happen to check. Self-heal's own safety boundary (container-only, no business-data
+writes) makes this safe to run this frequently — it's a no-op whenever nothing is actually broken,
+verified by the original 2026-07-02 test below. Also found and annotated (not deleted) a real
+sprint-numbering collision while investigating the same drift-check run: `AI_TEAM/CYCLE47` and
+`CYCLE49` claimed an independent "Sprint 9" from Browser Claude, dated 2026-07-02, never
+reconciled against the canonical `CURRENT_SPRINT.md` (Sprint 3, active since 2026-07-01) — same
+class of issue as the Handbook volume-numbering collision, same fix pattern (mark superseded,
+point to the canonical source, never let two documents both claim authority silently).
+
 ## Verification
 
 - `python3 03_Source_Code/tests/test_ai_control_plane.py` — 140/140 passing after
@@ -182,3 +202,5 @@ on the Handbook or similar canonical documents, adopted here as standing practic
 - `POST /gateway/admin/self-heal` — tested live while n8n was healthy, correctly took
   no action (no false positives)
 - n8n workflow `9q7FN8TKypC5JxMP` — confirmed active, scheduled Monday 07:00
+- n8n workflow `U0YWuR0UoLvfTZPU` (`AUTO-SELFHEAL — 15min n8n Health Check`) — confirmed
+  active 2026-07-06, added after the 4.5-hour undetected outage above

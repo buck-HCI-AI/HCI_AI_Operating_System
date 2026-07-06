@@ -1,5 +1,13 @@
 # CYCLE49 — AI Tools & Integration Implementation Directive
 
+> **SPRINT LABEL SUPERSEDED 2026-07-06 (Claude Code, drift-check finding):** the "Sprint 9"
+> reference below is Browser Claude's own independent numbering, never reconciled against
+> `CURRENT_SPRINT.md` (canonical: Sprint 3, active since 2026-07-01). The two proposed
+> integrations below (Perplexity research, Weather API) were never built — confirmed via
+> `grep` against `gbt_gateway.py`, no `/gateway/research` or `/gateway/project/{code}/weather`
+> routes exist. Both still require Buck to supply API keys before implementation can start;
+> flagged to him 2026-07-06 as a still-open decision, not silently actioned.
+
 **Date:** 2026-07-02 | **Author:** Browser Claude | **Source:** RECOMMENDED_TOOLS_SPEC.md | **Priority:** P0
 
 ## P0 — Sprint 9 (Implement Now)

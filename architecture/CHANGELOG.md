@@ -5,6 +5,27 @@
 
 ---
 
+## v4.2 — 2026-07-06 | GBT onboarding fixes + 15-min self-heal cadence
+
+**Trigger:** GBT ran a live first-day-PM onboarding dry-run per Buck's directive and found
+real, current gaps — not hypothetical ones.
+
+- Deleted `risks.id=7`, a fabricated 101F "steel delay" row that survived the 2026-07-02
+  purge and was still being served by `/gateway/ai/warm-start`'s `top_risks` — confirmed
+  zero supporting evidence anywhere before deleting.
+- Fixed GBT's live Custom GPT Action schema: it was capped at ChatGPT's 30-operation
+  limit and missing `getProjectBids`/`getProjectActionList`/`getRoleOwner`. Swapped out
+  3 low-value actions for those 3, verified live (GBT now pulls all 73 real 1355R bid
+  records). See `project_gbt_custom_gpt_schema_drift` memory for the 30-op ceiling and
+  the browser-automation procedure.
+- Found and fixed a 4.5-hour undetected n8n SQLITE_IOERR outage (13 workflows, 99%
+  failure rate) — self-heal fixed it instantly once called, but nothing was calling it
+  between weekly `AUTO-DRIFT-CHECK` runs. Added `AUTO-SELFHEAL — 15min n8n Health Check`
+  (n8n workflow `U0YWuR0UoLvfTZPU`). See ADR-016 addendum 2026-07-06.
+- Annotated `AI_TEAM/CYCLE47`/`CYCLE49` as superseded — both claimed an independent
+  "Sprint 9" (Browser Claude, 2026-07-02) never reconciled against the canonical
+  `CURRENT_SPRINT.md` (Sprint 3, active since 2026-07-01).
+
 ## v4.1 — 2026-07-02 | Continuous Drift Detection + Self-Heal (ADR-016)
 
 **Trigger:** Buck, after a full-system audit found the same root cause (nothing ever
