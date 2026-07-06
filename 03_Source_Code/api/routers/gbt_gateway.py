@@ -3212,6 +3212,87 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Snapshot-reconciliation check errored: {e}"})
 
+    # 15. Stale or failing test result files - found 2026-07-06 that
+    #     test_results_system_auditor.json had a real failure (a genuine bug, not a
+    #     flaky test) sitting unnoticed since 2026-06-30 because nobody had re-run
+    #     that suite in the 6 days since. A failing test that nobody re-runs is the
+    #     same silent-failure shape as everything else this ADR exists to catch -
+    #     just applied to the test suites themselves instead of production data.
+    try:
+        import glob as _glob
+        tests_dir = os.path.join(os.path.dirname(__file__), "..", "..", "tests")
+        stale_or_failing = []
+        for result_path in _glob.glob(os.path.join(tests_dir, "test_results_*.json")):
+            try:
+                with open(result_path) as f:
+                    rd = json.load(f)
+                fname = os.path.basename(result_path)
+                failed = rd.get("failed") if isinstance(rd, dict) else None
+                run_at = rd.get("finished") or rd.get("run_at") or rd.get("generated_at")
+                if failed and int(failed) > 0:
+                    stale_or_failing.append(f"{fname}: {failed} failing test(s)")
+                elif run_at:
+                    try:
+                        run_dt = datetime.fromisoformat(str(run_at).replace("Z", "+00:00"))
+                        if run_dt.tzinfo is None:
+                            run_dt = run_dt.replace(tzinfo=timezone.utc)
+                        age_days = (datetime.now(timezone.utc) - run_dt).days
+                        if age_days > 7:
+                            stale_or_failing.append(f"{fname}: last run {age_days}d ago")
+                    except Exception:
+                        pass
+            except Exception:
+                continue
+        if stale_or_failing:
+            findings.append({
+                "severity": "medium",
+                "category": "stale_or_failing_test_results",
+                "detail": f"{len(stale_or_failing)} test result file(s) show real failures or haven't been re-run in over a week - a genuine failure can sit unnoticed indefinitely if nothing re-runs the suite.",
+                "items": stale_or_failing,
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Test-staleness check errored: {e}"})
+
+    # 16. Test-artifact emails leaking into the real mailbox - found 2026-07-06 while
+    #     auditing the 101F Pella duplicate: dozens of "[TEST] automated regression..."
+    #     emails from this session's own suite runs are sitting in real Sent Items (the
+    #     dry_run flag on /email/send only stops NEW ones, it doesn't clean up what a
+    #     suite already sent before that flag existed - same shape as the ~100-draft
+    #     backlog noted in that endpoint's own code comment). A blanket "any external
+    #     send with no matching approval row" check was tried first and rejected - it
+    #     fired on Buck's own ordinary vendor emails (radon, roofing, HubSpot deals),
+    #     which have no reason to ever go through the agent approval path. This narrower
+    #     version only flags the pattern that's actually a bug: test-signature subjects
+    #     reaching a real send.
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import _request as _graph_request
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        r, gerr = _graph_request("GET", "/me/mailFolders/sentitems/messages", params={
+            "$select": "id,subject,toRecipients,sentDateTime",
+            "$top": 50,
+            "$orderby": "sentDateTime desc",
+            "$filter": f"sentDateTime ge {cutoff}",
+        })
+        if gerr:
+            findings.append({"severity": "low", "category": "check_failed", "detail": f"Test-artifact-email check: Graph unreachable: {gerr}"})
+        else:
+            test_leaks = []
+            for m in (r or {}).get("value", []):
+                subj = (m.get("subject") or "").upper()
+                if "[TEST" in subj or subj.startswith("TEST ") or "REGRESSION" in subj:
+                    to_addrs = [rc["emailAddress"]["address"] for rc in m.get("toRecipients", [])]
+                    test_leaks.append(f"{m.get('sentDateTime')} | {m.get('subject','')[:60]} -> {to_addrs}")
+            if test_leaks:
+                findings.append({
+                    "severity": "medium",
+                    "category": "test_email_leaked_to_real_send",
+                    "detail": f"{len(test_leaks)} test-signature email(s) reached a real Sent Items send in the last 3 days - a test suite is bypassing skip_notify/dry_run, or a self-send test allowlist entry needs to be cleaned up.",
+                    "items": test_leaks,
+                })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Test-artifact-email check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),

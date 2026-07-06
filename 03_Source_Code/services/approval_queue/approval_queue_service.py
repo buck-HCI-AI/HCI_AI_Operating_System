@@ -49,7 +49,13 @@ def _audit(source: str, event_type: str, actor: str, entity_id: int,
 
 # AD-12.1 (ratified 2026-06-30): these are internal system automation events, not
 # externally-impacting actions — they go to activity_log, never to Buck's approval queue.
-_INTERNAL_NOISE_ACTION_TYPES = {"drive_upload_file", "verify_approval_loop", "system_check", "health_check"}
+# drive_upload_file removed 2026-07-06: it's the only action_type used by bid-leveling's
+# real Excel-to-Drive uploads (real vendor $ data) — externally-impacting, not internal
+# noise. It was bundled into AD-12.1's cleanup by category-name oversight; carving it out
+# restores Buck approval before any bid document reaches Drive, matching the bid-leveling
+# code's own docstrings and BL-QUEUE-01/02 test expectations. Confirmed no other caller
+# in the codebase used this action_type, so this is a no-risk, single-path change.
+_INTERNAL_NOISE_ACTION_TYPES = {"verify_approval_loop", "system_check", "health_check"}
 
 
 class ApprovalQueueService:

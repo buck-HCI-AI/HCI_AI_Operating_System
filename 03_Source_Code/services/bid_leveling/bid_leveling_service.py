@@ -382,9 +382,16 @@ class BidLevelingService:
         for row in rows[header_idx + 1:]:
             if not row or not str(row[0]).strip():
                 continue
-            div = str(row[0]).strip().zfill(2) if row[0] else ""
-            if not div:
+            # Guard added 2026-07-06: a bare .zfill(2) on the raw cell let any
+            # non-numeric banner/disclaimer row (e.g. "DRAFT — FOR BUCK'S REVIEW
+            # AND APPROVAL ONLY") become a fake division key, since zfill only pads
+            # short strings and leaves long ones untouched. Require an actual 1-2
+            # digit division number in the cell, same as read_bid_tracking.
+            import re
+            m = re.search(r'\b(\d{1,2})\b', str(row[0]).strip())
+            if not m:
                 continue
+            div = m.group(1).zfill(2)
 
             def get(i):
                 return str(row[i]).strip() if i is not None and i < len(row) else ""
@@ -448,8 +455,14 @@ class BidLevelingService:
             if col_div is not None and col_div < len(row) and str(row[col_div]).strip():
                 raw = str(row[col_div]).strip()
                 import re
-                m = re.search(r'(\d{2})', raw)
-                current_div = m.group(1).zfill(2) if m else raw.zfill(2)
+                # Guard added 2026-07-06: `raw.zfill(2)` used to run unconditionally
+                # when no 2-digit match was found, turning a stray banner/disclaimer
+                # row (e.g. "DRAFT — FOR BUCK'S REVIEW...") into a fake division key
+                # since zfill only pads short strings. Only accept 1-2 digit values;
+                # otherwise leave current_div at whatever division came before.
+                m = re.search(r'(\d{2})', raw) or re.search(r'\b(\d{1})\b', raw)
+                if m:
+                    current_div = m.group(1).zfill(2)
             if current_div is None:
                 continue
 

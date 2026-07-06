@@ -218,3 +218,33 @@ with no way to ever resolve itself since nothing updates it.
 - n8n workflow `9q7FN8TKypC5JxMP` — confirmed active, scheduled Monday 07:00
 - n8n workflow `U0YWuR0UoLvfTZPU` (`AUTO-SELFHEAL — 15min n8n Health Check`) — confirmed
   active 2026-07-06, added after the 4.5-hour undetected outage above
+
+## Addendum, 2026-07-06 — detector #16, and a rejected detector worth recording
+
+Investigating Buck's report of a duplicate 101F window bid invite (two sends to the same Pella
+rep, one day apart) surfaced the same email account's real Sent Items history, which turned up
+two more things: the original 2026-07-01 unapproved-RFI-to-architect incident really did send
+(confirming ADR-010/011's own incident note), and separately dozens of `[TEST] automated
+regression...` emails from this session's own suite runs are sitting in the *real* mailbox's
+Sent Items — the `dry_run`/`skip_notify` flags on `/email/send` only stop new test runs, they
+don't retroactively clean up what already went out before those flags existed (same shape as the
+"~100 accumulated drafts" already noted in that endpoint's own code comment).
+
+First attempt at a fix was a detector that flagged *any* Sent Items message to a non-internal
+address with no matching approved `email_send` row. Tested live and rejected immediately — it
+fired on 5 of Buck's own completely ordinary vendor emails in a 3-day window (radon quotes, a
+roofing bid, a HubSpot deal reply). Buck's own direct outbound email has no reason to ever go
+through the agent-approval path, so a detector that can't tell "Buck typed and sent this himself"
+apart from "an agent bypassed the gate" is not a usable signal — it would erode trust in
+drift-check exactly the way this ADR exists to prevent. Replaced it with detector #16,
+`test_email_leaked_to_real_send`: only flags Sent Items subjects matching a test signature
+(`[TEST`, `TEST `, `REGRESSION`) — the one part of "did an agent send something it shouldn't
+have" that's actually distinguishable after the fact from a human's normal business email.
+
+The broader gap this couldn't close: ADR-010/011's approval gate lives in the API
+(`send_email`/`_send_approved_draft`). An agent driving Outlook's web UI directly via browser
+automation and clicking Send bypasses that gate entirely, with no code-level way to block it —
+there's no Exchange transport-rule/admin API configured here, only `/me`-scoped Graph access.
+That remains a policy question (agents must never compose-and-send directly, only ever via
+`/email/draft` + `/email/send`), not a code gap — recorded here so it isn't rediscovered as if
+new next time, and reinforced directly to Browser Claude via `ai_messages`.
