@@ -5,6 +5,40 @@
 
 ---
 
+## v4.3 — 2026-07-06 | Full test/backlog/Drive sweep ahead of Adam/Trafford onboarding
+
+**Trigger:** Buck set a hard goal — system ready to onboard Adam and Trafford the next
+morning — and directed a full self-check across code, backlog docs, and the real Drive.
+
+- Fixed a real AD-12.1 miscategorization: `drive_upload_file` had been bundled into an
+  internal-noise cleanup alongside genuinely-internal events, silently routing real
+  bid-leveling Excel uploads around Buck's approval queue. Restored.
+- Fixed a duplicate-row bug in `/email/send` (two `ai_messages` rows per real call, one
+  permanently orphaned) and a missing-CC bug (the `cc` field was accepted but never
+  applied) — every automated draft now CCs Buck by default.
+- Ran all 24 test suites in the repo; fixed 4 stale/broken ones (a fixture using the
+  wrong field name, a masked ~42s real Drive-walk latency, 3 assertions testing
+  pre-simplification behavior, and folder checks for integrations that don't exist).
+- Swept `STRATEGIC_BACKLOG.md` against the real code before building anything: BTW-4,
+  5, 8, and 9 were all already fully built and just never marked done — 4 of 7 backlog
+  items were stale documentation, not real gaps. Added drift-check detector #17 to
+  catch this class of drift automatically going forward.
+- Surfaced real bid-leveling data gaps (missing Division Summary/Detail entries) as an
+  explicit `data_gaps` field instead of silent blank output.
+- Found the real Drive folder-organization SOP (a Google Doc in 64EW's root, not
+  something to invent) and cleaned up real drift against it: removed duplicate empty
+  folders (101F's `06_RFI's`, 1355R's `10_Project Names`), moved a bid tracker that had
+  been misfiled into a folder literally named "Wrong Job" back to its real project
+  (246 Gallo Way), and removed 8 loose root-level files across 101F/1355R confirmed
+  byte-identical to copies already properly filed — nothing touched without a real
+  size/date comparison first, nothing permanently deleted.
+- Diagnosed "build a project brain for 101F/1355R" as referring to 64EW's Drive-hosted
+  "Master Memory" doc (durable ChatGPT project memory substitute), not the code-level
+  service — handed the actual authoring to GBT with real source links gathered first.
+- Fixed a stale GBT chat thread (tool bindings frozen from before the last Actions-
+  schema update) by starting a fresh thread with the same Custom GPT — see
+  `project_gbt_custom_gpt_schema_drift` memory.
+
 ## v4.2 — 2026-07-06 | GBT onboarding fixes + 15-min self-heal cadence
 
 **Trigger:** GBT ran a live first-day-PM onboarding dry-run per Buck's directive and found
