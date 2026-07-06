@@ -477,8 +477,15 @@ class SystemAuditor(BaseIntelligenceService):
             except Exception as e:
                 results.append({"table": table, "label": label, "error": str(e), "status": "unknown"})
 
-        # Houzz data availability
-        houzz_check = self.pg_one("SELECT COUNT(*) as n FROM project_schedule_items")
+        # Houzz data availability - found 2026-07-06 (via a pre-existing failing test,
+        # test_system_auditor.py's "data freshness detects Houzz gap") that this
+        # checked project_schedule_items, a generic table populated by many sources
+        # (manual imports, MS Project schedules, etc.), not anything Houzz-specific.
+        # Since real schedule data exists for other reasons, this always returned
+        # True even though every houzz_* table is empty (dry_run=True gate, confirmed
+        # elsewhere this session) - the exact opposite of what "Houzz data available"
+        # should mean. Check an actual Houzz-populated table instead.
+        houzz_check = self.pg_one("SELECT COUNT(*) as n FROM houzz_tasks")
         houzz_empty = int((houzz_check or {}).get("n") or 0) == 0
 
         score = round((len(results) - len(stale_tables)) / max(len(results), 1) * 100)
