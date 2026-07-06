@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-06-26T11:20:09.729934",
+  "run_at": "2026-07-06T15:33:05.897913",
   "total": 50,
   "passed": 49,
   "conditional": 1,
@@ -9,7 +9,7 @@
       "id": "UT-04-01",
       "name": "Create SOP 04 instance",
       "status": "PASS",
-      "note": "instance_id=201, status=In Progress"
+      "note": "instance_id=407, status=In Progress"
     },
     {
       "id": "UT-04-02",
@@ -21,7 +21,7 @@
       "id": "UT-04-03",
       "name": "Add plan section (Concrete)",
       "status": "PASS",
-      "note": "output_id=278"
+      "note": "output_id=552"
     },
     {
       "id": "UT-04-04",
@@ -33,13 +33,13 @@
       "id": "UT-05-01",
       "name": "Create SOP 05 instance",
       "status": "PASS",
-      "note": "instance_id=202"
+      "note": "instance_id=408"
     },
     {
       "id": "UT-05-02",
       "name": "Draft narrative section",
       "status": "PASS",
-      "note": "output=279"
+      "note": "output=553"
     },
     {
       "id": "UT-05-03",
@@ -51,19 +51,19 @@
       "id": "UT-06-01",
       "name": "Create SOP 06 instance",
       "status": "PASS",
-      "note": "id=203"
+      "note": "id=409"
     },
     {
       "id": "UT-06-02",
       "name": "Add missing info item (HIGH)",
       "status": "PASS",
-      "note": "output=280"
+      "note": "output=554"
     },
     {
       "id": "UT-06-03",
       "name": "Add risk item (HIGH/HIGH)",
       "status": "PASS",
-      "note": "output=281"
+      "note": "output=555"
     },
     {
       "id": "UT-06-04",
@@ -75,13 +75,13 @@
       "id": "UT-07-01",
       "name": "Create SOP 07 ROM Budget",
       "status": "PASS",
-      "note": "id=204"
+      "note": "id=410"
     },
     {
       "id": "UT-07-02",
       "name": "Add line item (Concrete SF)",
       "status": "PASS",
-      "note": "output=282"
+      "note": "output=556"
     },
     {
       "id": "UT-07-03",
@@ -99,7 +99,7 @@
       "id": "UT-08-01",
       "name": "Create SOP 08 cost lookup",
       "status": "PASS",
-      "note": "id=205"
+      "note": "id=411"
     },
     {
       "id": "UT-08-02",
@@ -117,13 +117,13 @@
       "id": "UT-09-01",
       "name": "Create SOP 09 Budget Review",
       "status": "PASS",
-      "note": "id=206"
+      "note": "id=412"
     },
     {
       "id": "UT-09-02",
       "name": "Revise line item with basis",
       "status": "PASS",
-      "note": "output=285"
+      "note": "output=559"
     },
     {
       "id": "UT-09-03",
@@ -141,7 +141,7 @@
       "id": "UT-10-01",
       "name": "Create SOP 10 Allowances",
       "status": "PASS",
-      "note": "id=207"
+      "note": "id=413"
     },
     {
       "id": "UT-10-02",
@@ -153,13 +153,13 @@
       "id": "UT-10-03",
       "name": "Add allowance item ($25k)",
       "status": "PASS",
-      "note": "output=287, pool_total=None"
+      "note": "output=561, pool_total=None"
     },
     {
       "id": "UT-10-04",
       "name": "Add alternate item (additive)",
       "status": "PASS",
-      "note": "output=288"
+      "note": "output=562"
     },
     {
       "id": "UT-10-05",
@@ -171,7 +171,7 @@
       "id": "UT-12-01",
       "name": "Create SOP 12 bid list",
       "status": "PASS",
-      "note": "id=208"
+      "note": "id=414"
     },
     {
       "id": "UT-12-02",
@@ -195,13 +195,13 @@
       "id": "UT-13-01",
       "name": "Create SOP 13 distribution log",
       "status": "PASS",
-      "note": "id=210"
+      "note": "id=416"
     },
     {
       "id": "UT-13-02",
       "name": "Log bid package sent to sub",
       "status": "PASS",
-      "note": "output=295"
+      "note": "output=569"
     },
     {
       "id": "UT-13-03",
@@ -213,13 +213,13 @@
       "id": "UT-14-01",
       "name": "Create SOP 14 bid follow-up log",
       "status": "PASS",
-      "note": "id=211"
+      "note": "id=417"
     },
     {
       "id": "UT-14-02",
       "name": "Log follow-up contact attempt",
       "status": "PASS",
-      "note": "output=296"
+      "note": "output=570"
     },
     {
       "id": "UT-14-03",
@@ -231,7 +231,7 @@
       "id": "UT-16-01",
       "name": "Create SOP 16 Buyout",
       "status": "PASS",
-      "note": "id=212"
+      "note": "id=418"
     },
     {
       "id": "UT-16-02",
@@ -255,13 +255,13 @@
       "id": "UT-19-01",
       "name": "Create SOP 19 Subcontract Agreement",
       "status": "PASS",
-      "note": "id=213"
+      "note": "id=419"
     },
     {
       "id": "UT-19-02",
       "name": "Draft scope_of_work section",
       "status": "PASS",
-      "note": "output=298"
+      "note": "output=572"
     },
     {
       "id": "UT-19-03",
@@ -297,7 +297,7 @@
       "id": "IT-03",
       "name": "SOP 16 \u2192 19 handoff chain",
       "status": "PASS",
-      "note": "SOP 16 id=216 \u2192 Handed Off; SOP 19 id={}"
+      "note": "SOP 16 id=422 \u2192 Handed Off; SOP 19 id={}"
     },
     {
       "id": "IT-04",

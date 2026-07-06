@@ -3061,6 +3061,13 @@ def system_drift_check():
         unintegrated = []
         for f in drive_files:
             name = f.get("name") or ""
+            # Guard added 2026-07-06: search_files() does a Drive-wide fullText search,
+            # which matched "Architectural Plans 5.8.26.pdf" (real project drawings,
+            # category=Drawing/Plan) just because "handbook" appeared somewhere in its
+            # scanned content - unrelated to our authored Handbook docs. Require the word
+            # in the filename itself, matching how real Handbook chapters are actually named.
+            if "HANDBOOK" not in name.upper():
+                continue
             if name.upper().startswith("[OBSOLETE"):
                 continue  # already marked obsolete - not un-integrated content, don't re-flag it forever
             modified = f.get("modified")
