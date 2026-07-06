@@ -118,15 +118,24 @@ just never checked off here:
 ---
 
 ### BTW-8 — PM Workspace: Client Comms + AI Action List
-**Mission:** BTW-008 | **Priority:** MEDIUM | **Status:** OPEN
+**Mission:** BTW-008 | **Priority:** MEDIUM | **Status:** COMPLETE (verified 2026-07-06)
+
+Also stale — checked `GET /api/v1/pm/{project_id}/weekly` (operations.py) live and both
+pieces are already there, marked `# BTW-8` in the code itself: `client_comms` (via
+`_build_client_comm_queue`) and `ai_ranked_actions` (via `_rank_pm_actions`, using
+exactly the `priority_score = (severity × urgency × financial_impact) / days` formula
+specified below). Confirmed via a real API call against 1355 Riverside.
+
+While verifying this, found a live instance of the test-data-in-real-table pattern:
+3 "[DEFERRED] Defer test" rows from today's test suite reruns were sitting `pending`
+in `executive_inbox`, showing up as fake client decisions in `client_comms`. Resolved
+(set to `rejected`) and extended drift-check detector #13 to also cover
+`executive_inbox`, not just `pending_approvals`.
 
 **Already built (pre-delivered):**
 - Risks, overdue items, budget health, procurement status, decision queue ✅
-
-**Remaining to build:**
-- Client communication queue — outstanding items needing client response, organized by project + urgency
-- AI-generated ranked action list — `priority_score = (severity × urgency × financial_impact) / days_remaining`, top 10 actions for the PM's day
-- Both additions to existing `/pm/{id}/weekly` response
+- Client communication queue — `client_comms` in `/pm/{id}/weekly` ✅
+- AI-ranked action list (top actions, `priority_score` formula) — `ai_ranked_actions` in `/pm/{id}/weekly` ✅
 
 ---
 

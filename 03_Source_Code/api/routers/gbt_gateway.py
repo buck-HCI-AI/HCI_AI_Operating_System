@@ -3183,12 +3183,28 @@ def system_drift_check():
                       AND (title ILIKE '%test%' OR requested_by ILIKE '%test%')
                 """)
                 stale_test_approvals = cur.fetchall()
+                # Same pattern, different table - found 2026-07-06 live in BTW-8's
+                # /pm/{id}/weekly client_comms output: 3 "[DEFERRED] Defer test" rows
+                # from today's test suite reruns were sitting pending in executive_inbox,
+                # showing up as fake client decisions a PM would think are real.
+                cur.execute("""
+                    SELECT exec_id AS id, title, created_at FROM executive_inbox
+                    WHERE status = 'pending' AND title ILIKE '%test%'
+                """)
+                stale_test_exec_inbox = cur.fetchall()
         if stale_test_approvals:
             findings.append({
                 "severity": "medium",
                 "category": "test_data_in_approval_queue",
                 "detail": f"{len(stale_test_approvals)} test-titled row(s) sitting 'pending' in pending_approvals - reads as a real overdue governance violation to constitution_compliance and any dashboard, resolve or purge them.",
                 "items": [f"id={r['id']}: {r['title']}" for r in stale_test_approvals],
+            })
+        if stale_test_exec_inbox:
+            findings.append({
+                "severity": "medium",
+                "category": "test_data_in_executive_inbox",
+                "detail": f"{len(stale_test_exec_inbox)} test-titled row(s) sitting 'pending' in executive_inbox - surfaces as a fake client/PM decision in /pm/{{id}}/weekly's client_comms, resolve or purge them.",
+                "items": [f"id={r['id']}: {r['title']}" for r in stale_test_exec_inbox],
             })
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Stale-test-approval check errored: {e}"})
