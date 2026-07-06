@@ -819,6 +819,20 @@ class BidLevelingService:
             else:
                 bids = sheet_bids
 
+            # Flag data gaps explicitly rather than silently rendering blank fields -
+            # found 2026-07-06 that some divisions have bids logged but no Division
+            # Summary or Bid Leveling Detail entered (e.g. 64EW Div 26, 1355R Div 17),
+            # which used to just show up as empty strings with no indication anything
+            # was missing. A human looking at this (e.g. Adam during onboarding) needs
+            # to see "no summary entered yet" explicitly, not guess why fields are blank.
+            data_gaps = []
+            if not summary:
+                data_gaps.append("no_division_summary_entry")
+            if not pkgs:
+                data_gaps.append("no_package_detail_entry")
+            if not bids:
+                data_gaps.append("no_bid_tracking_rows")
+
             divisions_merged[div] = {
                 "div_num":   div,
                 "name":      name,
@@ -827,6 +841,7 @@ class BidLevelingService:
                 "packages":  pkgs,
                 "bid_count": len(bids),
                 "source":    "drive" if drive_div and drive_div.get("bids") else "sheet",
+                "data_gaps": data_gaps,
             }
 
         # Folder setup — skip if no drive_folder (dry_run only)
@@ -868,6 +883,7 @@ class BidLevelingService:
                     "pkgs_found": len(packages),
                     "folder_action": folder_info["action"],
                     "file_action": f"would_upload to folder: {folder_info['folder_id'] or 'TBD'}",
+                    "data_gaps": div_data.get("data_gaps", []),
                 })
             else:
                 # Generate Excel
@@ -934,6 +950,9 @@ class BidLevelingService:
             "excel_actions":      excel_actions,
             "queued_items":       queued_items,
             "divisions":          divisions_merged if dry_run else None,
+            "data_gaps_by_division": {
+                d: v["data_gaps"] for d, v in divisions_merged.items() if v.get("data_gaps")
+            },
         }
 
     @classmethod
