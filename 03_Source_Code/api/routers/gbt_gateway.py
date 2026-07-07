@@ -406,7 +406,7 @@ def project_deep_dive(code: str):
         if proj["permit_status"] == "not_issued":
             flags.append("No permit issued yet — any daily-log/schedule data implying active field construction should be treated as pre-construction planning, not real progress.")
         elif proj["permit_status"] == "iffr":
-            flags.append("Issued-for-field-review (IFFR) permit — field construction is legitimately underway; full building permit is still pending.")
+            flags.append("Issued-for-field-review (IFFR) permit — field work is permitted under IFFR scope; full building permit is still pending. Does not imply active construction — check daily-log recency separately, since a project can be legitimately on hold (e.g. bids/awards only) while still IFFR.")
         if days_since_log is not None and days_since_log > 7:
             flags.append(f"No daily log in {days_since_log} days — field reporting has gone quiet.")
         if overdue:
@@ -508,7 +508,7 @@ def project_cost_forecast(code: str):
         if proj["permit_status"] == "not_issued":
             notes.append("No permit issued - near-zero EV/PV reflects pre-construction reality, not missing data.")
         elif proj["permit_status"] == "iffr":
-            notes.append("IFFR permit - field construction is real and underway; full building permit still pending.")
+            notes.append("IFFR permit - field work is permitted under IFFR scope, but the project may still be on hold (e.g. bids/awards only, no active construction) - check daily-log recency, don't assume EV/PV should be moving.")
 
         # Log a snapshot for trend tracking (one per project per day)
         try:
