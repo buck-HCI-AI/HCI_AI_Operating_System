@@ -307,31 +307,27 @@ if before_count > 0:
 code, d = get("/telegram/messages", {"agent": "not_a_real_agent"})
 check("Unknown agent rejected", bool(d.get("errors")), d)
 
-# ── 17. Self-send allowlist (2026-07-01: Buck confirmed auto-send to his own inbox) ─
-print("\n17. microsoft_graph.send_email() self-send allowlist")
+# ── 17. Self-send bypass REMOVED (2026-07-07: found live, unattended sends to Buck's
+# own inbox with zero approval step - directly contradicted the same-day standing rule
+# that no email may auto-send, ever. See microsoft_graph.py's removal note.) ─────────
+print("\n17. microsoft_graph.send_email() has no self-send bypass")
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "integrations"))
 from microsoft_graph import send_email as _send_email, _all_recipients_self
 
-check("Buck's own address recognized as self-send", _all_recipients_self([("Buck Adams", "buck@hendricksoninc.com")]))
-check("buck@ahmaspen.com is NOT self-send (2026-07-01: Buck confirmed this isn't his address)",
-      not _all_recipients_self([("Buck", "buck@ahmaspen.com")]))
+check("Buck's own address is NOT treated as self-send anymore", not _all_recipients_self([("Buck Adams", "buck@hendricksoninc.com")]))
 check("External address is NOT self-send", not _all_recipients_self([("Someone", "someone@example.com")]))
-check("Mixed self+external is NOT self-send (fails closed)",
-      not _all_recipients_self([("Buck", "buck@hendricksoninc.com"), ("Ext", "ext@example.com")]))
+check("Mixed self+external is NOT self-send", not _all_recipients_self([("Buck", "buck@hendricksoninc.com"), ("Ext", "ext@example.com")]))
 
 import microsoft_graph as _msgraph
 _real_request = _msgraph._request
 _msgraph._request = lambda *a, **k: ({"id": "test-stub-sent"}, None)
 try:
-    result, err = _send_email("[TEST] automated regression — self-send allowlist", "<p>test</p>",
+    result, err = _send_email("[TEST] automated regression — no self-send bypass", "<p>test</p>",
                                [("Buck Adams", "buck@hendricksoninc.com")])
-    check("send_email() to Buck's own address routes to direct-send branch (network call stubbed - no real inbox spam per test run)",
-          err is None and "queued_draft_id" not in (result or {}), (result, err))
+    check("send_email() to Buck's own address now drafts too — never sends live",
+          err is None and result.get("status") == "drafted_pending_approval", (result, err))
 
-    # 2026-07-02: this second call used to run AFTER the stub was already restored in the
-    # finally block below, so every test run created a real "external still gated" draft
-    # in Buck's actual Outlook (~50 accumulated this way). Moved inside the stubbed block.
     result2, err2 = _send_email("[TEST] automated regression — external still gated", "<p>test</p>",
                                  [("Someone", "someone@example.com")])
     check("send_email() to external address still drafts, never sends",

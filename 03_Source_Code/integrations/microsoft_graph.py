@@ -133,63 +133,39 @@ def mark_as_read(msg_id: str) -> tuple:
     return _request("PATCH", f"/me/messages/{eid}", body={"isRead": True})
 
 
-# Locked down 2026-07-01 (ADR-010/011): live sending to anyone outside this allowlist
-# requires Buck's Telegram approval (see gbt_gateway.py _send_approved_draft). Buck
-# explicitly confirmed 2026-07-01 that automated reports to his own inbox (morning
-# brief, field reports, schedule alerts, executive/PM reports) may auto-send — this
-# allowlist is narrow and self-addressed on purpose, not a reopening of the general
-# send capability. Do not add external addresses here without Buck's explicit approval.
-# Corrected 2026-07-01: Buck confirmed buck@ahmaspen.com is not his address to use here
-# (git history shows BUCK_EMAIL flip-flopped between the two across sessions before
-# settling on hendricksoninc.com — this allowlist had inherited the stale alternate).
-_SELF_SEND_ALLOWLIST = {"buck@hendricksoninc.com"}
+# Self-send auto-send bypass REMOVED 2026-07-07. Until today, any call where every
+# recipient was buck@hendricksoninc.com (automated reports: morning brief, EOD brief,
+# weekly exec, monthly review, PM weekly, SS morning) skipped drafting entirely and
+# called /me/sendMail directly - no draft, no approval request, no Telegram gate, ever.
+# This was an intentional carve-out Buck approved 2026-07-01, but it directly
+# contradicted the newer standing rule set the same day: "all AI-drafted emails must
+# stop at his Outlook Drafts folder... a Telegram APPROVE tap must never fire an
+# immediate send" (see ai/memory feedback_emails_land_in_drafts_not_autosend). Found
+# live 2026-07-07 via Sent Items: real, unattended sends including "HCI Morning Brief
+# — Jul 07, 2026" at 13:01:26Z with zero review step - exactly what that rule was
+# written to prevent, just for self-addressed mail instead of external. Every send_*
+# call now drafts unconditionally; nothing in this file calls /me/sendMail anymore.
+_SELF_SEND_ALLOWLIST: set = set()  # kept as a name for callers that still reference it; always empty
 
 
 def _all_recipients_self(to: list[tuple[str, str]], cc: list[tuple[str, str]] = None) -> bool:
-    addrs = [e.lower() for _, e in to] + [e.lower() for _, e in (cc or [])]
-    return bool(addrs) and all(a in _SELF_SEND_ALLOWLIST for a in addrs)
+    return False
 
 
 def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple:
-    """Sends immediately ONLY if every recipient is Buck's own address (automated
-    reports to himself — re-confirmed safe 2026-07-01). Any other recipient creates a
-    draft + Buck-approval request instead of sending — see ADR-010/011. Actual external
-    sending only ever happens via the approval-gated path in gbt_gateway.py
-    (_send_approved_draft, triggered only by Buck's Telegram APPROVE)."""
-    if _all_recipients_self(to):
-        msg = {
-            "message": {
-                "subject": subject,
-                "body": {"contentType": "HTML", "content": html_body},
-                "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
-            },
-            "saveToSentItems": True,
-        }
-        return _request("POST", "/me/sendMail", body=msg)
+    """Always creates a draft and requires Buck's approval via gateway /email/send -
+    no recipient, including Buck's own address, auto-sends. See removal note above."""
     try:
         draft = create_draft(subject, html_body, to)
         return {"queued_draft_id": draft.get("id"), "status": "drafted_pending_approval",
-                "note": "send_email() only auto-sends to Buck's own address — draft created, requires Buck approval via gateway /email/send"}, None
+                "note": "Draft created - requires Buck approval via gateway /email/send"}, None
     except Exception as e:
         return None, str(e)
 
 
 def send_email_with_cc(subject: str, html_body: str, to: list[tuple[str, str]],
                        cc: list[tuple[str, str]] = None) -> tuple:
-    """See send_email() above — same self-send allowlist applies (checked across
-    to + cc together)."""
-    if _all_recipients_self(to, cc):
-        msg = {
-            "message": {
-                "subject": subject,
-                "body": {"contentType": "HTML", "content": html_body},
-                "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
-            },
-            "saveToSentItems": True,
-        }
-        if cc:
-            msg["message"]["ccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in cc]
-        return _request("POST", "/me/sendMail", body=msg)
+    """See send_email() above - no self-send bypass, ever."""
     msg = {
         "subject": subject,
         "body": {"contentType": "HTML", "content": html_body},
