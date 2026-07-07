@@ -198,6 +198,82 @@ def ingest_constitution():
         upsert("constitution_memory", docs, metas, ids)
         print(f"  ✓ {len(docs)} total chunks ingested")
 
+# ── hci_procurement ───────────────────────────────────────────────────────────
+
+def ingest_procurement():
+    print("\n=== Ingesting hci_procurement ===")
+    items = pg_rows("""
+        SELECT pi.id, pi.item_name, pi.vendor, pi.po_number, pi.amount,
+               pi.required_date, pi.status, p.name as project_name
+        FROM procurement_items pi
+        JOIN projects p ON p.id = pi.project_id
+        ORDER BY pi.id
+    """)
+    if not items:
+        print("  ✗ No procurement_items in Postgres")
+        return
+
+    docs, metas, ids = [], [], []
+    for it in items:
+        amt_str = f"${it['amount']:,.0f}" if it["amount"] else "no amount recorded"
+        text = (
+            f"Procurement item: {it['item_name']} for {it['project_name']}. "
+            f"Vendor: {it['vendor'] or 'unassigned'}. PO number: {it['po_number'] or 'none'}. "
+            f"Amount: {amt_str}. Required by: {it['required_date'] or 'unknown'}. "
+            f"Status: {it['status']}."
+        )
+        docs.append(text)
+        metas.append({
+            "procurement_id": it["id"],
+            "project_name":   it["project_name"],
+            "item_name":      it["item_name"] or "",
+            "vendor":         it["vendor"] or "",
+            "amount":         float(it["amount"]) if it["amount"] else 0,
+            "status":         it["status"] or "",
+        })
+        ids.append(it["id"])
+
+    upsert("hci_procurement", docs, metas, ids)
+    print(f"  ✓ {len(docs)} procurement items ingested")
+
+# ── photo_memory ──────────────────────────────────────────────────────────────
+
+def ingest_photos():
+    print("\n=== Ingesting photo_memory ===")
+    photos = pg_rows("""
+        SELECT pa.id, pa.note, pa.findings, pa.safety_flags, pa.defect_flags,
+               pa.progress_notes, pa.submitted_by, p.name as project_name
+        FROM photo_analyses pa
+        JOIN projects p ON p.id = pa.project_id
+        ORDER BY pa.id
+    """)
+    if not photos:
+        print("  ✗ No photo_analyses in Postgres")
+        return
+
+    docs, metas, ids = [], [], []
+    for ph in photos:
+        safety = ", ".join(ph["safety_flags"]) if ph["safety_flags"] else "none"
+        defects = ", ".join(ph["defect_flags"]) if ph["defect_flags"] else "none"
+        text = (
+            f"Field photo from {ph['project_name']}, submitted by {ph['submitted_by']}. "
+            f"Note: {ph['note'] or 'none'}. Findings: {ph['findings'] or 'none'}. "
+            f"Safety flags: {safety}. Defect flags: {defects}. "
+            f"Progress notes: {ph['progress_notes'] or 'none'}."
+        )
+        docs.append(text)
+        metas.append({
+            "photo_id":     ph["id"],
+            "project_name": ph["project_name"],
+            "submitted_by": ph["submitted_by"] or "",
+            "safety_flags": safety,
+            "defect_flags": defects,
+        })
+        ids.append(ph["id"])
+
+    upsert("photo_memory", docs, metas, ids)
+    print(f"  ✓ {len(docs)} photo analyses ingested")
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run():
@@ -205,6 +281,8 @@ def run():
     ingest_vendors()
     ingest_bids()
     ingest_constitution()
+    ingest_procurement()
+    ingest_photos()
     print("\n  ✓ Memory ingestion complete")
 
 if __name__ == "__main__":
