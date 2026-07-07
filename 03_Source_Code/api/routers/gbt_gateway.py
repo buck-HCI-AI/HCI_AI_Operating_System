@@ -8,7 +8,7 @@ Architecture:  ChatGPT → ngrok → FastAPI Gateway → internal HCI services �
 Prefix: /gateway
 Auth:   X-API-Key header  OR  ?api_key= query param
 """
-import os, uuid, time, sys, json, subprocess
+import os, uuid, time, sys, json, subprocess, threading
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import psycopg2, psycopg2.extras, requests
@@ -3744,8 +3744,39 @@ def field_submit_rfi(req: FieldRFIPayload):
 
 class PlanReviewPayload(BaseModel):
     project_code: str
-    sheet_text: str
+    sheet_text: str = ""
     reviewed_by: str = "claude_code"
+    job_id: Optional[str] = None  # poll an existing job instead of starting a new one
+
+
+# In-memory job store for /plan-review/analyze's async pattern - added 2026-07-07.
+# Real finding that day: the underlying Claude call takes ~13s (already the fastest
+# model, Haiku 4.5, already at a trimmed max_tokens) - confirmed via direct testing
+# that neither ngrok nor the backend itself has a problem with that duration (a full
+# curl round-trip through the real public ngrok URL succeeded in 13.75s, HTTP 200).
+# But a live GBT call through ChatGPT's own Action-calling layer never reached the
+# backend at all for the same input - zero trace in gateway_request_log. That points
+# to a timeout enforced somewhere in ChatGPT's Action infrastructure, not something
+# fixable from this side. Real fix: don't make the caller wait through the slow part
+# at all. First call (no job_id) kicks off the analysis in a background thread and
+# returns near-instantly with a job_id; a follow-up call with that job_id returns
+# the real result once ready. Reuses the same schema slot instead of costing two new
+# ones against GBT's 30-operation cap.
+_PLAN_REVIEW_JOBS: dict = {}
+
+
+def _run_plan_review_job(job_id: str, project_code: str, sheet_text: str, reviewed_by: str):
+    t0 = time.time()
+    try:
+        pid = _get_pid(project_code)
+        analysis = _run_plan_gap_analysis(sheet_text)
+        created = _create_rfis_from_gaps(pid, analysis.get("gaps", []), reviewed_by)
+        _log("/plan-review/analyze", reviewed_by, project_code, "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"{len(created)} RFIs drafted")
+        result = _plan_review_finish("/plan-review/analyze", project_code, analysis, created, t0)
+        _PLAN_REVIEW_JOBS[job_id] = {"status": "done", "result": result}
+    except Exception as e:
+        _PLAN_REVIEW_JOBS[job_id] = {"status": "error", "error": str(e)}
 
 
 _PLAN_REVIEW_CHECKLIST = """Standard completeness checklist:
@@ -3865,15 +3896,40 @@ def plan_review_analyze(req: PlanReviewPayload):
     POST /email/draft + /email/send, which already requires Buck's Telegram approval.
     This variant takes extracted sheet text directly; for real PDF/drawing uploads see
     POST /plan-review/upload.
+
+    Async job pattern (added 2026-07-07 - see _PLAN_REVIEW_JOBS docstring for why):
+    call once with sheet_text (no job_id) to start a job and get a job_id back almost
+    immediately; call again with that job_id (sheet_text can be omitted) to poll for
+    the real result. Callers that can tolerate a ~13s synchronous wait don't need to
+    change anything - polling immediately after the first call will just see "processing"
+    for a few seconds, same as any async job.
     """
     t0 = time.time()
     try:
-        pid = _get_pid(req.project_code)
-        analysis = _run_plan_gap_analysis(req.sheet_text)
-        created = _create_rfis_from_gaps(pid, analysis.get("gaps", []), req.reviewed_by)
-        _log("/plan-review/analyze", req.reviewed_by, req.project_code, "ok",
-             round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"{len(created)} RFIs drafted")
-        return _plan_review_finish("/plan-review/analyze", req.project_code, analysis, created, t0)
+        if req.job_id:
+            job = _PLAN_REVIEW_JOBS.get(req.job_id)
+            if not job:
+                return _response("/plan-review/analyze", {"job_id": req.job_id, "status": "unknown"},
+                                  errors=["No job with that ID - it may have expired (server restart) or never existed"], start=t0)
+            if job["status"] == "done":
+                return job["result"]
+            if job["status"] == "error":
+                return _response("/plan-review/analyze", {"job_id": req.job_id, "status": "error"},
+                                  errors=[job["error"]], start=t0)
+            return _response("/plan-review/analyze", {"job_id": req.job_id, "status": "processing",
+                              "note": "Still running - the underlying analysis takes ~10-15s. Poll again in a few seconds with the same job_id."}, start=t0)
+
+        pid = _get_pid(req.project_code)  # validate project_code fails fast, before spawning a thread
+        job_id = str(uuid.uuid4())[:12]
+        _PLAN_REVIEW_JOBS[job_id] = {"status": "processing"}
+        thread = threading.Thread(target=_run_plan_review_job,
+                                   args=(job_id, req.project_code, req.sheet_text, req.reviewed_by),
+                                   daemon=True)
+        thread.start()
+        return _response("/plan-review/analyze", {
+            "job_id": job_id, "status": "processing",
+            "note": "Analysis started - call this same endpoint again with this job_id (sheet_text not required) to get the result. Usually ready in 10-15 seconds."
+        }, start=t0)
     except HTTPException as e:
         return _response("/plan-review/analyze", {}, errors=[str(e.detail)], start=t0)
     except Exception as e:
