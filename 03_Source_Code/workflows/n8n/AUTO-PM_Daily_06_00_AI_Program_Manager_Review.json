@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:45.459Z",
+  "updatedAt": "2026-07-07T06:21:13.833Z",
   "createdAt": "2026-06-27T20:34:08.503Z",
   "id": "iCTepJbZuzEORs3z",
   "name": "AUTO-PM \u2014 Daily 06:00 AI Program Manager Review",
@@ -170,6 +170,22 @@
         300
       ],
       "id": "d739c895-1f32-41c0-b785-58f6d48c636e"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        350,
+        500
+      ],
+      "id": "sync-before-pm-status",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
@@ -198,7 +214,7 @@
       "main": [
         [
           {
-            "node": "Assess PM Status",
+            "node": "Sync Before Report",
             "type": "main",
             "index": 0
           }
@@ -209,9 +225,9 @@
       "main": [
         [
           {
-            "node": "Assess PM Status",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -220,9 +236,9 @@
       "main": [
         [
           {
-            "node": "Assess PM Status",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 2
           }
         ]
       ]
@@ -249,6 +265,17 @@
         ],
         []
       ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Assess PM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -262,9 +289,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
-  "activeVersionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
-  "versionCounter": 3,
+  "versionId": "5b4482f0-98a1-4b45-be02-ab7d66b1de37",
+  "activeVersionId": "5b4482f0-98a1-4b45-be02-ab7d66b1de37",
+  "versionCounter": 4,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -289,9 +316,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:45.459Z",
-    "createdAt": "2026-07-03T01:06:45.459Z",
-    "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+    "updatedAt": "2026-07-07T06:21:13.835Z",
+    "createdAt": "2026-07-07T06:21:13.835Z",
+    "versionId": "5b4482f0-98a1-4b45-be02-ab7d66b1de37",
     "workflowId": "iCTepJbZuzEORs3z",
     "nodes": [
       {
@@ -457,6 +484,22 @@
           300
         ],
         "id": "d739c895-1f32-41c0-b785-58f6d48c636e"
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 3,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          350,
+          500
+        ],
+        "id": "sync-before-pm-status",
+        "name": "Sync Before Report"
       }
     ],
     "connections": {
@@ -485,7 +528,7 @@
         "main": [
           [
             {
-              "node": "Assess PM Status",
+              "node": "Sync Before Report",
               "type": "main",
               "index": 0
             }
@@ -496,9 +539,9 @@
         "main": [
           [
             {
-              "node": "Assess PM Status",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 1
             }
           ]
         ]
@@ -507,9 +550,9 @@
         "main": [
           [
             {
-              "node": "Assess PM Status",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 2
             }
           ]
         ]
@@ -536,6 +579,17 @@
           ],
           []
         ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Assess PM Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -545,18 +599,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:45.468Z",
-        "id": 280,
+        "createdAt": "2026-07-07T06:21:13.856Z",
+        "id": 344,
         "workflowId": "iCTepJbZuzEORs3z",
-        "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+        "versionId": "5b4482f0-98a1-4b45-be02-ab7d66b1de37",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:45.465Z",
-        "id": 279,
+        "createdAt": "2026-07-07T06:21:13.851Z",
+        "id": 343,
         "workflowId": "iCTepJbZuzEORs3z",
-        "versionId": "06c2436d-5a0b-4fa2-9cfc-f0658e8e9ec1",
+        "versionId": "5b4482f0-98a1-4b45-be02-ab7d66b1de37",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

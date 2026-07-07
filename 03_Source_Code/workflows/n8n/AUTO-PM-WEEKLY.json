@@ -1,16 +1,31 @@
 {
-  "name": "AUTO-PM-WEEKLY — Monday 07:00 PM Console Push",
+  "updatedAt": "2026-07-03T01:06:45.000Z",
+  "createdAt": "2026-06-27T20:44:57.064Z",
+  "id": "9fsVJ2gBOn54fLnT",
+  "name": "AUTO-PM-WEEKLY \u2014 Monday 07:00 PM Console Push",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1"
+            }
+          ]
         }
       },
       "name": "Cron Monday 07:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ],
+      "id": "aa4b5c17-8842-485d-86bb-a27d5c34d0a2"
     },
     {
       "parameters": {
@@ -19,11 +34,15 @@
       "name": "Active Projects",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [300, 300]
+      "position": [
+        300,
+        300
+      ],
+      "id": "9b2749ca-cfe4-4da5-85ef-fcde0188eb6c"
     },
     {
       "parameters": {
-        "url": "=http://localhost:8000/api/v1/pm/{{ $json.project_id }}/weekly",
+        "url": "=http://host.docker.internal:8000/api/v1/pm/{{ $json.project_id }}/weekly",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -31,17 +50,30 @@
       "name": "Get PM Console",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [500, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "4bc3c87f-0b96-45ff-9423-82dbc46e1374"
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '🔴' : h === 'YELLOW' ? '🟡' : '🟢';\nconst budget = d.budget || {};\nconst rfis = d.rfis || {};\nconst approvals = d.approvals || {};\nconst priorities = (d.next_week_priorities || []).slice(0, 3);\n\nconst title = `${emoji} ${d.project_code || ''} PM Week — ${d.week_of || ''}`;\nconst body = [\n  `${h} — ${d.project_name}`,\n  `Budget exposure: $${Math.round((budget.exposure || 0) / 1000)}k`,\n  `Open RFIs: ${rfis.open_count || 0} (${rfis.overdue_count || 0} overdue)`,\n  `Decisions pending: ${approvals.pending_count || 0}`,\n  `---`,\n  ...priorities.map((p, i) => `${i+1}. ${p}`),\n  `View: http://localhost:8000/pm/${d.project_id}`\n].join('\\n');\n\nconst priority = h === 'RED' ? 'high' : (approvals.pending_count || 0) > 0 ? 'default' : 'low';\n\nreturn [{ json: { title, body, priority } }];"
+        "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '\ud83d\udd34' : h === 'YELLOW' ? '\ud83d\udfe1' : '\ud83d\udfe2';\nconst budget = d.budget || {};\nconst rfis = d.rfis || {};\nconst approvals = d.approvals || {};\nconst priorities = (d.next_week_priorities || []).slice(0, 3);\n\nconst title = `${emoji} ${d.project_code || ''} PM Week \u2014 ${d.week_of || ''}`;\nconst body = [\n  `${h} \u2014 ${d.project_name}`,\n  `Budget exposure: $${Math.round((budget.exposure || 0) / 1000)}k`,\n  `Open RFIs: ${rfis.open_count || 0} (${rfis.overdue_count || 0} overdue)`,\n  `Decisions pending: ${approvals.pending_count || 0}`,\n  `---`,\n  ...priorities.map((p, i) => `${i+1}. ${p}`),\n  `View: http://host.docker.internal:8000/pm/${d.project_id}`\n].join('\\n');\n\nconst priority = h === 'RED' ? 'high' : (approvals.pending_count || 0) > 0 ? 'default' : 'low';\n\nreturn [{ json: { title, body, priority } }];"
       },
       "name": "Format PM Push",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ],
+      "id": "57476074-8e3c-43fb-ae85-8c90324aa61b"
     },
     {
       "parameters": {
@@ -50,15 +82,30 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "message", "value": "={{ $json.body }}" }
+            {
+              "name": "message",
+              "value": "={{ $json.body }}"
+            }
           ]
         },
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "={{ $json.title }}" },
-            { "name": "Priority", "value": "={{ $json.priority }}" },
-            { "name": "Cache", "value": "yes" },
-            { "name": "Expires", "value": "24h" }
+            {
+              "name": "Title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            }
           ]
         },
         "options": {}
@@ -66,16 +113,283 @@
       "name": "Push PM Notification",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "id": "40a28649-5abd-4f62-aafb-0361c71d2199"
     }
   ],
   "connections": {
-    "Cron Monday 07:00": { "main": [[{ "node": "Active Projects", "type": "main", "index": 0 }]] },
-    "Active Projects": { "main": [[{ "node": "Get PM Console", "type": "main", "index": 0 }]] },
-    "Get PM Console": { "main": [[{ "node": "Format PM Push", "type": "main", "index": 0 }]] },
-    "Format PM Push": { "main": [[{ "node": "Push PM Notification", "type": "main", "index": 0 }]] }
+    "Cron Monday 07:00": {
+      "main": [
+        [
+          {
+            "node": "Active Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Projects": {
+      "main": [
+        [
+          {
+            "node": "Get PM Console",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PM Console": {
+      "main": [
+        [
+          {
+            "node": "Format PM Push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format PM Push": {
+      "main": [
+        [
+          {
+            "node": "Push PM Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "sprint-3-ops" }],
-  "_hci_notes": "Fires Monday 07:00. Pushes PM weekly brief for each pilot project to ntfy."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Monday 07:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "678694a9-f413-4765-b9a1-672f7cd40854",
+  "activeVersionId": "678694a9-f413-4765-b9a1-672f7cd40854",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T20:44:57.065Z",
+      "createdAt": "2026-06-27T20:44:57.065Z",
+      "role": "workflow:owner",
+      "workflowId": "9fsVJ2gBOn54fLnT",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-03T01:06:45.001Z",
+    "createdAt": "2026-07-03T01:06:45.001Z",
+    "versionId": "678694a9-f413-4765-b9a1-672f7cd40854",
+    "workflowId": "9fsVJ2gBOn54fLnT",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 7 * * 1"
+              }
+            ]
+          }
+        },
+        "name": "Cron Monday 07:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "aa4b5c17-8842-485d-86bb-a27d5c34d0a2"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [\n  { json: { project_id: 1, name: '64 Eastwood', code: '64EW' } },\n  { json: { project_id: 2, name: '101 Francis', code: '101F' } },\n  { json: { project_id: 3, name: '1355 Riverside', code: '1355R' } }\n];"
+        },
+        "name": "Active Projects",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          300,
+          300
+        ],
+        "id": "9b2749ca-cfe4-4da5-85ef-fcde0188eb6c"
+      },
+      {
+        "parameters": {
+          "url": "=http://host.docker.internal:8000/api/v1/pm/{{ $json.project_id }}/weekly",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get PM Console",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          500,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "4bc3c87f-0b96-45ff-9423-82dbc46e1374"
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '\ud83d\udd34' : h === 'YELLOW' ? '\ud83d\udfe1' : '\ud83d\udfe2';\nconst budget = d.budget || {};\nconst rfis = d.rfis || {};\nconst approvals = d.approvals || {};\nconst priorities = (d.next_week_priorities || []).slice(0, 3);\n\nconst title = `${emoji} ${d.project_code || ''} PM Week \u2014 ${d.week_of || ''}`;\nconst body = [\n  `${h} \u2014 ${d.project_name}`,\n  `Budget exposure: $${Math.round((budget.exposure || 0) / 1000)}k`,\n  `Open RFIs: ${rfis.open_count || 0} (${rfis.overdue_count || 0} overdue)`,\n  `Decisions pending: ${approvals.pending_count || 0}`,\n  `---`,\n  ...priorities.map((p, i) => `${i+1}. ${p}`),\n  `View: http://host.docker.internal:8000/pm/${d.project_id}`\n].join('\\n');\n\nconst priority = h === 'RED' ? 'high' : (approvals.pending_count || 0) > 0 ? 'default' : 'low';\n\nreturn [{ json: { title, body, priority } }];"
+        },
+        "name": "Format PM Push",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ],
+        "id": "57476074-8e3c-43fb-ae85-8c90324aa61b"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "message",
+                "value": "={{ $json.body }}"
+              }
+            ]
+          },
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "={{ $json.title }}"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $json.priority }}"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "name": "Push PM Notification",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          900,
+          300
+        ],
+        "id": "40a28649-5abd-4f62-aafb-0361c71d2199"
+      }
+    ],
+    "connections": {
+      "Cron Monday 07:00": {
+        "main": [
+          [
+            {
+              "node": "Active Projects",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Active Projects": {
+        "main": [
+          [
+            {
+              "node": "Get PM Console",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get PM Console": {
+        "main": [
+          [
+            {
+              "node": "Format PM Push",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format PM Push": {
+        "main": [
+          [
+            {
+              "node": "Push PM Notification",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-03T01:06:45.012Z",
+        "id": 262,
+        "workflowId": "9fsVJ2gBOn54fLnT",
+        "versionId": "678694a9-f413-4765-b9a1-672f7cd40854",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-03T01:06:45.009Z",
+        "id": 261,
+        "workflowId": "9fsVJ2gBOn54fLnT",
+        "versionId": "678694a9-f413-4765-b9a1-672f7cd40854",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:44.955Z",
+  "updatedAt": "2026-07-07T06:13:52.477Z",
   "createdAt": "2026-06-27T23:16:57.577Z",
   "id": "6GyIgmZUJOh3ae2D",
   "name": "AUTO-WEEKLY-EXEC \u2014 Friday 16:00 Executive Report",
@@ -114,8 +114,9 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "json",
-        "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}"
       },
       "id": "write-to-disk",
       "name": "Write Report to Disk",
@@ -167,6 +168,22 @@
         780,
         460
       ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        410,
+        380
+      ],
+      "id": "sync-before-report-merge",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
@@ -195,7 +212,7 @@
       "main": [
         [
           {
-            "node": "Build Executive Report",
+            "node": "Sync Before Report",
             "type": "main",
             "index": 0
           }
@@ -206,9 +223,9 @@
       "main": [
         [
           {
-            "node": "Build Executive Report",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -217,9 +234,9 @@
       "main": [
         [
           {
-            "node": "Build Executive Report",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 2
           }
         ]
       ]
@@ -239,6 +256,17 @@
           }
         ]
       ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Build Executive Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -252,9 +280,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "d50b9e85-27c0-4481-9c07-b6ff7bbad8af",
-  "activeVersionId": "d50b9e85-27c0-4481-9c07-b6ff7bbad8af",
-  "versionCounter": 3,
+  "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+  "activeVersionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+  "versionCounter": 6,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -277,11 +305,18 @@
       }
     }
   ],
-  "tags": [],
+  "tags": [
+    {
+      "updatedAt": "2026-07-07T13:44:31.315Z",
+      "createdAt": "2026-07-07T13:44:31.315Z",
+      "id": "uupf4KZrHGllDGX7",
+      "name": "btw-6"
+    }
+  ],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:44.955Z",
-    "createdAt": "2026-07-03T01:06:44.955Z",
-    "versionId": "d50b9e85-27c0-4481-9c07-b6ff7bbad8af",
+    "updatedAt": "2026-07-07T06:13:52.477Z",
+    "createdAt": "2026-07-07T06:13:52.477Z",
+    "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
     "workflowId": "6GyIgmZUJOh3ae2D",
     "nodes": [
       {
@@ -391,8 +426,9 @@
           "genericAuthType": "httpHeaderAuth",
           "sendBody": true,
           "contentType": "json",
-          "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
-          "options": {}
+          "options": {},
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}"
         },
         "id": "write-to-disk",
         "name": "Write Report to Disk",
@@ -444,6 +480,22 @@
           780,
           460
         ]
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 3,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          410,
+          380
+        ],
+        "id": "sync-before-report-merge",
+        "name": "Sync Before Report"
       }
     ],
     "connections": {
@@ -472,7 +524,7 @@
         "main": [
           [
             {
-              "node": "Build Executive Report",
+              "node": "Sync Before Report",
               "type": "main",
               "index": 0
             }
@@ -483,9 +535,9 @@
         "main": [
           [
             {
-              "node": "Build Executive Report",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 1
             }
           ]
         ]
@@ -494,9 +546,9 @@
         "main": [
           [
             {
-              "node": "Build Executive Report",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 2
             }
           ]
         ]
@@ -516,6 +568,17 @@
             }
           ]
         ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Build Executive Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -525,21 +588,22 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:44.968Z",
-        "id": 260,
+        "createdAt": "2026-07-07T06:13:52.508Z",
+        "id": 336,
         "workflowId": "6GyIgmZUJOh3ae2D",
-        "versionId": "d50b9e85-27c0-4481-9c07-b6ff7bbad8af",
+        "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:44.965Z",
-        "id": 259,
+        "createdAt": "2026-07-07T06:13:52.501Z",
+        "id": 335,
         "workflowId": "6GyIgmZUJOh3ae2D",
-        "versionId": "d50b9e85-27c0-4481-9c07-b6ff7bbad8af",
+        "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }
     ]
-  }
+  },
+  "_hci_notes": "BTW-6: Friday 16:00 exec report - 3 parallel branches (Company Report, Missions, Inbox+Pending) synchronized via a Merge node before Build Executive Report; fixed 2026-07-07 after live-verified same-index race condition on real production runs."
 }

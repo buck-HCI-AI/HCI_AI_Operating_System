@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:44.826Z",
+  "updatedAt": "2026-07-07T07:30:37.904Z",
   "createdAt": "2026-06-27T20:34:08.713Z",
   "id": "06sPrar8glcwKRKn",
   "name": "AUTO-WEEKLY-REPORT \u2014 Sunday 19:00 Autonomy Opportunities",
@@ -73,7 +73,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const report = $('Get Autonomy Report').first().json;const backlog = $('Get Full Backlog').first().json;const today = new Date().toISOString().split('T')[0];const top3 = (report.top_opportunities || []).slice(0, 3);const topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\n   ${o.description || ''}`).join('\n\n') || 'No new opportunities this week.';const backlogItems = (backlog.opportunities || []);const totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);const implemented = backlogItems.filter(o => o.status === 'implemented').length;const pending = backlogItems.filter(o => o.status === 'backlog').length;const md = `# HCI AI \u2014 Weekly Automation Opportunities\n**${today}**\n\n## Top 3 This Week\n\n${topList}\n\n## Backlog Summary\n- Total opportunities tracked: ${backlogItems.length}\n- Implemented: ${implemented}\n- Pending: ${pending}\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\n\n---\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;const pushMsg = top3.length > 0  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`  : 'No new automation opportunities detected this week';return [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
+        "jsCode": "const report = $('Get Autonomy Report').first().json;const backlog = $('Get Full Backlog').first().json;const today = new Date().toISOString().split('T')[0];const top3 = (report.top_opportunities || []).slice(0, 3);const topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\n   ${o.description || ''}`).join('\\n\\n') || 'No new opportunities this week.';const backlogItems = (backlog.opportunities || []);const totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);const implemented = backlogItems.filter(o => o.status === 'implemented').length;const pending = backlogItems.filter(o => o.status === 'backlog').length;const md = `# HCI AI \u2014 Weekly Automation Opportunities\n**${today}**\n\n## Top 3 This Week\n\n${topList}\n\n## Backlog Summary\n- Total opportunities tracked: ${backlogItems.length}\n- Implemented: ${implemented}\n- Pending: ${pending}\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\n\n---\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;const pushMsg = top3.length > 0  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`  : 'No new automation opportunities detected this week';return [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
       },
       "name": "Format Opportunities Report",
       "type": "n8n-nodes-base.code",
@@ -93,7 +93,8 @@
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={ \"filename\": \"{{ $json.filename }}\", \"content\": {{ JSON.stringify($json.md) }} }",
-        "options": {}
+        "options": {},
+        "specifyBody": "json"
       },
       "name": "Write Report to Disk",
       "type": "n8n-nodes-base.httpRequest",
@@ -153,6 +154,22 @@
         500
       ],
       "id": "4a4e28ab-2dde-4548-af3a-8e49775e79ef"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        350,
+        500
+      ],
+      "id": "sync-opp-report",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
@@ -176,7 +193,7 @@
       "main": [
         [
           {
-            "node": "Format Opportunities Report",
+            "node": "Sync Before Report",
             "type": "main",
             "index": 0
           }
@@ -187,9 +204,9 @@
       "main": [
         [
           {
-            "node": "Format Opportunities Report",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -209,6 +226,17 @@
           }
         ]
       ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Format Opportunities Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -222,9 +250,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "b4036fc0-f9ef-4f5c-9969-50683ceb86a1",
-  "activeVersionId": "b4036fc0-f9ef-4f5c-9969-50683ceb86a1",
-  "versionCounter": 3,
+  "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+  "activeVersionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+  "versionCounter": 6,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -249,9 +277,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:44.827Z",
-    "createdAt": "2026-07-03T01:06:44.827Z",
-    "versionId": "b4036fc0-f9ef-4f5c-9969-50683ceb86a1",
+    "updatedAt": "2026-07-07T07:30:37.906Z",
+    "createdAt": "2026-07-07T07:30:37.906Z",
+    "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
     "workflowId": "06sPrar8glcwKRKn",
     "nodes": [
       {
@@ -320,7 +348,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const report = $('Get Autonomy Report').first().json;const backlog = $('Get Full Backlog').first().json;const today = new Date().toISOString().split('T')[0];const top3 = (report.top_opportunities || []).slice(0, 3);const topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\n   ${o.description || ''}`).join('\n\n') || 'No new opportunities this week.';const backlogItems = (backlog.opportunities || []);const totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);const implemented = backlogItems.filter(o => o.status === 'implemented').length;const pending = backlogItems.filter(o => o.status === 'backlog').length;const md = `# HCI AI \u2014 Weekly Automation Opportunities\n**${today}**\n\n## Top 3 This Week\n\n${topList}\n\n## Backlog Summary\n- Total opportunities tracked: ${backlogItems.length}\n- Implemented: ${implemented}\n- Pending: ${pending}\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\n\n---\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;const pushMsg = top3.length > 0  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`  : 'No new automation opportunities detected this week';return [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
+          "jsCode": "const report = $('Get Autonomy Report').first().json;const backlog = $('Get Full Backlog').first().json;const today = new Date().toISOString().split('T')[0];const top3 = (report.top_opportunities || []).slice(0, 3);const topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\n   ${o.description || ''}`).join('\\n\\n') || 'No new opportunities this week.';const backlogItems = (backlog.opportunities || []);const totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);const implemented = backlogItems.filter(o => o.status === 'implemented').length;const pending = backlogItems.filter(o => o.status === 'backlog').length;const md = `# HCI AI \u2014 Weekly Automation Opportunities\n**${today}**\n\n## Top 3 This Week\n\n${topList}\n\n## Backlog Summary\n- Total opportunities tracked: ${backlogItems.length}\n- Implemented: ${implemented}\n- Pending: ${pending}\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\n\n---\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;const pushMsg = top3.length > 0  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`  : 'No new automation opportunities detected this week';return [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
         },
         "name": "Format Opportunities Report",
         "type": "n8n-nodes-base.code",
@@ -340,7 +368,8 @@
           "sendBody": true,
           "bodyContentType": "json",
           "jsonBody": "={ \"filename\": \"{{ $json.filename }}\", \"content\": {{ JSON.stringify($json.md) }} }",
-          "options": {}
+          "options": {},
+          "specifyBody": "json"
         },
         "name": "Write Report to Disk",
         "type": "n8n-nodes-base.httpRequest",
@@ -400,6 +429,22 @@
           500
         ],
         "id": "4a4e28ab-2dde-4548-af3a-8e49775e79ef"
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 2,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          350,
+          500
+        ],
+        "id": "sync-opp-report",
+        "name": "Sync Before Report"
       }
     ],
     "connections": {
@@ -423,7 +468,7 @@
         "main": [
           [
             {
-              "node": "Format Opportunities Report",
+              "node": "Sync Before Report",
               "type": "main",
               "index": 0
             }
@@ -434,9 +479,9 @@
         "main": [
           [
             {
-              "node": "Format Opportunities Report",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 1
             }
           ]
         ]
@@ -456,6 +501,17 @@
             }
           ]
         ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Format Opportunities Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -465,18 +521,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:44.858Z",
-        "id": 258,
+        "createdAt": "2026-07-07T07:30:37.930Z",
+        "id": 434,
         "workflowId": "06sPrar8glcwKRKn",
-        "versionId": "b4036fc0-f9ef-4f5c-9969-50683ceb86a1",
+        "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:44.849Z",
-        "id": 257,
+        "createdAt": "2026-07-07T07:30:37.924Z",
+        "id": 433,
         "workflowId": "06sPrar8glcwKRKn",
-        "versionId": "b4036fc0-f9ef-4f5c-9969-50683ceb86a1",
+        "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

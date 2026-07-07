@@ -1,20 +1,35 @@
 {
-  "name": "AUTO-WEEKLY-REPORT — Sunday 19:00 Autonomy Opportunities",
+  "updatedAt": "2026-07-07T07:30:37.904Z",
+  "createdAt": "2026-06-27T20:34:08.713Z",
+  "id": "06sPrar8glcwKRKn",
+  "name": "AUTO-WEEKLY-REPORT \u2014 Sunday 19:00 Autonomy Opportunities",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 19 * * 0" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * 0"
+            }
+          ]
         }
       },
       "name": "Cron Sunday 19:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ],
+      "id": "b0389675-1f16-4354-95bc-cb5a1fd9883d"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/services/autonomy/report",
+        "url": "http://host.docker.internal:8000/api/v1/services/autonomy/report",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -22,12 +37,21 @@
       "name": "Get Autonomy Report",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [300, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        300,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "e8f12e8c-35e2-4a44-898d-4dab877660cd"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/services/autonomy/backlog",
+        "url": "http://host.docker.internal:8000/api/v1/services/autonomy/backlog",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -35,34 +59,57 @@
       "name": "Get Full Backlog",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [300, 500],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        300,
+        500
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "eb3cf41a-186d-4c1e-9b8a-79e3cd9cc45f"
     },
     {
       "parameters": {
-        "jsCode": "const report = $('Get Autonomy Report').first().json;\nconst backlog = $('Get Full Backlog').first().json;\nconst today = new Date().toISOString().split('T')[0];\n\nconst top3 = (report.top_opportunities || []).slice(0, 3);\nconst topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\\n   ${o.description || ''}`).join('\\n\\n') || 'No new opportunities this week.';\n\nconst backlogItems = (backlog.opportunities || []);\nconst totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);\nconst implemented = backlogItems.filter(o => o.status === 'implemented').length;\nconst pending = backlogItems.filter(o => o.status === 'backlog').length;\n\nconst md = `# HCI AI — Weekly Automation Opportunities\\n**${today}**\\n\\n## Top 3 This Week\\n\\n${topList}\\n\\n## Backlog Summary\\n- Total opportunities tracked: ${backlogItems.length}\\n- Implemented: ${implemented}\\n- Pending: ${pending}\\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\\n\\n---\\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;\n\nconst pushMsg = top3.length > 0\n  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`\n  : 'No new automation opportunities detected this week';\n\nreturn [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
+        "jsCode": "const report = $('Get Autonomy Report').first().json;const backlog = $('Get Full Backlog').first().json;const today = new Date().toISOString().split('T')[0];const top3 = (report.top_opportunities || []).slice(0, 3);const topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\n   ${o.description || ''}`).join('\\n\\n') || 'No new opportunities this week.';const backlogItems = (backlog.opportunities || []);const totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);const implemented = backlogItems.filter(o => o.status === 'implemented').length;const pending = backlogItems.filter(o => o.status === 'backlog').length;const md = `# HCI AI \u2014 Weekly Automation Opportunities\n**${today}**\n\n## Top 3 This Week\n\n${topList}\n\n## Backlog Summary\n- Total opportunities tracked: ${backlogItems.length}\n- Implemented: ${implemented}\n- Pending: ${pending}\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\n\n---\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;const pushMsg = top3.length > 0  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`  : 'No new automation opportunities detected this week';return [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
       },
       "name": "Format Opportunities Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [500, 400]
+      "position": [
+        500,
+        400
+      ],
+      "id": "68056e67-63a5-41f1-85ab-b2557a2324a9"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/write-report",
+        "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={ \"filename\": \"{{ $json.filename }}\", \"content\": {{ JSON.stringify($json.md) }} }",
-        "options": {}
+        "options": {},
+        "specifyBody": "json"
       },
       "name": "Write Report to Disk",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [700, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "cf5e8c21-5f1e-431f-b1e8-69867d1a7728"
     },
     {
       "parameters": {
@@ -72,11 +119,26 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "Weekly Automation Opportunities Ready" },
-            { "name": "Tags", "value": "robot,chart_with_upwards_trend" },
-            { "name": "Cache", "value": "yes" },
-            { "name": "Expires", "value": "24h" },
-            { "name": "Actions", "value": "view, View Dashboard, http://localhost:8000/executive" }
+            {
+              "name": "Title",
+              "value": "Weekly Automation Opportunities Ready"
+            },
+            {
+              "name": "Tags",
+              "value": "robot,chart_with_upwards_trend"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            },
+            {
+              "name": "Actions",
+              "value": "view, View Dashboard, http://host.docker.internal:8000/executive"
+            }
           ]
         },
         "sendBody": true,
@@ -87,26 +149,393 @@
       "name": "Push: Opportunities Summary",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [700, 500]
+      "position": [
+        700,
+        500
+      ],
+      "id": "4a4e28ab-2dde-4548-af3a-8e49775e79ef"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        350,
+        500
+      ],
+      "id": "sync-opp-report",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
     "Cron Sunday 19:00": {
-      "main": [[
-        { "node": "Get Autonomy Report", "type": "main", "index": 0 },
-        { "node": "Get Full Backlog", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Get Autonomy Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Full Backlog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Get Autonomy Report": { "main": [[{ "node": "Format Opportunities Report", "type": "main", "index": 0 }]] },
-    "Get Full Backlog": { "main": [[{ "node": "Format Opportunities Report", "type": "main", "index": 0 }]] },
+    "Get Autonomy Report": {
+      "main": [
+        [
+          {
+            "node": "Sync Before Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Full Backlog": {
+      "main": [
+        [
+          {
+            "node": "Sync Before Report",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
     "Format Opportunities Report": {
-      "main": [[
-        { "node": "Write Report to Disk", "type": "main", "index": 0 },
-        { "node": "Push: Opportunities Summary", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Write Report to Disk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Push: Opportunities Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Format Opportunities Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "weekly-ops" }, { "name": "autonomy" }],
-  "_hci_notes": "AUTO-WEEKLY-REPORT — Sunday 19:00. Pulls top 3 automation opportunities from autonomy service. Writes markdown to reports/sprint/auto-opps-YYYY-MM-DD.md via write-report endpoint. Pushes ntfy summary with cumulative ROI."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Sunday 19:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+  "activeVersionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T20:34:08.713Z",
+      "createdAt": "2026-06-27T20:34:08.713Z",
+      "role": "workflow:owner",
+      "workflowId": "06sPrar8glcwKRKn",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-07T07:30:37.906Z",
+    "createdAt": "2026-07-07T07:30:37.906Z",
+    "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+    "workflowId": "06sPrar8glcwKRKn",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 19 * * 0"
+              }
+            ]
+          }
+        },
+        "name": "Cron Sunday 19:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "b0389675-1f16-4354-95bc-cb5a1fd9883d"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/autonomy/report",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get Autonomy Report",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "e8f12e8c-35e2-4a44-898d-4dab877660cd"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/autonomy/backlog",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get Full Backlog",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          500
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "eb3cf41a-186d-4c1e-9b8a-79e3cd9cc45f"
+      },
+      {
+        "parameters": {
+          "jsCode": "const report = $('Get Autonomy Report').first().json;const backlog = $('Get Full Backlog').first().json;const today = new Date().toISOString().split('T')[0];const top3 = (report.top_opportunities || []).slice(0, 3);const topList = top3.map((o, i) => `${i+1}. **${o.title}** (ROI: ${o.roi_score || 'N/A'} min/wk)\n   ${o.description || ''}`).join('\\n\\n') || 'No new opportunities this week.';const backlogItems = (backlog.opportunities || []);const totalROI = backlogItems.reduce((sum, o) => sum + (parseFloat(o.roi_score) || 0), 0);const implemented = backlogItems.filter(o => o.status === 'implemented').length;const pending = backlogItems.filter(o => o.status === 'backlog').length;const md = `# HCI AI \u2014 Weekly Automation Opportunities\n**${today}**\n\n## Top 3 This Week\n\n${topList}\n\n## Backlog Summary\n- Total opportunities tracked: ${backlogItems.length}\n- Implemented: ${implemented}\n- Pending: ${pending}\n- Cumulative ROI potential: ${Math.round(totalROI)} min/wk (${Math.round(totalROI/60 * 52)} hrs/yr)\n\n---\n*Generated: ${new Date().toISOString()} by AUTO-WEEKLY-REPORT*`;const pushMsg = top3.length > 0  ? `Top opportunity: ${top3[0].title} (${top3[0].roi_score || '?'} min/wk ROI)`  : 'No new automation opportunities detected this week';return [{ json: { md, pushMsg, top3_count: top3.length, total_roi: Math.round(totalROI), filename: `reports/sprint/auto-opps-${today}.md` } }];"
+        },
+        "name": "Format Opportunities Report",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          400
+        ],
+        "id": "68056e67-63a5-41f1-85ab-b2557a2324a9"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "bodyContentType": "json",
+          "jsonBody": "={ \"filename\": \"{{ $json.filename }}\", \"content\": {{ JSON.stringify($json.md) }} }",
+          "options": {},
+          "specifyBody": "json"
+        },
+        "name": "Write Report to Disk",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          700,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "cf5e8c21-5f1e-431f-b1e8-69867d1a7728"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "Weekly Automation Opportunities Ready"
+              },
+              {
+                "name": "Tags",
+                "value": "robot,chart_with_upwards_trend"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              },
+              {
+                "name": "Actions",
+                "value": "view, View Dashboard, http://host.docker.internal:8000/executive"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "raw",
+          "rawBody": "={{ $json.pushMsg }} | Cumulative ROI: {{ $json.total_roi }} min/wk",
+          "options": {}
+        },
+        "name": "Push: Opportunities Summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          700,
+          500
+        ],
+        "id": "4a4e28ab-2dde-4548-af3a-8e49775e79ef"
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 2,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          350,
+          500
+        ],
+        "id": "sync-opp-report",
+        "name": "Sync Before Report"
+      }
+    ],
+    "connections": {
+      "Cron Sunday 19:00": {
+        "main": [
+          [
+            {
+              "node": "Get Autonomy Report",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Full Backlog",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Autonomy Report": {
+        "main": [
+          [
+            {
+              "node": "Sync Before Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Full Backlog": {
+        "main": [
+          [
+            {
+              "node": "Sync Before Report",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Format Opportunities Report": {
+        "main": [
+          [
+            {
+              "node": "Write Report to Disk",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Push: Opportunities Summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Format Opportunities Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-07T07:30:37.930Z",
+        "id": 434,
+        "workflowId": "06sPrar8glcwKRKn",
+        "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-07T07:30:37.924Z",
+        "id": 433,
+        "workflowId": "06sPrar8glcwKRKn",
+        "versionId": "6262d166-bf06-462a-a0f4-bf8eb94cf1c6",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }

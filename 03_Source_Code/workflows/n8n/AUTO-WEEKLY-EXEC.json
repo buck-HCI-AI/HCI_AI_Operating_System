@@ -1,21 +1,35 @@
 {
-  "name": "AUTO-WEEKLY-EXEC — Friday 16:00 Executive Report",
+  "updatedAt": "2026-07-07T06:13:52.477Z",
+  "createdAt": "2026-06-27T23:16:57.577Z",
+  "id": "6GyIgmZUJOh3ae2D",
+  "name": "AUTO-WEEKLY-EXEC \u2014 Friday 16:00 Executive Report",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 16 * * 5" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 16 * * 5"
+            }
+          ]
         }
       },
       "id": "trigger-friday-4pm",
       "name": "Cron Friday 16:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/reports/weekly/company",
+        "url": "http://host.docker.internal:8000/api/v1/reports/weekly/company",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -24,12 +38,20 @@
       "name": "Get Company Report",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [320, 200],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        320,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/missions",
+        "url": "http://host.docker.internal:8000/api/v1/executive/missions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -38,12 +60,20 @@
       "name": "Get Missions",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [320, 380],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        320,
+        380
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/morning-brief",
+        "url": "http://host.docker.internal:8000/api/v1/executive/morning-brief",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -52,36 +82,56 @@
       "name": "Get Inbox + Pending",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [320, 560],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        320,
+        560
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const company = $('Get Company Report').first().json;\nconst missionsData = $('Get Missions').first().json;\nconst brief = $('Get Inbox + Pending').first().json;\nconst today = new Date().toISOString().split('T')[0];\nconst weekOf = company.week_of || today;\n\n// Project health section\nconst healthIcon = h => h === 'GREEN' ? '🟢' : h === 'YELLOW' ? '🟡' : h === 'RED' ? '🔴' : '⚪';\nconst projectLines = (company.projects || []).map(p =>\n  `| ${p.project_code} | ${p.project_name} | ${healthIcon(p.health)} ${p.health} | ${p.schedule_variance_days >= 0 ? '+' : ''}${p.schedule_variance_days}d | $${(p.budget_exposure || 0).toLocaleString()} | ${p.open_risks} risks | ${p.open_decisions} decisions |`\n).join('\\n');\n\n// Mission status\nconst missions = missionsData.missions || [];\nconst inProgress = missions.filter(m => m.status === 'IN_PROGRESS');\nconst blocked = missions.filter(m => m.status === 'BLOCKED');\nconst complete = missions.filter(m => m.status === 'COMPLETE');\nconst missionLines = missions.slice(0, 8).map(m => {\n  const icon = m.status === 'IN_PROGRESS' ? '🔵' : m.status === 'BLOCKED' ? '🔴' : m.status === 'COMPLETE' ? '✅' : '⚪';\n  const blocker = m.blocker ? ` — ⛔ ${m.blocker}` : '';\n  return `- ${icon} **${m.mission_id}**: ${m.title}${blocker}`;\n}).join('\\n');\n\n// Inbox\nconst pendingApprovals = brief.inbox_count || 0;\nconst topItem = brief.one_action ? `\\n\\n**Next Action:** ${brief.one_action.title}` : '';\n\nconst companyHealthIcon = healthIcon(company.company_health);\nconst riskCount = company.projects_at_risk || 0;\n\nconst md = `# HCI Weekly Executive Report\n**Week of ${weekOf}** | Generated ${new Date().toISOString().replace('T', ' ').slice(0, 16)}\n\n---\n\n## Company Health: ${companyHealthIcon} ${company.company_health}\n\n| Code | Project | Health | Schedule | Budget Exposure | Risks | Decisions |\n|------|---------|--------|----------|-----------------|-------|-----------|\n${projectLines || '| — | No projects | — | — | — | — | — |'}\n\n**Portfolio:** ${company.active_projects || 0} active projects | ${riskCount} at risk\n\n---\n\n## AI Mission Status\n\n**${inProgress.length} in progress | ${blocked.length} blocked | ${complete.length} complete**\n\n${missionLines || '_No active missions_'}\n\n---\n\n## Executive Inbox\n\n**${pendingApprovals} item${pendingApprovals !== 1 ? 's' : ''} pending your review**${topItem}\n\n- AI saved **${brief.roi_hours_this_week || 0} hours** this week through automation\n\n---\n\n## Week Summary\n\n${riskCount > 0 ? `⚠️ **${riskCount} project(s) at risk — review required**` : '✅ All projects on track'}\n${blocked.length > 0 ? `\\n⛔ **${blocked.length} AI mission(s) blocked — Buck action required**` : ''}\n${pendingApprovals > 0 ? `\\n📥 **${pendingApprovals} approval(s) waiting in Executive Inbox**` : ''}\n\n---\n*Generated by AUTO-WEEKLY-EXEC | HCI AI OS*`;\n\nconst pushMsg = `${companyHealthIcon} Week of ${weekOf}: ${company.active_projects || 0} projects, ${riskCount} at risk, ${blocked.length} missions blocked, ${pendingApprovals} approvals pending | AI saved ${brief.roi_hours_this_week || 0}h this week`;\n\nreturn [{ json: {\n  md,\n  pushMsg,\n  company_health: company.company_health,\n  projects_at_risk: riskCount,\n  missions_blocked: blocked.length,\n  pending_approvals: pendingApprovals,\n  filename: `reports/weekly/exec-${today}.md`\n}}];"
+        "jsCode": "const company = $('Get Company Report').first().json;\nconst missionsData = $('Get Missions').first().json;\nconst brief = $('Get Inbox + Pending').first().json;\nconst today = new Date().toISOString().split('T')[0];\nconst weekOf = company.week_of || today;\n\n// Project health section\nconst healthIcon = h => h === 'GREEN' ? '\ud83d\udfe2' : h === 'YELLOW' ? '\ud83d\udfe1' : h === 'RED' ? '\ud83d\udd34' : '\u26aa';\nconst projectLines = (company.projects || []).map(p =>\n  `| ${p.project_code} | ${p.project_name} | ${healthIcon(p.health)} ${p.health} | ${p.schedule_variance_days >= 0 ? '+' : ''}${p.schedule_variance_days}d | $${(p.budget_exposure || 0).toLocaleString()} | ${p.open_risks} risks | ${p.open_decisions} decisions |`\n).join('\\n');\n\n// Mission status\nconst missions = missionsData.missions || [];\nconst inProgress = missions.filter(m => m.status === 'IN_PROGRESS');\nconst blocked = missions.filter(m => m.status === 'BLOCKED');\nconst complete = missions.filter(m => m.status === 'COMPLETE');\nconst missionLines = missions.slice(0, 8).map(m => {\n  const icon = m.status === 'IN_PROGRESS' ? '\ud83d\udd35' : m.status === 'BLOCKED' ? '\ud83d\udd34' : m.status === 'COMPLETE' ? '\u2705' : '\u26aa';\n  const blocker = m.blocker ? ` \u2014 \u26d4 ${m.blocker}` : '';\n  return `- ${icon} **${m.mission_id}**: ${m.title}${blocker}`;\n}).join('\\n');\n\n// Inbox\nconst pendingApprovals = brief.inbox_count || 0;\nconst topItem = brief.one_action ? `\\n\\n**Next Action:** ${brief.one_action.title}` : '';\n\nconst companyHealthIcon = healthIcon(company.company_health);\nconst riskCount = company.projects_at_risk || 0;\n\nconst md = `# HCI Weekly Executive Report\n**Week of ${weekOf}** | Generated ${new Date().toISOString().replace('T', ' ').slice(0, 16)}\n\n---\n\n## Company Health: ${companyHealthIcon} ${company.company_health}\n\n| Code | Project | Health | Schedule | Budget Exposure | Risks | Decisions |\n|------|---------|--------|----------|-----------------|-------|-----------|\n${projectLines || '| \u2014 | No projects | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |'}\n\n**Portfolio:** ${company.active_projects || 0} active projects | ${riskCount} at risk\n\n---\n\n## AI Mission Status\n\n**${inProgress.length} in progress | ${blocked.length} blocked | ${complete.length} complete**\n\n${missionLines || '_No active missions_'}\n\n---\n\n## Executive Inbox\n\n**${pendingApprovals} item${pendingApprovals !== 1 ? 's' : ''} pending your review**${topItem}\n\n- AI saved **${brief.roi_hours_this_week || 0} hours** this week through automation\n\n---\n\n## Week Summary\n\n${riskCount > 0 ? `\u26a0\ufe0f **${riskCount} project(s) at risk \u2014 review required**` : '\u2705 All projects on track'}\n${blocked.length > 0 ? `\\n\u26d4 **${blocked.length} AI mission(s) blocked \u2014 Buck action required**` : ''}\n${pendingApprovals > 0 ? `\\n\ud83d\udce5 **${pendingApprovals} approval(s) waiting in Executive Inbox**` : ''}\n\n---\n*Generated by AUTO-WEEKLY-EXEC | HCI AI OS*`;\n\nconst pushMsg = `${companyHealthIcon} Week of ${weekOf}: ${company.active_projects || 0} projects, ${riskCount} at risk, ${blocked.length} missions blocked, ${pendingApprovals} approvals pending | AI saved ${brief.roi_hours_this_week || 0}h this week`;\n\nreturn [{ json: {\n  md,\n  pushMsg,\n  company_health: company.company_health,\n  projects_at_risk: riskCount,\n  missions_blocked: blocked.length,\n  pending_approvals: pendingApprovals,\n  filename: `reports/weekly/exec-${today}.md`\n}}];"
       },
       "id": "build-exec-report",
       "name": "Build Executive Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [560, 380]
+      "position": [
+        560,
+        380
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/write-report",
+        "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "json",
-        "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}"
       },
       "id": "write-to-disk",
       "name": "Write Report to Disk",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [780, 280],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        780,
+        280
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
     },
     {
       "parameters": {
@@ -90,9 +140,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "📊 Weekly Executive Report Ready" },
-            { "name": "Priority", "value": "={{ $json.projects_at_risk > 0 || $json.missions_blocked > 0 ? 'high' : 'default' }}" },
-            { "name": "Content-Type", "value": "text/plain" }
+            {
+              "name": "Title",
+              "value": "\ud83d\udcca Weekly Executive Report Ready"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.projects_at_risk > 0 || $json.missions_blocked > 0 ? 'high' : 'default' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain"
+            }
           ]
         },
         "sendBody": true,
@@ -105,28 +164,446 @@
       "name": "Send ntfy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [780, 460]
+      "position": [
+        780,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        410,
+        380
+      ],
+      "id": "sync-before-report-merge",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
     "Cron Friday 16:00": {
-      "main": [[
-        { "node": "Get Company Report", "type": "main", "index": 0 },
-        { "node": "Get Missions", "type": "main", "index": 0 },
-        { "node": "Get Inbox + Pending", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Get Company Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Missions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Inbox + Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Get Company Report": { "main": [[{ "node": "Build Executive Report", "type": "main", "index": 0 }]] },
-    "Get Missions": { "main": [[{ "node": "Build Executive Report", "type": "main", "index": 0 }]] },
-    "Get Inbox + Pending": { "main": [[{ "node": "Build Executive Report", "type": "main", "index": 0 }]] },
+    "Get Company Report": {
+      "main": [
+        [
+          {
+            "node": "Sync Before Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Missions": {
+      "main": [
+        [
+          {
+            "node": "Sync Before Report",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get Inbox + Pending": {
+      "main": [
+        [
+          {
+            "node": "Sync Before Report",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
     "Build Executive Report": {
-      "main": [[
-        { "node": "Write Report to Disk", "type": "main", "index": 0 },
-        { "node": "Send ntfy", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Write Report to Disk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Build Executive Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["executive", "weekly-reporting", "btw-6"],
-  "_hci_notes": "AUTO-WEEKLY-EXEC — Runs Friday 16:00. Pulls company report + missions + inbox in parallel. Builds exec markdown report, writes to reports/weekly/exec-YYYY-MM-DD.md, pushes ntfy with elevated priority if projects at risk or missions blocked."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Friday 16:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+  "activeVersionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T23:16:57.578Z",
+      "createdAt": "2026-06-27T23:16:57.578Z",
+      "role": "workflow:owner",
+      "workflowId": "6GyIgmZUJOh3ae2D",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2026-07-07T13:44:31.315Z",
+      "createdAt": "2026-07-07T13:44:31.315Z",
+      "id": "uupf4KZrHGllDGX7",
+      "name": "btw-6"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-07-07T06:13:52.477Z",
+    "createdAt": "2026-07-07T06:13:52.477Z",
+    "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+    "workflowId": "6GyIgmZUJOh3ae2D",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 16 * * 5"
+              }
+            ]
+          }
+        },
+        "id": "trigger-friday-4pm",
+        "name": "Cron Friday 16:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          100,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/reports/weekly/company",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "id": "get-company-report",
+        "name": "Get Company Report",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          200
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/missions",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "id": "get-missions",
+        "name": "Get Missions",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          380
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/morning-brief",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "id": "get-inbox",
+        "name": "Get Inbox + Pending",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          560
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const company = $('Get Company Report').first().json;\nconst missionsData = $('Get Missions').first().json;\nconst brief = $('Get Inbox + Pending').first().json;\nconst today = new Date().toISOString().split('T')[0];\nconst weekOf = company.week_of || today;\n\n// Project health section\nconst healthIcon = h => h === 'GREEN' ? '\ud83d\udfe2' : h === 'YELLOW' ? '\ud83d\udfe1' : h === 'RED' ? '\ud83d\udd34' : '\u26aa';\nconst projectLines = (company.projects || []).map(p =>\n  `| ${p.project_code} | ${p.project_name} | ${healthIcon(p.health)} ${p.health} | ${p.schedule_variance_days >= 0 ? '+' : ''}${p.schedule_variance_days}d | $${(p.budget_exposure || 0).toLocaleString()} | ${p.open_risks} risks | ${p.open_decisions} decisions |`\n).join('\\n');\n\n// Mission status\nconst missions = missionsData.missions || [];\nconst inProgress = missions.filter(m => m.status === 'IN_PROGRESS');\nconst blocked = missions.filter(m => m.status === 'BLOCKED');\nconst complete = missions.filter(m => m.status === 'COMPLETE');\nconst missionLines = missions.slice(0, 8).map(m => {\n  const icon = m.status === 'IN_PROGRESS' ? '\ud83d\udd35' : m.status === 'BLOCKED' ? '\ud83d\udd34' : m.status === 'COMPLETE' ? '\u2705' : '\u26aa';\n  const blocker = m.blocker ? ` \u2014 \u26d4 ${m.blocker}` : '';\n  return `- ${icon} **${m.mission_id}**: ${m.title}${blocker}`;\n}).join('\\n');\n\n// Inbox\nconst pendingApprovals = brief.inbox_count || 0;\nconst topItem = brief.one_action ? `\\n\\n**Next Action:** ${brief.one_action.title}` : '';\n\nconst companyHealthIcon = healthIcon(company.company_health);\nconst riskCount = company.projects_at_risk || 0;\n\nconst md = `# HCI Weekly Executive Report\n**Week of ${weekOf}** | Generated ${new Date().toISOString().replace('T', ' ').slice(0, 16)}\n\n---\n\n## Company Health: ${companyHealthIcon} ${company.company_health}\n\n| Code | Project | Health | Schedule | Budget Exposure | Risks | Decisions |\n|------|---------|--------|----------|-----------------|-------|-----------|\n${projectLines || '| \u2014 | No projects | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |'}\n\n**Portfolio:** ${company.active_projects || 0} active projects | ${riskCount} at risk\n\n---\n\n## AI Mission Status\n\n**${inProgress.length} in progress | ${blocked.length} blocked | ${complete.length} complete**\n\n${missionLines || '_No active missions_'}\n\n---\n\n## Executive Inbox\n\n**${pendingApprovals} item${pendingApprovals !== 1 ? 's' : ''} pending your review**${topItem}\n\n- AI saved **${brief.roi_hours_this_week || 0} hours** this week through automation\n\n---\n\n## Week Summary\n\n${riskCount > 0 ? `\u26a0\ufe0f **${riskCount} project(s) at risk \u2014 review required**` : '\u2705 All projects on track'}\n${blocked.length > 0 ? `\\n\u26d4 **${blocked.length} AI mission(s) blocked \u2014 Buck action required**` : ''}\n${pendingApprovals > 0 ? `\\n\ud83d\udce5 **${pendingApprovals} approval(s) waiting in Executive Inbox**` : ''}\n\n---\n*Generated by AUTO-WEEKLY-EXEC | HCI AI OS*`;\n\nconst pushMsg = `${companyHealthIcon} Week of ${weekOf}: ${company.active_projects || 0} projects, ${riskCount} at risk, ${blocked.length} missions blocked, ${pendingApprovals} approvals pending | AI saved ${brief.roi_hours_this_week || 0}h this week`;\n\nreturn [{ json: {\n  md,\n  pushMsg,\n  company_health: company.company_health,\n  projects_at_risk: riskCount,\n  missions_blocked: blocked.length,\n  pending_approvals: pendingApprovals,\n  filename: `reports/weekly/exec-${today}.md`\n}}];"
+        },
+        "id": "build-exec-report",
+        "name": "Build Executive Report",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          560,
+          380
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/executive/write-report",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "options": {},
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}"
+        },
+        "id": "write-to-disk",
+        "name": "Write Report to Disk",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          780,
+          280
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://ntfy.sh/hci-executive",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "\ud83d\udcca Weekly Executive Report Ready"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $json.projects_at_risk > 0 || $json.missions_blocked > 0 ? 'high' : 'default' }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "text/plain"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "text/plain",
+          "body": "={{ $json.pushMsg }}",
+          "options": {}
+        },
+        "id": "send-ntfy",
+        "name": "Send ntfy",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          780,
+          460
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 3,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          410,
+          380
+        ],
+        "id": "sync-before-report-merge",
+        "name": "Sync Before Report"
+      }
+    ],
+    "connections": {
+      "Cron Friday 16:00": {
+        "main": [
+          [
+            {
+              "node": "Get Company Report",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Missions",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Inbox + Pending",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Company Report": {
+        "main": [
+          [
+            {
+              "node": "Sync Before Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Missions": {
+        "main": [
+          [
+            {
+              "node": "Sync Before Report",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Get Inbox + Pending": {
+        "main": [
+          [
+            {
+              "node": "Sync Before Report",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Build Executive Report": {
+        "main": [
+          [
+            {
+              "node": "Write Report to Disk",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Send ntfy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Build Executive Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-07T06:13:52.508Z",
+        "id": 336,
+        "workflowId": "6GyIgmZUJOh3ae2D",
+        "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-07T06:13:52.501Z",
+        "id": 335,
+        "workflowId": "6GyIgmZUJOh3ae2D",
+        "versionId": "dfde47b5-4de7-4764-b990-d897ec50c839",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  },
+  "_hci_notes": "BTW-6: Friday 16:00 exec report - 3 parallel branches (Company Report, Missions, Inbox+Pending) synchronized via a Merge node before Build Executive Report; fixed 2026-07-07 after live-verified same-index race condition on real production runs."
 }

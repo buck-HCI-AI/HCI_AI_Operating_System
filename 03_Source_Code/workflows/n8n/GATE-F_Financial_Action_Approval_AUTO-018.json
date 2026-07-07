@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:45.302Z",
+  "updatedAt": "2026-07-07T06:46:31.778Z",
   "createdAt": "2026-06-30T04:44:01.171Z",
   "id": "VDkNZzDxHTc8FSuI",
   "name": "GATE-F \u2014 Financial Action Approval (AUTO-018)",
@@ -46,7 +46,8 @@
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={\n  \"workflow\": \"GATE-F\",\n  \"action_type\": \"{{ $json.action_type || 'financial_action' }}\",\n  \"target_system\": \"{{ $json.target_system || 'quickbooks' }}\",\n  \"target_id\": \"{{ $json.target_id }}\",\n  \"target_description\": \"{{ $json.description }}\",\n  \"proposed_payload\": {\n    \"amount\": {{ $json.amount || 0 }},\n    \"formatted_amount\": \"{{ $json.formatted_amount }}\",\n    \"action_type\": \"{{ $json.action_type }}\",\n    \"vendor\": \"{{ $json.vendor || '' }}\",\n    \"details\": {{ JSON.stringify($json.details || {}) }}\n  },\n  \"reason\": \"{{ $json.reason || 'Financial commitment requires owner authorization' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"{{ $json.priority }}\"\n}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json"
       },
       "name": "Enqueue in Approval Queue",
       "type": "n8n-nodes-base.httpRequest",
@@ -173,9 +174,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "a7f2d0b8-f796-4439-99e0-6bee3af9a4b0",
-  "activeVersionId": "a7f2d0b8-f796-4439-99e0-6bee3af9a4b0",
-  "versionCounter": 3,
+  "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+  "activeVersionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+  "versionCounter": 4,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -200,9 +201,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:45.302Z",
-    "createdAt": "2026-07-03T01:06:45.302Z",
-    "versionId": "a7f2d0b8-f796-4439-99e0-6bee3af9a4b0",
+    "updatedAt": "2026-07-07T06:46:31.778Z",
+    "createdAt": "2026-07-07T06:46:31.778Z",
+    "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
     "workflowId": "VDkNZzDxHTc8FSuI",
     "nodes": [
       {
@@ -244,7 +245,8 @@
           "sendBody": true,
           "bodyContentType": "json",
           "jsonBody": "={\n  \"workflow\": \"GATE-F\",\n  \"action_type\": \"{{ $json.action_type || 'financial_action' }}\",\n  \"target_system\": \"{{ $json.target_system || 'quickbooks' }}\",\n  \"target_id\": \"{{ $json.target_id }}\",\n  \"target_description\": \"{{ $json.description }}\",\n  \"proposed_payload\": {\n    \"amount\": {{ $json.amount || 0 }},\n    \"formatted_amount\": \"{{ $json.formatted_amount }}\",\n    \"action_type\": \"{{ $json.action_type }}\",\n    \"vendor\": \"{{ $json.vendor || '' }}\",\n    \"details\": {{ JSON.stringify($json.details || {}) }}\n  },\n  \"reason\": \"{{ $json.reason || 'Financial commitment requires owner authorization' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"{{ $json.priority }}\"\n}",
-          "options": {}
+          "options": {},
+          "specifyBody": "json"
         },
         "name": "Enqueue in Approval Queue",
         "type": "n8n-nodes-base.httpRequest",
@@ -371,18 +373,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:45.315Z",
-        "id": 274,
+        "createdAt": "2026-07-07T06:46:31.805Z",
+        "id": 416,
         "workflowId": "VDkNZzDxHTc8FSuI",
-        "versionId": "a7f2d0b8-f796-4439-99e0-6bee3af9a4b0",
+        "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:45.312Z",
-        "id": 273,
+        "createdAt": "2026-07-07T06:46:31.799Z",
+        "id": 415,
         "workflowId": "VDkNZzDxHTc8FSuI",
-        "versionId": "a7f2d0b8-f796-4439-99e0-6bee3af9a4b0",
+        "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:45.061Z",
+  "updatedAt": "2026-07-07T07:07:36.733Z",
   "createdAt": "2026-06-30T04:44:01.086Z",
   "id": "BIwIL6PB6yOR6qdp",
   "name": "AUTO-013 \u2014 Monday 08:30 HubSpot/Drive Reconciliation",
@@ -127,6 +127,22 @@
         400
       ],
       "id": "1532cd77-01e9-4d4b-a75f-91f0ec093687"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        350,
+        500
+      ],
+      "id": "sync-reconcile",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
@@ -150,7 +166,7 @@
       "main": [
         [
           {
-            "node": "Reconcile HubSpot vs Projects",
+            "node": "Sync Before Report",
             "type": "main",
             "index": 0
           }
@@ -161,9 +177,9 @@
       "main": [
         [
           {
-            "node": "Reconcile HubSpot vs Projects",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -173,6 +189,17 @@
         [
           {
             "node": "Push: Reconciliation Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Reconcile HubSpot vs Projects",
             "type": "main",
             "index": 0
           }
@@ -191,9 +218,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "6a46b732-7bbc-4f2d-89e9-d2f296b049d7",
-  "activeVersionId": "6a46b732-7bbc-4f2d-89e9-d2f296b049d7",
-  "versionCounter": 3,
+  "versionId": "7c607d9d-54e1-4319-9a00-3062e0e65289",
+  "activeVersionId": "7c607d9d-54e1-4319-9a00-3062e0e65289",
+  "versionCounter": 4,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -218,9 +245,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:45.062Z",
-    "createdAt": "2026-07-03T01:06:45.062Z",
-    "versionId": "6a46b732-7bbc-4f2d-89e9-d2f296b049d7",
+    "updatedAt": "2026-07-07T07:07:36.733Z",
+    "createdAt": "2026-07-07T07:07:36.733Z",
+    "versionId": "7c607d9d-54e1-4319-9a00-3062e0e65289",
     "workflowId": "BIwIL6PB6yOR6qdp",
     "nodes": [
       {
@@ -343,6 +370,22 @@
           400
         ],
         "id": "1532cd77-01e9-4d4b-a75f-91f0ec093687"
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 2,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          350,
+          500
+        ],
+        "id": "sync-reconcile",
+        "name": "Sync Before Report"
       }
     ],
     "connections": {
@@ -366,7 +409,7 @@
         "main": [
           [
             {
-              "node": "Reconcile HubSpot vs Projects",
+              "node": "Sync Before Report",
               "type": "main",
               "index": 0
             }
@@ -377,9 +420,9 @@
         "main": [
           [
             {
-              "node": "Reconcile HubSpot vs Projects",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 1
             }
           ]
         ]
@@ -394,6 +437,17 @@
             }
           ]
         ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Reconcile HubSpot vs Projects",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -403,18 +457,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:45.074Z",
-        "id": 264,
+        "createdAt": "2026-07-07T07:07:36.749Z",
+        "id": 426,
         "workflowId": "BIwIL6PB6yOR6qdp",
-        "versionId": "6a46b732-7bbc-4f2d-89e9-d2f296b049d7",
+        "versionId": "7c607d9d-54e1-4319-9a00-3062e0e65289",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:45.071Z",
-        "id": 263,
+        "createdAt": "2026-07-07T07:07:36.743Z",
+        "id": 425,
         "workflowId": "BIwIL6PB6yOR6qdp",
-        "versionId": "6a46b732-7bbc-4f2d-89e9-d2f296b049d7",
+        "versionId": "7c607d9d-54e1-4319-9a00-3062e0e65289",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

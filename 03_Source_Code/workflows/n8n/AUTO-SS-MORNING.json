@@ -1,16 +1,31 @@
 {
-  "name": "AUTO-SS-MORNING — Daily 06:00 SS Console Push",
+  "updatedAt": "2026-07-07T06:30:04.581Z",
+  "createdAt": "2026-06-27T20:44:57.017Z",
+  "id": "kraZAzvt5p7GNSE7",
+  "name": "AUTO-SS-MORNING \u2014 Daily 06:00 SS Console Push",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1-5" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * 1-5"
+            }
+          ]
         }
       },
       "name": "Cron 06:00 Mon-Fri",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ],
+      "id": "1ee77ca7-982e-4fd5-8797-08ba3a1c410d"
     },
     {
       "parameters": {
@@ -19,11 +34,15 @@
       "name": "Active Projects",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [300, 300]
+      "position": [
+        300,
+        300
+      ],
+      "id": "67391cba-cf02-42fb-8eff-6e533e0f1051"
     },
     {
       "parameters": {
-        "url": "=http://localhost:8000/api/v1/superintendent/{{ $json.project_id }}/today",
+        "url": "=http://host.docker.internal:8000/api/v1/superintendent/{{ $json.project_id }}/today",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -31,17 +50,30 @@
       "name": "Get SS Console",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [500, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HubSpot Private App" } }
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "3a0bd8f7-2c60-4917-94c8-12452fd9f00f"
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '🔴' : h === 'YELLOW' ? '🟡' : '🟢';\nconst tasks = d.tasks || {};\nconst blockers = d.blockers || {};\nconst procurement = d.procurement || {};\nconst safety = d.safety || {};\n\nconst title = `${emoji} ${d.project_code || ''} SS Brief — ${d.date || ''}`;\nconst body = [\n  `${h} — ${d.project_name}`,\n  `Tasks open: ${tasks.open_count || 0} (${tasks.overdue_count || 0} overdue)`,\n  `Blockers: ${blockers.count || 0}`,\n  `Open bids: ${procurement.open_bids || 0}`,\n  `Safety: ${(safety.toolbox_topic || '').split('—')[0].trim()}`,\n  `View: http://localhost:8000/superintendent/${d.project_id}`\n].join('\\n');\n\nconst priority = (blockers.count || 0) > 0 || h === 'RED' ? 'high' : 'default';\n\nreturn [{ json: { title, body, priority } }];"
+        "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '\ud83d\udd34' : h === 'YELLOW' ? '\ud83d\udfe1' : '\ud83d\udfe2';\nconst tasks = d.tasks || {};\nconst blockers = d.blockers || {};\nconst procurement = d.procurement || {};\nconst safety = d.safety || {};\n\nconst title = `${emoji} ${d.project_code || ''} SS Brief \u2014 ${d.date || ''}`;\nconst body = [\n  `${h} \u2014 ${d.project_name}`,\n  `Tasks open: ${tasks.open_count || 0} (${tasks.overdue_count || 0} overdue)`,\n  `Blockers: ${blockers.count || 0}`,\n  `Open bids: ${procurement.open_bids || 0}`,\n  `Safety: ${(safety.toolbox_topic || '').split('\u2014')[0].trim()}`,\n  `View: http://host.docker.internal:8000/superintendent/${d.project_id}`\n].join('\\n');\n\nconst priority = (blockers.count || 0) > 0 || h === 'RED' ? 'high' : 'default';\n\nreturn [{ json: { title, body, priority } }];"
       },
       "name": "Format SS Push",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ],
+      "id": "b5fa3367-59ce-43ee-8118-024f641e1f03"
     },
     {
       "parameters": {
@@ -50,15 +82,30 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "message", "value": "={{ $json.body }}" }
+            {
+              "name": "message",
+              "value": "={{ $json.body }}"
+            }
           ]
         },
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "={{ $json.title }}" },
-            { "name": "Priority", "value": "={{ $json.priority }}" },
-            { "name": "Cache", "value": "yes" },
-            { "name": "Expires", "value": "24h" }
+            {
+              "name": "Title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            }
           ]
         },
         "options": {}
@@ -66,16 +113,283 @@
       "name": "Push SS Notification",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "id": "04fc45b2-960b-4188-9a33-cb6e634c55ba"
     }
   ],
   "connections": {
-    "Cron 06:00 Mon-Fri": { "main": [[{ "node": "Active Projects", "type": "main", "index": 0 }]] },
-    "Active Projects": { "main": [[{ "node": "Get SS Console", "type": "main", "index": 0 }]] },
-    "Get SS Console": { "main": [[{ "node": "Format SS Push", "type": "main", "index": 0 }]] },
-    "Format SS Push": { "main": [[{ "node": "Push SS Notification", "type": "main", "index": 0 }]] }
+    "Cron 06:00 Mon-Fri": {
+      "main": [
+        [
+          {
+            "node": "Active Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Projects": {
+      "main": [
+        [
+          {
+            "node": "Get SS Console",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SS Console": {
+      "main": [
+        [
+          {
+            "node": "Format SS Push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format SS Push": {
+      "main": [
+        [
+          {
+            "node": "Push SS Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "sprint-3-ops" }],
-  "_hci_notes": "Fires Mon-Fri 06:00 for each pilot project. Pushes SS morning brief to ntfy. No credentials needed beyond HCI API Key."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron 06:00 Mon-Fri": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "090984d2-513d-45ea-82f2-dd6d3874e073",
+  "activeVersionId": "090984d2-513d-45ea-82f2-dd6d3874e073",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T20:44:57.019Z",
+      "createdAt": "2026-06-27T20:44:57.019Z",
+      "role": "workflow:owner",
+      "workflowId": "kraZAzvt5p7GNSE7",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-07T06:30:04.581Z",
+    "createdAt": "2026-07-07T06:30:04.581Z",
+    "versionId": "090984d2-513d-45ea-82f2-dd6d3874e073",
+    "workflowId": "kraZAzvt5p7GNSE7",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 6 * * 1-5"
+              }
+            ]
+          }
+        },
+        "name": "Cron 06:00 Mon-Fri",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "1ee77ca7-982e-4fd5-8797-08ba3a1c410d"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Project IDs for active pilot projects\nreturn [\n  { json: { project_id: 1, name: '64 Eastwood', code: '64EW' } },\n  { json: { project_id: 2, name: '101 Francis', code: '101F' } },\n  { json: { project_id: 3, name: '1355 Riverside', code: '1355R' } }\n];"
+        },
+        "name": "Active Projects",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          300,
+          300
+        ],
+        "id": "67391cba-cf02-42fb-8eff-6e533e0f1051"
+      },
+      {
+        "parameters": {
+          "url": "=http://host.docker.internal:8000/api/v1/superintendent/{{ $json.project_id }}/today",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Get SS Console",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          500,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "3a0bd8f7-2c60-4917-94c8-12452fd9f00f"
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $input.first().json;\nconst h = d.health || 'GREEN';\nconst emoji = h === 'RED' ? '\ud83d\udd34' : h === 'YELLOW' ? '\ud83d\udfe1' : '\ud83d\udfe2';\nconst tasks = d.tasks || {};\nconst blockers = d.blockers || {};\nconst procurement = d.procurement || {};\nconst safety = d.safety || {};\n\nconst title = `${emoji} ${d.project_code || ''} SS Brief \u2014 ${d.date || ''}`;\nconst body = [\n  `${h} \u2014 ${d.project_name}`,\n  `Tasks open: ${tasks.open_count || 0} (${tasks.overdue_count || 0} overdue)`,\n  `Blockers: ${blockers.count || 0}`,\n  `Open bids: ${procurement.open_bids || 0}`,\n  `Safety: ${(safety.toolbox_topic || '').split('\u2014')[0].trim()}`,\n  `View: http://host.docker.internal:8000/superintendent/${d.project_id}`\n].join('\\n');\n\nconst priority = (blockers.count || 0) > 0 || h === 'RED' ? 'high' : 'default';\n\nreturn [{ json: { title, body, priority } }];"
+        },
+        "name": "Format SS Push",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ],
+        "id": "b5fa3367-59ce-43ee-8118-024f641e1f03"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "message",
+                "value": "={{ $json.body }}"
+              }
+            ]
+          },
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "={{ $json.title }}"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $json.priority }}"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "name": "Push SS Notification",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          900,
+          300
+        ],
+        "id": "04fc45b2-960b-4188-9a33-cb6e634c55ba"
+      }
+    ],
+    "connections": {
+      "Cron 06:00 Mon-Fri": {
+        "main": [
+          [
+            {
+              "node": "Active Projects",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Active Projects": {
+        "main": [
+          [
+            {
+              "node": "Get SS Console",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get SS Console": {
+        "main": [
+          [
+            {
+              "node": "Format SS Push",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format SS Push": {
+        "main": [
+          [
+            {
+              "node": "Push SS Notification",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-07T06:30:04.592Z",
+        "id": 390,
+        "workflowId": "kraZAzvt5p7GNSE7",
+        "versionId": "090984d2-513d-45ea-82f2-dd6d3874e073",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-07T06:30:04.588Z",
+        "id": 389,
+        "workflowId": "kraZAzvt5p7GNSE7",
+        "versionId": "090984d2-513d-45ea-82f2-dd6d3874e073",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:02:46.360Z",
+  "updatedAt": "2026-07-07T07:18:12.493Z",
   "createdAt": "2026-06-27T23:16:57.514Z",
   "id": "2iM1eViWnnQ4I2Xv",
   "name": "AUTO-CONTINUOUS-DISCOVERY \u2014 HubSpot Hourly + Houzz Nightly",
@@ -60,7 +60,9 @@
               "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
             }
           ]
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "scan-hubspot",
       "name": "Scan HubSpot",
@@ -69,7 +71,13 @@
       "position": [
         340,
         200
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
     },
     {
       "parameters": {
@@ -84,7 +92,9 @@
               "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
             }
           ]
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "scan-houzz",
       "name": "Scan Houzz",
@@ -93,7 +103,13 @@
       "position": [
         340,
         400
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
     },
     {
       "parameters": {
@@ -237,11 +253,6 @@
             "node": "Evaluate Changes",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Format CB Directive",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -295,9 +306,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
-  "activeVersionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
-  "versionCounter": 5,
+  "versionId": "76f084ce-5b7c-4fcc-9fb9-1ca8f743cca1",
+  "activeVersionId": "76f084ce-5b7c-4fcc-9fb9-1ca8f743cca1",
+  "versionCounter": 8,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
@@ -320,11 +331,18 @@
       }
     }
   ],
-  "tags": ["btw-10"],
+  "tags": [
+    {
+      "updatedAt": "2026-07-07T13:41:47.084Z",
+      "createdAt": "2026-07-07T13:41:47.084Z",
+      "id": "epesip6vdK1CvIsJ",
+      "name": "btw-10"
+    }
+  ],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:02:46.361Z",
-    "createdAt": "2026-07-03T01:02:46.361Z",
-    "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+    "updatedAt": "2026-07-07T07:18:12.494Z",
+    "createdAt": "2026-07-07T07:18:12.494Z",
+    "versionId": "76f084ce-5b7c-4fcc-9fb9-1ca8f743cca1",
     "workflowId": "2iM1eViWnnQ4I2Xv",
     "nodes": [
       {
@@ -380,7 +398,9 @@
                 "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
               }
             ]
-          }
+          },
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
         },
         "id": "scan-hubspot",
         "name": "Scan HubSpot",
@@ -389,7 +409,13 @@
         "position": [
           340,
           200
-        ]
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
       },
       {
         "parameters": {
@@ -404,7 +430,9 @@
                 "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
               }
             ]
-          }
+          },
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
         },
         "id": "scan-houzz",
         "name": "Scan Houzz",
@@ -413,7 +441,13 @@
         "position": [
           340,
           400
-        ]
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
       },
       {
         "parameters": {
@@ -557,11 +591,6 @@
               "node": "Evaluate Changes",
               "type": "main",
               "index": 0
-            },
-            {
-              "node": "Format CB Directive",
-              "type": "main",
-              "index": 0
             }
           ]
         ]
@@ -608,50 +637,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:02:46.384Z",
-        "id": 256,
+        "createdAt": "2026-07-07T07:18:12.531Z",
+        "id": 432,
         "workflowId": "2iM1eViWnnQ4I2Xv",
-        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "versionId": "76f084ce-5b7c-4fcc-9fb9-1ca8f743cca1",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:09:14.441Z",
-        "id": 288,
+        "createdAt": "2026-07-07T07:18:12.517Z",
+        "id": 431,
         "workflowId": "2iM1eViWnnQ4I2Xv",
-        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
-        "event": "activated",
-        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
-      },
-      {
-        "createdAt": "2026-07-03T01:09:14.480Z",
-        "id": 290,
-        "workflowId": "2iM1eViWnnQ4I2Xv",
-        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
-        "event": "activated",
-        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
-      },
-      {
-        "createdAt": "2026-07-03T01:02:46.377Z",
-        "id": 255,
-        "workflowId": "2iM1eViWnnQ4I2Xv",
-        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
-        "event": "deactivated",
-        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
-      },
-      {
-        "createdAt": "2026-07-03T01:09:14.435Z",
-        "id": 287,
-        "workflowId": "2iM1eViWnnQ4I2Xv",
-        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
-        "event": "deactivated",
-        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
-      },
-      {
-        "createdAt": "2026-07-03T01:09:14.459Z",
-        "id": 289,
-        "workflowId": "2iM1eViWnnQ4I2Xv",
-        "versionId": "660e6ef2-aa2d-4f12-ab20-76d35a3025e6",
+        "versionId": "76f084ce-5b7c-4fcc-9fb9-1ca8f743cca1",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

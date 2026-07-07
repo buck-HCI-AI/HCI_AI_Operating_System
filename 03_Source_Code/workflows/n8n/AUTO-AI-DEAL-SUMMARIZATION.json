@@ -1,90 +1,148 @@
 {
-  "name": "AUTO-AI-DEAL-SUMMARIZATION — Daily Active Deal Briefings via Claude API",
+  "updatedAt": "2026-07-07T06:01:03.192Z",
+  "createdAt": "2026-06-27T23:34:53.646Z",
+  "id": "A9OAkREoqs4Ke0uu",
+  "name": "AUTO-AI-DEAL-SUMMARIZATION \u2014 Daily Active Deal Briefings via Claude API",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1-5" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * 1-5"
+            }
+          ]
         }
       },
       "id": "trigger-morning",
       "name": "Cron Weekdays 06:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 300]
+      "position": [
+        112,
+        304
+      ]
     },
     {
       "parameters": {
-        "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
         "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
-        "contentType": "json",
-        "body": "={ \"filterGroups\": [{ \"filters\": [{ \"propertyName\": \"dealstage\", \"operator\": \"NOT_IN\", \"values\": [\"closedwon\", \"closedlost\"] }] }], \"properties\": [\"dealname\", \"dealstage\", \"amount\", \"closedate\", \"estimator\", \"tradescope\", \"division\", \"hs_lastmodifieddate\"], \"sorts\": [{ \"propertyName\": \"hs_lastmodifieddate\", \"direction\": \"DESCENDING\" }], \"limit\": 20 }",
-        "options": {}
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "fetch-active-deals",
       "name": "Fetch Active Deals",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [340, 300]
+      "position": [
+        352,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kY88ehAjh5rwI41x",
+          "name": "HubSpot API Key (Header Auth)"
+        }
+      }
     },
     {
       "parameters": {
-        "url": "=https://api.hubapi.com/crm/v3/objects/deals/{{ $json.id }}/associations/engagements",
-        "method": "GET",
+        "url": "={{ 'https://api.hubapi.com/crm/v3/objects/deals/' + $('Fetch Active Deals').first().json.results[0].id }}/associations/engagements",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "Bearer {{ $env.HUBSPOT_API_KEY }}" }
-          ]
+          "parameters": []
         },
-        "options": {}
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "fetch-engagements",
       "name": "Fetch Deal Engagements",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [560, 300]
+      "position": [
+        560,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kY88ehAjh5rwI41x",
+          "name": "HubSpot API Key (Header Auth)"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// Bundle deal + engagements into Claude API prompt\nconst deals = $('Fetch Active Deals').first().json.results || [];\nconst engResp = $input.first().json;\nconst engIds = (engResp.results || []).map(e => e.id).slice(0, 5);\n\n// Build concise deal context\nconst dealSummaries = deals.slice(0, 10).map(d => {\n  const p = d.properties;\n  return `Deal: ${p.dealname} | Stage: ${p.dealstage} | Amount: $${p.amount || 0} | Trade: ${p.tradescope || 'N/A'} | Estimator: ${p.estimator || 'N/A'} | Last Modified: ${p.hs_lastmodifieddate?.split('T')[0]}`;\n}).join('\\n');\n\nconst prompt = `You are the HCI AI Construction OS. Analyze these active HubSpot deals and produce a concise daily briefing for Buck Adams (PM & Superintendent, Hendrickson Construction).\\n\\nACTIVE DEALS:\\n${dealSummaries}\\n\\nProvide:\\n1. Top 3 deals requiring immediate attention (why + what action)\\n2. Pipeline health summary (1-2 sentences)\\n3. One risk or opportunity flag\\n\\nBe specific and actionable. Max 200 words.`;\n\nreturn [{ json: { prompt, deal_count: deals.length } }];"
+        "jsCode": "// Bundle deal + engagements into Claude API prompt\nconst deals = $('Fetch Active Deals').first().json.results || [];\nconst engResp = $input.first().json;\nconst engIds = (engResp.results || []).map(e => e.id).slice(0, 5);\n\n// Build concise deal context\nconst dealSummaries = deals.slice(0, 10).map(d => {\n  const p = d.properties;\n  return `Deal: ${p.dealname} | Stage: ${p.dealstage} | Amount: $${p.amount || 0} | Trade: ${p.tradescope || 'N/A'} | Estimator: ${p.estimator || 'N/A'} | Last Modified: ${p.hs_lastmodifieddate?.split('T')[0]}`;\n}).join('\\n');\n\nconst prompt = `You are the HCI AI Construction OS. Analyze these active HubSpot deals and produce a concise daily briefing for Buck Adams (Owner, Hendrickson Construction).\\n\\nACTIVE DEALS:\\n${dealSummaries}\\n\\nProvide:\\n1. Top 3 deals requiring immediate attention (why + what action)\\n2. Pipeline health summary (1-2 sentences)\\n3. One risk or opportunity flag\\n\\nBe specific and actionable. Max 200 words.`;\n\nreturn [{ json: { prompt, deal_count: deals.length } }];"
       },
       "id": "build-prompt",
       "name": "Build Claude Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [800, 300]
+      "position": [
+        800,
+        304
+      ]
     },
     {
       "parameters": {
-        "url": "https://api.anthropic.com/v1/messages",
         "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
-        "contentType": "json",
-        "body": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: $json.prompt }] }) }}",
-        "options": {}
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: $json.prompt }] }) }}"
       },
       "id": "claude-api",
-      "name": "Claude API — Deal Briefing",
+      "name": "Claude API \u2014 Deal Briefing",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1040, 300]
+      "position": [
+        1040,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3B2e827OvVvAHjj7",
+          "name": "Anthropic API Key (Header Auth)"
+        }
+      }
     },
     {
       "parameters": {
@@ -94,29 +152,42 @@
       "name": "Extract Briefing",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1280, 300]
+      "position": [
+        1280,
+        304
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/executive/inbox",
         "method": "POST",
+        "url": "http://host.docker.internal:8000/gateway/ai/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "X-API-Key", "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
-        "contentType": "json",
-        "body": "={{ JSON.stringify({ title: 'AI Deal Briefing — ' + new Date().toISOString().split('T')[0], summary: $json.briefing, action_type: 'information', source: 'n8n:AUTO-AI-DEAL-SUMMARIZATION' }) }}",
-        "options": {}
+        "options": {},
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ source_agent: 'n8n-auto-ai-deal-summarization', target_agent: 'buck_adams', message_type: 'briefing', title: 'Daily Deal Briefing \u2014 ' + $json.deal_count + ' active deals', body: $json.briefing, priority: 'low' }) }}"
       },
       "id": "post-to-inbox",
       "name": "Post to Executive Inbox",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1520, 300]
+      "position": [
+        1520,
+        304
+      ]
     },
     {
       "parameters": {
@@ -125,9 +196,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "AI Deal Briefing Ready" },
-            { "name": "Priority", "value": "default" },
-            { "name": "Content-Type", "value": "text/plain" }
+            {
+              "name": "Title",
+              "value": "AI Deal Briefing Ready"
+            },
+            {
+              "name": "Priority",
+              "value": "default"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain"
+            }
           ]
         },
         "sendBody": true,
@@ -140,23 +220,443 @@
       "name": "Send Briefing via ntfy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 300]
+      "position": [
+        1760,
+        304
+      ]
     }
   ],
   "connections": {
-    "Cron Weekdays 06:00": { "main": [[{ "node": "Fetch Active Deals", "type": "main", "index": 0 }]] },
-    "Fetch Active Deals": { "main": [[{ "node": "Fetch Deal Engagements", "type": "main", "index": 0 }]] },
-    "Fetch Deal Engagements": { "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]] },
-    "Build Claude Prompt": { "main": [[{ "node": "Claude API — Deal Briefing", "type": "main", "index": 0 }]] },
-    "Claude API — Deal Briefing": { "main": [[{ "node": "Extract Briefing", "type": "main", "index": 0 }]] },
+    "Cron Weekdays 06:00": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Deals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Deals": {
+      "main": [
+        [
+          {
+            "node": "Fetch Deal Engagements",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Deal Engagements": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Prompt": {
+      "main": [
+        [
+          {
+            "node": "Claude API \u2014 Deal Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude API \u2014 Deal Briefing": {
+      "main": [
+        [
+          {
+            "node": "Extract Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Extract Briefing": {
-      "main": [[
-        { "node": "Post to Executive Inbox", "type": "main", "index": 0 },
-        { "node": "Send Briefing via ntfy", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Post to Executive Inbox",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Briefing via ntfy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["hubspot", "ai", "deals", "ao-hs-010"],
-  "_hci_notes": "AO-HS-010. Weekdays 06:00. Fetches top 20 active HubSpot deals. Sends to Claude Haiku API for prioritized briefing. Posts to Executive Inbox + ntfy. Requires HUBSPOT_API_KEY + ANTHROPIC_API_KEY env vars."
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cron Weekdays 06:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "329c08bc-369e-43ff-87f3-bbc88236625a",
+  "activeVersionId": "329c08bc-369e-43ff-87f3-bbc88236625a",
+  "versionCounter": 7,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T23:34:53.647Z",
+      "createdAt": "2026-06-27T23:34:53.647Z",
+      "role": "workflow:owner",
+      "workflowId": "A9OAkREoqs4Ke0uu",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-07T06:01:03.193Z",
+    "createdAt": "2026-07-07T06:01:03.193Z",
+    "versionId": "329c08bc-369e-43ff-87f3-bbc88236625a",
+    "workflowId": "A9OAkREoqs4Ke0uu",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 6 * * 1-5"
+              }
+            ]
+          }
+        },
+        "id": "trigger-morning",
+        "name": "Cron Weekdays 06:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          112,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {}
+            ]
+          },
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "id": "fetch-active-deals",
+        "name": "Fetch Active Deals",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          352,
+          304
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "kY88ehAjh5rwI41x",
+            "name": "HubSpot API Key (Header Auth)"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://api.hubapi.com/crm/v3/objects/deals/' + $('Fetch Active Deals').first().json.results[0].id }}/associations/engagements",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": []
+          },
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "id": "fetch-engagements",
+        "name": "Fetch Deal Engagements",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          560,
+          304
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "kY88ehAjh5rwI41x",
+            "name": "HubSpot API Key (Header Auth)"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Bundle deal + engagements into Claude API prompt\nconst deals = $('Fetch Active Deals').first().json.results || [];\nconst engResp = $input.first().json;\nconst engIds = (engResp.results || []).map(e => e.id).slice(0, 5);\n\n// Build concise deal context\nconst dealSummaries = deals.slice(0, 10).map(d => {\n  const p = d.properties;\n  return `Deal: ${p.dealname} | Stage: ${p.dealstage} | Amount: $${p.amount || 0} | Trade: ${p.tradescope || 'N/A'} | Estimator: ${p.estimator || 'N/A'} | Last Modified: ${p.hs_lastmodifieddate?.split('T')[0]}`;\n}).join('\\n');\n\nconst prompt = `You are the HCI AI Construction OS. Analyze these active HubSpot deals and produce a concise daily briefing for Buck Adams (Owner, Hendrickson Construction).\\n\\nACTIVE DEALS:\\n${dealSummaries}\\n\\nProvide:\\n1. Top 3 deals requiring immediate attention (why + what action)\\n2. Pipeline health summary (1-2 sentences)\\n3. One risk or opportunity flag\\n\\nBe specific and actionable. Max 200 words.`;\n\nreturn [{ json: { prompt, deal_count: deals.length } }];"
+        },
+        "id": "build-prompt",
+        "name": "Build Claude Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          800,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: $json.prompt }] }) }}"
+        },
+        "id": "claude-api",
+        "name": "Claude API \u2014 Deal Briefing",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1040,
+          304
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "3B2e827OvVvAHjj7",
+            "name": "Anthropic API Key (Header Auth)"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const resp = $input.first().json;\nconst text = resp.content?.[0]?.text || 'No briefing generated';\nconst dealCount = $('Build Claude Prompt').first().json.deal_count;\nreturn [{ json: { briefing: text, deal_count: dealCount, message: `${dealCount} active deals | ${text.substring(0, 120)}...` } }];"
+        },
+        "id": "extract-briefing",
+        "name": "Extract Briefing",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1280,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/gateway/ai/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "options": {},
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ source_agent: 'n8n-auto-ai-deal-summarization', target_agent: 'buck_adams', message_type: 'briefing', title: 'Daily Deal Briefing \u2014 ' + $json.deal_count + ' active deals', body: $json.briefing, priority: 'low' }) }}"
+        },
+        "id": "post-to-inbox",
+        "name": "Post to Executive Inbox",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1520,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://ntfy.sh/hci-executive",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "AI Deal Briefing Ready"
+              },
+              {
+                "name": "Priority",
+                "value": "default"
+              },
+              {
+                "name": "Content-Type",
+                "value": "text/plain"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "text/plain",
+          "body": "={{ $('Extract Briefing').first().json.briefing }}",
+          "options": {}
+        },
+        "id": "ntfy-briefing",
+        "name": "Send Briefing via ntfy",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1760,
+          304
+        ]
+      }
+    ],
+    "connections": {
+      "Cron Weekdays 06:00": {
+        "main": [
+          [
+            {
+              "node": "Fetch Active Deals",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Active Deals": {
+        "main": [
+          [
+            {
+              "node": "Fetch Deal Engagements",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Deal Engagements": {
+        "main": [
+          [
+            {
+              "node": "Build Claude Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Claude Prompt": {
+        "main": [
+          [
+            {
+              "node": "Claude API \u2014 Deal Briefing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude API \u2014 Deal Briefing": {
+        "main": [
+          [
+            {
+              "node": "Extract Briefing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Briefing": {
+        "main": [
+          [
+            {
+              "node": "Post to Executive Inbox",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Send Briefing via ntfy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-07T06:01:03.215Z",
+        "id": 314,
+        "workflowId": "A9OAkREoqs4Ke0uu",
+        "versionId": "329c08bc-369e-43ff-87f3-bbc88236625a",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-07T06:01:03.208Z",
+        "id": 313,
+        "workflowId": "A9OAkREoqs4Ke0uu",
+        "versionId": "329c08bc-369e-43ff-87f3-bbc88236625a",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }

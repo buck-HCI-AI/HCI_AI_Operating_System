@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:45.394Z",
+  "updatedAt": "2026-07-07T07:05:04.969Z",
   "createdAt": "2026-06-30T04:44:01.121Z",
   "id": "b8oIeSev9h6Uzzp2",
   "name": "AUTO-011 \u2014 Monday 07:30 Registry Duplicate Check",
@@ -155,6 +155,22 @@
         300
       ],
       "id": "65319b25-9aa6-4dfd-a33c-f4228b5e8b07"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        350,
+        500
+      ],
+      "id": "sync-before-registry-assess",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
@@ -178,7 +194,7 @@
       "main": [
         [
           {
-            "node": "Assess Registry Status",
+            "node": "Sync Before Report",
             "type": "main",
             "index": 0
           }
@@ -189,9 +205,9 @@
       "main": [
         [
           {
-            "node": "Assess Registry Status",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -218,6 +234,17 @@
         ],
         []
       ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Assess Registry Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -231,9 +258,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "c9ea0e8b-74da-4c5b-896f-7c513e63c9c6",
-  "activeVersionId": "c9ea0e8b-74da-4c5b-896f-7c513e63c9c6",
-  "versionCounter": 3,
+  "versionId": "fee2e8db-0269-4e3f-b36a-6529a2fb22ff",
+  "activeVersionId": "fee2e8db-0269-4e3f-b36a-6529a2fb22ff",
+  "versionCounter": 4,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -258,9 +285,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:45.394Z",
-    "createdAt": "2026-07-03T01:06:45.394Z",
-    "versionId": "c9ea0e8b-74da-4c5b-896f-7c513e63c9c6",
+    "updatedAt": "2026-07-07T07:05:04.971Z",
+    "createdAt": "2026-07-07T07:05:04.971Z",
+    "versionId": "fee2e8db-0269-4e3f-b36a-6529a2fb22ff",
     "workflowId": "b8oIeSev9h6Uzzp2",
     "nodes": [
       {
@@ -411,6 +438,22 @@
           300
         ],
         "id": "65319b25-9aa6-4dfd-a33c-f4228b5e8b07"
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 2,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          350,
+          500
+        ],
+        "id": "sync-before-registry-assess",
+        "name": "Sync Before Report"
       }
     ],
     "connections": {
@@ -434,7 +477,7 @@
         "main": [
           [
             {
-              "node": "Assess Registry Status",
+              "node": "Sync Before Report",
               "type": "main",
               "index": 0
             }
@@ -445,9 +488,9 @@
         "main": [
           [
             {
-              "node": "Assess Registry Status",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 1
             }
           ]
         ]
@@ -474,6 +517,17 @@
           ],
           []
         ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Assess Registry Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -483,18 +537,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:45.405Z",
-        "id": 278,
+        "createdAt": "2026-07-07T07:05:04.994Z",
+        "id": 420,
         "workflowId": "b8oIeSev9h6Uzzp2",
-        "versionId": "c9ea0e8b-74da-4c5b-896f-7c513e63c9c6",
+        "versionId": "fee2e8db-0269-4e3f-b36a-6529a2fb22ff",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:45.402Z",
-        "id": 277,
+        "createdAt": "2026-07-07T07:05:04.987Z",
+        "id": 419,
         "workflowId": "b8oIeSev9h6Uzzp2",
-        "versionId": "c9ea0e8b-74da-4c5b-896f-7c513e63c9c6",
+        "versionId": "fee2e8db-0269-4e3f-b36a-6529a2fb22ff",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

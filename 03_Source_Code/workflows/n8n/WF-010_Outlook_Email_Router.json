@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:07:44.231Z",
+  "updatedAt": "2026-07-07T06:32:51.839Z",
   "createdAt": "2026-06-20T00:48:47.744Z",
   "id": "flsIMOI21JRgtlMe",
   "name": "WF-010 Outlook Email Router",
@@ -226,6 +226,24 @@
         320
       ],
       "webhookId": "c3548943-2469-4af8-a8bb-03bb17b8929e"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "memoBody",
+        "options": {
+          "fileName": "={{ $json.memoName }}"
+        },
+        "binaryPropertyName": "data"
+      },
+      "id": "convert-memo-to-file-001",
+      "name": "Convert Memo to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        120,
+        80
+      ]
     }
   ],
   "connections": {
@@ -266,7 +284,7 @@
       "main": [
         [
           {
-            "node": "Save Email Memo to Drive",
+            "node": "Convert Memo to File",
             "type": "main",
             "index": 0
           }
@@ -291,6 +309,17 @@
         ],
         []
       ]
+    },
+    "Convert Memo to File": {
+      "main": [
+        [
+          {
+            "node": "Save Email Memo to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -298,15 +327,15 @@
   },
   "staticData": {
     "node:Monitor Inbox": {
-      "lastTimeChecked": "2026-07-02T19:07:44.245-06:00"
+      "lastTimeChecked": "2026-07-07T01:16:09.315-06:00"
     }
   },
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "bd95603e-f6e0-4f24-8843-b2223b6c8691",
-  "activeVersionId": "bd95603e-f6e0-4f24-8843-b2223b6c8691",
-  "versionCounter": 4,
+  "versionId": "5ff68eed-f4ab-4077-8d11-5022776677d8",
+  "activeVersionId": "5ff68eed-f4ab-4077-8d11-5022776677d8",
+  "versionCounter": 5,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -331,9 +360,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:07:44.231Z",
-    "createdAt": "2026-07-03T01:07:44.231Z",
-    "versionId": "bd95603e-f6e0-4f24-8843-b2223b6c8691",
+    "updatedAt": "2026-07-07T06:32:51.840Z",
+    "createdAt": "2026-07-07T06:32:51.840Z",
+    "versionId": "5ff68eed-f4ab-4077-8d11-5022776677d8",
     "workflowId": "flsIMOI21JRgtlMe",
     "nodes": [
       {
@@ -555,6 +584,24 @@
           320
         ],
         "webhookId": "c3548943-2469-4af8-a8bb-03bb17b8929e"
+      },
+      {
+        "parameters": {
+          "operation": "toText",
+          "sourceProperty": "memoBody",
+          "options": {
+            "fileName": "={{ $json.memoName }}"
+          },
+          "binaryPropertyName": "data"
+        },
+        "id": "convert-memo-to-file-001",
+        "name": "Convert Memo to File",
+        "type": "n8n-nodes-base.convertToFile",
+        "typeVersion": 1.1,
+        "position": [
+          120,
+          80
+        ]
       }
     ],
     "connections": {
@@ -595,7 +642,7 @@
         "main": [
           [
             {
-              "node": "Save Email Memo to Drive",
+              "node": "Convert Memo to File",
               "type": "main",
               "index": 0
             }
@@ -620,6 +667,17 @@
           ],
           []
         ]
+      },
+      "Convert Memo to File": {
+        "main": [
+          [
+            {
+              "node": "Save Email Memo to Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -629,18 +687,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:07:44.625Z",
-        "id": 282,
+        "createdAt": "2026-07-07T06:32:52.175Z",
+        "id": 410,
         "workflowId": "flsIMOI21JRgtlMe",
-        "versionId": "bd95603e-f6e0-4f24-8843-b2223b6c8691",
+        "versionId": "5ff68eed-f4ab-4077-8d11-5022776677d8",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:07:44.242Z",
-        "id": 281,
+        "createdAt": "2026-07-07T06:32:51.861Z",
+        "id": 409,
         "workflowId": "flsIMOI21JRgtlMe",
-        "versionId": "bd95603e-f6e0-4f24-8843-b2223b6c8691",
+        "versionId": "5ff68eed-f4ab-4077-8d11-5022776677d8",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

@@ -1,5 +1,11 @@
 {
-  "name": "GATE-F — Financial Action Approval (AUTO-018)",
+  "updatedAt": "2026-07-07T06:46:31.778Z",
+  "createdAt": "2026-06-30T04:44:01.171Z",
+  "id": "VDkNZzDxHTc8FSuI",
+  "name": "GATE-F \u2014 Financial Action Approval (AUTO-018)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -11,34 +17,52 @@
       "name": "Webhook: Financial Action Request",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [100, 300],
-      "webhookId": "gate-financial"
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "gate-financial",
+      "id": "2acc8b7c-df77-4582-aec7-068858084b9e"
     },
     {
       "parameters": {
-        "jsCode": "const req = $input.first().json;\nconst amount = parseFloat(req.amount || 0);\nconst type = req.action_type || 'financial_action';\n\n// Priority escalation by amount\nlet priority = 'normal';\nif (amount >= 50000) priority = 'high';\nif (amount >= 200000) priority = 'urgent';\n\nconst formatted = amount > 0 ? `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A';\nconst description = `${type.replace(/_/g,' ').toUpperCase()}: ${req.description || req.target_description} — ${formatted}`;\n\nreturn [{ json: { ...req, priority, formatted_amount: formatted, description } }];"
+        "jsCode": "const req = $input.first().json;\nconst amount = parseFloat(req.amount || 0);\nconst type = req.action_type || 'financial_action';\n\n// Priority escalation by amount\nlet priority = 'normal';\nif (amount >= 50000) priority = 'high';\nif (amount >= 200000) priority = 'urgent';\n\nconst formatted = amount > 0 ? `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A';\nconst description = `${type.replace(/_/g,' ').toUpperCase()}: ${req.description || req.target_description} \u2014 ${formatted}`;\n\nreturn [{ json: { ...req, priority, formatted_amount: formatted, description } }];"
       },
       "name": "Assess Priority by Amount",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [300, 300]
+      "position": [
+        300,
+        300
+      ],
+      "id": "86d5d781-09af-46bc-9446-0e0ac5665aaf"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/services/approval-queue/enqueue",
+        "url": "http://host.docker.internal:8000/api/v1/services/approval-queue/enqueue",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={\n  \"workflow\": \"GATE-F\",\n  \"action_type\": \"{{ $json.action_type || 'financial_action' }}\",\n  \"target_system\": \"{{ $json.target_system || 'quickbooks' }}\",\n  \"target_id\": \"{{ $json.target_id }}\",\n  \"target_description\": \"{{ $json.description }}\",\n  \"proposed_payload\": {\n    \"amount\": {{ $json.amount || 0 }},\n    \"formatted_amount\": \"{{ $json.formatted_amount }}\",\n    \"action_type\": \"{{ $json.action_type }}\",\n    \"vendor\": \"{{ $json.vendor || '' }}\",\n    \"details\": {{ JSON.stringify($json.details || {}) }}\n  },\n  \"reason\": \"{{ $json.reason || 'Financial commitment requires owner authorization' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"{{ $json.priority }}\"\n}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json"
       },
       "name": "Enqueue in Approval Queue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [500, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "7fa65b61-3f58-4d79-907e-13b74d7b851c"
     },
     {
       "parameters": {
@@ -48,12 +72,30 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "Financial Action Requires Approval" },
-            { "name": "Tags", "value": "dollar,rotating_light" },
-            { "name": "Cache", "value": "yes" },
-            { "name": "Expires", "value": "24h" },
-            { "name": "Priority", "value": "={{ $('Assess Priority by Amount').first().json.priority === 'urgent' ? 'urgent' : 'high' }}" },
-            { "name": "Actions", "value": "view, Review & Approve, http://localhost:8000/executive" }
+            {
+              "name": "Title",
+              "value": "Financial Action Requires Approval"
+            },
+            {
+              "name": "Tags",
+              "value": "dollar,rotating_light"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            },
+            {
+              "name": "Priority",
+              "value": "={{ $('Assess Priority by Amount').first().json.priority === 'urgent' ? 'urgent' : 'high' }}"
+            },
+            {
+              "name": "Actions",
+              "value": "view, Review & Approve, http://host.docker.internal:8000/executive"
+            }
           ]
         },
         "sendBody": true,
@@ -64,34 +106,288 @@
       "name": "Push: Financial Approval Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ],
+      "id": "bbdd3502-9e5d-4ee4-ab35-94fc46389c28"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"priority\": \"{{ $('Assess Priority by Amount').first().json.priority }}\", \"message\": \"Financial action queued — awaiting Buck authorization\" }"
+        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"priority\": \"{{ $('Assess Priority by Amount').first().json.priority }}\", \"message\": \"Financial action queued \u2014 awaiting Buck authorization\" }"
       },
       "name": "Respond to Caller",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "id": "09737038-acfd-4981-9b88-1b76721a9a4b"
     }
   ],
   "connections": {
     "Webhook: Financial Action Request": {
-      "main": [[{ "node": "Assess Priority by Amount", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Assess Priority by Amount",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Assess Priority by Amount": {
-      "main": [[{ "node": "Enqueue in Approval Queue", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enqueue in Approval Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enqueue in Approval Queue": {
-      "main": [[
-        { "node": "Push: Financial Approval Request", "type": "main", "index": 0 },
-        { "node": "Respond to Caller", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Push: Financial Approval Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "approval-gates" }, { "name": "financial" }],
-  "_hci_notes": "Gate F — blocks budget approvals, bid awards, contract actions, change orders. POST body: { action_type, target_id, description, amount, vendor, project_id, reason }. Priority auto-escalates: normal <$50k, high $50k-$200k, urgent >$200k. Never auto-executes — always queues."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+  "activeVersionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-30T04:44:01.173Z",
+      "createdAt": "2026-06-30T04:44:01.173Z",
+      "role": "workflow:owner",
+      "workflowId": "VDkNZzDxHTc8FSuI",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-07T06:46:31.778Z",
+    "createdAt": "2026-07-07T06:46:31.778Z",
+    "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+    "workflowId": "VDkNZzDxHTc8FSuI",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "gate-financial",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "name": "Webhook: Financial Action Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          100,
+          300
+        ],
+        "webhookId": "gate-financial",
+        "id": "2acc8b7c-df77-4582-aec7-068858084b9e"
+      },
+      {
+        "parameters": {
+          "jsCode": "const req = $input.first().json;\nconst amount = parseFloat(req.amount || 0);\nconst type = req.action_type || 'financial_action';\n\n// Priority escalation by amount\nlet priority = 'normal';\nif (amount >= 50000) priority = 'high';\nif (amount >= 200000) priority = 'urgent';\n\nconst formatted = amount > 0 ? `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A';\nconst description = `${type.replace(/_/g,' ').toUpperCase()}: ${req.description || req.target_description} \u2014 ${formatted}`;\n\nreturn [{ json: { ...req, priority, formatted_amount: formatted, description } }];"
+        },
+        "name": "Assess Priority by Amount",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          300,
+          300
+        ],
+        "id": "86d5d781-09af-46bc-9446-0e0ac5665aaf"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/approval-queue/enqueue",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "bodyContentType": "json",
+          "jsonBody": "={\n  \"workflow\": \"GATE-F\",\n  \"action_type\": \"{{ $json.action_type || 'financial_action' }}\",\n  \"target_system\": \"{{ $json.target_system || 'quickbooks' }}\",\n  \"target_id\": \"{{ $json.target_id }}\",\n  \"target_description\": \"{{ $json.description }}\",\n  \"proposed_payload\": {\n    \"amount\": {{ $json.amount || 0 }},\n    \"formatted_amount\": \"{{ $json.formatted_amount }}\",\n    \"action_type\": \"{{ $json.action_type }}\",\n    \"vendor\": \"{{ $json.vendor || '' }}\",\n    \"details\": {{ JSON.stringify($json.details || {}) }}\n  },\n  \"reason\": \"{{ $json.reason || 'Financial commitment requires owner authorization' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"{{ $json.priority }}\"\n}",
+          "options": {},
+          "specifyBody": "json"
+        },
+        "name": "Enqueue in Approval Queue",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          500,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "7fa65b61-3f58-4d79-907e-13b74d7b851c"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "Financial Action Requires Approval"
+              },
+              {
+                "name": "Tags",
+                "value": "dollar,rotating_light"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              },
+              {
+                "name": "Priority",
+                "value": "={{ $('Assess Priority by Amount').first().json.priority === 'urgent' ? 'urgent' : 'high' }}"
+              },
+              {
+                "name": "Actions",
+                "value": "view, Review & Approve, http://host.docker.internal:8000/executive"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "raw",
+          "rawBody": "={{ $('Assess Priority by Amount').first().json.description }}\nQueue ID: {{ $('Enqueue in Approval Queue').first().json.queue_id }}",
+          "options": {}
+        },
+        "name": "Push: Financial Approval Request",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          700,
+          300
+        ],
+        "id": "bbdd3502-9e5d-4ee4-ab35-94fc46389c28"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"priority\": \"{{ $('Assess Priority by Amount').first().json.priority }}\", \"message\": \"Financial action queued \u2014 awaiting Buck authorization\" }"
+        },
+        "name": "Respond to Caller",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          900,
+          300
+        ],
+        "id": "09737038-acfd-4981-9b88-1b76721a9a4b"
+      }
+    ],
+    "connections": {
+      "Webhook: Financial Action Request": {
+        "main": [
+          [
+            {
+              "node": "Assess Priority by Amount",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assess Priority by Amount": {
+        "main": [
+          [
+            {
+              "node": "Enqueue in Approval Queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enqueue in Approval Queue": {
+        "main": [
+          [
+            {
+              "node": "Push: Financial Approval Request",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Respond to Caller",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-07T06:46:31.805Z",
+        "id": 416,
+        "workflowId": "VDkNZzDxHTc8FSuI",
+        "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-07T06:46:31.799Z",
+        "id": 415,
+        "workflowId": "VDkNZzDxHTc8FSuI",
+        "versionId": "3d2d70e1-5cdf-430f-bff5-f0133ab7f8dd",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:45.334Z",
+  "updatedAt": "2026-07-07T06:15:17.773Z",
   "createdAt": "2026-06-27T23:16:57.562Z",
   "id": "VrRq3XdWLS626UYS",
   "name": "AUTO-MONTHLY-REVIEW \u2014 1st of Month 09:00 Business Review",
@@ -114,8 +114,9 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "json",
-        "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}"
       },
       "id": "write-to-disk",
       "name": "Write Report to Disk",
@@ -167,6 +168,22 @@
         780,
         440
       ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        410,
+        440
+      ],
+      "id": "sync-before-monthly-review",
+      "name": "Sync Before Report"
     }
   ],
   "connections": {
@@ -195,7 +212,7 @@
       "main": [
         [
           {
-            "node": "Build Monthly Review",
+            "node": "Sync Before Report",
             "type": "main",
             "index": 0
           }
@@ -206,9 +223,9 @@
       "main": [
         [
           {
-            "node": "Build Monthly Review",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -217,9 +234,9 @@
       "main": [
         [
           {
-            "node": "Build Monthly Review",
+            "node": "Sync Before Report",
             "type": "main",
-            "index": 0
+            "index": 2
           }
         ]
       ]
@@ -239,6 +256,17 @@
           }
         ]
       ]
+    },
+    "Sync Before Report": {
+      "main": [
+        [
+          {
+            "node": "Build Monthly Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -252,9 +280,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
-  "activeVersionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
-  "versionCounter": 3,
+  "versionId": "cc8c63dc-73ea-4eda-b54e-2a978af9414b",
+  "activeVersionId": "cc8c63dc-73ea-4eda-b54e-2a978af9414b",
+  "versionCounter": 5,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -277,11 +305,18 @@
       }
     }
   ],
-  "tags": [],
+  "tags": [
+    {
+      "updatedAt": "2026-07-07T13:44:31.315Z",
+      "createdAt": "2026-07-07T13:44:31.315Z",
+      "id": "uupf4KZrHGllDGX7",
+      "name": "btw-6"
+    }
+  ],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:45.335Z",
-    "createdAt": "2026-07-03T01:06:45.335Z",
-    "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+    "updatedAt": "2026-07-07T06:15:17.774Z",
+    "createdAt": "2026-07-07T06:15:17.774Z",
+    "versionId": "cc8c63dc-73ea-4eda-b54e-2a978af9414b",
     "workflowId": "VrRq3XdWLS626UYS",
     "nodes": [
       {
@@ -391,8 +426,9 @@
           "genericAuthType": "httpHeaderAuth",
           "sendBody": true,
           "contentType": "json",
-          "body": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}",
-          "options": {}
+          "options": {},
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ filename: $json.filename, content: $json.md }) }}"
         },
         "id": "write-to-disk",
         "name": "Write Report to Disk",
@@ -444,6 +480,22 @@
           780,
           440
         ]
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineAll",
+          "numberInputs": 3,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          410,
+          440
+        ],
+        "id": "sync-before-monthly-review",
+        "name": "Sync Before Report"
       }
     ],
     "connections": {
@@ -472,7 +524,7 @@
         "main": [
           [
             {
-              "node": "Build Monthly Review",
+              "node": "Sync Before Report",
               "type": "main",
               "index": 0
             }
@@ -483,9 +535,9 @@
         "main": [
           [
             {
-              "node": "Build Monthly Review",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 1
             }
           ]
         ]
@@ -494,9 +546,9 @@
         "main": [
           [
             {
-              "node": "Build Monthly Review",
+              "node": "Sync Before Report",
               "type": "main",
-              "index": 0
+              "index": 2
             }
           ]
         ]
@@ -516,6 +568,17 @@
             }
           ]
         ]
+      },
+      "Sync Before Report": {
+        "main": [
+          [
+            {
+              "node": "Build Monthly Review",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -525,21 +588,22 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:45.346Z",
-        "id": 276,
+        "createdAt": "2026-07-07T06:15:17.795Z",
+        "id": 338,
         "workflowId": "VrRq3XdWLS626UYS",
-        "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+        "versionId": "cc8c63dc-73ea-4eda-b54e-2a978af9414b",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:45.342Z",
-        "id": 275,
+        "createdAt": "2026-07-07T06:15:17.789Z",
+        "id": 337,
         "workflowId": "VrRq3XdWLS626UYS",
-        "versionId": "1aba5c75-4653-4dbf-b239-29258426c29d",
+        "versionId": "cc8c63dc-73ea-4eda-b54e-2a978af9414b",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }
     ]
-  }
+  },
+  "_hci_notes": "BTW-6: 1st-of-month business review - same fix as AUTO-WEEKLY-EXEC, Merge node added before Build Monthly Review to synchronize the 3 parallel status calls; fixed 2026-07-07."
 }

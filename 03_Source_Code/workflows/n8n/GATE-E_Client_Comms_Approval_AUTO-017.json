@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-03T01:06:45.250Z",
+  "updatedAt": "2026-07-07T06:46:31.736Z",
   "createdAt": "2026-06-30T04:44:01.143Z",
   "id": "RJ4hmTNwzeE4N4Rr",
   "name": "GATE-E \u2014 Client Comms Approval (AUTO-017)",
@@ -33,7 +33,8 @@
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={\n  \"workflow\": \"GATE-E\",\n  \"action_type\": \"client_communication\",\n  \"target_system\": \"{{ $json.channel || 'email' }}\",\n  \"target_id\": \"{{ $json.recipient_email || $json.recipient }}\",\n  \"target_description\": \"Client comms to {{ $json.recipient }} re: {{ $json.subject }}\",\n  \"proposed_payload\": {\n    \"to\": \"{{ $json.recipient }}\",\n    \"subject\": \"{{ $json.subject }}\",\n    \"body_preview\": \"{{ ($json.body || '').substring(0, 200) }}\",\n    \"channel\": \"{{ $json.channel || 'email' }}\"\n  },\n  \"reason\": \"{{ $json.reason || 'AI-generated client communication pending review' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"high\"\n}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json"
       },
       "name": "Enqueue in Approval Queue",
       "type": "n8n-nodes-base.httpRequest",
@@ -149,9 +150,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "78938422-bd17-4f7a-9909-af11cc704e0f",
-  "activeVersionId": "78938422-bd17-4f7a-9909-af11cc704e0f",
-  "versionCounter": 3,
+  "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+  "activeVersionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+  "versionCounter": 4,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -176,9 +177,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-03T01:06:45.250Z",
-    "createdAt": "2026-07-03T01:06:45.250Z",
-    "versionId": "78938422-bd17-4f7a-9909-af11cc704e0f",
+    "updatedAt": "2026-07-07T06:46:31.737Z",
+    "createdAt": "2026-07-07T06:46:31.737Z",
+    "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
     "workflowId": "RJ4hmTNwzeE4N4Rr",
     "nodes": [
       {
@@ -207,7 +208,8 @@
           "sendBody": true,
           "bodyContentType": "json",
           "jsonBody": "={\n  \"workflow\": \"GATE-E\",\n  \"action_type\": \"client_communication\",\n  \"target_system\": \"{{ $json.channel || 'email' }}\",\n  \"target_id\": \"{{ $json.recipient_email || $json.recipient }}\",\n  \"target_description\": \"Client comms to {{ $json.recipient }} re: {{ $json.subject }}\",\n  \"proposed_payload\": {\n    \"to\": \"{{ $json.recipient }}\",\n    \"subject\": \"{{ $json.subject }}\",\n    \"body_preview\": \"{{ ($json.body || '').substring(0, 200) }}\",\n    \"channel\": \"{{ $json.channel || 'email' }}\"\n  },\n  \"reason\": \"{{ $json.reason || 'AI-generated client communication pending review' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"high\"\n}",
-          "options": {}
+          "options": {},
+          "specifyBody": "json"
         },
         "name": "Enqueue in Approval Queue",
         "type": "n8n-nodes-base.httpRequest",
@@ -323,18 +325,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-03T01:06:45.262Z",
-        "id": 272,
+        "createdAt": "2026-07-07T06:46:31.757Z",
+        "id": 414,
         "workflowId": "RJ4hmTNwzeE4N4Rr",
-        "versionId": "78938422-bd17-4f7a-9909-af11cc704e0f",
+        "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-03T01:06:45.259Z",
-        "id": 271,
+        "createdAt": "2026-07-07T06:46:31.752Z",
+        "id": 413,
         "workflowId": "RJ4hmTNwzeE4N4Rr",
-        "versionId": "78938422-bd17-4f7a-9909-af11cc704e0f",
+        "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }

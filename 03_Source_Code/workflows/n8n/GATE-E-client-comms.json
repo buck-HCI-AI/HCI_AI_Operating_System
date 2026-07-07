@@ -1,5 +1,11 @@
 {
-  "name": "GATE-E — Client Comms Approval (AUTO-017)",
+  "updatedAt": "2026-07-07T06:46:31.736Z",
+  "createdAt": "2026-06-30T04:44:01.143Z",
+  "id": "RJ4hmTNwzeE4N4Rr",
+  "name": "GATE-E \u2014 Client Comms Approval (AUTO-017)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -11,25 +17,39 @@
       "name": "Webhook: Client Comms Request",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [100, 300],
-      "webhookId": "gate-client-comms"
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "gate-client-comms",
+      "id": "fdc77aee-11a9-43d0-9350-70a448247513"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/v1/services/approval-queue/enqueue",
+        "url": "http://host.docker.internal:8000/api/v1/services/approval-queue/enqueue",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "bodyContentType": "json",
         "jsonBody": "={\n  \"workflow\": \"GATE-E\",\n  \"action_type\": \"client_communication\",\n  \"target_system\": \"{{ $json.channel || 'email' }}\",\n  \"target_id\": \"{{ $json.recipient_email || $json.recipient }}\",\n  \"target_description\": \"Client comms to {{ $json.recipient }} re: {{ $json.subject }}\",\n  \"proposed_payload\": {\n    \"to\": \"{{ $json.recipient }}\",\n    \"subject\": \"{{ $json.subject }}\",\n    \"body_preview\": \"{{ ($json.body || '').substring(0, 200) }}\",\n    \"channel\": \"{{ $json.channel || 'email' }}\"\n  },\n  \"reason\": \"{{ $json.reason || 'AI-generated client communication pending review' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"high\"\n}",
-        "options": {}
+        "options": {},
+        "specifyBody": "json"
       },
       "name": "Enqueue in Approval Queue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [300, 300],
-      "credentials": { "httpHeaderAuth": { "name": "HCI API Key" } }
+      "position": [
+        300,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "d356878a-7d8c-43fd-b88f-a9cbb0d310fd"
     },
     {
       "parameters": {
@@ -39,47 +59,287 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Title", "value": "Client Comms Needs Approval" },
-            { "name": "Tags", "value": "email,rotating_light" },
-            { "name": "Cache", "value": "yes" },
-            { "name": "Expires", "value": "24h" },
-            { "name": "Priority", "value": "high" },
-            { "name": "Actions", "value": "view, Review Draft, http://localhost:8000/executive" }
+            {
+              "name": "Title",
+              "value": "Client Comms Needs Approval"
+            },
+            {
+              "name": "Tags",
+              "value": "email,rotating_light"
+            },
+            {
+              "name": "Cache",
+              "value": "yes"
+            },
+            {
+              "name": "Expires",
+              "value": "24h"
+            },
+            {
+              "name": "Priority",
+              "value": "high"
+            },
+            {
+              "name": "Actions",
+              "value": "view, Review Draft, http://host.docker.internal:8000/executive"
+            }
           ]
         },
         "sendBody": true,
         "bodyContentType": "raw",
-        "rawBody": "=To: {{ $('Webhook: Client Comms Request').first().json.recipient }}\nRe: {{ $('Webhook: Client Comms Request').first().json.subject }}\nQueue ID: {{ $json.queue_id }} — Review before sending",
+        "rawBody": "=To: {{ $('Webhook: Client Comms Request').first().json.recipient }}\nRe: {{ $('Webhook: Client Comms Request').first().json.subject }}\nQueue ID: {{ $json.queue_id }} \u2014 Review before sending",
         "options": {}
       },
       "name": "Push: Comms Approval Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [500, 300]
+      "position": [
+        500,
+        300
+      ],
+      "id": "610eadc2-c11f-4c29-85f9-08f94386e251"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"message\": \"Client communication queued for Buck approval — not sent\" }"
+        "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"message\": \"Client communication queued for Buck approval \u2014 not sent\" }"
       },
       "name": "Respond to Caller",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ],
+      "id": "ce1c3ff9-90b6-4975-928b-e76d601356f5"
     }
   ],
   "connections": {
     "Webhook: Client Comms Request": {
-      "main": [[{ "node": "Enqueue in Approval Queue", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enqueue in Approval Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enqueue in Approval Queue": {
-      "main": [[
-        { "node": "Push: Comms Approval Request", "type": "main", "index": 0 },
-        { "node": "Respond to Caller", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Push: Comms Approval Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "approval-gates" }, { "name": "client-comms" }],
-  "_hci_notes": "Gate E — blocks ANY AI-generated client-facing communication. POST body: { recipient, subject, body, channel, project_id, reason }. Always queues, never sends. Buck reviews at /executive. High priority push — client comms are never auto-sent."
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+  "activeVersionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-30T04:44:01.147Z",
+      "createdAt": "2026-06-30T04:44:01.147Z",
+      "role": "workflow:owner",
+      "workflowId": "RJ4hmTNwzeE4N4Rr",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-07T06:46:31.737Z",
+    "createdAt": "2026-07-07T06:46:31.737Z",
+    "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+    "workflowId": "RJ4hmTNwzeE4N4Rr",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "gate-client-comms",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "name": "Webhook: Client Comms Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          100,
+          300
+        ],
+        "webhookId": "gate-client-comms",
+        "id": "fdc77aee-11a9-43d0-9350-70a448247513"
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/v1/services/approval-queue/enqueue",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "bodyContentType": "json",
+          "jsonBody": "={\n  \"workflow\": \"GATE-E\",\n  \"action_type\": \"client_communication\",\n  \"target_system\": \"{{ $json.channel || 'email' }}\",\n  \"target_id\": \"{{ $json.recipient_email || $json.recipient }}\",\n  \"target_description\": \"Client comms to {{ $json.recipient }} re: {{ $json.subject }}\",\n  \"proposed_payload\": {\n    \"to\": \"{{ $json.recipient }}\",\n    \"subject\": \"{{ $json.subject }}\",\n    \"body_preview\": \"{{ ($json.body || '').substring(0, 200) }}\",\n    \"channel\": \"{{ $json.channel || 'email' }}\"\n  },\n  \"reason\": \"{{ $json.reason || 'AI-generated client communication pending review' }}\",\n  \"project_id\": {{ $json.project_id || 'null' }},\n  \"actor\": \"{{ $json.actor || 'system' }}\",\n  \"priority\": \"high\"\n}",
+          "options": {},
+          "specifyBody": "json"
+        },
+        "name": "Enqueue in Approval Queue",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          300,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "d356878a-7d8c-43fd-b88f-a9cbb0d310fd"
+      },
+      {
+        "parameters": {
+          "url": "https://ntfy.sh/hci-executive",
+          "method": "POST",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Title",
+                "value": "Client Comms Needs Approval"
+              },
+              {
+                "name": "Tags",
+                "value": "email,rotating_light"
+              },
+              {
+                "name": "Cache",
+                "value": "yes"
+              },
+              {
+                "name": "Expires",
+                "value": "24h"
+              },
+              {
+                "name": "Priority",
+                "value": "high"
+              },
+              {
+                "name": "Actions",
+                "value": "view, Review Draft, http://host.docker.internal:8000/executive"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyContentType": "raw",
+          "rawBody": "=To: {{ $('Webhook: Client Comms Request').first().json.recipient }}\nRe: {{ $('Webhook: Client Comms Request').first().json.subject }}\nQueue ID: {{ $json.queue_id }} \u2014 Review before sending",
+          "options": {}
+        },
+        "name": "Push: Comms Approval Request",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          500,
+          300
+        ],
+        "id": "610eadc2-c11f-4c29-85f9-08f94386e251"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={ \"status\": \"queued\", \"queue_id\": {{ $('Enqueue in Approval Queue').first().json.queue_id }}, \"message\": \"Client communication queued for Buck approval \u2014 not sent\" }"
+        },
+        "name": "Respond to Caller",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          700,
+          300
+        ],
+        "id": "ce1c3ff9-90b6-4975-928b-e76d601356f5"
+      }
+    ],
+    "connections": {
+      "Webhook: Client Comms Request": {
+        "main": [
+          [
+            {
+              "node": "Enqueue in Approval Queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enqueue in Approval Queue": {
+        "main": [
+          [
+            {
+              "node": "Push: Comms Approval Request",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Respond to Caller",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-07T06:46:31.757Z",
+        "id": 414,
+        "workflowId": "RJ4hmTNwzeE4N4Rr",
+        "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-07T06:46:31.752Z",
+        "id": 413,
+        "workflowId": "RJ4hmTNwzeE4N4Rr",
+        "versionId": "b18f2a7d-ccce-445d-85eb-1778b84efe9d",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
 }
