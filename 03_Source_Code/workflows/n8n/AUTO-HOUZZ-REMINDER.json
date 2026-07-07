@@ -1,0 +1,237 @@
+{
+    "updatedAt": "2026-07-07T22:28:07.322Z",
+    "createdAt": "2026-07-07T22:28:07.322Z",
+    "id": "1Cghu7ZqHiKDw6Id",
+    "name": "AUTO-HOUZZ-REMINDER \u2014 Daily 07:15 Manual Extraction Prompt",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 7 * * *"
+                        }
+                    ]
+                }
+            },
+            "name": "Cron 07:15 Daily",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "houzz-rem-cron-01"
+        },
+        {
+            "parameters": {
+                "jsCode": "const today = new Date().toISOString().slice(0,10);\nconst prompt = `Run a full Houzz Pro extraction now. Log into pro.houzz.com (you already have Buck's account access), then for every active project under /manage/projects pull current daily logs, schedule status, and budget/estimate data from the last 7 days.\\n\\nWrite the results as a structured markdown handoff doc to Architecture/Platform_Intelligence/Houzz/Current/BROWSER_HANDOFF_HOUZZ_${today}_EXTRACTION.md, using the same format as the 2026-06-28 extraction handoff (project name, daily log entries, schedule items, budget lines).\\n\\nClaude Code will ingest it into the database next session. Report record counts extracted per entity type when done.`;\nconst html = `<p>Daily reminder: Houzz Pro hasn't had a fresh extraction in a while. If the automated session-reuse scraper isn't running yet, paste this into a Browser Claude session:</p><pre style=\"white-space:pre-wrap;background:#f4f4f4;padding:12px;border-radius:6px;\">${prompt.replace(/</g,'&lt;')}</pre><p>Skip this if the scraper is already handling it.</p>`;\nreturn [{ json: { subject: 'Daily Reminder: Houzz Extraction', body_html: html } }];"
+            },
+            "name": "Build Reminder",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                300,
+                300
+            ],
+            "id": "houzz-rem-code-01"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://host.docker.internal:8000/gateway/email/draft",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ to_name: \"Buck Adams\", to_email: \"buck@hendricksoninc.com\", subject: $json.subject, body_html: $json.body_html }) }}",
+                "options": {}
+            },
+            "name": "Draft Reminder Email",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                500,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "fCSKMz294hUajaxu",
+                    "name": "HCI Gateway API Key"
+                }
+            },
+            "id": "houzz-rem-http-01"
+        }
+    ],
+    "connections": {
+        "Cron 07:15 Daily": {
+            "main": [
+                [
+                    {
+                        "node": "Build Reminder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Reminder": {
+            "main": [
+                [
+                    {
+                        "node": "Draft Reminder Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": {
+        "node:Cron 07:15 Daily": {
+            "recurrenceRules": []
+        }
+    },
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": null,
+    "versionId": "46611422-9c40-4db9-ae3d-a226cea3b619",
+    "activeVersionId": "46611422-9c40-4db9-ae3d-a226cea3b619",
+    "versionCounter": 1,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "shared": [
+        {
+            "updatedAt": "2026-07-07T22:28:07.324Z",
+            "createdAt": "2026-07-07T22:28:07.324Z",
+            "role": "workflow:owner",
+            "workflowId": "1Cghu7ZqHiKDw6Id",
+            "projectId": "ZyJUZXA49m8REtF6",
+            "project": {
+                "updatedAt": "2026-06-13T17:47:03.534Z",
+                "createdAt": "2026-06-13T17:44:54.962Z",
+                "id": "ZyJUZXA49m8REtF6",
+                "name": "Buck Adams <buck@hendricksoninc.com>",
+                "type": "personal",
+                "icon": null,
+                "description": null,
+                "customTelemetryTags": [],
+                "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+            }
+        }
+    ],
+    "tags": [],
+    "activeVersion": {
+        "updatedAt": "2026-07-07T22:28:07.324Z",
+        "createdAt": "2026-07-07T22:28:07.324Z",
+        "versionId": "46611422-9c40-4db9-ae3d-a226cea3b619",
+        "workflowId": "1Cghu7ZqHiKDw6Id",
+        "nodes": [
+            {
+                "parameters": {
+                    "rule": {
+                        "interval": [
+                            {
+                                "field": "cronExpression",
+                                "expression": "0 7 * * *"
+                            }
+                        ]
+                    }
+                },
+                "name": "Cron 07:15 Daily",
+                "type": "n8n-nodes-base.scheduleTrigger",
+                "typeVersion": 1.1,
+                "position": [
+                    100,
+                    300
+                ],
+                "id": "houzz-rem-cron-01"
+            },
+            {
+                "parameters": {
+                    "jsCode": "const today = new Date().toISOString().slice(0,10);\nconst prompt = `Run a full Houzz Pro extraction now. Log into pro.houzz.com (you already have Buck's account access), then for every active project under /manage/projects pull current daily logs, schedule status, and budget/estimate data from the last 7 days.\\n\\nWrite the results as a structured markdown handoff doc to Architecture/Platform_Intelligence/Houzz/Current/BROWSER_HANDOFF_HOUZZ_${today}_EXTRACTION.md, using the same format as the 2026-06-28 extraction handoff (project name, daily log entries, schedule items, budget lines).\\n\\nClaude Code will ingest it into the database next session. Report record counts extracted per entity type when done.`;\nconst html = `<p>Daily reminder: Houzz Pro hasn't had a fresh extraction in a while. If the automated session-reuse scraper isn't running yet, paste this into a Browser Claude session:</p><pre style=\"white-space:pre-wrap;background:#f4f4f4;padding:12px;border-radius:6px;\">${prompt.replace(/</g,'&lt;')}</pre><p>Skip this if the scraper is already handling it.</p>`;\nreturn [{ json: { subject: 'Daily Reminder: Houzz Extraction', body_html: html } }];"
+                },
+                "name": "Build Reminder",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    300,
+                    300
+                ],
+                "id": "houzz-rem-code-01"
+            },
+            {
+                "parameters": {
+                    "method": "POST",
+                    "url": "http://host.docker.internal:8000/gateway/email/draft",
+                    "authentication": "genericCredentialType",
+                    "genericAuthType": "httpHeaderAuth",
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={{ JSON.stringify({ to_name: \"Buck Adams\", to_email: \"buck@hendricksoninc.com\", subject: $json.subject, body_html: $json.body_html }) }}",
+                    "options": {}
+                },
+                "name": "Draft Reminder Email",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.1,
+                "position": [
+                    500,
+                    300
+                ],
+                "credentials": {
+                    "httpHeaderAuth": {
+                        "id": "fCSKMz294hUajaxu",
+                        "name": "HCI Gateway API Key"
+                    }
+                },
+                "id": "houzz-rem-http-01"
+            }
+        ],
+        "connections": {
+            "Cron 07:15 Daily": {
+                "main": [
+                    [
+                        {
+                            "node": "Build Reminder",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Build Reminder": {
+                "main": [
+                    [
+                        {
+                            "node": "Draft Reminder Email",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "nodeGroups": [],
+        "authors": "Buck Adams",
+        "name": null,
+        "description": null,
+        "autosaved": false,
+        "workflowPublishHistory": [
+            {
+                "createdAt": "2026-07-07T22:28:12.457Z",
+                "id": 437,
+                "workflowId": "1Cghu7ZqHiKDw6Id",
+                "versionId": "46611422-9c40-4db9-ae3d-a226cea3b619",
+                "event": "activated",
+                "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+            }
+        ]
+    }
+}
