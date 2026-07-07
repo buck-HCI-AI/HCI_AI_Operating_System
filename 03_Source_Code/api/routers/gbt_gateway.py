@@ -2888,10 +2888,22 @@ def system_drift_check():
         max_claimed_sprint = None
         for fname in cycle_files:
             m2 = _re.search(r"SPRINT(\d+)", fname.upper())
-            if m2:
-                n = int(m2.group(1))
-                if max_claimed_sprint is None or n > max_claimed_sprint:
-                    max_claimed_sprint = n
+            if not m2:
+                continue
+            # Skip files already annotated as superseded (checked 2026-07-07) - CYCLE47
+            # and CYCLE49 both got a "SUPERSEDED ... treat CURRENT_SPRINT.md as source of
+            # truth" correction note added on top on 2026-07-06, but this check kept
+            # re-flagging them anyway since it only ever looked at the filename, never
+            # the file's own content. A reconciled, self-correcting doc isn't drift.
+            try:
+                with open(os.path.join(ai_team_dir, fname)) as cf:
+                    if "SUPERSEDED" in cf.read(500).upper():
+                        continue
+            except Exception:
+                pass
+            n = int(m2.group(1))
+            if max_claimed_sprint is None or n > max_claimed_sprint:
+                max_claimed_sprint = n
         if real_sprint and max_claimed_sprint and max_claimed_sprint > real_sprint:
             findings.append({
                 "severity": "medium",

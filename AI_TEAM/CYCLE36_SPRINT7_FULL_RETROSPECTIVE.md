@@ -1,4 +1,13 @@
 # CYCLE 36 — SPRINT 7 FULL IMPLEMENTATION RETROSPECTIVE
+
+> **SPRINT LABEL SUPERSEDED 2026-07-07 (Claude Code, drift-check finding):** "Sprint 7" here
+> is GBT's own independent cycle-numbering, run in parallel with and never reconciled against
+> the canonical `CURRENT_SPRINT.md`, which authoritatively opened **Sprint 3 — Production
+> Stabilization** on 2026-07-01 and remains active. This file's substantive content (real work
+> done that cycle) is preserved as historical record; its *sprint number* and any self-assigned
+> completion score are not authoritative - treat `CURRENT_SPRINT.md` as the single source of
+> truth for the active sprint, per the same rule already applied to CYCLE47 and the Handbook
+> volume-numbering collision.
 ## HCI AI OS — Hendrickson Construction, Inc.
 **Cycle:** 36 | **Sprint:** 7 | **Date:** 2026-07-02
 **Overall Sprint 7 Score: 9.9/10** | Architect: GBT | Ops: BC
