@@ -72,6 +72,37 @@ SUBMITTAL_KEYWORDS = [
     "cut sheet", "sample", "mock-up", "operation & maintenance",
 ]
 
+# Fixed 2026-07-07: the old check (`"noreply" not in sender` and `"notifications@" not
+# in sender`) was a single literal substring each way, so it missed every real-world
+# variant - found live via Buck's Drafts folder full of AI-drafted "replies" to
+# no-reply@accounts.google.com (hyphenated), quickbooks@notification.intuit.com
+# (singular, no @), reply@ngrok.com, onboarding@hubspot.com, team@perplexity.ai, and
+# noreply@grammarly.com piling up daily since at least 06-30. This is drafts-only (no
+# send risk after the separate microsoft_graph.py fix), but it was wasting Claude API
+# calls drafting replies to spam/notification/marketing mail nobody should ever reply
+# to. Broadened to a regex covering the common no-reply/transactional local-part
+# patterns, plus a blocklist of the specific SaaS-notification domains actually seen
+# sending to this inbox - not exhaustive, but covers everything observed so far.
+_NO_REPLY_PATTERN = re.compile(
+    r"no.?reply|do.?not.?reply|donotreply|notifications?@|mailer.?daemon|"
+    r"auto.?reply|autoresponder|no\.reply|bounce",
+    re.IGNORECASE,
+)
+_TRANSACTIONAL_DOMAINS = {
+    "grammarly.com", "accounts.google.com", "hubspot.com", "ngrok.com",
+    "notification.intuit.com", "perplexity.ai", "openweathermap.org",
+}
+
+
+def _is_automated_sender(sender_email: str) -> bool:
+    if not sender_email:
+        return True
+    email = sender_email.lower()
+    if _NO_REPLY_PATTERN.search(email):
+        return True
+    domain = email.split("@")[-1]
+    return any(domain == d or domain.endswith("." + d) for d in _TRANSACTIONAL_DOMAINS)
+
 
 def classify_email(subject: str, preview: str, sender: str) -> str:
     text = f"{subject} {preview} {sender}".lower()
@@ -340,7 +371,7 @@ def run(max_emails: int = 30, create_drafts: bool = True) -> dict:
 
             # 5 — Draft reply
             draft_id = None
-            if create_drafts and sender_email and "noreply" not in sender_email.lower() and "notifications@" not in sender_email.lower():
+            if create_drafts and not _is_automated_sender(sender_email):
                 draft_text = draft_reply(subject, sender_name, preview, project)
                 draft_html = _to_html(draft_text)
                 try:
