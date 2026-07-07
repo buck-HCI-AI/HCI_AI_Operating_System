@@ -405,6 +405,8 @@ def project_deep_dive(code: str):
         flags = []
         if proj["permit_status"] == "not_issued":
             flags.append("No permit issued yet — any daily-log/schedule data implying active field construction should be treated as pre-construction planning, not real progress.")
+        elif proj["permit_status"] == "iffr":
+            flags.append("Issued-for-field-review (IFFR) permit — field construction is legitimately underway; full building permit is still pending.")
         if days_since_log is not None and days_since_log > 7:
             flags.append(f"No daily log in {days_since_log} days — field reporting has gone quiet.")
         if overdue:
@@ -505,6 +507,8 @@ def project_cost_forecast(code: str):
             notes.append("No packages awarded yet - CPI undefined, EAC falls back to BAC - EV + AC.")
         if proj["permit_status"] == "not_issued":
             notes.append("No permit issued - near-zero EV/PV reflects pre-construction reality, not missing data.")
+        elif proj["permit_status"] == "iffr":
+            notes.append("IFFR permit - field construction is real and underway; full building permit still pending.")
 
         # Log a snapshot for trend tracking (one per project per day)
         try:
