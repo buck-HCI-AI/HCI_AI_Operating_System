@@ -3,8 +3,8 @@
 
 **Organization:** Hendrickson Construction, Inc. (owned by Chris Hendrickson)
 **Owner:** @buck-HCI-AI (Buck Adams) — PM & Superintendent at Hendrickson Construction; owner/operator of HCI-AI, this repository
-**Last Updated:** 2026-07-02T15:35 UTC
-**Updated By:** Claude Code — full system audit + plan-review pipeline extensions (this session). See handoff block below.
+**Last Updated:** 2026-07-07T21:40 UTC
+**Updated By:** Claude Code — connector/email-safety hardening, bid-leveling Drive/Sheet fixes, GBT async plan-review fix (this session). See handoff block below.
 **Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
@@ -14,7 +14,97 @@
 
 ---
 
-## 🔄 SESSION HANDOFF — 2026-07-02 (read this first if you're a new Claude Code session)
+## 🔄 SESSION HANDOFF — 2026-07-07 (read this first if you're a new Claude Code session)
+
+**Why this exists:** The 2026-07-02 handoff below sat unrefreshed for 5 days while GBT and
+Browser Claude kept running sessions against the live system — Browser Claude flagged this
+file as stale multiple times. This block brings it current with everything found/fixed
+2026-07-07 and supersedes the 07-02 block as the first thing to read (07-02 block kept below,
+unmodified, per append-only rule).
+
+**What was fixed this session (all committed — see `git log` for exact diffs):**
+1. **HubSpot connector was silently miswriting/dropping rows** — `_persist_contact`/
+   `_persist_company`/`_persist_deal` in `hubspot_connector.py` referenced DB columns that
+   don't exist (`updated_at` on all three; wrong names for contact/company/deal fields).
+   Fixed; verified live — 665 real rows synced across all 4 entity types, 0 errors.
+2. **`connector_sync_state` could never report a real failure** — `base_connector.py`'s
+   `_update_sync_states()` had an `ON CONFLICT DO UPDATE` with no conflict target (invalid
+   Postgres syntax, silently failing since this code was written) and always wrote
+   `status='idle'` regardless of whether anything was actually persisted. Fixed: proper
+   conflict target, `status='error'` written with real error text when an entity type fully
+   fails. Drift-check detector #18 added to catch `connector_sync_state` errors/staleness.
+3. **Email safety hardened further** — removed the `_SELF_SEND_ALLOWLIST` bypass in
+   `microsoft_graph.py` entirely (previously let Buck's own address skip the draft gate);
+   `send_email()`/`send_email_with_cc()` now always create an Outlook draft, never call
+   `/me/sendMail` directly under any condition. `POST /gateway/email/draft/{id}/send`
+   disabled outright. Telegram APPROVE now only marks the message COMPLETE — it no longer
+   fires a send.
+4. **WF-006 inbox-review was drafting AI replies to spam/notification senders** — weak
+   `"noreply" not in sender_email` check replaced with a real regex + transactional-domain
+   allowlist (`_is_automated_sender()` in `wf006_inbox_review.py`).
+5. **Bid-leveling Drive folder pointers were wrong for two live projects** — 101F's
+   `bid_folder_id` pointed one level too deep (into a single CSI division subfolder instead
+   of its parent), which is why Buck found a real vendor bid PDF (CQ Roofing Design LLC,
+   $124,635) misfiled and unprocessed. 64EW's `bid_folder_id` was empty and silently fell
+   through to a stale hardcoded fallback dict. Both corrected via direct `UPDATE projects
+   SET bid_folder_id=...`; `ensure_bids_folder()` in `bid_leveling_service.py` now prefers
+   the DB value over the hardcoded dict. Orphaned stale 101F folder tree renamed
+   `DEPRECATED 2026-07-07...` rather than deleted. Misfiled CQ Roofing PDF moved into the
+   correct `07_Thermal & Moisture` vendor folder.
+6. **Bid-leveling never wrote results back to the actual Google Sheet tracker** — every run
+   only produced local Excel exports queued for approval; the live "HCI Division Summary"
+   tab never updated. New `sync_division_summary_to_sheet()` writes LEVELING STATUS /
+   RECOMMENDED / OUTSTANDING back to matching division rows on every live run (matches
+   existing rows only — never inserts). Closes the gap Buck flagged directly: "aren't the
+   tracker and summaries supposed to be excel format?" — yes, and now the Sheet itself is
+   kept in sync too, not just the Excel export.
+7. **Gemini bid-PDF extraction was throwing on every call** — `types.Part.from_text(prompt)`
+   needed `text=` as a keyword arg in the current `google-genai` SDK version. Fixed in
+   `drive_bid_reader.py`. Separately identified (not fixable via code): Gemini free-tier
+   quota caps real PDF extraction at 20/day — some 64EW/101F vendor bids failed extraction
+   purely on quota, not a bug. Needs Buck to link a billing account to raise the limit.
+8. **HubSpot Task→Deal association was using the wrong type ID** — `AUTO-BID-INVITATION-
+   TASKS` n8n workflow hardcoded `associationTypeId: 27`; the real ID (confirmed live via
+   `/crm/v4/associations/tasks/deals/labels`) is `216`. Fixed live in n8n + re-exported JSON.
+9. **GBT's Action calls to `/plan-review/analyze` were failing with zero trace** — root
+   cause was a ChatGPT Action-layer timeout shorter than ~13s (ruled out ngrok/backend via
+   direct curl proving a 13.75s real round-trip succeeds). Fixed with a two-call async job
+   pattern: first call starts a background thread and returns a `job_id` in ~300ms; second
+   call (with `job_id`) polls for the real result. Verified end-to-end live (13-15 real plan
+   gaps found, matching RFIs created).
+10. **GBT Custom GPT schema pushed (v5)** — added `analyzePlanReview`'s `job_id` field +
+    async-pattern docs; widened the `code` param on `getProjectBrain`/`getProjectSchedule`/
+    `getProjectPM` from a 3-value enum to free-form string (was silently blocking any
+    project outside 64EW/101F/1355R). Confirmed live via ChatGPT's "GPT Updated" success
+    modal; full functional re-verification in a fresh chat still pending — blocked by an
+    unrelated ChatGPT-side backend outage at push time, not a rollback risk.
+
+**Still open — needs Buck, not fixable via API:**
+- LIVE_PROJECT_STATE top-of-file summary tables (Gate 5 production table, approval queue,
+  ROI) below this point are still dated 06-26 through 07-02 and have NOT been refreshed
+  this session — treat the numbers in those tables as historical, not current. Approval
+  queue is real-time; per this session's investigation there are ~57 pending approval-queue
+  items across 1355R/64EW/101F awaiting Buck's review (up from the 9 shown in the stale
+  table below).
+- 574J, 275SS, 606SW need Buck's status clarification before Traff starts.
+- 1355R bid-leveling output is sitting in Drive waiting on Buck's review.
+- 246GW: Buck confirmed "we will not be seeding 246" — needs a summary of what's required
+  to bring it from monitoring to live, not a data-seed.
+- 83 Sagebrush: no HubSpot deal exists — needs Buck to create one or confirm intentional.
+- 101F `permit_status`: possible real gap — "IFFR" (issued-for-field-review) may be a
+  genuine intermediate permit state not captured by the current binary
+  `not_issued`/`issued` field. Needs Buck's read before building anything.
+- Broader build still not started: automatically filing every incoming bid attachment
+  (from HubSpot or elsewhere) into the correct division/vendor Drive folder with a proper
+  name — today's fixes corrected two existing misconfigurations but did not build this.
+
+**Full retrospective:** `HCI_AI_OS_Full_Retrospective_ClaudeCode_2026-07-07.md` on Drive
+(https://drive.google.com/file/d/1eJFiLUpt3Q-lfKK5XGUjIzbQ7SS-_qb9/view) has the complete
+session history including the self-audit that caught an uncommitted-work gap mid-session.
+
+---
+
+## 🔄 SESSION HANDOFF — 2026-07-02 (superseded by the 07-07 block above — kept for history)
 
 **Why this exists:** Buck is starting a fresh Claude Code session (to clear a stuck terminal
 permission mode) and asked for a seamless handoff — nothing missed, GBT/BC still connected,
