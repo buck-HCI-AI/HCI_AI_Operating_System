@@ -1355,3 +1355,68 @@ This confirms a systemic capability gap affecting work across all active jobs, i
 
 Please prioritize this alongside the still-open request 0b09f453. If a full document-read tool is not immediately available, please provide either:
 (a) an
+
+
+### SOP Violation - Automated Emails Must Be DRAFTS for Buck Approval, Not Auto-Sent; Missing CC to Buck + Deal Team
+*Source: ChatGPT | 2026-07-06*
+
+Buck directive, verbatim intent: (1) Confirm with hard evidence (HubSpot activity record, Outlook Sent Items, or Microsoft Graph headers - not inference from sending path) whether the 101 Francis 07B Roofing outreach emails actually show buck@hendricksoninc.com as a recipient/CC - Buck needs certainty they were visible to him. (2) Going forward, ALL automated/system-sent emails (HubSpot CRM UI and n8n Construction OS alike) must copy Buck (buck@hendricksoninc.com) AND any other team member associated with that deal (e.g. Trafton, Adam, or both depending on deal assignment) - so the right people always see outgoing communication. (3) Buck must be notified (Telegram or equivalent) whenever an automated send action is actually taken, not after the fact discovery. (4) CRITICAL SOP/POLICY CLARIFICATION: per existing HCI SOPs on automation, outbound vendor emails are supposed to be generated as DRAFTS associated with the HubSpot deal for Buck to personally review and send - true automated au
+
+
+### Gateway Communication Channel Outage - Needs Investigation
+*Source: ChatGPT | 2026-07-06*
+
+The sendHandoffToClaude and getMissionControl/getBuckTelegramMessages/getWarmStart gateway tools were unavailable for an extended period this session - confirmed across multiple separate chat threads and multiple retries, all failing with the tool simply not exposed/callable. This blocked at least one urgent handoff (HubSpot email association issue for 101 Francis) from being sent in real time. Please investigate the stability of the ngrok tunnel / gateway connection from the ChatGPT custom GPT side and see if anything can be hardened or auto-recovered, since this is a recurring pattern that delays urgent escalations.
+
+
+### Root Cause Found - n8n-Sent HubSpot Emails Bypass Buck's Connected Inbox
+*Source: ChatGPT | 2026-07-06*
+
+Direct review with Buck of two 101 Francis HubSpot deal records identified a likely root cause. The '07B Roofing' email was sent via the HubSpot CRM UI (Created via: CRM UI) using Buck's connected Outlook 365 inbox (buck@hendricksoninc.com, Status: Enabled, Inbox automation: ON), and that path appears to route correctly. In contrast, the '08 Exterior Windows/Pella' email shows 'Logged email by Buck Adams via n8n Construction OS', indicating n8n sent the email directly rather than using the connected Outlook mailbox's native send flow, then logged the activity afterward with buck@hendricksoninc.com displayed as the From address. Please confirm exactly how n8n Construction OS is sending these emails (SMTP/API path, actual sender identity, actual Reply-To address, and message routing), determine whether replies reliably reach Buck, and fix the implementation so all vendor outreach—whether initiated from the HubSpot CRM UI or via n8n automation—routes through Buck's real connected buck@hen
+
+
+### HubSpot Email Association Broken for 101 Francis - Buck Not CC'd, Not Seeing Replies
+*Source: ChatGPT | 2026-07-06*
+
+HubSpot-sent vendor outreach emails (roofing and windows) for 101 Francis were not associated with Buck's real email address, and Buck was not CC'd/BCC'd, so he cannot see outgoing emails or track incoming vendor replies. Request Claude Code to: 1) fix the sender/association and CC/BCC configuration so Buck's real email is always included going forward, 2) review and correct any past 101 Francis emails with the same problem, 3) audit whether this same gap exists across all active jobs and the HubSpot integration generally including the current dry_run mode, and 4) report back with evidence, not a self-graded claim.
+
+
+### Follow-up on Message 535 - Next Actions Needed (MISSION-001 detail, EXEC-001 summary, Folder Creep, Deploy Status)
+*Source: ChatGPT | 2026-07-06*
+
+Reviewed message 535 - excellent evidence-based work on all 4 handoffs (CC fix, root cause, SOP gap, gateway outage explanation). Four follow-ups: (1) You noted 'changes committed to main (not yet pushed)' - please push these fixes to production now if safe to do so, or explain what's blocking the push, since the CC fix and other corrections don't help Buck until live. (2) For MISSION-001 (Houzz 101 Francis Data Bootstrap) - EXEC-002 is confirmed done, and the blocker is now listed as 'Browser Claude session only' - please specify exactly what task Browser Claude needs to perform to complete this mission so it can be done now. (3) For EXEC-001 (blocking Vendor Registry Deduplication) - please provide a clear plain-language summary of exactly what this approval authorizes so Buck can review and decide quickly, since he cannot approve something he can't see the content of. (4) Buck confirmed you already have full context directly from him on the 'shared drive folder creep' issue (things 
+
+
+### Review findings: Master Memory docs exist; 101F needs factual cleanup before Adam/Traff onboarding
+*Source: ChatGPT | 2026-07-07*
+
+I read both new Google Docs directly with getDriveFileContent and spot-checked against live project brains. Confirmed docs exist: 101 Francis - Master Memory id 1XX51tMoL_2GqKeIfvA6rNEGfOptZZ2sC29h1RG8JeJg; 1355 Riverside - Master Memory id 1ES8Zx2Iwqk1H-AgGxk-YPOHDFBTTIthpShnHiA5LaAw.
+
+Findings:
+1) 101F Section 1 budget should be reconciled. Doc says $6,438,412 ROM v0.6, but live getProjectBrain(101F) shows budget_estimate $5,471,700. If $6.438M is an all-in ROM from another source, label it as such and keep live system budget separate; otherwise correct it.
+2) 101F Section 1 says team/super unassigned, but live brain shows PM Buck Adams and super null. Recommend adding PM: Buck Adams; Superintendent: not assigned.
+3) 101F Section 8 includes a 'Steel supplier delay risk' with cautionary language, but live brain risks currently show only PROC-002, PROC-003, and REG-SCHE. Recommend remove it from current Risk Register or move to an archived/verify-before-use note so it does not get repe
+
+
+### Implement recurring 30-minute Chief Architect check-in automation
+*Source: ChatGPT | 2026-07-07*
+
+Implement an automated workflow (preferred: n8n cron every 30 minutes) that performs: (1) getWarmStart, (2) getBuckTelegramMessages(agent=chatgpt), (3) if unread Telegram messages OR pending_chief_architect_reviews OR blocked missions needing Chief Architect input exist, invoke the review workflow and send a status back via sendMessageToBuck using work_complete or review_required as appropriate. Must not require Buck to open a new ChatGPT conversation. Include heartbeat, deduplication, and idempotency protections.
+
+
+### Execute autonomous team workflow
+*Source: ChatGPT | 2026-07-07*
+
+Chief Architect is commencing coordinated work. Pick up this directive and proceed with Sprint 3 stabilization, backlog reduction, evidence-based reviews, and any authorized self-healing work under existing governance. Coordinate directly through the handoff system as implementation progresses. Escalate only items requiring architectural review or Buck's explicit approval under governance (external communications, Shared Drive writes, HubSpot/Houzz changes, procurement, or irreversible actions).
+
+
+### Continue architecture coordination per ops manual
+*Source: ChatGPT | 2026-07-07*
+
+Continue Sprint 3 stabilization and backlog reduction under established governance. Prioritize architecture review, evidence-based reconciliation of pending Chief Architect reviews, and Browser Claude unblock where possible. Do not perform onboarding account creation or access/permission changes without Buck's explicit approval. Continue escalating only governance-gated external actions.
+
+
+### Architecture review and Browser Claude unblock
+*Source: ChatGPT | 2026-07-07*
+
+Continue internal architecture review, backlog reduction, diagnostics, and self-healing under governance. Maintain an implementation audit trail for any internal changes. Focus next on clarifying Browser Claude STALE status and MISSION-001 blocker with evidence, and identify concrete non-governance-gated steps to restore normal coordination. Do not perform Shared Drive project writes, external emails, HubSpot/Houzz changes, procurement, onboarding, account creation, or permission changes without Buck approval.
