@@ -2,7 +2,7 @@
 BTW-4 Tests — Project Brain Extended Memory
 Covers: timeline, event logging, conversations, document links, daily summary
 """
-import requests, json
+import requests, json, os
 
 BASE = "http://localhost:8000/api/v1/services"
 H = {"X-API-Key": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"}
@@ -64,6 +64,28 @@ d2 = r2.json()
 check("Logged event appears in timeline", any(
     "Test decision" in e["title"] for e in d2["events"]
 ))
+
+# Clean up - this test creates a real row in 64 Eastwood's real project_events table
+# via a real POST with no corresponding delete endpoint. Found 2026-07-07 that every
+# run left a permanent "Test decision logged by BTW-4 test suite" row behind, and it
+# kept re-tripping drift-check's test_data_in_real_project detector after each
+# manual cleanup. Delete directly via DB rather than leaving it for the detector.
+event_id = d.get("event", {}).get("id")
+if event_id:
+    import psycopg2
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+    conn = psycopg2.connect(
+        host=os.environ.get("POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("POSTGRES_PORT", 5432)),
+        dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+        user=os.environ.get("POSTGRES_USER", "hci_admin"),
+        password=os.environ.get("POSTGRES_PASSWORD", ""),
+    )
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM project_events WHERE id = %s", (event_id,))
+    conn.commit()
+    conn.close()
 
 # ── 3. Conversation Memory ────────────────────────────────────────────────────
 print("\n3. Conversation Memory")

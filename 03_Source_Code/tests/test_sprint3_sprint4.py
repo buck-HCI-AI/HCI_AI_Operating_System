@@ -183,6 +183,32 @@ class TestMissionsAPI(unittest.TestCase):
 class TestApprovalFlow(unittest.TestCase):
     TEST_EXEC_ID = "EXEC-TEST-001"
 
+    @classmethod
+    def tearDownClass(cls):
+        # setUp() resets EXEC-TEST-001 to 'pending' before every test method, so
+        # whichever test happens to run last leaves it pending forever unless it
+        # personally resolves it. Found 2026-07-07 sitting real and pending in
+        # executive_inbox, surfacing as a fake client/PM decision. Force-resolve
+        # both fixture rows once, after the whole class finishes, regardless of
+        # execution order.
+        import psycopg2
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+        conn = psycopg2.connect(
+            host=os.environ.get("POSTGRES_HOST", "localhost"),
+            port=int(os.environ.get("POSTGRES_PORT", 5432)),
+            dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+            user=os.environ.get("POSTGRES_USER", "hci_admin"),
+            password=os.environ.get("POSTGRES_PASSWORD", ""),
+        )
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE executive_inbox SET status='resolved', resolved_at=NOW(), resolved_by='test_suite'
+                WHERE exec_id IN ('EXEC-TEST-001','EXEC-TEST-002') AND status='pending'
+            """)
+            conn.commit()
+        conn.close()
+
     def setUp(self):
         """Seed a fresh test inbox item."""
         import psycopg2
@@ -269,6 +295,28 @@ class TestApprovalFlow(unittest.TestCase):
         d, code = req("POST", "/api/v1/executive/defer/EXEC-TEST-002")
         ok = code == 200 or (isinstance(d, dict) and "deferred" in str(d))
         record("Defer via POST (no token, internal)", ok)
+
+        # Clean up — deferring intentionally creates a NEW re-queued row (real product
+        # behavior: "come back to this in a week") with a fresh random exec_id like
+        # EXEC-D<hex>, title "[DEFERRED] Defer test". Found 2026-07-07 that every test
+        # run left one of these sitting real and pending in executive_inbox, where it
+        # would surface as a fake client/PM decision in /pm/{id}/weekly. Delete the
+        # most recent one this run just created.
+        conn2 = psycopg2.connect(
+            host=os.environ.get("POSTGRES_HOST", "localhost"),
+            port=int(os.environ.get("POSTGRES_PORT", 5432)),
+            dbname=os.environ.get("POSTGRES_DB", "hci_os"),
+            user=os.environ.get("POSTGRES_USER", "hci_admin"),
+            password=os.environ.get("POSTGRES_PASSWORD", ""),
+        )
+        with conn2.cursor() as cur:
+            cur.execute("""
+                DELETE FROM executive_inbox
+                WHERE title = '[DEFERRED] Defer test'
+                AND created_at > NOW() - INTERVAL '1 minute'
+            """)
+            conn2.commit()
+        conn2.close()
         self.assertTrue(ok)
 
 
@@ -485,7 +533,14 @@ def main():
             except Exception as e:
                 name = str(test).split(" ")[0]
                 RESULTS.append({"test": name, "status": "FAIL", "detail": str(e)[:80]})
-                print(f"  ❌ {name}: {str(e)[:80]}")
+        # test.debug() runs each test method individually and bypasses
+        # setUpClass/tearDownClass entirely (a real unittest quirk, not obvious) -
+        # found 2026-07-07 that TestApprovalFlow's tearDownClass (added to clean up
+        # its own EXEC-TEST-001/002 fixture rows) was silently never being called
+        # by this runner, so the "fix" did nothing and the rows kept leaking.
+        # Call it explicitly here since this runner doesn't use suite.run()/TextTestRunner.
+        if hasattr(suite_class, "tearDownClass"):
+            suite_class.tearDownClass()
 
     total  = len(RESULTS)
     passed = sum(1 for r in RESULTS if r["status"] == "PASS")

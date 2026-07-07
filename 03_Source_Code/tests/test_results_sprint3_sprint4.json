@@ -1,6 +1,6 @@
 {
   "suite": "Sprint 3 & 4",
-  "run_at": "2026-07-06T23:09:26.874709+00:00",
+  "run_at": "2026-07-07T13:50:47.069239+00:00",
   "summary": {
     "total": 35,
     "passed": 35,
@@ -51,7 +51,7 @@
     {
       "test": "Driving brief text",
       "status": "PASS",
-      "detail": "chars=744"
+      "detail": "chars=634"
     },
     {
       "test": "Driving brief is markdown-free",
@@ -71,12 +71,12 @@
     {
       "test": "Morning brief structure",
       "status": "PASS",
-      "detail": "inbox_count=2"
+      "detail": "inbox_count=0"
     },
     {
       "test": "Blocked missions endpoint",
       "status": "PASS",
-      "detail": "blocked=2"
+      "detail": "blocked=1"
     },
     {
       "test": "Create/update mission",
@@ -121,7 +121,7 @@
     {
       "test": "Escalation check runs",
       "status": "PASS",
-      "detail": "fired=3"
+      "detail": "fired=1"
     },
     {
       "test": "approval_required endpoint works",

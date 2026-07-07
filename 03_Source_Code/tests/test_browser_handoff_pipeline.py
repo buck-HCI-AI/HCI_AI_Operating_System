@@ -160,12 +160,16 @@ for fname, required_nodes in [
         for req in required_nodes:
             check(f"  Has '{req}' node", any(req in n for n in node_names))
         check(f"  Has ntfy notification", "ntfy.sh/hci-executive" in str(wf))
-        check(f"  Has HUBSPOT_API_KEY ref", "HUBSPOT_API_KEY" in str(wf))
+        # 2026-07-07: was checking for a literal `$env.HUBSPOT_API_KEY` reference,
+        # which never actually worked - n8n's HTTP Request node blocks $env access
+        # in expressions ("[ERROR: access to env vars denied]"), confirmed live.
+        # Fixed to a real n8n HTTP Header Auth credential; check for that instead.
+        check(f"  Has HubSpot credential attached", "HubSpot API Key" in str(wf) and "genericCredentialType" in str(wf))
 
 # AO-HS-010 specific: Claude API
 wf010 = json.loads((WF_DIR / "AUTO-AI-DEAL-SUMMARIZATION.json").read_text())
 check("AI summarization calls Claude Haiku", "claude-haiku" in str(wf010))
-check("AI summarization uses ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY" in str(wf010))
+check("AI summarization uses Anthropic credential", "Anthropic API Key" in str(wf010) and "genericCredentialType" in str(wf010))
 
 # ── 7. COI Workflow Logic ──────────────────────────────────────
 print("\n7. COI Workflow Logic")

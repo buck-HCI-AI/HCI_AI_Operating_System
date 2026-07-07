@@ -81,6 +81,7 @@ check("MS-02-03", "Bid import returns ROI metrics", "roi" in d)
 bid_payload_queue = dict(bid_payload, dry_run=False)
 d, s = req("POST", "/mvp/projects/101F/bids/import", bid_payload_queue)
 check("MS-02-04", "Bid import with dry_run=False queues for approval", s == 200 and d.get("mode") == "queued_for_approval")
+bid_queue_id = d.get("queue_result", {}).get("queue_id")
 
 
 print("\n── Daily Log + Field Intelligence (MVP Workflow 3) ─────────────────────")
@@ -105,6 +106,7 @@ check("MS-03-04", "Daily log ROI metrics returned", "roi" in d)
 log_queue = dict(log_payload, dry_run=False)
 d, s = req("POST", "/mvp/projects/1355R/daily-log", log_queue)
 check("MS-03-05", "Daily log with dry_run=False queues for approval", s == 200 and d.get("mode") == "queued_for_approval")
+log_queue_id = d.get("queue_result", {}).get("queue_id")
 
 
 print("\n── PM Weekly Review (MVP Workflow 4) ───────────────────────────────────")
@@ -229,6 +231,17 @@ check("SC-01-01", "All write actions are in approval queue (not silently written
 check("SC-01-02", "All pending items have rollback_path specified",
       all(item.get("rollback_path") for item in d.get("items", [])) if d.get("items") else True)
 check("SC-01-03", "No live DB write occurred without queue entry (by design)", True)
+
+# Clean up — this test creates 2 real queued_for_approval rows every run (bid +
+# daily log) but only exercises approve/reject on one of them in the AQ-01 section
+# above. Found 2026-07-07 that the other one was left pending forever, and repeated
+# runs piled up 8 stale duplicate rows in the real approval_queue table. Reject both
+# by their captured queue_id now, after SC-01 has already used them as evidence that
+# writes go through the queue (idempotent no-op if already resolved above).
+for cleanup_id in (bid_queue_id, log_queue_id):
+    if cleanup_id:
+        req("POST", f"/services/approval-queue/items/{cleanup_id}/reject",
+            {"rejected_by": "test_suite", "reason": "Test run cleanup"})
 
 
 print(f"""

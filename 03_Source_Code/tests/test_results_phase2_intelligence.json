@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-07-06T17:06:44.179553",
+  "run_at": "2026-07-07T07:48:08.059560",
   "passed": 38,
   "failed": 0,
   "total": 38,
@@ -28,7 +28,7 @@
         },
         {
           "check": "has safety",
-          "pass": "Fall Protection \u2014 inspect all harnesses before use"
+          "pass": "Electrical Safety \u2014 lock-out/tag-out procedures"
         },
         {
           "check": "has procurement",

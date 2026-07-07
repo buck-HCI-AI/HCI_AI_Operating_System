@@ -278,6 +278,20 @@ test("BL-QUEUE-01: live run for div 16 queues at least 1 upload item",    test_l
 test("BL-QUEUE-02: queued item visible in approval-queue pending list",    test_queued_item_visible_in_approval_queue)
 test("BL-QUEUE-03: execute without approval returns 400 (safety control)", test_execute_without_approval_fails)
 
+def test_cleanup_queued_bid_leveling_items():
+    """test_live_run_queues_items creates a real live approval-queue row every run
+    and nothing above consumes it - found 2026-07-07 that repeated runs left 3
+    duplicate '1355 Riverside Div 16 bid leveling Excel' rows sitting pending in
+    the real queue. Reject anything this suite queued so it doesn't pile up."""
+    s, d = req("GET", "/api/v1/services/approval-queue/items?status=pending")
+    items = [i for i in d.get("items", []) if i.get("workflow") == "bid_leveling"]
+    for item in items:
+        req("POST", f"/api/v1/services/approval-queue/items/{item['id']}/reject",
+            {"rejected_by": "test_suite", "reason": "Test run cleanup"})
+    return True, f"cleaned up {len(items)} bid_leveling queue item(s)"
+
+test("BL-QUEUE-04: cleanup - reject queued items so they don't leak into real queue", test_cleanup_queued_bid_leveling_items)
+
 
 # ── Results ────────────────────────────────────────────────────────────────────
 total  = len(results)
