@@ -303,13 +303,17 @@ from fastapi.responses import StreamingResponse as _StreamResp, Response as _Res
 
 _MCP_BACKEND = "http://127.0.0.1:8080"
 
-@app.api_route("/mcp", methods=["GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"],
-               include_in_schema=False)
-@app.api_route("/mcp/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"],
-               include_in_schema=False)
-async def _mcp_proxy(request: _Req, path: str = ""):
-    """Transparent proxy — forwards all /mcp/* traffic to MCP server on :8080."""
-    target_url = f"{_MCP_BACKEND}/mcp/{path}" if path else f"{_MCP_BACKEND}/mcp"
+# FastMCP mounts its OAuth handler routes (register/authorize/token/revoke) at the
+# ROOT of the app it builds on :8080 — not under /mcp/ — even though the discovery
+# metadata (issuer_url=".../mcp") advertises them at ".../mcp/register" etc, since
+# that's the public resource URL we chose. Found 2026-07-07: a public request to
+# ".../mcp/register" was being forwarded to ":8080/mcp/register" (404, doesn't
+# exist there) instead of ":8080/register" (where it actually lives), so Claude's
+# connector could discover the OAuth endpoints but never actually reach them.
+_MCP_OAUTH_SUBPATHS = {"register", "authorize", "token", "revoke"}
+
+
+async def _proxy_to_mcp_backend(request: _Req, target_url: str) -> _Resp:
     if request.url.query:
         target_url += f"?{request.url.query}"
     fwd_headers = {k: v for k, v in request.headers.items()
@@ -336,7 +340,35 @@ async def _mcp_proxy(request: _Req, path: str = ""):
         return _Resp(content=b'{"error":"MCP server offline","hint":"Check launchd com.hci.mcp-server"}',
                      status_code=503, media_type="application/json")
 
-logger.info("MCP proxy mounted at /mcp → port 8080")
+
+@app.api_route("/mcp", methods=["GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"],
+               include_in_schema=False)
+@app.api_route("/mcp/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"],
+               include_in_schema=False)
+async def _mcp_proxy(request: _Req, path: str = ""):
+    """Transparent proxy — forwards /mcp protocol traffic to :8080/mcp, and OAuth
+    handler sub-paths (register/authorize/token/revoke) to :8080's root instead,
+    matching where FastMCP actually mounted them."""
+    top_segment = path.split("/", 1)[0] if path else ""
+    if top_segment in _MCP_OAUTH_SUBPATHS:
+        target_url = f"{_MCP_BACKEND}/{path}"
+    else:
+        target_url = f"{_MCP_BACKEND}/mcp/{path}" if path else f"{_MCP_BACKEND}/mcp"
+    return await _proxy_to_mcp_backend(request, target_url)
+
+
+@app.api_route("/.well-known/oauth-authorization-server",
+               methods=["GET","HEAD","OPTIONS"], include_in_schema=False)
+async def _mcp_oauth_metadata(request: _Req):
+    return await _proxy_to_mcp_backend(request, f"{_MCP_BACKEND}/.well-known/oauth-authorization-server")
+
+
+@app.api_route("/.well-known/oauth-protected-resource/mcp",
+               methods=["GET","HEAD","OPTIONS"], include_in_schema=False)
+async def _mcp_oauth_resource_metadata(request: _Req):
+    return await _proxy_to_mcp_backend(request, f"{_MCP_BACKEND}/.well-known/oauth-protected-resource/mcp")
+
+logger.info("MCP proxy mounted at /mcp → port 8080 (including OAuth register/authorize/token/revoke routing fix)")
 
 logger.info("HCI AI API v%s started — %d route groups + 21 intelligence services + MCP + Phase 2 Intelligence Layer",
             settings.app_version, 15)

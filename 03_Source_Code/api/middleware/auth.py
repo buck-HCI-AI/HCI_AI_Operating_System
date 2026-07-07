@@ -12,7 +12,13 @@ from starlette.responses import JSONResponse
 OPEN_PATHS = {"/health", "/docs", "/redoc", "/openapi.json", "/api/v1/health"}
 
 # Paths that require API key (in addition to /api/v1/*)
-PROTECTED_PREFIXES = ("/api/v1", "/mcp")
+# /mcp deliberately excluded 2026-07-07: it now has its own real OAuth 2.0 flow
+# (dynamic client registration + bearer tokens via mcp_server/oauth_provider.py).
+# Requiring our internal X-API-Key on /mcp/register etc defeated the entire point
+# of OAuth - a new client can't have a pre-shared secret before it even registers.
+# The /mcp protocol endpoint itself still enforces its own auth via FastMCP's
+# bearer-token verification, so this isn't leaving it open.
+PROTECTED_PREFIXES = ("/api/v1",)
 
 # These prefixes skip key check when ?token= is present (mobile one-tap approvals)
 TOKEN_AUTH_PREFIXES = (

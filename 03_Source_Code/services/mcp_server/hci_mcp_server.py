@@ -19,13 +19,30 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 
 import certifi
 from mcp.server.fastmcp import FastMCP
+from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
+
+from oauth_provider import HCIOAuthProvider
 
 HCI_API  = "http://localhost:8000"
 HCI_KEY  = os.environ["HCI_API_KEY"]
 SSL_CTX  = ssl.create_default_context(cafile=certifi.where())
 
+_MCP_PUBLIC_URL = "https://speculate-armband-retinal.ngrok-free.dev/mcp"
+
+_AUTH_SETTINGS = AuthSettings(
+    issuer_url=_MCP_PUBLIC_URL,
+    resource_server_url=_MCP_PUBLIC_URL,
+    client_registration_options=ClientRegistrationOptions(
+        enabled=True, valid_scopes=["hci"], default_scopes=["hci"],
+    ),
+    revocation_options=RevocationOptions(enabled=True),
+)
+_OAUTH_PROVIDER = HCIOAuthProvider()
+
 mcp = FastMCP(
     "HCI AI Operating System",
+    auth_server_provider=_OAUTH_PROVIDER,
+    auth=_AUTH_SETTINGS,
     instructions=(
         "You are connected to the HCI AI Operating System for Hendrickson Construction. "
         "You have full access to: bid tracking (all 3 projects, all divisions), vendor registry, "
@@ -1187,6 +1204,8 @@ def get_asgi_app():
         instructions=mcp._mcp_server.instructions,
         streamable_http_path="/",
         host="0.0.0.0",
+        auth_server_provider=_OAUTH_PROVIDER,
+        auth=_AUTH_SETTINGS,
     )
     # Copy all registered tools to the mount instance
     for _name, _tool in mcp._tool_manager._tools.items():
