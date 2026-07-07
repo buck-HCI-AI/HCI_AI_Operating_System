@@ -408,6 +408,86 @@ class BidLevelingService:
         return result
 
     @classmethod
+    def sync_division_summary_to_sheet(cls, sheet_id: str, divisions_merged: dict, token: str) -> dict:
+        """
+        Writes computed leveling results (status/recommended/outstanding) back to the
+        HCI Division Summary tab for every division whose bids came from a real Drive
+        scan this run. Added 2026-07-07 per Buck's direct instruction: the Sheet is the
+        tracker his team actually looks at, and bid-leveling had only ever read it,
+        never updated it - a run could correctly compute a real leveling result and the
+        Sheet would still show stale/blank status, defeating the point of "automation."
+
+        Deliberately narrow in scope: only touches the three system-computed columns
+        (LEVELING STATUS, RECOMMENDED, OUTSTANDING). Never writes BUDGET, RISK, or NEXT
+        ACTION - those are human-owned narrative fields, not something a bid-leveling
+        run has any business overwriting. Only updates rows that already exist in the
+        Sheet (matched by division number in column A) - never inserts new rows, since
+        getting row insertion wrong could silently shift every row below it.
+        """
+        import re
+        rows, tab_name = [], None
+        for name in SHEET_NAMES["division_summary"]:
+            candidate = _sheets_get(sheet_id, f"{name}!A1:Z2000", token)
+            if candidate:
+                rows, tab_name = candidate, name
+                break
+        if not rows or not tab_name:
+            return {"updated": [], "skipped": [], "error": "division_summary tab not found or empty"}
+
+        header_idx = None
+        for i, row in enumerate(rows):
+            if row and any("DIV" in str(c).upper() for c in row[:2]):
+                header_idx = i
+                break
+        if header_idx is None or not tab_name:
+            return {"updated": [], "skipped": [], "error": "could not locate header row or tab name"}
+
+        headers = [str(h).strip().upper() for h in rows[header_idx]]
+
+        def col(names):
+            for n in names:
+                for i, h in enumerate(headers):
+                    if n.upper() in h:
+                        return i
+            return None
+
+        col_status = col(["LEVELING STATUS", "STATUS"])
+        col_rec    = col(["RECOMMENDED", "LOW BID"])
+        col_out    = col(["OUTSTANDING"])
+
+        updated, skipped = [], []
+        for row_offset, row in enumerate(rows[header_idx + 1:]):
+            if not row or not str(row[0]).strip():
+                continue
+            m = re.search(r'\b(\d{1,2})\b', str(row[0]).strip())
+            if not m:
+                continue
+            div = m.group(1).zfill(2)
+            div_data = divisions_merged.get(div)
+            if not div_data or div_data.get("source") != "drive":
+                continue
+            summary = div_data.get("summary") or {}
+            if not summary.get("leveling_status"):
+                skipped.append(div)
+                continue
+
+            sheet_row_num = header_idx + 1 + row_offset + 1 + 1  # 1-indexed, +1 for header itself
+            for col_idx, key in ((col_status, "leveling_status"), (col_rec, "recommended"), (col_out, "outstanding")):
+                if col_idx is None:
+                    continue
+                value = summary.get(key, "")
+                if not value:
+                    continue
+                cell_range = f"{tab_name}!{get_column_letter(col_idx + 1)}{sheet_row_num}"
+                try:
+                    _sheets_update(sheet_id, cell_range, [[value]], token)
+                except Exception as e:
+                    skipped.append(f"{div} ({key}: {e})")
+                    continue
+            updated.append(div)
+        return {"updated": updated, "skipped": skipped}
+
+    @classmethod
     def read_package_detail(cls, sheet_id: str, token: str) -> dict:
         """
         Reads Bid Leveling Detail. Returns dict keyed by div_num → list of packages:
@@ -655,14 +735,29 @@ class BidLevelingService:
 
     @classmethod
     def ensure_bids_folder(cls, project_id: int, project_drive_folder_id: str,
-                            project_name: str, token: str, dry_run: bool) -> dict:
+                            project_name: str, token: str, dry_run: bool,
+                            known_bid_folder_id: str = None) -> dict:
         """
         Finds or creates the {Project} 00_Bids/ folder under the project Drive folder.
         Returns {"folder_id": str, "created": bool, "action": str}
+
+        Fixed 2026-07-07: this used to short-circuit on the hardcoded
+        KNOWN_BIDS_FOLDERS dict below, which had 101F pinned to a folder ID from an
+        earlier Drive reorganization. The real, current folder (with the actual
+        14_Roofing/13_Insulation/5_Waterproofing structure) had since moved to a new
+        ID recorded in projects.bid_folder_id - but this function never looked at that
+        column, so every 101F bid-leveling run silently read/wrote the stale orphaned
+        folder while real incoming bid files landed in the folder Buck actually looks
+        at. Found live: a roofing bid Buck could see in Drive was invisible to bid
+        leveling entirely. known_bid_folder_id (sourced from projects.bid_folder_id,
+        the authoritative value) now takes precedence over the hardcoded dict.
         """
+        if known_bid_folder_id:
+            return {"folder_id": known_bid_folder_id, "created": False,
+                    "action": "from_db_config"}
         if project_id in KNOWN_BIDS_FOLDERS:
             return {"folder_id": KNOWN_BIDS_FOLDERS[project_id], "created": False,
-                    "action": "found_existing"}
+                    "action": "found_existing_hardcoded_fallback"}
 
         # Check if it already exists in Drive
         existing = _drive_list(project_drive_folder_id, token)
@@ -847,7 +942,8 @@ class BidLevelingService:
         # Folder setup — skip if no drive_folder (dry_run only)
         if drive_folder:
             bids_folder_result = cls.ensure_bids_folder(
-                project_id, drive_folder, project_name, token_drive, dry_run
+                project_id, drive_folder, project_name, token_drive, dry_run,
+                known_bid_folder_id=config.get("bid_folder_id")
             )
             bids_folder_id = bids_folder_result["folder_id"]
             div_folders = cls.ensure_division_folders(
@@ -933,6 +1029,19 @@ class BidLevelingService:
         if not dry_run and (bids_folder_result.get("created") or total_bids > 0):
             _log_roi(project_id, project_name, len(divisions_merged), total_bids, files_generated)
 
+        # Write real leveling results back to the Sheet - added 2026-07-07 per Buck's
+        # direct instruction. Prior to this, run_bid_leveling only ever READ the Sheet;
+        # a run could correctly compute a real leveling result from Drive-sourced bids
+        # and the tracker Buck's team actually looks at would still show stale/blank
+        # status. Only touches computed status/recommended/outstanding columns, never
+        # budget/risk/next-action (human-owned narrative fields).
+        sheet_sync_result = None
+        if not dry_run:
+            try:
+                sheet_sync_result = cls.sync_division_summary_to_sheet(sheet_id, divisions_merged, token_sheets)
+            except Exception as e:
+                sheet_sync_result = {"error": str(e)}
+
         return {
             "project":            project_name,
             "project_id":         project_id,
@@ -949,6 +1058,7 @@ class BidLevelingService:
             "division_folders":   div_folders,
             "excel_actions":      excel_actions,
             "queued_items":       queued_items,
+            "sheet_sync":         sheet_sync_result,
             "divisions":          divisions_merged if dry_run else None,
             "data_gaps_by_division": {
                 d: v["data_gaps"] for d, v in divisions_merged.items() if v.get("data_gaps")
