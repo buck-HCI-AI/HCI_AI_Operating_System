@@ -20,13 +20,23 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=America/Denver
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Workflows reference these via $env.HUBSPOT_API_KEY / $env.ANTHROPIC_API_KEY -
+      # found 2026-07-06 the n8n container never had them set, so every workflow
+      # using them got a MALFORMED_TOKEN auth failure on every single run.
+      - HUBSPOT_API_KEY=${HUBSPOT_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # WAL mode does far fewer fsync/lock operations than the default rollback
       # journal — mitigates the recurring SQLITE_IOERR seen with SQLite over a
       # host bind-mount on Docker Desktop for macOS (~/.n8n below is a bind
       # mount, not a native Docker volume, which is the documented root cause).
       - DB_SQLITE_ENABLE_WAL=true
     volumes:
-      - ~/.n8n:/home/node/.n8n
+      # Migrated 2026-07-07: was a host bind-mount (~/.n8n), the documented
+      # root cause of recurring SQLITE_IOERR (WAL mode alone didn't stop it
+      # recurring). Native Docker volumes go through Docker Desktop's normal
+      # block storage instead of macOS's gRPC-FUSE/VirtioFS file-sharing path.
+      # Original ~/.n8n left on disk untouched as a fallback copy.
+      - n8n_data:/home/node/.n8n
     networks:
       - hci_network
     healthcheck:
@@ -98,6 +108,8 @@ volumes:
   postgres_data:
   qdrant_data:
   redis_data:
+  n8n_data:
+    name: n8n_data
 
 networks:
   hci_network:
