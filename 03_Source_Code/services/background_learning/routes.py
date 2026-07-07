@@ -41,6 +41,7 @@ def service_info():
             "GET  /records":              "Query records (filter by status/source/project)",
             "POST /records/{id}/advance": "Advance record to next pipeline status",
             "POST /records/{id}/classify":"Auto-classify and extract intelligence candidates",
+            "POST /classify/all":         "Batch-classify every Discovered/Indexed record",
         }
     }
 
@@ -112,3 +113,9 @@ def classify_record(record_id: int):
     if "error" in result:
         raise HTTPException(400, result["error"])
     return result
+
+
+@router.post("/classify/all")
+def classify_all():
+    """Batch-advance every Discovered/Indexed record through classify/extract."""
+    return BackgroundLearningService.classify_all_pending()

@@ -327,6 +327,38 @@ class BackgroundLearningService:
             "summary": f"{doc_type.replace('_', ' ').title()} document from {rec['source_system']}",
         })
 
+    @classmethod
+    def classify_all_pending(cls, limit: int = 1000) -> dict:
+        """Batch-run extract_and_classify over every Discovered/Indexed record.
+        extract_and_classify is pure heuristic classification (no external calls),
+        so this is cheap and safe to run over the whole backlog at once."""
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM background_learning_records "
+                    "WHERE status IN (%s, %s) ORDER BY id LIMIT %s",
+                    (STATUS_DISCOVERED, STATUS_INDEXED, limit)
+                )
+                ids = [r["id"] for r in cur.fetchall()]
+
+        results = {"Extracted": 0, "Candidate Created": 0, "Human Review Needed": 0, "errors": 0}
+        for record_id in ids:
+            try:
+                r = cls.extract_and_classify(record_id)
+                status = r.get("status")
+                if status == STATUS_EXTRACTED:
+                    results["Extracted"] += 1
+                elif status == STATUS_CANDIDATE_CREATED:
+                    results["Candidate Created"] += 1
+                elif status == STATUS_HUMAN_REVIEW_NEEDED:
+                    results["Human Review Needed"] += 1
+                else:
+                    results["errors"] += 1
+            except Exception:
+                results["errors"] += 1
+        results["processed"] = len(ids)
+        return results
+
     # ── Queries ────────────────────────────────────────────────────────────────
 
     @classmethod
@@ -382,4 +414,8 @@ class BackgroundLearningService:
         }
         total = sum(r.get("discovered", 0) for r in results.values() if isinstance(r, dict))
         results["total_discovered"] = total
+        # Discovery alone left 446 records stuck at "Discovered" indefinitely -
+        # nothing ever advanced them to Classified/Extracted. Run that step now,
+        # every time, so the backlog can't silently regrow.
+        results["classification"] = cls.classify_all_pending()
         return results
