@@ -114,7 +114,7 @@ def extract_bid_with_gemini(pdf_bytes: bytes, vendor_name: str,
             model=GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
-                types.Part.from_text(prompt),
+                types.Part.from_text(text=prompt),
             ]
         )
         text = response.text.strip()

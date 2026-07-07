@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from bid_leveling_service import BidLevelingService
+from hubspot_bid_sync import sync_project_hubspot_bids
 
 router = APIRouter()
 
@@ -234,5 +235,26 @@ def write_sheet_range(req: WriteSheetRequest):
     """
     try:
         return BidLevelingService.write_sheet_range(req.sheet_id, req.range_name, req.values)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+class SyncHubSpotBidsRequest(BaseModel):
+    dry_run: bool = True
+    csi_division: Optional[str] = None  # e.g. "06" — None means every division-level deal
+
+
+@router.post("/projects/{project_id}/sync-hubspot")
+def sync_hubspot_bids(project_id: int, req: SyncHubSpotBidsRequest):
+    """
+    Pulls bid attachments off each division-level HubSpot deal's associated emails
+    and places them into 00_Bids/{div}/{vendor}/ in Drive, so the existing Drive scan
+    (run_bid_leveling with scan_drive=True) picks them up on its next run. Requires
+    the HubSpot Private App to have crm.objects.emails.read + sales-email-read scopes -
+    without them every division comes back with an explicit scope-missing error rather
+    than silently finding nothing.
+    """
+    try:
+        return sync_project_hubspot_bids(project_id, csi_division=req.csi_division, dry_run=req.dry_run)
     except Exception as e:
         raise HTTPException(500, str(e))
