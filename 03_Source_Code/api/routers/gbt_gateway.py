@@ -8,7 +8,7 @@ Architecture:  ChatGPT → ngrok → FastAPI Gateway → internal HCI services �
 Prefix: /gateway
 Auth:   X-API-Key header  OR  ?api_key= query param
 """
-import os, uuid, time, sys, json
+import os, uuid, time, sys, json, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import psycopg2, psycopg2.extras, requests
@@ -18,8 +18,24 @@ from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, 
 from pydantic import BaseModel
 from typing import Optional, Any, Dict
 from datetime import datetime, timezone, timedelta, date
+from zoneinfo import ZoneInfo
 
 router = APIRouter(prefix="/gateway", tags=["gbt-gateway"])
+
+BUCK_TZ = ZoneInfo("America/Denver")  # Aspen, CO
+
+
+def _buck_local_str(dt: datetime = None) -> str:
+    """Format a timestamp in Buck's local timezone for anything he actually reads
+    (Telegram, reports) — internal storage stays UTC, this is a display-only helper.
+    Found 2026-07-07: every timestamp system-wide was raw UTC with no local
+    conversion anywhere, so every message Buck saw was in the wrong timezone."""
+    if dt is None:
+        dt = datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    local = dt.astimezone(BUCK_TZ)
+    return local.strftime("%Y-%m-%d %-I:%M %p %Z")
 
 _INTERNAL_BASE = "http://localhost:8000/api/v1"
 _INTERNAL_KEY  = os.environ.get("HCI_API_KEY", "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6")
@@ -2337,38 +2353,20 @@ def send_email_now(req: EmailSendRequest, request: Request):
 
 @router.post("/email/draft/{draft_id}/send")
 def send_existing_draft(draft_id: str, request: Request):
-    """Send a previously created Outlook draft — but only if an ai_messages record shows
-    Buck already approved (or completed) an email_send request for this exact draft_id.
-    Otherwise refuses. This is the manual/recovery path; the normal path is Buck tapping
-    APPROVE in Telegram, which sends automatically via _handle_buck_command."""
+    """Disabled 2026-07-07 per Buck's direct instruction: no agent or automated path may
+    ever trigger a real email send. Drafts stay in Buck's own Outlook Drafts folder; he
+    sends them himself once he's actually read the content. (Previously this was the
+    "manual/recovery" send path, callable once a Telegram APPROVE had fired - but an
+    email to an external party went out this way and could not be recalled, since the
+    recipient wasn't on HCI's Exchange org. See _handle_buck_command's APPROVE handler
+    for the corresponding fix on the Telegram side.)"""
     _require_key(request)
     t0 = time.time()
-    try:
-        with _pg() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT id FROM ai_messages
-                    WHERE related_file = %s AND approval_type = 'email_send'
-                      AND status IN ('RECEIVED', 'COMPLETE')
-                    ORDER BY id DESC LIMIT 1
-                """, (draft_id,))
-                approved = cur.fetchone()
-        if not approved:
-            return _response("/email/draft/send", {},
-                              errors=["No approved email_send request found for this draft_id — "
-                                      "call POST /email/send first and wait for Buck's Telegram approval"],
-                              start=t0)
-        ok, err = _send_approved_draft(draft_id)
-        if not ok:
-            return _response("/email/draft/send", {}, errors=[err], start=t0)
-        _log("/email/draft/send", "browser_claude", "outlook", "ok",
-             round((time.time()-t0)*1000), str(uuid.uuid4()), f"Sent draft {draft_id[:20]}")
-        return _response("/email/draft/send", {
-            "status": "sent", "draft_id": draft_id,
-            "note": "Draft sent and saved to Sent Items.",
-        }, start=t0)
-    except Exception as e:
-        return _response("/email/draft/send", {}, errors=[str(e)], start=t0)
+    return _response("/email/draft/send", {},
+                      errors=["Disabled by standing policy: emails must be sent manually by Buck from "
+                              "his own Outlook Drafts folder, never by an automated/agent-triggered call. "
+                              f"Draft {draft_id[:20]} is waiting in Drafts — open Outlook to send it."],
+                      start=t0)
 
 
 # ── Agent Handoff ─────────────────────────────────────────────────────────────
@@ -3401,6 +3399,60 @@ def system_drift_check():
             })
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Backlog-vs-code drift check errored: {e}"})
+
+    # 18. connector_sync_state honesty/staleness - found 2026-07-07 the hard way.
+    #     Two stacked bugs made every real connector (houzz, hubspot) invisible to
+    #     every prior audit: (a) BaseConnector._update_sync_states() stamped
+    #     status='idle'/last_synced_at=NOW() unconditionally, with no reference to
+    #     whether persist() actually wrote a row - a 100%-failing sync (HubSpot's
+    #     column-name mismatch, 165/165 persist errors) still reported clean; and
+    #     (b) that same function's own UPSERT was itself broken (`ON CONFLICT DO
+    #     UPDATE` with no conflict target - invalid Postgres syntax, threw on every
+    #     call, caught by its own try/except and only logged to a file nobody was
+    #     tailing) so connector_sync_state rows were frozen at whatever timestamp
+    #     they got on first insert, for every connector, since this code was
+    #     written. Every earlier audit checked connector_registry.last_indexed and
+    #     sync_age_hours - the exact columns this bug made permanently unreliable -
+    #     so a broken connector and a healthy one were indistinguishable from the
+    #     audit's point of view. Both are now fixed at the source (base_connector.py);
+    #     this check is the tripwire so a future silent regression in a specific
+    #     connector's persist logic (like the HubSpot column mismatch) surfaces
+    #     within one drift-check cycle instead of 12+ days.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT connector_name, entity_type, external_id, last_synced_at, status, error_message,
+                           EXTRACT(EPOCH FROM (NOW() - last_synced_at))/3600 AS age_hours
+                    FROM connector_sync_state
+                    WHERE status = 'error'
+                       OR last_synced_at IS NULL
+                       OR last_synced_at < NOW() - INTERVAL '24 hours'
+                """)
+                bad_states = cur.fetchall()
+                if bad_states:
+                    errored = [r for r in bad_states if r["status"] == "error"]
+                    stale = [r for r in bad_states if r["status"] != "error"]
+                    if errored:
+                        findings.append({
+                            "severity": "high",
+                            "category": "connector_sync_error",
+                            "detail": f"{len(errored)} connector_sync_state row(s) reporting status='error' - real persist failures, not just staleness.",
+                            "items": [f"{r['connector_name']}/{r['entity_type']}: {(r['error_message'] or '')[:150]}" for r in errored],
+                        })
+                    if stale:
+                        stale_items = []
+                        for r in stale:
+                            age_desc = "never synced" if r["last_synced_at"] is None else f"{r['age_hours']:.0f}h stale"
+                            stale_items.append(f"{r['connector_name']}/{r['entity_type']} (external_id={r['external_id'] or '-'}): {age_desc}")
+                        findings.append({
+                            "severity": "medium",
+                            "category": "connector_stale",
+                            "detail": f"{len(stale)} connector_sync_state row(s) not updated in 24h+ (or never synced).",
+                            "items": stale_items,
+                        })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Connector sync-state honesty check errored: {e}"})
 
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -4920,6 +4972,51 @@ async def sync_live_state(request: Request):
         }, start=t0)
     except Exception as e:
         return _response("/admin/sync-live-state", {}, errors=[str(e)], start=t0)
+
+
+# ── Write repo report + git commit (n8n cannot do this itself) ──────────────
+# n8n's Code node sandbox disallows Node built-ins (fs, child_process) by
+# design/security default. AUTO-011 (and any future "write a report + commit"
+# workflow) was written assuming direct filesystem/git access from inside n8n,
+# which fails with "Module 'fs' is disallowed". Rather than loosen n8n's
+# sandbox, n8n POSTs the content here instead - this process already has real
+# filesystem access and is the appropriate place for it to live.
+class WriteReportPayload(BaseModel):
+    filename: str
+    content: str
+
+@router.post("/admin/write-report")
+async def write_report(req: WriteReportPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    try:
+        repo_root = "/Users/buckadams/HCI_AI_Operating_System"
+        # Reject path traversal - filename must resolve to stay inside repo_root
+        norm_path = os.path.normpath(os.path.join(repo_root, req.filename))
+        if not norm_path.startswith(repo_root + os.sep):
+            return _response("/admin/write-report", {}, errors=["filename escapes repo root"], start=t0)
+        os.makedirs(os.path.dirname(norm_path), exist_ok=True)
+        with open(norm_path, "w", encoding="utf-8") as f:
+            f.write(req.content)
+        commit_note = None
+        try:
+            subprocess.run(["git", "-C", repo_root, "add", norm_path], check=True, capture_output=True)
+            diff = subprocess.run(["git", "-C", repo_root, "diff", "--cached", "--quiet"], cwd=repo_root)
+            if diff.returncode != 0:
+                subprocess.run(
+                    ["git", "-C", repo_root, "commit", "-m", f"AUTO: {os.path.basename(req.filename)} [skip ci]"],
+                    check=True, capture_output=True,
+                )
+                commit_note = "committed"
+            else:
+                commit_note = "no changes to commit"
+        except subprocess.CalledProcessError as ge:
+            commit_note = f"git step failed: {ge.stderr.decode()[:200] if ge.stderr else str(ge)}"
+        return _response("/admin/write-report", {
+            "written": norm_path, "commit": commit_note,
+        }, start=t0)
+    except Exception as e:
+        return _response("/admin/write-report", {}, errors=[str(e)], start=t0)
 
 
 # ── BUILD-4: Houzz Schedule CSV Export ───────────────────────────────────────
@@ -6971,7 +7068,7 @@ def _notify_agents(source: str, target: str, message_type: str, title: str, body
         icons = {"approval_request": "✅", "risk_alert": "🚨", "blocked_mission": "⛔",
                   "handoff_waiting": "📥", "work_complete": "🏁", "review_required": "🔎"}
         icon = icons.get(message_type, "📋")
-        text = f"{icon} *{title}*\n\n{body}"
+        text = f"{icon} *{title}*\n_{_buck_local_str()}_\n\n{body}"
         markup = None
         if requires_buck_approval:
             text += f"\n\nReply: APPROVE {msg_id} / REJECT {msg_id} / HOLD {msg_id}"
@@ -7016,22 +7113,21 @@ def _handle_buck_command(text: str) -> Optional[str]:
                 return f"⚠️ No message #{msg_id} found."
             verb = {"APPROVE": "Approved", "REJECT": "Rejected", "HOLD": "Held"}[cmd]
             icon = {"APPROVE": "✅", "REJECT": "❌", "HOLD": "⏸"}[cmd]
-            # Closed-loop email send: Buck's APPROVE is the ONLY trigger that actually
-            # calls Microsoft Graph — see incident note on _send_approved_draft.
+            # Changed 2026-07-07 per Buck's direct instruction: a Telegram APPROVE tap
+            # must never trigger an immediate, irreversible send. Prior behavior called
+            # _send_approved_draft() here, which sent live mail the instant APPROVE was
+            # tapped -  an email to an external party (the 1355R architect) went out
+            # this way and could not be recalled (recipient wasn't on HCI's Exchange
+            # org, so Outlook's own recall feature doesn't apply either). Now APPROVE
+            # just acknowledges the request; the draft stays in Buck's own Outlook
+            # Drafts folder and he sends it himself when he's actually looked at it.
             if cmd == "APPROVE" and row.get("approval_type") == "email_send" and row.get("related_file"):
-                ok, err = _send_approved_draft(row["related_file"])
                 with _pg() as conn:
                     with conn.cursor() as cur:
-                        if ok:
-                            cur.execute("""UPDATE ai_messages SET status='COMPLETE', completed_at=NOW(), updated_at=NOW()
-                                            WHERE id=%s""", (msg_id,))
-                        else:
-                            cur.execute("""UPDATE ai_messages SET status='BLOCKED', blocked_reason=%s, updated_at=NOW()
-                                            WHERE id=%s""", (f"send failed: {err}"[:500], msg_id))
+                        cur.execute("""UPDATE ai_messages SET status='COMPLETE', completed_at=NOW(), updated_at=NOW()
+                                        WHERE id=%s""", (msg_id,))
                     conn.commit()
-                if ok:
-                    return f"✅📧 Approved and sent #{msg_id}: {row['title']}"
-                return f"⚠️ Approved #{msg_id} but the send failed: {err}"
+                return f"✅ Acknowledged #{msg_id}: {row['title']}\nDraft is in your Outlook Drafts folder — review and send it yourself when ready. It will NOT send automatically."
             return f"{icon} {verb} #{msg_id}: {row['title']}"
         except Exception as e:
             return f"⚠️ Error updating #{msg_id}: {e}"

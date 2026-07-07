@@ -111,7 +111,7 @@ class BaseConnector(ABC):
 
             if not self.dry_run:
                 conn.commit()
-                self._update_sync_states(payload)
+                self._update_sync_states(payload, results)
             else:
                 conn.rollback()
             self._conn = None
@@ -258,8 +258,26 @@ class BaseConnector(ABC):
 
     # ── Sync State Management ──────────────────────────────────────────────────
 
-    def _update_sync_states(self, payload: dict) -> None:
-        """Update connector_sync_state for every entity type that had data."""
+    def _update_sync_states(self, payload: dict, results: Optional[dict] = None) -> None:
+        """Update connector_sync_state for every entity type that had data.
+
+        Fixed 2026-07-07: this used to stamp last_synced_at/status='idle'/
+        records_synced += len(records) (the ATTEMPTED count) unconditionally,
+        with no reference to whether persist() actually succeeded. Found live:
+        the HubSpot connector's persist_contact/company/deal had a column-name
+        mismatch (hubspot_id vs the real hubspot_contact_id etc.) so every
+        single persist() call threw, was caught per-record inside
+        _run_pipeline, and never propagated - _run_with_recovery saw no
+        exception, so no retry/escalation ever fired. connector_sync_state
+        kept reporting status='idle', error_message=NULL, records_synced
+        climbing normally for 12+ days while 0 rows were actually written.
+        Every drift-check and audit up to this point only checked
+        connector_registry.last_indexed / sync_age_hours - a connector that
+        syncs "successfully" and persists nothing was invisible to all of
+        them. Now records_synced reflects rows actually inserted/updated, and
+        a fully-failed entity_type is written as status='error' with the real
+        error text instead of silently reporting idle."""
+        results = results or {}
         try:
             with self._db() as conn:
                 with conn.cursor() as cur:
@@ -267,24 +285,43 @@ class BaseConnector(ABC):
                         records = payload.get(entity_type, [])
                         if not records:
                             continue
+                        result = results.get(entity_type, {})
+                        persisted = result.get("inserted", 0) + result.get("updated", 0)
+                        attempted = result.get("attempted", len(records))
+                        errors = result.get("errors", [])
+                        failed = attempted > 0 and persisted == 0
+                        error_message = "; ".join(str(e) for e in errors[:3])[:1000] if errors else None
                         project_ids = list({
                             r.get("houzz_project_id") or r.get("project_id") or r.get("external_id", "")
                             for r in records
                         })
                         for ext_id in project_ids:
-                            cur.execute("""
-                                INSERT INTO connector_sync_state
-                                    (connector_name, entity_type, external_id, last_synced_at,
-                                     records_synced, status, updated_at)
-                                VALUES (%s, %s, %s, NOW(), %s, 'idle', NOW())
-                                ON CONFLICT DO UPDATE SET
-                                    last_synced_at = NOW(),
-                                    records_synced = connector_sync_state.records_synced + EXCLUDED.records_synced,
-                                    status         = 'idle',
-                                    error_message  = NULL,
-                                    retry_count    = 0,
-                                    updated_at     = NOW()
-                            """, (self.name, entity_type, ext_id or None, len(records)))
+                            if failed:
+                                cur.execute("""
+                                    INSERT INTO connector_sync_state
+                                        (connector_name, entity_type, external_id, last_synced_at,
+                                         records_synced, status, error_message, retry_count, updated_at)
+                                    VALUES (%s, %s, %s, NOW(), 0, 'error', %s, 1, NOW())
+                                    ON CONFLICT (connector_name, entity_type, (COALESCE(external_id, ''))) DO UPDATE SET
+                                        status         = 'error',
+                                        error_message  = EXCLUDED.error_message,
+                                        retry_count    = connector_sync_state.retry_count + 1,
+                                        updated_at     = NOW()
+                                """, (self.name, entity_type, ext_id or None, error_message))
+                            else:
+                                cur.execute("""
+                                    INSERT INTO connector_sync_state
+                                        (connector_name, entity_type, external_id, last_synced_at,
+                                         records_synced, status, error_message, updated_at)
+                                    VALUES (%s, %s, %s, NOW(), %s, 'idle', %s, NOW())
+                                    ON CONFLICT (connector_name, entity_type, (COALESCE(external_id, ''))) DO UPDATE SET
+                                        last_synced_at = NOW(),
+                                        records_synced = connector_sync_state.records_synced + EXCLUDED.records_synced,
+                                        status         = 'idle',
+                                        error_message  = EXCLUDED.error_message,
+                                        retry_count    = 0,
+                                        updated_at     = NOW()
+                                """, (self.name, entity_type, ext_id or None, persisted, error_message))
                 conn.commit()
         except Exception as e:
             logger.error("[%s] Failed to update sync states: %s", self.name, e)

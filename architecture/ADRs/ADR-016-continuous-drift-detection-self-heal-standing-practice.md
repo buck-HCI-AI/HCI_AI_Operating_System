@@ -282,3 +282,66 @@ decision on what to measure before it's built, not a guess. Flagged to Buck rath
 something that might not match what he actually wants. (Partial good news: `/owner/dashboard`'s
 `ai_roi` field turned out to already be a live "hours saved" metric, so AI ROI — the other metric
 originally thought to have no source — actually does.)
+
+## Addendum, 2026-07-07 — detector #18, connector_sync_state was structurally incapable of
+## reporting failure, for every connector, since the connector framework was written
+
+Buck asked directly: "why are we only finding these now when we have done numerous audits and
+checks?" Real answer: the one table every prior audit relied on to judge connector health -
+`connector_sync_state` - had two stacked bugs that made it lie by construction, not by bad luck.
+
+Root cause, found while chasing GBT's "0 stale connectors" readiness-gate item: HubSpot's
+contacts/companies/deals sync had been failing 100% of persist attempts for 12+ days
+(`services/connectors/hubspot_connector.py` wrote to columns like `hubspot_id`/`firstname` that
+don't exist - the real tables use `hubspot_contact_id`/`first_name`, etc., a genuine per-table
+naming drift). That alone should have been visible. It wasn't, because:
+
+1. `BaseConnector._update_sync_states()` (`services/connectors/base_connector.py`) stamped
+   `status='idle'`, `last_synced_at=NOW()`, `records_synced += <attempted count>` unconditionally
+   after every sync, with zero reference to whether `persist()` actually wrote a row. A connector
+   that fails every single record for 12 straight days reports exactly the same as one that's
+   perfectly healthy.
+2. That same function's own UPSERT was independently broken: `ON CONFLICT DO UPDATE` with no
+   conflict target, which is invalid Postgres syntax. It threw on every call, was caught by the
+   function's own try/except, and logged only to `/tmp/hci_api_server_err.log` - a file no
+   dashboard, audit, or drift-check ever reads. Net effect: `connector_sync_state` rows have been
+   frozen at whatever timestamp they got on first insert, for every connector, since this code
+   was written - not just during the HubSpot outage.
+3. A third, independent bug in the same investigation: HubSpot's incremental-sync filter
+   hardcoded `lastmodifieddate` as the search property for every object type. HubSpot only kept
+   that name for `contacts`; companies, deals, and all engagement types use `hs_lastmodifieddate`.
+   Every incremental search for companies/deals/calls/meetings/notes/tasks was 400ing and being
+   swallowed by `sync()`'s per-entity try/except - so even a fully-fixed persist layer would have
+   kept silently fetching zero records for those types.
+4. A fourth, non-code issue found in the same pass: the HubSpot Private App's API key lacks the
+   `crm.objects.emails.read` scope (403, not a bug) - flagged to Buck, needs a HubSpot admin
+   console change, not a code fix.
+
+The lesson: every previous audit checked `connector_registry.last_indexed` / `sync_age_hours` -
+exactly the columns bug #2 made permanently unreliable. A broken connector and a healthy one were
+indistinguishable from the audit's own vantage point, so no amount of re-running the same audit
+would ever have caught it. This is the same failure class as detector #1 (dead `connector_registry`
+rows) one layer deeper: that detector catches a connector that never ran at all; nothing existed
+to catch one that runs, reports success, and persists nothing.
+
+Fixed at the source: `_update_sync_states()` now takes the real per-entity result (inserted +
+updated counts, error list) and only reports `status='idle'` when something was actually
+persisted; a fully-failed entity_type is written as `status='error'` with the real error text.
+The `ON CONFLICT` target is fixed to match the actual unique index
+(`connector_name, entity_type, COALESCE(external_id,'')`). HubSpot's column names and filter
+property names are corrected. Verified live: HubSpot sync now shows 0 errors across all 4 entity
+types (665 real rows persisted in one run, up from 0), and `connector_sync_state` timestamps
+advance correctly.
+
+Added detector #18: `connector_sync_state` rows with `status='error'` (high severity) or
+`last_synced_at` NULL/older than 24h (medium severity). Verified this detector actually works as
+a tripwire, not just theoretically: run immediately after the fix, it correctly flagged all 17
+Houzz entity-type rows as 296h-stale (Houzz has no live sync() of its own - it's fed by Browser
+Agent discovery runs, and none has run recently) while showing HubSpot clean - exactly the
+signal that was structurally impossible to get before today.
+
+Standing takeaway for future audits: when a health/staleness check and the thing it depends on
+share a code path (here: connector code and the state table both live under
+`services/connectors/`), a bug in the write path can make the read path lie without either side
+throwing a visible error. Worth periodically asking "if this specific check itself were broken,
+would anything downstream notice?" - not just "does this check currently report clean."

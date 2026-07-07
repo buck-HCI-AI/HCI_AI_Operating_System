@@ -43,6 +43,9 @@ _REQUIRED = {
     "deals":      ["hubspot_id"],
     "activities": ["hubspot_id", "activity_type"],
 }
+# hubspot_id above is the in-flight record's dict key, not a DB column name -
+# real column names differ per table (hubspot_contact_id / hubspot_company_id /
+# hubspot_deal_id / hubspot_id for activities only). See _persist_* below.
 
 
 def _token() -> str:
@@ -97,13 +100,21 @@ def _get_owner_name(owner_id: Optional[str]) -> Optional[str]:
 
 
 def _fetch_objects(object_type: str, properties: list, since_ms: Optional[str] = None, limit: int = 100) -> list:
-    """Paginate all pages; optionally filter by lastmodifieddate >= since_ms (ms string)."""
+    """Paginate all pages; optionally filter by last-modified >= since_ms (ms string).
+    Only 'contacts' kept HubSpot's legacy `lastmodifieddate` property name for the
+    search filter - companies, deals, and all engagement types (calls/emails/
+    meetings/notes/tasks) use `hs_lastmodifieddate`. Confirmed live 2026-07-07:
+    every incremental (since_ms-filtered) search for companies/deals/calls/
+    meetings/notes/tasks was 400ing on `lastmodifieddate` and getting swallowed
+    by sync()'s per-entity try/except, so those entity types silently fetched
+    zero records on every incremental run."""
+    modified_prop = "lastmodifieddate" if object_type == "contacts" else "hs_lastmodifieddate"
     results = []
     after = None
     if since_ms:
         while True:
             body: dict = {
-                "filterGroups": [{"filters": [{"propertyName": "lastmodifieddate", "operator": "GTE", "value": since_ms}]}],
+                "filterGroups": [{"filters": [{"propertyName": modified_prop, "operator": "GTE", "value": since_ms}]}],
                 "properties": properties, "limit": limit,
             }
             if after:
@@ -262,73 +273,64 @@ class HubSpotConnector(BaseConnector):
     def _persist_contact(self, r: dict, cur) -> bool:
         return self._upsert(cur, """
             INSERT INTO hubspot_contacts
-                (hubspot_id, firstname, lastname, email, phone, jobtitle,
-                 company_name, hs_lead_status, lifecyclestage, raw_properties, synced_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
-            ON CONFLICT (hubspot_id) DO UPDATE SET
-                firstname       = EXCLUDED.firstname,
-                lastname        = EXCLUDED.lastname,
+                (hubspot_contact_id, first_name, last_name, email, phone, job_title,
+                 company, raw_properties, synced_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+            ON CONFLICT (hubspot_contact_id) DO UPDATE SET
+                first_name      = EXCLUDED.first_name,
+                last_name       = EXCLUDED.last_name,
                 email           = EXCLUDED.email,
                 phone           = COALESCE(EXCLUDED.phone, hubspot_contacts.phone),
-                jobtitle        = COALESCE(EXCLUDED.jobtitle, hubspot_contacts.jobtitle),
-                company_name    = COALESCE(EXCLUDED.company_name, hubspot_contacts.company_name),
-                hs_lead_status  = EXCLUDED.hs_lead_status,
-                lifecyclestage  = EXCLUDED.lifecyclestage,
+                job_title       = COALESCE(EXCLUDED.job_title, hubspot_contacts.job_title),
+                company         = COALESCE(EXCLUDED.company, hubspot_contacts.company),
                 raw_properties  = EXCLUDED.raw_properties,
-                synced_at       = NOW(),
-                updated_at      = NOW()
+                synced_at       = NOW()
             RETURNING (xmax=0) AS is_insert
         """, (
             r["hubspot_id"], r.get("firstname"), r.get("lastname"), r.get("email"),
             r.get("phone"), r.get("jobtitle"), r.get("company_name"),
-            r.get("hs_lead_status"), r.get("lifecyclestage"),
             json.dumps(r.get("raw_properties") or {}),
         ))
 
     def _persist_company(self, r: dict, cur) -> bool:
         return self._upsert(cur, """
             INSERT INTO hubspot_companies
-                (hubspot_id, name, domain, phone, industry, type, city, state, zip, raw_properties, synced_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
-            ON CONFLICT (hubspot_id) DO UPDATE SET
+                (hubspot_company_id, name, domain, phone, industry, city, state, raw_properties, synced_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+            ON CONFLICT (hubspot_company_id) DO UPDATE SET
                 name           = EXCLUDED.name,
                 domain         = COALESCE(EXCLUDED.domain, hubspot_companies.domain),
                 phone          = COALESCE(EXCLUDED.phone, hubspot_companies.phone),
                 industry       = COALESCE(EXCLUDED.industry, hubspot_companies.industry),
-                type           = COALESCE(EXCLUDED.type, hubspot_companies.type),
                 city           = COALESCE(EXCLUDED.city, hubspot_companies.city),
                 state          = COALESCE(EXCLUDED.state, hubspot_companies.state),
-                zip            = COALESCE(EXCLUDED.zip, hubspot_companies.zip),
                 raw_properties = EXCLUDED.raw_properties,
-                synced_at      = NOW(),
-                updated_at     = NOW()
+                synced_at      = NOW()
             RETURNING (xmax=0) AS is_insert
         """, (
             r["hubspot_id"], r.get("name"), r.get("domain"), r.get("phone"),
-            r.get("industry"), r.get("type"), r.get("city"), r.get("state"),
-            r.get("zip"), json.dumps(r.get("raw_properties") or {}),
+            r.get("industry"), r.get("city"), r.get("state"),
+            json.dumps(r.get("raw_properties") or {}),
         ))
 
     def _persist_deal(self, r: dict, cur) -> bool:
         return self._upsert(cur, """
             INSERT INTO hubspot_deals
-                (hubspot_id, dealname, amount, dealstage, pipeline, closedate, project_code, owner, raw_properties, synced_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
-            ON CONFLICT (hubspot_id) DO UPDATE SET
-                dealname       = EXCLUDED.dealname,
+                (hubspot_deal_id, deal_name, amount, stage, pipeline, close_date, owner, raw_properties, synced_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+            ON CONFLICT (hubspot_deal_id) DO UPDATE SET
+                deal_name      = EXCLUDED.deal_name,
                 amount         = COALESCE(EXCLUDED.amount, hubspot_deals.amount),
-                dealstage      = EXCLUDED.dealstage,
+                stage          = EXCLUDED.stage,
                 pipeline       = EXCLUDED.pipeline,
-                closedate      = COALESCE(EXCLUDED.closedate, hubspot_deals.closedate),
-                project_code   = COALESCE(EXCLUDED.project_code, hubspot_deals.project_code),
+                close_date     = COALESCE(EXCLUDED.close_date, hubspot_deals.close_date),
                 owner          = COALESCE(EXCLUDED.owner, hubspot_deals.owner),
                 raw_properties = EXCLUDED.raw_properties,
-                synced_at      = NOW(),
-                updated_at     = NOW()
+                synced_at      = NOW()
             RETURNING (xmax=0) AS is_insert
         """, (
             r["hubspot_id"], r.get("dealname"), r.get("amount"), r.get("dealstage"),
-            r.get("pipeline"), r.get("closedate"), r.get("project_code"), r.get("owner"),
+            r.get("pipeline"), r.get("closedate"), r.get("owner"),
             json.dumps(r.get("raw_properties") or {}),
         ))
 

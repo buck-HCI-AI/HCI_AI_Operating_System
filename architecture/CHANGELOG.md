@@ -5,6 +5,34 @@
 
 ---
 
+## v4.4 — 2026-07-07 | Connector sync-state was structurally unable to report failure
+
+**Trigger:** Buck asked directly why the HubSpot connector's 12+ day, 100%-failing sync
+only surfaced now after "numerous audits and checks."
+
+- Found and fixed the real answer: `BaseConnector._update_sync_states()` reported every
+  sync as `status='idle'`/fresh regardless of whether `persist()` actually wrote a row,
+  AND its own UPSERT (`ON CONFLICT DO UPDATE` with no conflict target — invalid Postgres
+  syntax) threw on every call and was silently swallowed, so `connector_sync_state`
+  timestamps have been frozen since the framework was written — for every connector, not
+  just HubSpot. Fixed both; sync state now reflects real inserted/updated counts and a
+  fully-failed entity_type reports `status='error'` with the real error text.
+- Fixed the actual HubSpot bug that started the investigation: `hubspot_connector.py`
+  wrote to columns (`hubspot_id`, `firstname`, `lastname`, ...) that don't exist on the
+  real tables (`hubspot_contact_id`, `first_name`, `last_name`, ...). Also fixed a
+  hardcoded `lastmodifieddate` filter property that only works for `contacts` — every
+  other object type needs `hs_lastmodifieddate`, and was silently fetching zero records
+  on every incremental sync. Verified live: 665 real rows now persist per sync, 0 errors,
+  across all 4 entity types.
+- Found (not fixed, needs a HubSpot admin) — the Private App API key lacks
+  `crm.objects.emails.read` scope; email activity sync will 403 until that scope is
+  added in HubSpot's app settings.
+- Added drift-check detector #18: flags `connector_sync_state` rows with `status='error'`
+  or stale 24h+. Verified as a real tripwire, not just theory — run immediately after
+  the fix, it correctly flagged all 17 Houzz entity rows as 296h-stale (Houzz has no
+  live `sync()`, it's fed by Browser Agent discovery runs) while showing HubSpot clean.
+  See ADR-016 addendum, 2026-07-07, for the full root-cause writeup.
+
 ## v4.3 — 2026-07-06 | Full test/backlog/Drive sweep ahead of Adam/Trafford onboarding
 
 **Trigger:** Buck set a hard goal — system ready to onboard Adam and Trafford the next
