@@ -133,29 +133,54 @@ def mark_as_read(msg_id: str) -> tuple:
     return _request("PATCH", f"/me/messages/{eid}", body={"isRead": True})
 
 
-# Self-send auto-send bypass REMOVED 2026-07-07. Until today, any call where every
-# recipient was buck@hendricksoninc.com (automated reports: morning brief, EOD brief,
-# weekly exec, monthly review, PM weekly, SS morning) skipped drafting entirely and
-# called /me/sendMail directly - no draft, no approval request, no Telegram gate, ever.
-# This was an intentional carve-out Buck approved 2026-07-01, but it directly
-# contradicted the newer standing rule set the same day: "all AI-drafted emails must
-# stop at his Outlook Drafts folder... a Telegram APPROVE tap must never fire an
-# immediate send" (see ai/memory feedback_emails_land_in_drafts_not_autosend). Found
-# live 2026-07-07 via Sent Items: real, unattended sends including "HCI Morning Brief
-# — Jul 07, 2026" at 13:01:26Z with zero review step - exactly what that rule was
-# written to prevent, just for self-addressed mail instead of external. Every send_*
-# call now drafts unconditionally; nothing in this file calls /me/sendMail anymore.
-_SELF_SEND_ALLOWLIST: set = set()  # kept as a name for callers that still reference it; always empty
+# History: self-send bypass existed pre-2026-07-01, got removed 2026-07-07 after it
+# was found auto-sending self-addressed reports (morning brief etc.) with zero review
+# step - the same failure mode the "never auto-send" rule was written to prevent for
+# EXTERNAL mail. That fix over-corrected: it drafted everything, including pure
+# informational reports addressed only to Buck himself. Buck's own clarification
+# 2026-07-08: reports should land in his Inbox directly; the draft-and-approve gate is
+# for POTENTIAL OUTGOING mail (anything an external party would see), not for a report
+# only he reads. The risk profiles are genuinely different - a self-addressed report
+# landing in Inbox instead of Drafts is not an irreversible external commitment, it's
+# the exact same content in a different folder of his own mailbox.
+#
+# So: send_email() now sends directly (Inbox, via /me/sendMail) ONLY when every
+# recipient's address is exactly Buck's own - checked here, not left to the caller.
+# ANY external recipient anywhere (to, or cc via send_email_with_cc) still drafts,
+# unconditionally, same as before. This is not a return to the old allowlist pattern -
+# it's a strict address-equality check run on every call, not a name-based carve-out.
+BUCK_SELF_ADDRESS = "buck@hendricksoninc.com"
 
 
 def _all_recipients_self(to: list[tuple[str, str]], cc: list[tuple[str, str]] = None) -> bool:
-    return False
+    addrs = [e.lower() for _, e in to] + [e.lower() for _, e in (cc or [])]
+    return bool(addrs) and all(a == BUCK_SELF_ADDRESS for a in addrs)
+
+
+def _send_direct(subject: str, html_body: str, to: list[tuple[str, str]]) -> dict:
+    """Real send via /me/sendMail - only ever called after _all_recipients_self()
+    confirms every recipient is Buck's own address. Lands in his Inbox."""
+    msg = {
+        "message": {
+            "subject": subject,
+            "body": {"contentType": "HTML", "content": html_body},
+            "toRecipients": [{"emailAddress": {"name": n, "address": e}} for n, e in to],
+        },
+        "saveToSentItems": True,
+    }
+    r, err = _request("POST", "/me/sendMail", body=msg)
+    if err:
+        raise RuntimeError(err)
+    return {"status": "sent_to_inbox"}
 
 
 def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple:
-    """Always creates a draft and requires Buck's approval via gateway /email/send -
-    no recipient, including Buck's own address, auto-sends. See removal note above."""
+    """Self-addressed (report) mail sends directly to Inbox. Any external recipient
+    always drafts and requires Buck's approval via gateway /email/send. See note above."""
     try:
+        if _all_recipients_self(to):
+            result = _send_direct(subject, html_body, to)
+            return result, None
         draft = create_draft(subject, html_body, to)
         return {"queued_draft_id": draft.get("id"), "status": "drafted_pending_approval",
                 "note": "Draft created - requires Buck approval via gateway /email/send"}, None
@@ -165,7 +190,13 @@ def send_email(subject: str, html_body: str, to: list[tuple[str, str]]) -> tuple
 
 def send_email_with_cc(subject: str, html_body: str, to: list[tuple[str, str]],
                        cc: list[tuple[str, str]] = None) -> tuple:
-    """See send_email() above - no self-send bypass, ever."""
+    """Same self-address check as send_email() - drafts unless every to/cc recipient
+    is Buck's own address, in which case it sends directly to his Inbox."""
+    if _all_recipients_self(to, cc):
+        try:
+            return _send_direct(subject, html_body, to), None
+        except Exception as e:
+            return None, str(e)
     msg = {
         "subject": subject,
         "body": {"contentType": "HTML", "content": html_body},
