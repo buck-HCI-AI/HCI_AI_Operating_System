@@ -129,10 +129,21 @@ def _pg():
 
 def _response(path: str, payload: Any, source: str = "hci-api",
               start: float = None, warnings: list = None, errors: list = None) -> dict:
+    """Standard envelope. timestamp_mt added 2026-07-08: Buck flagged (repeatedly,
+    across multiple sessions) that GBT keeps showing him UTC times as if they were
+    his own. GBT reads timestamp straight off this envelope with no reason to know
+    it's UTC - telling the GPT's prompt to "remember to convert" isn't reliable
+    since every response is stateless. Putting an explicitly-labeled Mountain-time
+    string right next to the UTC one means any consumer (GBT, a human reading raw
+    JSON, a future integration) sees the right time by default without needing to
+    know or convert anything. timestamp (UTC ISO) is left untouched for any
+    existing code that parses/logs against it."""
     elapsed = round((time.time() - start) * 1000) if start else 0
+    now_utc = datetime.now(timezone.utc)
     return {
         "status": "ok" if not errors else "error",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now_utc.isoformat(),
+        "timestamp_mt": now_utc.astimezone(BUCK_TZ).strftime("%Y-%m-%d %-I:%M %p MT"),
         "execution_time_ms": elapsed,
         "source_system": source,
         "payload": payload,
