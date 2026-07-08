@@ -80,6 +80,15 @@ def search_files(query: str, folder_id: str = None) -> list:
     # content and even some folder-name matches - found while GBT couldn't locate a
     # real, existing "Asbestos Report" folder for 1355R. fullText covers both name
     # and body content in one query.
+    #
+    # 2026-07-07 (later): supportsAllDrives/includeItemsFromAllDrives alone do NOT
+    # search Shared Drives - without corpora=allDrives, Drive's API defaults to
+    # corpora=user (My Drive only). Found live: 18 real per-project Shared Drives
+    # exist (574 Johnson Drive, 813 McSkimming, 1355 Riverside, etc.) with real
+    # vendor bids, budgets, and permits inside them - none of it was ever reachable
+    # through this search. The system had been structurally blind to the actual
+    # project source documents this whole time, only ever seeing references to
+    # them inside the HCI AI Master administrative folder.
     q = f"fullText contains '{query}' and trashed=false"
     if folder_id:
         q += f" and '{folder_id}' in parents"
@@ -87,10 +96,34 @@ def search_files(query: str, folder_id: str = None) -> list:
         "q": q,
         "fields": f"files({FILE_FIELDS})",
         "pageSize": 50,
+        "corpora": "allDrives",
         "supportsAllDrives": "true",
         "includeItemsFromAllDrives": "true",
     }
     return _get(f"{BASE_URL}/files", params).get("files", [])
+
+
+def list_shared_drives() -> list:
+    """Every Shared Drive the connected account can see - the 18 per-project
+    drives plus HCI docs, found 2026-07-07 while chasing why search never
+    reached real project content."""
+    return _get(f"{BASE_URL}/drives", {"pageSize": 100}).get("drives", [])
+
+
+def list_drive_root(drive_id: str, page_token: str = None) -> dict:
+    """List a Shared Drive's own root-level content (not a subfolder)."""
+    params = {
+        "q": "trashed=false",
+        "fields": f"files({FILE_FIELDS}),nextPageToken",
+        "pageSize": 100,
+        "driveId": drive_id,
+        "corpora": "drive",
+        "supportsAllDrives": "true",
+        "includeItemsFromAllDrives": "true",
+    }
+    if page_token:
+        params["pageToken"] = page_token
+    return _get(f"{BASE_URL}/files", params)
 
 
 def walk_folder_tree(folder_id: str, path: str = "", depth: int = 0, max_depth: int = 6) -> list:
