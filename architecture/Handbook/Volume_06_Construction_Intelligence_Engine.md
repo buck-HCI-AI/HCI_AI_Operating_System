@@ -54,8 +54,31 @@ services/
 ├── houzz_intelligence/           ← Houzz-specific data processing
 ├── operating_rules/              ← SOP rule engine
 ├── business_process_library/     ← Process template library
-└── sop_execution/                ← SOP workflow execution
+├── sop_execution/                ← SOP workflow execution
+└── mining/                       ← 8 background miners (HubSpot, Drive, Houzz,
+                                     Outlook, historical cost, vendor intel,
+                                     lessons learned, executive aggregator)
 ```
+
+### Plan Review → RFI → ROM Pipeline (✅ Implemented — added 2026-07-01, ADR-014)
+
+`POST /gateway/plan-review/analyze` — extracts scope gaps from a project's sheet/SOW
+text and auto-creates matching RFIs. Runs as an **async two-call job** (added
+2026-07-07): the first call starts a background thread and returns a `job_id` in
+under a second; a second call with that `job_id` polls for the real result 10-15
+seconds later. This exists because ChatGPT's own Action-calling layer times out
+faster than the real analysis takes — a synchronous call would never complete from
+GBT's side even though the backend itself responds fine.
+
+### Drift Detection + Self-Heal (✅ Implemented — ADR-016, updated continuously)
+
+`GET /gateway/admin/drift-check` — 19 automated detectors (and growing) covering
+dead connectors, silently-failing scheduled jobs, test data leaked into real
+projects, fabricated verification claims, duplicate rows, and more. `POST
+/gateway/admin/self-heal` auto-fixes container-level infrastructure only (n8n
+restarts); it never touches business data. Both are standing practice, not a
+one-off audit — see ADR-016 for the full list of detectors and the incidents each
+one exists to catch.
 
 ### BaseIntelligenceService Interface (✅)
 

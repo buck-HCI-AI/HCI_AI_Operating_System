@@ -156,6 +156,18 @@ The objective is not to automate everything. The objective is to automate repeti
 Table: `connector_sync_state` — tracks last sync per connector+entity_type
 Table: `integration_registry` — catalog of all integrations
 
+### Known Limitation — HubSpot Email Content Scope (confirmed 2026-07-06/07)
+
+HubSpot's `crm.objects.emails.read` / `crm.schemas.emails.read` scopes are **not
+offered as selectable options** on this account's Sales Hub tier at all — confirmed
+by two independent investigations. Requesting `sales-email-read` alone still
+returns "content has been redacted... app must require the sales-email-read scope"
+on both the modern CRM v3 API and the legacy Engagements API. Confirmed via
+`account-info/v3/details` showing `accountType: STANDARD`. **This is a genuine
+subscription-tier limitation, not a Private App configuration issue** — do not
+spend time re-debugging the scopes themselves; the fix (if wanted) is a HubSpot
+plan upgrade, a business decision for Buck, not a code fix.
+
 ---
 
 ## 7.4 Background Services (✅ Implemented)
