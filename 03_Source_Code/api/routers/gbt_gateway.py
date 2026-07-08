@@ -588,25 +588,36 @@ def project_status_page(code: str):
     return HTMLResponse(content=html)
 
 
-_LIVE_PROJECT_CODES = ("64EW", "101F", "1355R", "246GW")  # the only jobs the system is allowed to write to / run automation on
+_LIVE_PROJECT_CODES = ("64EW", "101F", "1355R")  # the only jobs the system is allowed to write to / run automation on.
+# Fixed 2026-07-08: 246GW was wrongly included here (and its DB status was 'active', which
+# also made it pass the base_connector.py write guard). Buck: "246 is not a live project -
+# it is the next potential pilot." Its status='active' row was pre-existing (since 2026-06-28,
+# predates this session) and nothing here re-verified it against Buck's actual intent - it
+# just got trusted as ground truth, same class of bug as the 'reference' mislabel found
+# earlier this session, just in the opposite direction (wrongly-live instead of wrongly-closed).
+# Real Houzz daily-log writes landed on 246GW because of this (reverted). Still reportable via
+# the Drive-name-match / fallback branches in _reportable_project_codes() below - just no
+# longer write-authorized. DB status corrected pending Buck's call on the right value.
 _SYNTHETIC_TEMPLATE_CODES = ("ASPN-MC", "ASPN-NEW", "ASPN-REM", "LEGACY-001", "TEST-001")  # no real address, no real Drive
 _NOT_YET_REAL_CODES = ("83SB", "LICHT")  # Buck 2026-07-08: not ready for reporting yet - 83 Sagebrusch is TBD, Lichtenstein excluded per his direction
+_REPORTABLE_NOT_LIVE_CODES = ("246GW",)  # real, tracked, next-potential-pilot - report on it, but not write-authorized (see _LIVE_PROJECT_CODES note above). Its Drive content is nested inside another drive, not its own top-level Shared Drive, so the normal drive-name-match fallback below would miss it - needs this explicit include to stay reportable now that it's out of _LIVE_PROJECT_CODES.
 
 
 def _reportable_project_codes() -> list:
-    """Every real job - the 4 live projects (only ones the system writes to /
-    runs automation on) plus every monitor-only job with real evidence of being
-    an actual project, not a status label. Fixed 2026-07-08 per Buck: status
+    """Every real job - the 3 live projects (only ones the system writes to /
+    runs automation on) plus 246GW (real, tracked, next-potential-pilot - reported
+    on but not write-authorized) plus every monitor-only job with real evidence of
+    being an actual project, not a status label. Fixed 2026-07-08 per Buck: status
     ('reference' vs 'monitoring') in the DB doesn't reliably reflect whether a
     job is real/current - 825 Cemetery Lane was labeled 'reference' (implying
     closed) despite a real daily log from the day before this was written.
     Buck: 'figure out through the g-drive and houzz exports what is actually
     active jobs.' Ground truth used here: does a real Shared Drive exist with
     this project's name (live Drive API call, not a cached table), or is it one
-    of the 4 live projects (always included regardless - 246GW's Drive content
-    is nested inside another drive, not its own top-level Shared Drive, so drive
-    presence alone would miss it). Excludes only sandbox and the ASPN-MC/NEW/REM
-    synthetic archetypes (no real address, not a real job)."""
+    of the always-included codes (_LIVE_PROJECT_CODES / _REPORTABLE_NOT_LIVE_CODES
+    - 246GW's Drive content is nested inside another drive, not its own top-level
+    Shared Drive, so drive presence alone would miss it). Excludes only sandbox and
+    the ASPN-MC/NEW/REM synthetic archetypes (no real address, not a real job)."""
     import sys as _sys
     _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "drive_intelligence"))
     from drive_client import list_shared_drives
@@ -639,7 +650,7 @@ def _reportable_project_codes() -> list:
     result = []
     for r in rows:
         code, name = r["project_code"], (r["name"] or "").strip().lower()
-        if code in _LIVE_PROJECT_CODES:
+        if code in _LIVE_PROJECT_CODES or code in _REPORTABLE_NOT_LIVE_CODES:
             result.append(code)
         elif drive_names and (name in {dn for dn in drive_names} or _addr_key(name) in drive_keys
                                or any(name in dn or dn in name for dn in drive_names if dn != "hci docs")):
