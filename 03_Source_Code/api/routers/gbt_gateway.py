@@ -370,7 +370,18 @@ def _gather_deep_dive(code: str) -> dict:
             """, (pid,))
             packages = [dict(r) for r in cur.fetchall()]
             total_packages = len(packages)
-            no_bid_packages = [p["package_name"] for p in packages if p["bid_count"] == 0]
+            # Buck caught this live during Adam-demo prep, 2026-07-08: 101F showed
+            # divisions 06/07/08/11/15 as "zero bids" when real bids existed. Root
+            # cause - two different bid-data shapes coexist: some packages record
+            # one bid_packages row per division with bid_entries children (bid_count
+            # works), others (from the Drive bid-folder scan) record one
+            # bid_packages row PER VENDOR with the vendor's bid folded into
+            # package_name/status directly - bid_entries is empty for those by
+            # design, so bid_count alone false-flags a package that already has a
+            # real bid. status='bid_received'/'awarded' is ground truth either way.
+            _HAS_BID_STATUSES = ("bid_received", "awarded")
+            no_bid_packages = [p["package_name"] for p in packages
+                                if p["bid_count"] == 0 and p["status"] not in _HAS_BID_STATUSES]
             awarded = [p for p in packages if p["status"] == "awarded"]
             committed = sum(float(p["awarded_amount"] or 0) for p in awarded)
             contract_value = float(proj["contract_value"] or 0)
@@ -1300,7 +1311,9 @@ def project_procurement_action_plan(code: str):
 
             # Find matching vendors from vendor registry by CSI code prefix
             # bid_packages uses "09 — Painting" format; vendors use {"09"} short codes
-            no_bid_packages = [p for p in packages if (p["bid_count"] or 0) == 0]
+            # Same status-vs-bid_entries-count fix as _gather_deep_dive above (2026-07-08).
+            no_bid_packages = [p for p in packages
+                                if (p["bid_count"] or 0) == 0 and p["status"] not in ("bid_received", "awarded")]
             vendor_matches = {}
             if no_bid_packages:
                 # Extract 2-digit prefix from each CSI division string
@@ -1339,7 +1352,8 @@ def project_procurement_action_plan(code: str):
 
             # Summary stats
             total_pkgs = len(packages)
-            with_bids = sum(1 for p in packages if (p["bid_count"] or 0) > 0)
+            with_bids = sum(1 for p in packages
+                             if (p["bid_count"] or 0) > 0 or p["status"] in ("bid_received", "awarded"))
             no_bids = total_pkgs - with_bids
             awarded = sum(1 for p in packages if p["status"] == "awarded")
 
