@@ -56,61 +56,88 @@ The objective is not to automate everything. The objective is to automate repeti
 
 ## 7.2 n8n Workflows (✅ Active)
 
+*Auto-generated from live n8n state by `POST /architecture-sync/refresh-automation-library` — 2026-07-08T00:33:45.676393+00:00. Do not hand-edit this table; it will be overwritten on the next refresh.*
+
+**56 active, 12 inactive/archived, 68 total.**
+
 ### Automation Schedule
 
-| Workflow | Trigger | Action | Status |
-|----------|---------|--------|--------|
-| AUTO-SS-MORNING | Mon-Fri 06:00 | SS console → ntfy push | ✅ Active |
-| AUTO-PM-WEEKLY | Monday 07:00 | PM console → ntfy push | ✅ Active |
-| AUTO-PM | Daily 06:00 | AI Program Manager review | ✅ Active |
-| AUTO-WEEKLY-JOB | Friday 16:00 | Job reports → ntfy + disk | ✅ Active |
-| AUTO-WEEKLY-COMPANY | Friday 16:30 | Company report → ntfy + disk | ✅ Active |
-| AUTO-WEEKLY-EXEC | Friday 16:00 | Executive report (BTW-6) | ✅ Active |
-| AUTO-MONTHLY-REVIEW | 1st of month 09:00 | Business review (BTW-6) | ✅ Active |
-| AUTO-NIGHTLY-AUDIT | Nightly 02:00 | System audit → ntfy | ✅ Active |
-| AUTO-WEEKEND | Weekend 08:00 | Weekend summary → Outlook | ✅ Active |
-| AUTO-DAILY-PROJECT-SUMMARY | Daily | Per-project AI summaries (BTW-4) | ✅ Active |
-| AUTO-019 MORNING BRIEF | Daily 07:00 | Morning brief email | ✅ Active |
-| AUTO-020 EOD BRIEF | Daily 19:00 | End-of-day email | ✅ Active |
-| AUTO-CONTINUOUS-DISCOVERY | Hourly/Nightly | HubSpot+Houzz change detection (BTW-10) | ✅ Active |
-| AUTO-EVENT-HEALTH-CHECK | Every 30 min | Project health severity crossing detection | ✅ Active |
-| AUTO-EVENT-DRIVE-SCAN | Every 15 min | Shared drive new PDF detection | ✅ Active |
-| AUTO-COI-COMPLIANCE | Daily 07:00 | COI status refresh | ✅ Active |
-| AUTO-SCHEDULE-VARIANCE | Weekly | Schedule variance analysis | ✅ Active |
-| AUTO-PILOT-WEEKLY | Monday 07:30 | Gate5 pilot digest | ✅ Active |
-| WF-006 Executive Alerts | Event-driven | Cross-threshold risk alerts | ✅ Active |
-| WF-011 SS Daily Briefing | Daily 06:00 | Field superintendent daily brief | ✅ Active |
-| AUTO-EOD Email | Daily 19:00 | EOD email (⚠️ needs Gmail OAuth — Buck to configure) | ❌ Inactive |
+| Workflow | Trigger |
+|----------|---------|
+| AI Model Auto-Updater (Weekly) | unknown |
+| AUTO-001 Daily Repository Status Report | cron `0 7 * * *` |
+| AUTO-002 Workflow Health Check | cron `0 6 * * *` |
+| AUTO-003 Sprint Self-Status Report | cron `0 8 * * *` |
+| AUTO-004 Daily Mining Engine (03:00) | cron `0 3 * * *` |
+| AUTO-005 Gate H: HubSpot Write Approval | webhook (event-driven) |
+| AUTO-006 Gate G: PR Merge Notification | webhook (event-driven) |
+| AUTO-010 — Monday 07:00 Weekly Sprint Review | cron `0 7 * * 1` |
+| AUTO-011 — Monday 07:30 Registry Duplicate Check | cron `30 7 * * 1` |
+| AUTO-012 — Monday 08:00 Broken Link Check | cron `0 8 * * 1` |
+| AUTO-013 — Monday 08:30 HubSpot/Drive Reconciliation | cron `30 8 * * 1` |
+| AUTO-017 Gate E: Client Comms Approval | webhook (event-driven) |
+| AUTO-018 Gate F: Financial Action Approval | webhook (event-driven) |
+| AUTO-019 Morning Brief Email (07:00) | cron `0 7 * * *` |
+| AUTO-020 EOD Brief Email (19:00) | cron `0 19 * * *` |
+| AUTO-021 Escalation Check (10:00 & 18:00) | cron `0 10 * * *` |
+| AUTO-AGENT-CHECKIN — 30min Team Backlog Ping | unknown |
+| AUTO-AI-DEAL-SUMMARIZATION — Daily Active Deal Briefings via Claude API | cron `0 6 * * 1-5` |
+| AUTO-BID-INVITATION-TASKS — Sent Out Stage → Auto-Task Creation | cron `0 8,12,16 * * 1-5` |
+| AUTO-COI-COMPLIANCE-ENGINE — Daily 07:00 COI Status Refresh | cron `0 7 * * *` |
+| AUTO-CONTINUOUS-DISCOVERY — HubSpot Hourly + Houzz Nightly | cron `0 * * * *` |
+| AUTO-DAILY-PROJECT-SUMMARY | unknown |
+| AUTO-DRIFT-CHECK — Weekly System Reality Check | cron `0 7 * * 1` |
+| AUTO-EMAIL-NOISE-PURGE — Weekly System Noise Cleanup | cron `0 6 * * 0` |
+| AUTO-EVENT-DRIVE-SCAN — 15-min Shared Drive New File Watcher | unknown |
+| AUTO-EVENT-HEALTH-CHECK — 30-min Project Health Poll | unknown |
+| AUTO-HANDOFF-PROCESSOR | unknown |
+| AUTO-HOUZZ-REMINDER — Daily 07:15 Manual Extraction Prompt | cron `0 7 * * *` |
+| AUTO-MONTHLY-REVIEW — 1st of Month 09:00 Business Review | cron `0 9 1 * *` |
+| AUTO-NIGHTLY-AUDIT | unknown |
+| AUTO-NOTIFY — Urgent Alert Push (HIGH/CRITICAL events) | cron `0 */4 * * *` |
+| AUTO-PILOT-WEEKLY — Monday 07:30 Gate5 Digest | cron (legacy node) |
+| AUTO-PM — Daily 06:00 AI Program Manager Review | cron `0 6 * * *` |
+| AUTO-PM-WEEKLY — Monday 07:00 PM Console Push | cron `0 7 * * 1` |
+| AUTO-SCHEDULE-VARIANCE-WEEKLY | cron `0 7 * * 1` |
+| AUTO-SELFHEAL — 15min n8n Health Check | unknown |
+| AUTO-SS-MORNING — Daily 06:00 SS Console Push | cron `0 6 * * 1-5` |
+| AUTO-WEEKEND — Saturday 08:00 Weekly Summary Email | cron `0 8 * * 6` |
+| AUTO-WEEKLY-COMPANY — Friday 16:30 Company Report | cron `30 16 * * 5` |
+| AUTO-WEEKLY-EXEC — Friday 16:00 Executive Report | cron `0 16 * * 5` |
+| AUTO-WEEKLY-JOB — Friday 16:00 Job Reports | cron `0 16 * * 5` |
+| AUTO-WEEKLY-REPORT — Sunday 19:00 Autonomy Opportunities | cron `0 19 * * 0` |
+| Bid Receipt Processing v5 | email arrival |
+| GATE-E — Client Comms Approval (AUTO-017) | webhook (event-driven) |
+| GATE-F — Financial Action Approval (AUTO-018) | webhook (event-driven) |
+| GATE-G — PR Merge Notification to Buck (AUTO-006) | webhook (event-driven) |
+| GATE-H — HubSpot Write Approval (AUTO-005) | webhook (event-driven) |
+| WF-003 Historical Cost Queue | unknown |
+| WF-004 Lessons Learned Engine | unknown |
+| WF-005 SOP Registry Sync | cron `0 6 * * *` |
+| WF-006 Executive Alerts | cron `0 7 * * *` |
+| WF-007 AI Bid Leveling Engine | webhook (event-driven) |
+| WF-008 Bid Follow-Up Engine | cron `0 8 * * *` |
+| WF-009 New Job Setup | webhook (event-driven) |
+| WF-010 Outlook Email Router | email arrival |
+| WF-011 Site Superintendent Daily Briefing | webhook (event-driven) |
 
-### Gate Workflows (Approval Pattern)
-| Workflow | Trigger | Action |
-|----------|---------|--------|
-| GATE-H | Webhook | HubSpot write-back gate |
-| GATE-G | GitHub | GitHub webhook → approval |
-| GATE-E | Webhook | Email action gate |
-| GATE-F | Webhook | File operation gate |
+### Inactive / Archived
 
-### Workflow File Structure
+| Workflow |
+|----------|
+| ARCHIVED — AUTO-NIGHTLY-AUDIT (duplicate import 2026-06-27) |
+| ARCHIVED — Bid Leveling (merged into WF-007) |
+| ARCHIVED — Bid Receipt Processing v5 (duplicate) |
+| AUTO-010 Weekly Sprint Review Summary |
+| AUTO-011 Weekly Registry Duplicate Check |
+| AUTO-012 Weekly Broken Link Check |
+| AUTO-013 HubSpot/Drive Reconciliation Report |
+| AUTO-EOD — Daily End-of-Day Email (19:00) |
+| HZ-004 Houzz Daily Log Extraction Trigger |
+| Inbox Cleanup — Delete Test Emails |
+| RETIRED — ChatGPT Chrome Bridge (superseded by MCP) |
+| RETIRED — TMP-cl-84994d (unused Outlook webhook) |
 
-```
-03_Source_Code/workflows/n8n/
-├── AUTO-SS-MORNING.json      ← Superintendent morning push
-├── AUTO-PM-WEEKLY.json       ← PM weekly push
-├── AUTO-WEEKLY-JOB.json      ← Friday job reports
-├── AUTO-WEEKLY-COMPANY.json  ← Friday company report
-├── AUTO-NIGHTLY-AUDIT.json   ← Nightly system audit
-├── AUTO-WEEKEND.json         ← Weekend summary (Outlook)
-├── AUTO-010.json
-├── AUTO-011.json
-├── AUTO-012.json
-├── AUTO-013.json
-├── GATE-H.json
-├── GATE-G.json
-├── GATE-E.json
-└── GATE-F.json
-```
-
----
 
 ## 7.3 Connectors (✅ Partial)
 

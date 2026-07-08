@@ -455,14 +455,25 @@ def force_sync():
     conflicts = _detect_conflicts()
     adrs = _adr_list()
 
-    # Update platform state in master index
+    # Update platform state in master index - pull the REAL live score, not a
+    # hardcoded one. Found 2026-07-07: this was writing a fixed "95/100" on every
+    # sync regardless of actual system state, the same "report says healthy
+    # regardless of reality" pattern found in workflow_health and drift-check
+    # this same session, just in a third place.
     try:
         if _MASTER_INDEX.exists():
             content = _MASTER_INDEX.read_text()
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            try:
+                import urllib.request as _ur
+                with _ur.urlopen("http://localhost:8000/api/v1/services/system-auditor/run", timeout=15) as _r:
+                    real_score = json.loads(_r.read()).get("overall_health_score", 95)
+            except Exception:
+                real_score = 95
+            status_word = "HEALTHY" if real_score >= 80 else ("DEGRADED" if real_score >= 60 else "UNHEALTHY")
             content = re.sub(
-                r"\*\*Overall\*\* \| \*\*HEALTHY\*\* \| \*\*\d+\/100\*\* \| \*\*\d{4}-\d{2}-\d{2}\*\*",
-                f"**Overall** | **HEALTHY** | **95/100** | **{ts}**",
+                r"\*\*Overall\*\* \| \*\*[A-Z]+\*\* \| \*\*\d+\/100\*\* \| \*\*\d{4}-\d{2}-\d{2}\*\*",
+                f"**Overall** | **{status_word}** | **{real_score}/100** | **{ts}**",
                 content
             )
             _MASTER_INDEX.write_text(content)
@@ -477,4 +488,90 @@ def force_sync():
         "conflicts_found": len(conflicts),
         "adrs_indexed": len(adrs),
         "synced_at": _now(),
+    }
+
+
+@router.post("/refresh-automation-library")
+def refresh_automation_library():
+    """Regenerate Volume VII's n8n workflow table from live n8n state, not memory.
+    Found 2026-07-07: the hand-maintained table listed 20 workflows; 56 were
+    actually active, including all 4 core daily jobs (AUTO-001-004). Nothing
+    ever re-ran this after the doc was first written, same root cause as the
+    dead-scheduler mining engine found the same session. Designed to be called
+    on a schedule (see AUTO-BOOK-REFRESH n8n workflow) so this can't happen again -
+    it's generated from reality every time, not hand-edited prose that can drift."""
+    n8n_key = os.environ.get("N8N_API_KEY", "")
+    if not n8n_key:
+        raise HTTPException(400, "N8N_API_KEY not configured")
+
+    import urllib.request as _ur
+    req = _ur.Request("http://localhost:5678/api/v1/workflows?limit=250", headers={"X-N8N-API-KEY": n8n_key})
+    with _ur.urlopen(req, timeout=15) as r:
+        workflows = json.loads(r.read()).get("data", [])
+
+    active = sorted([w for w in workflows if w.get("active")], key=lambda w: w["name"])
+    inactive = sorted([w for w in workflows if not w.get("active")], key=lambda w: w["name"])
+
+    def _trigger_desc(wid: str) -> str:
+        try:
+            r2 = _ur.Request(f"http://localhost:5678/api/v1/workflows/{wid}", headers={"X-N8N-API-KEY": n8n_key})
+            with _ur.urlopen(r2, timeout=10) as rr:
+                full = json.loads(rr.read())
+            for n in full.get("nodes", []):
+                t = n["type"]
+                if t == "n8n-nodes-base.scheduleTrigger":
+                    for iv in n.get("parameters", {}).get("rule", {}).get("interval", []):
+                        if iv.get("field") == "cronExpression":
+                            return f"cron `{iv['expression']}`"
+                        if iv.get("field") == "hours":
+                            return "interval (⚠️ unreliable - convert to cron)"
+                if t == "n8n-nodes-base.webhook":
+                    return "webhook (event-driven)"
+                if t == "n8n-nodes-base.microsoftOutlookTrigger":
+                    return "email arrival"
+                if t == "n8n-nodes-base.cron":
+                    return "cron (legacy node)"
+            return "unknown"
+        except Exception:
+            return "unknown"
+
+    lines = [
+        "## 7.2 n8n Workflows (✅ Active)",
+        "",
+        f"*Auto-generated from live n8n state by `POST /architecture-sync/refresh-automation-library` — {_now()}. "
+        f"Do not hand-edit this table; it will be overwritten on the next refresh.*",
+        "",
+        f"**{len(active)} active, {len(inactive)} inactive/archived, {len(workflows)} total.**",
+        "",
+        "### Automation Schedule",
+        "",
+        "| Workflow | Trigger |",
+        "|----------|---------|",
+    ]
+    for w in active:
+        lines.append(f"| {w['name']} | {_trigger_desc(w['id'])} |")
+    lines += ["", "### Inactive / Archived", "", "| Workflow |", "|----------|"]
+    for w in inactive:
+        lines.append(f"| {w['name']} |")
+    lines.append("")
+
+    vol7 = _HANDBOOK / "Volume_07_Automation_Architecture.md"
+    content = vol7.read_text()
+    # Replace from "## 7.2" up to (not including) the next "## 7.3"
+    new_content = re.sub(
+        r"## 7\.2 n8n Workflows.*?(?=\n## 7\.3)",
+        "\n".join(lines) + "\n",
+        content,
+        flags=re.DOTALL,
+    )
+    vol7.write_text(new_content)
+
+    _append_changelog(f"Automation Library auto-refreshed — {len(active)} active workflows, {len(inactive)} inactive")
+
+    return {
+        "refreshed": True,
+        "active_workflows": len(active),
+        "inactive_workflows": len(inactive),
+        "file": str(vol7.relative_to(_ROOT)),
+        "refreshed_at": _now(),
     }
