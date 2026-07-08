@@ -255,15 +255,22 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
     for entry in folders:
         name = entry["name"]
         sub_entries = _drive_list(entry["id"], token)
-        sub_folders = [e for e in sub_entries if "folder" in e.get("mimeType", "")]
+        # "Archived"/"Old"/"Superseded" subfolders don't disqualify a folder from
+        # being a real leaf vendor folder - found live: "Accurate Insulation/"
+        # (a real, correctly-named company folder) has an "Archived/" subfolder
+        # inside it for old bid versions, which otherwise made this folder look
+        # like a category and triggered a pointless recursion into it.
+        sub_folders = [e for e in sub_entries if "folder" in e.get("mimeType", "")
+                       and not re.match(r"^(archived?|old|superseded)\b", e["name"], re.IGNORECASE)]
         sub_files = [e for e in sub_entries if "folder" not in e.get("mimeType", "")
                      and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))]
-        # A folder is a leaf vendor folder only if it has no subfolders of its
-        # own. Any subfolder presence means recurse - Buck found live that a
-        # folder can have BOTH a real vendor subfolder and a loose unorganized
-        # file side by side ("Fire Suppression" had "KFS/" plus a bare PDF) -
-        # checking sub_files alone (whether this folder itself has files) picked
-        # the wrong branch and silently dropped KFS entirely.
+        # A folder is a leaf vendor folder only if it has no (non-archive)
+        # subfolders of its own. Any other subfolder presence means recurse -
+        # Buck found live that a folder can have BOTH a real vendor subfolder
+        # and a loose unorganized file side by side ("Fire Suppression" had
+        # "KFS/" plus a bare PDF) - checking sub_files alone (whether this
+        # folder itself has files) picked the wrong branch and silently
+        # dropped KFS entirely.
         is_category = bool(_DIV_PREFIX_RE.match(name)) or bool(sub_folders)
         if is_category:
             results.extend(_walk_vendor_level(entry["id"], token, division_num, division_name, depth + 1))
