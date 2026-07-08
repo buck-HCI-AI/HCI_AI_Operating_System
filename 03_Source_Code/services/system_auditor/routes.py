@@ -215,6 +215,38 @@ class SystemAuditor(BaseIntelligenceService):
             active = [w for w in workflows if w.get("active")]
             inactive = [w for w in workflows if not w.get("active")]
 
+            # "active" is n8n's on/off switch - it says nothing about whether a workflow
+            # is actually executing. Found 2026-07-07: AUTO-004 Daily Mining Engine was
+            # active the entire project and this report scored workflow_health 88/100
+            # anyway, while AUTO-004 had executed exactly once, ever, and errored. Check
+            # real execution history for the small set of workflows other health signals
+            # (data freshness, connector sync) actually depend on.
+            critical = {
+                "AUTO-004 Daily Mining Engine": {"id": "67n7ENkCpGIzHgc1", "max_age_hours": 30},
+                "AUTO-CONTINUOUS-DISCOVERY": {"id": "2iM1eViWnnQ4I2Xv", "max_age_hours": 3},
+                "AUTO-002 Workflow Health Check": {"id": "1EbteMeNL7WUoq5F", "max_age_hours": 30},
+            }
+            dead_scheduled_jobs = []
+            for name, cfg in critical.items():
+                try:
+                    er = urllib.request.Request(
+                        f"{N8N_BASE}/executions?workflowId={cfg['id']}&limit=1",
+                        headers={"X-N8N-API-KEY": n8n_key}
+                    )
+                    with urllib.request.urlopen(er, timeout=5) as resp:
+                        execs = json.loads(resp.read()).get("data", [])
+                    if not execs:
+                        dead_scheduled_jobs.append(f"{name}: zero executions ever recorded")
+                        continue
+                    started = execs[0].get("startedAt")
+                    if started:
+                        from datetime import datetime as _dt, timezone as _tz
+                        age_h = (_dt.now(_tz.utc) - _dt.fromisoformat(started.replace("Z", "+00:00"))).total_seconds() / 3600
+                        if age_h > cfg["max_age_hours"]:
+                            dead_scheduled_jobs.append(f"{name}: last execution {age_h:.0f}h ago (expected within {cfg['max_age_hours']}h)")
+                except Exception as ee:
+                    dead_scheduled_jobs.append(f"{name}: execution-history check failed ({ee})")
+
             # Cross-check: workflows on disk that might be missing from n8n. Normalize
             # both sides to alphanumeric-only tokens first - repo filenames use
             # underscores ("AUTO-SELFHEAL_15min_n8n_Health_Check.json") while n8n's
@@ -231,12 +263,15 @@ class SystemAuditor(BaseIntelligenceService):
             not_imported = [n for n in disk_names if not any(_wf_norm(n) in nn for nn in n8n_names_norm)]
 
             score = round(len(active) / max(len(workflows), 1) * 100) if workflows else 50
+            if dead_scheduled_jobs:
+                score = max(0, score - 25 * len(dead_scheduled_jobs))
             return {
                 "score": score,
                 "total_workflows": len(workflows),
                 "active": len(active),
                 "inactive": len(inactive),
                 "inactive_names": [w.get("name") for w in inactive],
+                "dead_scheduled_jobs": dead_scheduled_jobs,
                 "disk_workflows_not_in_n8n": not_imported,
             }
         except Exception as e:
@@ -767,6 +802,14 @@ class SystemAuditor(BaseIntelligenceService):
 
         # From workflow health
         wf = results.get("workflow_health", {})
+        if wf.get("dead_scheduled_jobs"):
+            recs.append({
+                "priority": "CRITICAL",
+                "category": "workflows",
+                "title": f"{len(wf['dead_scheduled_jobs'])} critical scheduled job(s) marked active but not actually executing",
+                "action": f"Investigate immediately: {'; '.join(wf['dead_scheduled_jobs'])}",
+                "auto_fixable": False,
+            })
         if wf.get("inactive"):
             recs.append({
                 "priority": "MEDIUM",
