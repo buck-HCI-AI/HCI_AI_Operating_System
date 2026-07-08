@@ -475,9 +475,17 @@ def force_sync():
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             try:
                 import urllib.request as _ur
-                with _ur.urlopen("http://localhost:8000/api/v1/services/system-auditor/run", timeout=15) as _r:
-                    real_score = json.loads(_r.read()).get("overall_health_score", 95)
-            except Exception:
+                _sa_req = _ur.Request(
+                    "http://localhost:8000/api/v1/services/system-auditor/run",
+                    headers={"X-API-Key": os.environ.get("HCI_API_KEY", "")},
+                )
+                with _ur.urlopen(_sa_req, timeout=20) as _r:
+                    _sa_body = json.loads(_r.read())
+                if "overall_health_score" not in _sa_body:
+                    raise ValueError(f"system-auditor response missing overall_health_score: {_sa_body}")
+                real_score = _sa_body["overall_health_score"]
+            except Exception as _sa_err:
+                logger.warning("Could not fetch real health score, falling back to 95: %s", _sa_err)
                 real_score = 95
             status_word = "HEALTHY" if real_score >= 80 else ("DEGRADED" if real_score >= 60 else "UNHEALTHY")
             content = re.sub(
