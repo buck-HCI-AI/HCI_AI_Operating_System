@@ -170,11 +170,32 @@ def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
     }
 
 
+_DIV_PREFIX_RE = re.compile(r"^(\d+)[_\s-]+(.+)$")
+
+
 def walk_bid_folders(bid_folder_id: str, token: str) -> list:
     """
     Walk the division folder structure and return a flat list of vendor files.
     Returns: [{"division_num", "division_name", "vendor_name", "vendor_folder_id",
                 "file_id", "file_name", "file_mime", "modified_time"}, ...]
+
+    Fixed 2026-07-08: this used to assume exactly 2 levels (division folder ->
+    vendor folder -> files). Real structure, confirmed live on 101 Francis and
+    intentional per Buck (matches HubSpot's per-subdivision deal naming): some
+    top-level division folders (e.g. "07_Thermal & Moisture") contain a mix of
+    real vendor folders AND numbered subdivision folders (e.g. "13_Insulation",
+    "14_Roofing") that themselves contain the real vendor folders one level
+    deeper. The old code treated every subdivision folder as if it WERE a vendor
+    - looked for files directly inside it, found none (they're one level down),
+    and silently returned nothing for that division. On 101F this collapsed the
+    entire scan to zero bids found system-wide, not just those divisions - real
+    bids for Yeti and Accurate Insulation (both under 13_Insulation) were
+    invisible to bid-leveling entirely. Now recurses: a folder matching the
+    division-number-prefix pattern is treated as a subdivision and walked one
+    level deeper before giving up; a folder that doesn't match that pattern is
+    assumed to be a real vendor/company folder, same as before. Division number
+    stays anchored to the top-level folder throughout - a vendor found via a
+    subdivision still reports its parent division, not the subdivision number.
     """
     results = []
     div_folders = _drive_list(bid_folder_id, token)
@@ -182,9 +203,8 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
     for div_folder in div_folders:
         if "folder" not in div_folder.get("mimeType", ""):
             continue
-        # Parse "13_Insulation" → ("13", "Insulation")
         div_raw = div_folder["name"]
-        m = re.match(r"^(\d+)[_\s-]+(.+)$", div_raw)
+        m = _DIV_PREFIX_RE.match(div_raw)
         if m:
             division_num  = m.group(1).zfill(2) if len(m.group(1)) == 1 else m.group(1)
             division_name = m.group(2).replace("_", " ").strip()
@@ -192,27 +212,42 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
             division_num  = div_raw[:2]
             division_name = div_raw
 
-        vendor_folders = _drive_list(div_folder["id"], token)
-        for vendor_folder in vendor_folders:
-            if "folder" not in vendor_folder.get("mimeType", ""):
-                # Direct file in div folder (not in a vendor subfolder) — skip
-                continue
-            vendor_name       = vendor_folder["name"]
-            vendor_folder_id  = vendor_folder["id"]
+        results.extend(_walk_vendor_level(div_folder["id"], token, division_num, division_name, depth=0))
+    return results
 
-            files = _drive_list(vendor_folder_id, token)
-            for f in files:
-                if f.get("mimeType") in READABLE_MIME or f.get("name", "").lower().endswith((".pdf", ".docx")):
-                    results.append({
-                        "division_num":    division_num,
-                        "division_name":   division_name,
-                        "vendor_name":     vendor_name,
-                        "vendor_folder_id": vendor_folder_id,
-                        "file_id":         f["id"],
-                        "file_name":       f["name"],
-                        "file_mime":       f.get("mimeType", "application/pdf"),
-                        "modified_time":   f.get("modifiedTime", ""),
-                    })
+
+def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_name: str, depth: int) -> list:
+    """One level of the vendor search - recurses into subdivision-shaped folders
+    (numeric prefix, e.g. "13_Insulation") up to 3 levels deep as a safety cap;
+    treats any other folder as a real vendor/company folder and reads its files."""
+    results = []
+    if depth > 3:
+        return results  # safety cap - real structure never nests this deep
+    entries = _drive_list(folder_id, token)
+    for entry in entries:
+        if "folder" not in entry.get("mimeType", ""):
+            continue  # a loose file at this level (e.g. a division-wide SOW PDF) - not a vendor bid
+        name = entry["name"]
+        if _DIV_PREFIX_RE.match(name):
+            # Subdivision folder, e.g. "13_Insulation" under "07_Thermal & Moisture" -
+            # recurse to find the real vendor folders one level deeper.
+            results.extend(_walk_vendor_level(entry["id"], token, division_num, division_name, depth + 1))
+            continue
+        vendor_name      = name
+        vendor_folder_id = entry["id"]
+        files = _drive_list(vendor_folder_id, token)
+        for f in files:
+            if f.get("mimeType") in READABLE_MIME or f.get("name", "").lower().endswith((".pdf", ".docx")):
+                results.append({
+                    "division_num":    division_num,
+                    "division_name":   division_name,
+                    "vendor_name":     vendor_name,
+                    "vendor_folder_id": vendor_folder_id,
+                    "file_id":         f["id"],
+                    "file_name":       f["name"],
+                    "file_mime":       f.get("mimeType", "application/pdf"),
+                    "modified_time":   f.get("modifiedTime", ""),
+                })
     return results
 
 

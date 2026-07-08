@@ -590,6 +590,7 @@ def project_status_page(code: str):
 
 _LIVE_PROJECT_CODES = ("64EW", "101F", "1355R", "246GW")  # the only jobs the system is allowed to write to / run automation on
 _SYNTHETIC_TEMPLATE_CODES = ("ASPN-MC", "ASPN-NEW", "ASPN-REM", "LEGACY-001", "TEST-001")  # no real address, no real Drive
+_NOT_YET_REAL_CODES = ("83SB", "LICHT")  # Buck 2026-07-08: not ready for reporting yet - 83 Sagebrusch is TBD, Lichtenstein excluded per his direction
 
 
 def _reportable_project_codes() -> list:
@@ -620,7 +621,7 @@ def _reportable_project_codes() -> list:
                 SELECT project_code, name FROM projects
                 WHERE status != 'sandbox' AND project_code NOT IN %s
                 ORDER BY status, project_code
-            """, (_SYNTHETIC_TEMPLATE_CODES,))
+            """, (_SYNTHETIC_TEMPLATE_CODES + _NOT_YET_REAL_CODES,))
             rows = cur.fetchall()
 
     def _addr_key(s: str) -> tuple:
