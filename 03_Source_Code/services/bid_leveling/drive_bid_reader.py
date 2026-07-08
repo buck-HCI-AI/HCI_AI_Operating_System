@@ -362,6 +362,47 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
     return results
 
 
+def _sync_bid_package(cur, row: dict) -> None:
+    """
+    Found live 2026-07-08 (Buck, mid-demo, and independently by GBT reading the DB
+    directly): drive_bids (this scan's raw extraction) and bid_packages (the table
+    every report - Field GBT, deep-dive, PM console - actually reads) never synced.
+    A real bid could sit in Drive and drive_bids for weeks while every report kept
+    calling it "zero bids received." This closes that gap as a permanent part of
+    every scan, not a one-time data patch - covers both a HubSpot-sourced package
+    already sitting in bid_packages (matched by vendor name + division) and a bid
+    dropped straight into a Drive folder with no HubSpot deal behind it at all
+    (Buck: "there will sometimes bids put into the folders manually") by creating
+    the bid_packages row if nothing matches.
+    """
+    division_prefix = re.match(r"^(\d{1,2})", row["division_num"] or "")
+    div_prefix = division_prefix.group(1) if division_prefix else (row["division_num"] or "")
+    vendor_first_word = (row["vendor_name"] or "").split()[0] if row["vendor_name"] else ""
+    if not vendor_first_word:
+        return
+
+    cur.execute("""
+        SELECT id, status FROM bid_packages
+        WHERE project_id=%s
+          AND left(regexp_replace(csi_division, '[^0-9]', '', 'g'), 2) = left(%s, 2)
+          AND (package_name ILIKE %s OR %s ILIKE '%%' || split_part(package_name, ' ', 1) || '%%')
+        LIMIT 1
+    """, (row["project_id"], div_prefix, f"%{vendor_first_word}%", row["vendor_name"]))
+    existing = cur.fetchone()
+
+    if existing:
+        if existing["status"] not in ("awarded",):
+            cur.execute("""
+                UPDATE bid_packages SET status='bid_received', updated_at=NOW()
+                WHERE id=%s
+            """, (existing["id"],))
+    else:
+        cur.execute("""
+            INSERT INTO bid_packages (project_id, csi_division, package_name, status, notes)
+            VALUES (%s, %s, %s, 'bid_received', 'Auto-created from Drive bid scan - no matching HubSpot-sourced package found')
+        """, (row["project_id"], f"{row['division_num']} — {row['division_name']}", row["vendor_name"]))
+
+
 def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
     """
     Scan a project's bid_folder_id, extract new/updated bids, upsert to drive_bids.
@@ -493,6 +534,8 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
                     row["is_latest"], row["extraction_source"],
                 ))
                 upserted += 1
+                if row["bid_amount"]:
+                    _sync_bid_package(cur, row)
 
             # Fix is_latest: for each (project, division, vendor) set only the newest file as latest
             cur.execute("""
