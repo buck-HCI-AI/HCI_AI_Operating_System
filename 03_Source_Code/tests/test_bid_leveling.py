@@ -144,9 +144,14 @@ def test_dryrun_excel_actions_have_filenames():
     return all_have_filename and len(actions) > 0, f"actions={len(actions)} all_filenames={all_have_filename}"
 
 def test_dryrun_101_folder_found():
+    # Was asserting action=="found_existing" only - the pre-bid_folder_id-fix
+    # code path. ensure_bids_folder() now checks the DB's known bid_folder_id
+    # first and short-circuits with action="from_db_config" before ever
+    # searching Drive - the intended result of that fix (2026-07-07), not a
+    # regression. Either path returning the correct real folder_id is success.
     s, d = req("POST", "/api/v1/services/bid-leveling/projects/2/run", {"dry_run": True})
     bids_folder = d.get("bids_folder", {})
-    ok = bids_folder.get("action") == "found_existing"
+    ok = bids_folder.get("action") in ("found_existing", "from_db_config") and bool(bids_folder.get("folder_id"))
     return ok, f"bids_folder={bids_folder}"
 
 def test_runall_dryrun():
