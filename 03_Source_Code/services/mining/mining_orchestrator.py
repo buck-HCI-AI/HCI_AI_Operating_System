@@ -78,6 +78,25 @@ class MiningOrchestrator:
             except Exception as e:
                 results[MinerClass.MINER_NAME] = {"status": "failed", "error": str(e)}
 
+        # Found 2026-07-07: miners register_discovery() into the exact same
+        # background_learning_records table background_learning_service.py owns,
+        # but classify_all_pending() (the step that actually advances a record past
+        # "Discovered") was only ever wired into that other module's own
+        # run_full_discovery() - a separate, differently-scheduled entry point. Every
+        # record this orchestrator discovered would sit unclassified forever unless
+        # someone happened to also trigger the other pathway. Two systems, same
+        # table, only one of them finished the job. Call it here too so either path
+        # into background_learning_records converges on the same completion step.
+        classify_result = None
+        if not self.dry_run:
+            try:
+                import sys, os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "background_learning"))
+                from background_learning_service import BackgroundLearningService
+                classify_result = BackgroundLearningService.classify_all_pending()
+            except Exception as e:
+                classify_result = {"error": str(e)}
+
         return {
             "orchestrator": "MiningOrchestrator",
             "dry_run": self.dry_run,
@@ -86,6 +105,7 @@ class MiningOrchestrator:
             "miners_run": len(MINER_ORDER),
             "totals": totals,
             "results": results,
+            "classification": classify_result,
         }
 
     def run_miner(self, miner_name: str) -> dict:
