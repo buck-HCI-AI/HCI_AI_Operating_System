@@ -3120,12 +3120,17 @@ async def drive_move(req: DriveMovePayload):
             meta_resp = requests.get(
                 f"https://www.googleapis.com/drive/v3/files/{req.file_id}",
                 headers={"Authorization": f"Bearer {token}"},
-                params={"fields": "parents,name"},
+                params={"fields": "parents,name", "supportsAllDrives": "true"},
                 timeout=DRIVE_TIMEOUT,
             )
             meta = meta_resp.json()
             old_parents = ",".join(meta.get("parents", []))
 
+        # supportsAllDrives was missing here - found 2026-07-08 archiving stale
+        # 64EW bid-leveling files: addParents targeting a folder just created in
+        # a Shared Drive 404'd as "File not found" without it, even though the
+        # exact same call worked for 101F/1355R (those parent folders happened to
+        # already be indexed by the time the move ran; 64EW's did not).
         move_resp = requests.patch(
             f"https://www.googleapis.com/drive/v3/files/{req.file_id}",
             headers={"Authorization": f"Bearer {token}"},
@@ -3133,6 +3138,7 @@ async def drive_move(req: DriveMovePayload):
                 "addParents": req.new_parent_id,
                 "removeParents": old_parents,
                 "fields": "id,name,parents",
+                "supportsAllDrives": "true",
             },
             timeout=DRIVE_TIMEOUT,
         )
