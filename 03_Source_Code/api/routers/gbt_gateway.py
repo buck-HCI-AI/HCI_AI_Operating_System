@@ -3458,6 +3458,52 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Connector sync-state honesty check errored: {e}"})
 
+    # 19. Scheduled n8n workflow actually executing - found 2026-07-07 the hardest
+    #     way possible: AUTO-004 Daily Mining Engine was marked ACTIVE with a 24h
+    #     schedule the entire time, but n8n's execution history showed exactly one
+    #     run, ever, and it errored (n8n's own SQLite corruption, the same root
+    #     cause as ADR-015 - only fully fixed same day this check was added). A
+    #     workflow being "ACTIVE" in n8n says nothing about whether it's actually
+    #     firing. Every prior audit checked source-table freshness (detector #18)
+    #     but never asked "is the job that's supposed to refresh this actually
+    #     running" - so a dead scheduler and a healthy one looked the same from
+    #     the data side until someone manually re-triggered it and watched it fail.
+    #     Covers the small set of workflows whose job IS refreshing data other
+    #     detectors depend on - not every workflow, to avoid false-positive noise
+    #     on infrequent ones.
+    try:
+        n8n_key = os.environ.get("N8N_API_KEY", "")
+        critical_workflows = {
+            "AUTO-004 Daily Mining Engine": {"id": "67n7ENkCpGIzHgc1", "max_age_hours": 30},
+            "AUTO-CONTINUOUS-DISCOVERY": {"id": "2iM1eViWnnQ4I2Xv", "max_age_hours": 3},
+            "AUTO-002 Workflow Health Check": {"id": "1EbteMeNL7WUoq5F", "max_age_hours": 30},
+        }
+        dead = []
+        for name, cfg in critical_workflows.items():
+            r = requests.get(
+                f"http://localhost:5678/api/v1/executions?workflowId={cfg['id']}&limit=1",
+                headers={"X-N8N-API-KEY": n8n_key}, timeout=8,
+            )
+            execs = r.json().get("data", []) if r.status_code == 200 else []
+            if not execs:
+                dead.append(f"{name}: zero executions ever recorded, despite being active")
+                continue
+            last = execs[0]
+            started = last.get("startedAt")
+            if started:
+                age_h = (datetime.now(timezone.utc) - datetime.fromisoformat(started.replace("Z", "+00:00"))).total_seconds() / 3600
+                if age_h > cfg["max_age_hours"]:
+                    dead.append(f"{name}: last execution {age_h:.0f}h ago (expected within {cfg['max_age_hours']}h), status={last.get('status')}")
+        if dead:
+            findings.append({
+                "severity": "high",
+                "category": "scheduled_job_not_firing",
+                "detail": f"{len(dead)} critical n8n workflow(s) marked active but not actually executing on schedule - the data they're supposed to refresh is going stale invisibly.",
+                "items": dead,
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Scheduled-job liveness check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
