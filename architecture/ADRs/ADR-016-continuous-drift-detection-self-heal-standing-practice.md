@@ -345,3 +345,85 @@ share a code path (here: connector code and the state table both live under
 `services/connectors/`), a bug in the write path can make the read path lie without either side
 throwing a visible error. Worth periodically asking "if this specific check itself were broken,
 would anything downstream notice?" - not just "does this check currently report clean."
+
+## Addendum, 2026-07-07 (later same day) — detector #19, and the deepest root cause found this ADR
+
+Buck asked directly, after a long session of individual fixes: "how did we go so off track, and
+how do we build a system that self-heals, doesn't drift, scales, and learns from every job without
+this happening again?" This addendum is the evidence-based answer, found by testing the claim
+rather than re-explaining it.
+
+**The system was designed correctly. The scheduler running it was silently dead.**
+`background_learning_service.discover_from_houzz/hubspot/drive()` already existed - Buck was right
+to push back on treating "mine Houzz for learning" as a new idea. But three separate,
+non-integrated pipelines existed to do overlapping jobs: `background_learning`'s own discovery
+functions, `AUTO-004 Daily Mining Engine` (n8n, 24h schedule, calls a *different* endpoint -
+`/mining/run/all`, running 8 dedicated miner scripts under `services/mining/`), and
+`AUTO-CONTINUOUS-DISCOVERY` (n8n, hourly/nightly) - which, it turns out, doesn't ingest anything
+at all, only checks staleness and fires `ntfy` alerts.
+
+`AUTO-004` - the actual daily learning engine - was marked ACTIVE with a 24h schedule the entire
+project. n8n's own execution history showed exactly **one execution, ever**, and it errored on
+n8n's own internal SQLite corruption (the same signature as ADR-015, only fully resolved earlier
+in this same session by migrating n8n's data off its bind-mount). Meanwhile
+`AUTO-CONTINUOUS-DISCOVERY` genuinely was firing on schedule and correctly detecting the resulting
+staleness - a real alert reading `"HubSpot: ⚠️ STALE"` was sitting in the `ntfy.sh/hci-executive`
+push history from earlier the same day this was found. **The alarm was working. Nobody was
+listening to it**, because no agent session-start protocol treats that channel as a required read,
+the same gap detector #18's fix closed for connector state a few hours earlier in this same
+session, one layer up the stack.
+
+Manually re-running `/mining/run/all` to test whether today's n8n fix actually resolved AUTO-004
+surfaced the second half of the root cause: it hadn't run cleanly even once, because **4 of the 8
+miners had real, independent code bugs** that would have failed on every scheduled run regardless
+of whether the scheduler itself worked:
+
+- `houzz_miner`: passed Houzz's external `project_id` (e.g. `"3218059"`) straight into
+  `approval_queue.project_id`, a real FK to our internal `projects.id` - failed on every row.
+  `houzz_projects`, the table meant to bridge the two, itself only held stale seed/test rows
+  (`LEGACY-001`, `TEST-001`) - the mapping table existed but was never populated with real data.
+- `historical_cost_miner`: selected `be.id as bid_entry_id` but never selected `bp.id`, then
+  inserted the bid_entry id into the `bid_package_id` column - guaranteed FK violation on the
+  first real awarded bid it ever touched.
+- `vendor_intelligence_miner`: `json.dumps()` has no handler for `Decimal`, which every Postgres
+  `numeric` column returns as via psycopg2 - crashed on its first real query with an aggregate.
+- `lessons_learned_miner`: `meetings.action_items` is `jsonb`; psycopg2 returns it as a
+  list/dict, not a string; `notes + " " + action_items` crashed on any meeting with action items.
+
+All four are genuinely fixed now (commit `e4654df`) and verified live: all 8 miners complete with
+0 errors (407 records discovered, 410 intelligence items extracted, up from 4 silent failures out
+of 8). `houzz_projects` was seeded with 101F's and 1355R's real Houzz IDs (64EW's not yet located).
+
+**Added detector #19**: checks 3 critical n8n workflows' actual execution history (not their
+`active` flag, which says nothing about whether they're firing) against an expected max age -
+`AUTO-004` (30h), `AUTO-CONTINUOUS-DISCOVERY` (3h), `AUTO-002 Workflow Health Check` (30h).
+Verified live: correctly flags `AUTO-004` and `AUTO-002` as dead (212h since last execution)
+while leaving `AUTO-CONTINUOUS-DISCOVERY` alone, since it's genuinely running hourly. This is the
+scheduler-liveness counterpart to detector #18 (which checks the *data* a job should have
+produced) - together they close the loop this addendum is about: a job can be active-but-dead, or
+running-but-broken, and each needs its own check because neither implies the other.
+
+**What "self-heal, no-drift, scales, learns from every job" actually requires, concretely, based
+on everything found today:**
+
+1. Every mining/learning pipeline needs exactly one code path, not two or three overlapping ones
+   built at different times. `background_learning`'s discovery functions and the 8 dedicated
+   `services/mining/*.py` miners do genuinely overlapping work through different mechanisms - this
+   consolidation is not done yet, flagged here as the next real architectural task, not a
+   one-session fix.
+2. A scheduled job's `active` flag is not evidence it's running. Detector #19 makes execution
+   history the actual signal, going forward, for the jobs everything else depends on.
+3. An alert that fires correctly but is never read is functionally the same as no alert. `ntfy`
+   pushes and `ai_messages` directives both need a mandatory, enforced "read this at session
+   start" step for every agent - not a channel that happens to exist.
+4. Fixing the *scheduler* is necessary but not sufficient - the underlying job logic has to
+   actually be exercised and verified to complete cleanly, not just assumed correct because it was
+   written once. Today's mining-engine bugs had apparently never run successfully even a single
+   time since being written.
+5. "Learns from every job" (Buck's framing, 2026-07-07) means historical/closed Houzz projects -
+   not just the 3 live pilots - should feed the same vendor_intelligence / historical_cost_records
+   / lessons_learned pipeline, once consolidated per point 1. Not built yet this session; a real
+   212 Cleveland project (181 real daily logs, recurring real subcontractor names, real financial
+   history) was identified live as a strong first candidate.
+
+Check count is now 19.
