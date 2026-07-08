@@ -216,38 +216,85 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
     return results
 
 
+_TRAILING_DATE_RE = re.compile(
+    r"^(.+?)[\s_-]+(\d{1,2}[-./]\d{1,2}[-./]\d{2,4}|\d{4}-\d{2}-\d{2})", re.IGNORECASE
+)
+
+
+def _vendor_name_from_filename(filename: str) -> str:
+    """Buck's stated canonical pattern: company-named folder, bid file named
+    'Company Date.ext'. When a bid file is found loose (not in its own company
+    folder - the exact gap Buck flagged: 'there might be bids placed in the
+    divisional folders that are not in hubspot'), extract the vendor name from
+    the filename using that same convention rather than dropping the file."""
+    base = re.sub(r"\.(pdf|docx?|xlsx?)$", "", filename, flags=re.IGNORECASE).strip()
+    m = _TRAILING_DATE_RE.match(base)
+    return (m.group(1) if m else base).strip()
+
+
 def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_name: str, depth: int) -> list:
-    """One level of the vendor search - recurses into subdivision-shaped folders
-    (numeric prefix, e.g. "13_Insulation") up to 3 levels deep as a safety cap;
-    treats any other folder as a real vendor/company folder and reads its files."""
+    """One level of the vendor search. A subfolder is treated as a category to
+    recurse into - either a numbered subdivision (e.g. "13_Insulation") or any
+    folder with no bid files directly inside it (e.g. "Fire Suppression", which
+    contained both a real vendor subfolder AND a loose, unorganized bid PDF
+    sitting right next to it - confirmed live on 101 Francis). A folder that
+    itself contains files is treated as a real vendor/company folder. Loose
+    files found as siblings of folders at any level (not inside any vendor
+    folder at all) are still captured - vendor name inferred from the filename
+    per Buck's own 'Company Date.ext' convention - and flagged unfoldered=True
+    so a cleanup pass can find and organize them rather than silently keep
+    losing bids that were dropped straight into a division folder."""
     results = []
     if depth > 3:
         return results  # safety cap - real structure never nests this deep
     entries = _drive_list(folder_id, token)
-    for entry in entries:
-        if "folder" not in entry.get("mimeType", ""):
-            continue  # a loose file at this level (e.g. a division-wide SOW PDF) - not a vendor bid
+    folders = [e for e in entries if "folder" in e.get("mimeType", "")]
+    loose_files = [e for e in entries if "folder" not in e.get("mimeType", "")
+                   and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))]
+
+    for entry in folders:
         name = entry["name"]
-        if _DIV_PREFIX_RE.match(name):
-            # Subdivision folder, e.g. "13_Insulation" under "07_Thermal & Moisture" -
-            # recurse to find the real vendor folders one level deeper.
+        sub_entries = _drive_list(entry["id"], token)
+        sub_folders = [e for e in sub_entries if "folder" in e.get("mimeType", "")]
+        sub_files = [e for e in sub_entries if "folder" not in e.get("mimeType", "")
+                     and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))]
+        # A folder is a leaf vendor folder only if it has no subfolders of its
+        # own. Any subfolder presence means recurse - Buck found live that a
+        # folder can have BOTH a real vendor subfolder and a loose unorganized
+        # file side by side ("Fire Suppression" had "KFS/" plus a bare PDF) -
+        # checking sub_files alone (whether this folder itself has files) picked
+        # the wrong branch and silently dropped KFS entirely.
+        is_category = bool(_DIV_PREFIX_RE.match(name)) or bool(sub_folders)
+        if is_category:
             results.extend(_walk_vendor_level(entry["id"], token, division_num, division_name, depth + 1))
             continue
         vendor_name      = name
         vendor_folder_id = entry["id"]
-        files = _drive_list(vendor_folder_id, token)
-        for f in files:
-            if f.get("mimeType") in READABLE_MIME or f.get("name", "").lower().endswith((".pdf", ".docx")):
-                results.append({
-                    "division_num":    division_num,
-                    "division_name":   division_name,
-                    "vendor_name":     vendor_name,
-                    "vendor_folder_id": vendor_folder_id,
-                    "file_id":         f["id"],
-                    "file_name":       f["name"],
-                    "file_mime":       f.get("mimeType", "application/pdf"),
-                    "modified_time":   f.get("modifiedTime", ""),
-                })
+        for f in sub_files:
+            results.append({
+                "division_num":    division_num,
+                "division_name":   division_name,
+                "vendor_name":     vendor_name,
+                "vendor_folder_id": vendor_folder_id,
+                "file_id":         f["id"],
+                "file_name":       f["name"],
+                "file_mime":       f.get("mimeType", "application/pdf"),
+                "modified_time":   f.get("modifiedTime", ""),
+                "unfoldered":      False,
+            })
+
+    for f in loose_files:
+        results.append({
+            "division_num":    division_num,
+            "division_name":   division_name,
+            "vendor_name":     _vendor_name_from_filename(f["name"]),
+            "vendor_folder_id": None,
+            "file_id":         f["id"],
+            "file_name":       f["name"],
+            "file_mime":       f.get("mimeType", "application/pdf"),
+            "modified_time":   f.get("modifiedTime", ""),
+            "unfoldered":      True,
+        })
     return results
 
 
