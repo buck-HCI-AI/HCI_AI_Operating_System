@@ -588,22 +588,66 @@ def project_status_page(code: str):
     return HTMLResponse(content=html)
 
 
+_LIVE_PROJECT_CODES = ("64EW", "101F", "1355R", "246GW")  # the only jobs the system is allowed to write to / run automation on
+_SYNTHETIC_TEMPLATE_CODES = ("ASPN-MC", "ASPN-NEW", "ASPN-REM", "LEGACY-001", "TEST-001")  # no real address, no real Drive
+
+
 def _reportable_project_codes() -> list:
-    """Every active + monitoring project - the real 'live or monitored' set Buck
-    wants Chris/management able to see a report on. Deliberately excludes
-    'reference' (closed historical jobs + the ASPN-MC/NEW/REM synthetic
-    archetypes) and 'sandbox' - those are read-only learning sources, not
-    operational jobs to report status on. Fixed 2026-07-08: this used to be a
-    hardcoded 4-project list, which is exactly the kind of scope bug Buck flagged
-    ('that should be all jobs - not live jobs in the system')."""
+    """Every real job - the 4 live projects (only ones the system writes to /
+    runs automation on) plus every monitor-only job with real evidence of being
+    an actual project, not a status label. Fixed 2026-07-08 per Buck: status
+    ('reference' vs 'monitoring') in the DB doesn't reliably reflect whether a
+    job is real/current - 825 Cemetery Lane was labeled 'reference' (implying
+    closed) despite a real daily log from the day before this was written.
+    Buck: 'figure out through the g-drive and houzz exports what is actually
+    active jobs.' Ground truth used here: does a real Shared Drive exist with
+    this project's name (live Drive API call, not a cached table), or is it one
+    of the 4 live projects (always included regardless - 246GW's Drive content
+    is nested inside another drive, not its own top-level Shared Drive, so drive
+    presence alone would miss it). Excludes only sandbox and the ASPN-MC/NEW/REM
+    synthetic archetypes (no real address, not a real job)."""
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "drive_intelligence"))
+    from drive_client import list_shared_drives
+    try:
+        drive_names = {d.get("name", "").strip().lower() for d in list_shared_drives()}
+    except Exception:
+        drive_names = set()  # Drive API unreachable - fall back to DB-only below
+
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT project_code FROM projects
-                WHERE status IN ('active', 'monitoring')
+                SELECT project_code, name FROM projects
+                WHERE status != 'sandbox' AND project_code NOT IN %s
                 ORDER BY status, project_code
-            """)
-            return [r["project_code"] for r in cur.fetchall()]
+            """, (_SYNTHETIC_TEMPLATE_CODES,))
+            rows = cur.fetchall()
+
+    def _addr_key(s: str) -> tuple:
+        # Leading street number + first street-name word - "275 Sunnyside Lane"
+        # and "275 Sunnyside Ln." don't substring-match on abbreviations, but
+        # both reduce to ("275", "sunnyside"). Real house numbers are distinctive
+        # enough that this is a reliable match without needing full-string equality.
+        parts = s.split()
+        num = next((p for p in parts if p.isdigit()), "")
+        word2 = next((p for p in parts if p.isalpha() and len(p) > 2), "")
+        return (num, word2)
+
+    drive_keys = {_addr_key(dn) for dn in drive_names if dn != "hci docs"}
+
+    result = []
+    for r in rows:
+        code, name = r["project_code"], (r["name"] or "").strip().lower()
+        if code in _LIVE_PROJECT_CODES:
+            result.append(code)
+        elif drive_names and (name in {dn for dn in drive_names} or _addr_key(name) in drive_keys
+                               or any(name in dn or dn in name for dn in drive_names if dn != "hci docs")):
+            result.append(code)
+        elif not drive_names:
+            # Drive API was unreachable this call - don't silently drop real
+            # monitor-only jobs, include everything non-synthetic as a fallback
+            result.append(code)
+    return result
 
 
 @router.get("/portfolio/status", response_class=None)
