@@ -7739,6 +7739,24 @@ def ai_warm_start():
                     r["created_at"] = r["created_at"].isoformat()
                 out["pending_chief_architect_reviews"] = pending_gbt
 
+                # Found 2026-07-07 (ADR-016): continuous-discovery was correctly
+                # detecting real staleness/errors and firing real ntfy pushes, but
+                # nothing required any agent to actually read that channel - a
+                # genuine "HubSpot: STALE" alert sat unread for days while the
+                # underlying cause (a dead scheduler) went unfixed. Surfacing the
+                # standing alert records it now creates here so a session-start
+                # read of warm-start can't miss them the way a push notification
+                # history can.
+                cur.execute("""
+                    SELECT id, title, priority, created_at FROM ai_messages
+                    WHERE source_agent = 'continuous_discovery' AND status NOT IN ('COMPLETE','REJECTED')
+                    ORDER BY created_at ASC
+                """)
+                open_alerts = [dict(r) for r in cur.fetchall()]
+                for r in open_alerts:
+                    r["created_at"] = r["created_at"].isoformat()
+                out["open_system_alerts"] = open_alerts
+
                 cur.execute("""
                     SELECT mission_id, title, status, priority FROM missions
                     WHERE assigned_to = 'claude_code' AND status IN ('OPEN','IN_PROGRESS','BLOCKED')

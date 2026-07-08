@@ -2,7 +2,7 @@
 Continuous Discovery Engine API routes.
 Mounted at /api/v1/services/continuous-discovery
 """
-import sys, os
+import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
 
@@ -10,6 +10,50 @@ from fastapi import APIRouter, HTTPException, Query
 from detection import detect_changes, detect_all_connectors, log_discovery_scan
 
 router = APIRouter()
+
+
+def _ensure_standing_alert(r: dict) -> None:
+    """Found 2026-07-07 (ADR-016 addendum): this scan was correctly detecting real
+    staleness/errors and firing a real ntfy push every time - but ntfy is a
+    fire-and-forget notification, not a tracked item. A real "HubSpot: STALE"
+    alert sat in the push history unread while the underlying problem (a dead
+    AUTO-004 scheduler) went unfixed for days. ntfy still fires (n8n handles that
+    side) - this makes the same detection also create a standing, visible
+    ai_messages record that stays open until someone resolves it, so a stale
+    alert can't just scroll off a notification feed unnoticed. Idempotent: won't
+    create a second open alert for the same connector+status while one is
+    already outstanding."""
+    status = r.get("detection_status", "UNKNOWN")
+    if status not in ("STALE", "ERROR"):
+        return
+    connector = r.get("connector", "unknown")
+    title = f"Continuous-discovery: {connector} is {status}"
+    try:
+        import psycopg2, psycopg2.extras, os as _os
+        conn = psycopg2.connect(
+            host=_os.environ.get("POSTGRES_HOST", "localhost"),
+            port=int(_os.environ.get("POSTGRES_PORT", 5432)),
+            dbname=_os.environ.get("POSTGRES_DB", "hci_os"),
+            user=_os.environ.get("POSTGRES_USER", "hci_admin"),
+            password=_os.environ.get("POSTGRES_PASSWORD", ""),
+        )
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id FROM ai_messages WHERE title = %s AND status NOT IN ('COMPLETE','REJECTED') LIMIT 1",
+                (title,),
+            )
+            if cur.fetchone():
+                conn.close()
+                return  # already open, don't spam a duplicate every hourly run
+            cur.execute("""
+                INSERT INTO ai_messages
+                    (source_agent, target_agent, message_type, title, body, status, priority)
+                VALUES ('continuous_discovery', 'buck', 'status_update', %s, %s, 'ISSUED', 'high')
+            """, (title, json.dumps(r, default=str)))
+            conn.commit()
+        conn.close()
+    except Exception:
+        pass  # best-effort - never let alert-tracking break the actual scan
 
 
 @router.get("")
@@ -79,6 +123,7 @@ def scan_and_notify(connector_name: str = Query(None, description="Connector to 
             new_records=r.get("summary", {}).get("total_new_records_24h", 0),
             notes=r.get("summary", {}).get("summary", "") if isinstance(r.get("summary"), dict) else "",
         )
+        _ensure_standing_alert(r)
 
     if connector_name:
         return {
