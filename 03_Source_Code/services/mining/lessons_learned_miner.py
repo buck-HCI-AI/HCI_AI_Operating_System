@@ -93,7 +93,12 @@ class LessonsLearnedMiner(BaseMiner):
 
         for meeting in meetings:
             notes = meeting.get("notes") or ""
-            action_items = meeting.get("action_items") or ""
+            # action_items is jsonb - comes back as a list/dict from psycopg2, not a
+            # string. Found 2026-07-07: this crashed every single run of this miner.
+            action_items = meeting.get("action_items")
+            if isinstance(action_items, (list, dict)):
+                action_items = json.dumps(action_items)
+            action_items = action_items or ""
             combined = (notes + " " + action_items).strip()
             if len(combined) < 50:
                 continue

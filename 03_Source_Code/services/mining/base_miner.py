@@ -8,7 +8,8 @@ Safety contract:
   - dry_run=True logs intent without writing anything
 """
 import os, sys, json
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
+from decimal import Decimal
 from typing import Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
@@ -18,6 +19,22 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 
 import psycopg2, psycopg2.extras
+
+
+def _json_default(obj):
+    """Postgres rows routinely carry Decimal/date/datetime - json.dumps has no
+    handler for these by default. Found 2026-07-07: vendor_intelligence_miner
+    was failing every single run on this, silently, because nothing was watching
+    AUTO-004's execution history closely enough to notice."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _dumps(obj) -> str:
+    return json.dumps(obj, default=_json_default)
 
 _DB = dict(
     host=os.environ.get("POSTGRES_HOST", "localhost"),
@@ -130,7 +147,7 @@ class BaseMiner:
             """, (result.status, result.records_scanned, result.records_discovered,
                   result.intelligence_extracted, result.items_queued_for_review,
                   result.items_auto_written, result.rows_skipped,
-                  result.rows_duplicate, json.dumps(result.summary), run_id))
+                  result.rows_duplicate, _dumps(result.summary), run_id))
         return result
 
     def fail_run(self, run_id: int, error: str) -> MiningResult:
@@ -165,7 +182,7 @@ class BaseMiner:
                  project_id, priority, status, workflow, actor)
             VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s)
             RETURNING id
-        """, (action_type, "mining", title[:255], description, json.dumps(payload),
+        """, (action_type, "mining", title[:255], description, _dumps(payload),
               project_id, priority, f"mining:{self.MINER_NAME}", self.MINER_NAME),
             returning=True)
         return row["id"] if row else None
@@ -185,7 +202,7 @@ class BaseMiner:
                 SET source_name = EXCLUDED.source_name, updated_at = NOW()
             RETURNING id
         """, (source_system, source_id, source_name,
-              json.dumps(metadata or {}), project_id), returning=True)
+              _dumps(metadata or {}), project_id), returning=True)
         return row["id"] if row else None
 
     # ── Claude intelligence extraction ────────────────────────────────────────

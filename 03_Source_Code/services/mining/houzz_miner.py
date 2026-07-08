@@ -51,10 +51,18 @@ class HouzzMiner(BaseMiner):
         return len(projects)
 
     def _mine_daily_logs(self, result: MiningResult) -> int:
+        # dl.project_id stores the external Houzz project id (e.g. "3218059"), not our
+        # internal projects.id - approval_queue.project_id is a real FK to projects.id.
+        # Found 2026-07-07: this miner had been passing the raw Houzz id straight through
+        # and failing its FK constraint on every single run since the daily mining engine
+        # went live - the whole miner was dead on arrival, silently, because AUTO-004
+        # itself wasn't executing (separate n8n/SQLite issue) so nobody ever saw the error.
         logs = self._query("""
-            SELECT dl.id, dl.project_id, dl.log_date,
-                   dl.content, dl.synced_at
+            SELECT dl.id, dl.project_id as houzz_project_id, dl.log_date,
+                   dl.content, dl.synced_at, p.id as db_project_id
             FROM houzz_daily_logs dl
+            LEFT JOIN houzz_projects hp ON hp.houzz_project_id = dl.project_id
+            LEFT JOIN projects p ON p.name ILIKE '%' || split_part(hp.name, ' ', 1) || '%'
             ORDER BY dl.log_date DESC NULLS LAST
             LIMIT 50
         """)
@@ -69,12 +77,12 @@ class HouzzMiner(BaseMiner):
                     action_type="lessons_learned_candidate",
                     title=f"Houzz daily log risk signal — {log.get('log_date')}",
                     description=(
-                        f"Daily log for project {log.get('project_id')} on {log.get('log_date')} "
+                        f"Daily log for Houzz project {log.get('houzz_project_id')} on {log.get('log_date')} "
                         f"contains risk signals. Review for lessons learned."
                     ),
                     payload={"log_id": log["id"], "log_date": str(log.get("log_date")),
                              "content_excerpt": content[:500]},
-                    project_id=log.get("project_id"),
+                    project_id=log.get("db_project_id"),
                     priority="low"
                 )
                 result.items_queued_for_review += 1
@@ -82,10 +90,13 @@ class HouzzMiner(BaseMiner):
         return len(logs)
 
     def _mine_schedule(self, result: MiningResult) -> int:
+        # Same external-vs-internal project_id issue as _mine_daily_logs above.
         items = self._query("""
-            SELECT si.id, si.project_id, si.title as task_name,
-                   si.start_date, si.end_date, si.status
+            SELECT si.id, si.project_id as houzz_project_id, si.title as task_name,
+                   si.start_date, si.end_date, si.status, p.id as db_project_id
             FROM project_schedule_items si
+            LEFT JOIN houzz_projects hp ON hp.houzz_project_id = si.project_id
+            LEFT JOIN projects p ON p.name ILIKE '%' || split_part(hp.name, ' ', 1) || '%'
             WHERE si.status IN ('delayed', 'overdue', 'at_risk', 'behind')
             LIMIT 30
         """)
@@ -100,8 +111,8 @@ class HouzzMiner(BaseMiner):
                     f"Houzz schedule item '{item.get('task_name')}' is {item.get('status')}. "
                     "Approve to update schedule_variance table."
                 ),
-                payload=dict(item),
-                project_id=item.get("project_id"),
+                payload={k: v for k, v in item.items() if k != "db_project_id"},
+                project_id=item.get("db_project_id"),
                 priority="medium"
             )
             result.items_queued_for_review += 1

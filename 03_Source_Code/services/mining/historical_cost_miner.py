@@ -27,7 +27,7 @@ class HistoricalCostMiner(BaseMiner):
         awarded = self._query("""
             SELECT be.id as bid_entry_id, be.bid_amount, be.date_received,
                    be.project_id, be.vendor_id,
-                   bp.package_name, bp.csi_division,
+                   bp.id as bid_package_id, bp.package_name, bp.csi_division,
                    v.company_name as vendor_name
             FROM bid_entries be
             JOIN bid_packages bp ON bp.id = be.bid_package_id
@@ -53,7 +53,7 @@ class HistoricalCostMiner(BaseMiner):
                 ON CONFLICT DO NOTHING
             """, (
                 bid["project_id"],
-                bid.get("bid_entry_id"),
+                bid.get("bid_package_id"),
                 bid.get("csi_division"),
                 bid.get("package_name"),
                 bid["bid_amount"],
