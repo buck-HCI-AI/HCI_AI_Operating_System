@@ -845,7 +845,18 @@ def project_cost_forecast(code: str):
         pv = round(bac * pct_should_have_started, 2)
         cpi = round(ev / ac, 3) if ac > 0 else None
         spi = round(ev / pv, 3) if pv > 0 else None
-        eac = round(bac / cpi, 2) if cpi else (round(ac + (bac - ev), 2) if bac else None)
+
+        # EAC = BAC/CPI is standard EVM, but CPI is only meaningful once there's
+        # enough real progress behind it. Found live 2026-07-08: 246GW at 1.4%
+        # schedule complete produced CPI=0.014 (near-zero denominator noise, not
+        # a real cost-performance signal) and EAC=$450,000,000 on a $6.3M
+        # project - a forecast that would have gone straight into a management
+        # report if it hadn't been caught here. Require both a minimum schedule
+        # completion AND a CPI in a plausible band before trusting the
+        # CPI-based formula; otherwise use the simple additive fallback
+        # (AC + remaining budget), same one already used when CPI is undefined.
+        cpi_reliable = cpi is not None and pct_complete >= 0.10 and 0.3 <= cpi <= 3.0
+        eac = round(bac / cpi, 2) if cpi_reliable else (round(ac + (bac - ev), 2) if bac else None)
         etc = round(eac - ac, 2) if eac is not None else None
         vac = round(bac - eac, 2) if eac is not None else None
 
@@ -854,6 +865,8 @@ def project_cost_forecast(code: str):
             notes.append("No schedule items on file - EV/PV/SPI cannot be computed.")
         if ac == 0:
             notes.append("No packages awarded yet - CPI undefined, EAC falls back to BAC - EV + AC.")
+        elif cpi is not None and not cpi_reliable:
+            notes.append(f"CPI ({cpi}) not yet reliable - only {round(pct_complete*100,1)}% schedule complete, or ratio out of a sane range. EAC uses the simple additive fallback, not BAC/CPI, until there's enough real progress to trust the ratio.")
         if proj["permit_status"] == "not_issued":
             notes.append("No permit issued - near-zero EV/PV reflects pre-construction reality, not missing data.")
         elif proj["permit_status"] == "iffr":
