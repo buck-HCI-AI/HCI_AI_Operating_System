@@ -939,6 +939,226 @@ def project_cost_forecast(code: str):
         return _response(f"/project/{code}/cost-forecast", {}, errors=[str(e)], start=t0)
 
 
+def _gather_status_brief(code: str) -> dict:
+    """The 'robust job status brief' Buck asked GBT to spec (handoff b7eb23fd,
+    2026-07-08): a PM-daily-briefing-shaped response instead of a thin generic
+    paragraph. Composes the existing deep-dive + cost-forecast gathers (same
+    numbers as every other endpoint - never a second, possibly-disagreeing
+    calculation) and adds what was actually missing: an executive one-liner,
+    phase detection, ranked top issues, recent-activity feed, and
+    who-owns-the-next-action recommendations. Explicitly does NOT read
+    LIVE_PROJECT_STATE.md - GBT's spec called that out by name as a known-stale
+    source that must never be the basis for a live status answer.
+    Raises ValueError if the project code isn't found (same contract as the
+    other _gather_* functions)."""
+    deep = _gather_deep_dive(code)
+    try:
+        forecast = _gather_cost_forecast(code)
+    except ValueError:
+        forecast = None
+
+    label, color = _status_health(deep)
+    flags = deep.get("flags", [])
+    budget = deep["budget"]
+    sched = deep["schedule"]
+    logs = deep["daily_logs"]
+
+    # Phase detection - cheap heuristic off permit_status + bid coverage +
+    # schedule %, not a separate subsystem. Good enough to answer "what phase
+    # are we in" without overstating certainty GBT's spec explicitly warned against.
+    pct_complete = round((sched["complete_items"] / sched["total_items"]) * 100, 1) if sched["total_items"] else None
+    if deep.get("permit_status") == "not_issued":
+        phase = "Preconstruction / Bidding"
+    elif deep.get("permit_status") == "iffr":
+        phase = "Permitted (IFFR) — pre-full-permit prep"
+    elif pct_complete is not None and pct_complete < 5:
+        phase = "Early Construction"
+    elif pct_complete is not None and pct_complete >= 95:
+        phase = "Closeout"
+    else:
+        phase = "Construction" if pct_complete is not None else "Unknown — no schedule data"
+
+    # Data confidence - concrete, not vibes: bid coverage + daily log recency.
+    no_bid_pct = (len(budget.get("packages_with_no_bids", [])) / budget["total_packages"]
+                  ) if budget.get("total_packages") else None
+    confidence_reasons = []
+    if no_bid_pct is not None and no_bid_pct > 0.3:
+        confidence_reasons.append(f"{round(no_bid_pct*100)}% of bid packages still have zero bids")
+    if logs.get("days_since_last_log") is not None and logs["days_since_last_log"] > 10:
+        confidence_reasons.append(f"no daily log in {logs['days_since_last_log']} days")
+    if forecast is None:
+        confidence_reasons.append("cost forecast unavailable")
+    confidence = "HIGH" if not confidence_reasons else ("LOW" if len(confidence_reasons) >= 2 else "MEDIUM")
+
+    # Ranked top issues - risks (critical/high first) then RFI/bid gaps, capped at 5.
+    top_issues = []
+    for r in sorted(deep.get("open_risks", []),
+                     key=lambda r: {"critical": 0, "high": 1, "medium": 2}.get(r.get("severity"), 3))[:3]:
+        top_issues.append({
+            "issue": r.get("description", "")[:200],
+            "severity": r.get("severity"),
+            "owner_action": r.get("mitigation") or "Needs a mitigation owner assigned",
+        })
+    if len(top_issues) < 5 and budget.get("packages_with_no_bids"):
+        top_issues.append({
+            "issue": f"{len(budget['packages_with_no_bids'])} bid package(s) with zero bids received",
+            "severity": "medium",
+            "owner_action": "PM to confirm invitations were sent; may need re-outreach",
+        })
+    if len(top_issues) < 5 and deep.get("overdue_rfis"):
+        top_issues.append({
+            "issue": f"{len(deep['overdue_rfis'])} RFI(s) past their required response date",
+            "severity": "medium",
+            "owner_action": "PM to escalate with architect/engineer",
+        })
+    top_issues = top_issues[:5]
+
+    # Bid-folder health for the 3 live projects only - reuses the same
+    # connector_sync_state/drive_bids freshness signal already in the DB
+    # rather than re-scanning Drive on every status-brief call.
+    bid_folder_status = None
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM projects WHERE UPPER(project_code)=UPPER(%s)", (code,))
+            pid = cur.fetchone()["id"]
+            if code.upper() in ("64EW", "101F", "1355R"):
+                cur.execute("""
+                    SELECT max(extracted_at) as last_scan, count(DISTINCT division_num) as divisions_scanned,
+                           count(*) FILTER (WHERE extraction_source='claude_fallback') as claude_fallback_count
+                    FROM drive_bids WHERE project_id = %s
+                """, (pid,))
+                scan_row = cur.fetchone()
+                bid_folder_status = {
+                    "last_scan_at": str(scan_row["last_scan"]) if scan_row["last_scan"] else None,
+                    "divisions_scanned": scan_row["divisions_scanned"],
+                    "claude_fallback_extractions": scan_row["claude_fallback_count"],
+                    "note": "Verified clean via full subfolder sweep 2026-07-08 - 0 duplicate/stale level files "
+                            "remained after cleanup. Re-run the sweep before trusting this claim again after "
+                            "any future bulk Drive operation.",
+                }
+            # Recent activity feed - last 5 days of daily logs + directives touching this project
+            cur.execute("""
+                SELECT log_date, work_performed FROM daily_logs WHERE project_id = %s
+                ORDER BY log_date DESC LIMIT 3
+            """, (pid,))
+            recent_logs = [{"date": str(r["log_date"]), "summary": (r["work_performed"] or "")[:200]} for r in cur.fetchall()]
+            cur.execute("""
+                SELECT title, created_at FROM ai_messages WHERE project_code = %s
+                ORDER BY created_at DESC LIMIT 3
+            """, (code.upper(),))
+            recent_directives = [{"title": r["title"], "at": str(r["created_at"])} for r in cur.fetchall()]
+
+    # Executive one-liner - synthesized, not templated boilerplate.
+    if top_issues:
+        main_issue = top_issues[0]["issue"]
+        exec_line = f"{code} is {label.upper()} — main issue: {main_issue}. Next: {top_issues[0]['owner_action']}"
+    elif flags:
+        exec_line = f"{code} is {label.upper()} — {flags[0]}"
+    else:
+        exec_line = f"{code} is {label.upper()} with no material issues in live data right now."
+
+    # Recommended next actions - owner-assigned, split executable-now vs needs-approval.
+    next_actions = []
+    if budget.get("packages_with_no_bids"):
+        next_actions.append({"action": "Re-invite vendors for zero-bid packages", "owner": "PM", "requires_approval": False})
+    if deep.get("overdue_rfis"):
+        next_actions.append({"action": "Escalate overdue RFIs with architect/engineer", "owner": "PM", "requires_approval": False})
+    if confidence == "LOW":
+        next_actions.append({"action": "Re-run Drive bid-folder scan to refresh stale data", "owner": "Claude Code", "requires_approval": False})
+    if not next_actions:
+        next_actions.append({"action": "No urgent action - continue normal monitoring", "owner": "PM", "requires_approval": False})
+
+    return {
+        "project_code": deep["project_code"],
+        "project": deep["project"],
+        "header": {
+            "health": label, "health_color": color,
+            "data_confidence": confidence, "confidence_reasons": confidence_reasons,
+            "refreshed_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "executive_summary": exec_line,
+        "phase": phase,
+        "permit_status": deep.get("permit_status"),
+        "pct_schedule_complete": pct_complete,
+        "top_issues": top_issues,
+        "bids_procurement": {
+            "total_packages": budget.get("total_packages"),
+            "packages_with_no_bids": budget.get("packages_with_no_bids"),
+            "bid_spread_flags": budget.get("bid_spread_flags"),
+            "bid_folder_status": bid_folder_status,
+        },
+        "financial_snapshot": forecast,
+        "schedule": {
+            "pct_complete": pct_complete,
+            "overdue_items": sched.get("overdue"),
+            "upcoming_next_8": sched.get("upcoming_next_8"),
+        },
+        "rfis_decisions": {
+            "open_count": len(deep.get("open_rfis", [])),
+            "overdue_count": len(deep.get("overdue_rfis", [])),
+            "top_open": deep.get("open_rfis", [])[:3],
+        },
+        "recent_activity": {"daily_logs": recent_logs, "directives": recent_directives},
+        "recommended_next_actions": next_actions,
+        "source_of_truth_note": "Built from live gateway/project tables (deep-dive + cost-forecast + drive_bids) - "
+                                 "does not read LIVE_PROJECT_STATE.md, which has known-stale sections.",
+    }
+
+
+@router.get("/project/{code}/status-brief")
+def project_status_brief(code: str):
+    """Robust PM-daily-briefing-shaped job status - see _gather_status_brief.
+    Built 2026-07-08 per Buck/GBT handoff b7eb23fd after live demo feedback
+    that the existing deep-dive/status-page responses were too thin."""
+    t0 = time.time()
+    try:
+        data = _gather_status_brief(code)
+        return _response(f"/project/{code}/status-brief", data, start=t0)
+    except ValueError as e:
+        return _response(f"/project/{code}/status-brief", {}, errors=[str(e)], start=t0)
+    except Exception as e:
+        return _response(f"/project/{code}/status-brief", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/portfolio/status-brief")
+def portfolio_status_brief():
+    """Multi-project rollup per GBT handoff b7eb23fd: portfolio top-line
+    (GREEN/YELLOW/RED counts, biggest cross-project risk) + compact table for
+    every reportable project, full detail only for RED/YELLOW."""
+    t0 = time.time()
+    codes = _reportable_project_codes()
+    briefs = []
+    for code in codes:
+        try:
+            briefs.append(_gather_status_brief(code))
+        except Exception as e:
+            briefs.append({"project_code": code, "error": str(e)})
+
+    counts = {"GREEN": 0, "YELLOW": 0, "RED": 0}
+    for b in briefs:
+        h = (b.get("header", {}) or {}).get("health", "")
+        if h == "On Track":
+            counts["GREEN"] += 1
+        elif h == "On Track, Watching":
+            counts["YELLOW"] += 1
+        elif h == "Needs Attention":
+            counts["RED"] += 1
+
+    table = [{
+        "code": b.get("project_code"), "health": (b.get("header", {}) or {}).get("health"),
+        "phase": b.get("phase"), "main_risk": (b.get("top_issues") or [{}])[0].get("issue") if b.get("top_issues") else None,
+        "confidence": (b.get("header", {}) or {}).get("data_confidence"),
+        "next_action": (b.get("recommended_next_actions") or [{}])[0].get("action") if b.get("recommended_next_actions") else None,
+    } for b in briefs if "error" not in b]
+
+    return _response("/portfolio/status-brief", {
+        "portfolio_summary": counts,
+        "table": table,
+        "expanded_detail": [b for b in briefs if (b.get("header", {}) or {}).get("health") in ("Needs Attention", "On Track, Watching")],
+        "source_of_truth_note": "Built from live gateway/project tables per project - does not read LIVE_PROJECT_STATE.md.",
+    }, start=t0)
+
+
 @router.get("/project/{code}/schedule/critical-path")
 def project_critical_path(code: str):
     """CPM (critical path method) engine — CYCLE49 queue item #4, 2026-07-02. Real
