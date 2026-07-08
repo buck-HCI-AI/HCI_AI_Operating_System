@@ -5,6 +5,30 @@
 
 ---
 
+## v4.5 — 2026-07-08 | Live-project write scope guard (ADR-017)
+
+**Trigger:** Buck found 120 `houzz_daily_logs` rows written to 6 reference-status
+(monitor-only) projects in one session. Demanded a full audit and a fix that makes
+it structurally impossible, not just "we'll be more careful."
+
+- Root cause: `POST /connectors/{name}/ingest` had zero awareness of `projects.status`
+  — any valid Houzz project_id could persist regardless of live/monitoring/reference.
+- Fixed: `BaseConnector.ingest()` now resolves every project reference in a payload
+  and fail-closed blocks (HTTP 403, nothing written) any write targeting a non-live
+  or unresolvable project, unless the caller explicitly passes `allow_non_live=true`
+  + `override_reason` — which still writes, but is now logged to `notification_log`,
+  never silent.
+- Verified live: blocked a real write to 212 Cleveland (reference), then verified the
+  explicit-override path writes and audit-logs correctly.
+- Audited all other write paths from this session (bid_packages/risks deletions, Drive
+  bid-folder moves) — confirmed those touched only the 4 live projects. The
+  sqft-benchmark rows on monitor-only projects came from a direct manual SQL write,
+  not a code path — no code fix closes that; it's a standing discipline rule now (see
+  ADR-017 "what this does NOT fix").
+- See `architecture/ADRs/ADR-017-live-project-write-scope-guard.md` for full detail.
+
+---
+
 ## v4.4 — 2026-07-07 | Connector sync-state was structurally unable to report failure
 
 **Trigger:** Buck asked directly why the HubSpot connector's 12+ day, 100%-failing sync

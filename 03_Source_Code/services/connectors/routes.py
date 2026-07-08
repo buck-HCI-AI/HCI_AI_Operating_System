@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from typing import Optional, Any
 from houzz_connector import HouzzConnector
 from hubspot_connector import HubSpotConnector
+from base_connector import NonLiveProjectWriteBlocked
 
 router = APIRouter()
 
@@ -34,6 +35,8 @@ class IngestPayload(BaseModel):
     source: Optional[str] = "browser_claude"
     extraction_notes: Optional[str] = None
     dry_run: Optional[bool] = True
+    allow_non_live: Optional[bool] = False
+    override_reason: Optional[str] = None
 
 
 def _get_connector(name: str, dry_run: bool = True):
@@ -140,7 +143,17 @@ def ingest(name: str, payload: IngestPayload):
     total_records = sum(len(v) for v in payload.data.values())
     if total_records == 0:
         raise HTTPException(status_code=422, detail="No records found in payload.data")
-    result = c.ingest(payload.data)
+    try:
+        result = c.ingest(payload.data, allow_non_live=payload.allow_non_live, override_reason=payload.override_reason)
+    except NonLiveProjectWriteBlocked as e:
+        raise HTTPException(status_code=403, detail={
+            "error": "non_live_project_write_blocked",
+            "message": "This payload targets project(s) outside the live set (64EW/101F/1355R/246GW). "
+                        "Live projects only get automatic writes. To write historical/reference data "
+                        "intentionally, resend with allow_non_live=true and override_reason set — it will "
+                        "be logged, not silent.",
+            "blocked": e.blocked,
+        })
     result["source"] = payload.source
     result["extraction_notes"] = payload.extraction_notes
     result["entity_types_received"] = list(payload.data.keys())

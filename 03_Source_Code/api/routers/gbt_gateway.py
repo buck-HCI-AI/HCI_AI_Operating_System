@@ -801,107 +801,118 @@ def send_weekly_status_report(codes: str = Query(None, description="Comma-separa
         return _response("/reports/weekly-status", {}, errors=[str(e)], start=t0)
 
 
+def _gather_cost_forecast(code: str) -> dict:
+    """Shared EVM forecast calc - used by the standalone /cost-forecast JSON
+    endpoint and folded into the status page/report cards so 'are we on
+    schedule, are we on budget, are there forecasted issues' (Buck, 2026-07-08:
+    the core management-reporting requirement) shows up everywhere a job's
+    status is reported, not just on a separate endpoint nobody's looking at.
+    Raises ValueError if the project code isn't found."""
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, project_code, contract_value, permit_status
+                FROM projects WHERE UPPER(project_code) = UPPER(%s)
+            """, (code,))
+            proj = cur.fetchone()
+            if not proj:
+                raise ValueError(f"Unknown project code: {code}")
+            pid = proj["id"]
+            bac = float(proj["contract_value"] or 0)
+
+            # AC: actual cost = sum of awarded bid package amounts (real committed dollars)
+            cur.execute("""
+                SELECT COALESCE(SUM(awarded_amount), 0) AS ac
+                FROM bid_packages WHERE project_id = %s AND status = 'awarded'
+            """, (pid,))
+            ac = float(cur.fetchone()["ac"] or 0)
+
+            # Schedule completion %  and %  that should have started by today (for PV)
+            cur.execute("""
+                SELECT COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE status ILIKE 'complete%%' OR status ILIKE 'done') AS complete,
+                    COUNT(*) FILTER (WHERE start_date IS NOT NULL AND start_date <= CURRENT_DATE) AS should_have_started
+                FROM project_schedule_items WHERE project_id = %s::text
+            """, (pid,))
+            sched = cur.fetchone()
+            total_items = sched["total"] or 0
+            pct_complete = (sched["complete"] / total_items) if total_items else 0.0
+            pct_should_have_started = (sched["should_have_started"] / total_items) if total_items else 0.0
+
+    ev = round(bac * pct_complete, 2)
+    pv = round(bac * pct_should_have_started, 2)
+    cpi = round(ev / ac, 3) if ac > 0 else None
+    spi = round(ev / pv, 3) if pv > 0 else None
+
+    # EAC = BAC/CPI is standard EVM, but CPI is only meaningful once there's
+    # enough real progress behind it. Found live 2026-07-08: 246GW at 1.4%
+    # schedule complete produced CPI=0.014 (near-zero denominator noise, not
+    # a real cost-performance signal) and EAC=$450,000,000 on a $6.3M
+    # project - a forecast that would have gone straight into a management
+    # report if it hadn't been caught here. Require both a minimum schedule
+    # completion AND a CPI in a plausible band before trusting the
+    # CPI-based formula; otherwise use the simple additive fallback
+    # (AC + remaining budget), same one already used when CPI is undefined.
+    cpi_reliable = cpi is not None and pct_complete >= 0.10 and 0.3 <= cpi <= 3.0
+    eac = round(bac / cpi, 2) if cpi_reliable else (round(ac + (bac - ev), 2) if bac else None)
+    etc = round(eac - ac, 2) if eac is not None else None
+    vac = round(bac - eac, 2) if eac is not None else None
+
+    notes = []
+    if total_items == 0:
+        notes.append("No schedule items on file - EV/PV/SPI cannot be computed.")
+    if ac == 0:
+        notes.append("No packages awarded yet - CPI undefined, EAC falls back to BAC - EV + AC.")
+    elif cpi is not None and not cpi_reliable:
+        notes.append(f"CPI ({cpi}) not yet reliable - only {round(pct_complete*100,1)}% schedule complete, or ratio out of a sane range. EAC uses the simple additive fallback, not BAC/CPI, until there's enough real progress to trust the ratio.")
+    if proj["permit_status"] == "not_issued":
+        notes.append("No permit issued - near-zero EV/PV reflects pre-construction reality, not missing data.")
+    elif proj["permit_status"] == "iffr":
+        notes.append("IFFR permit - field work is permitted under IFFR scope, but the project may still be on hold (e.g. bids/awards only, no active construction) - check daily-log recency, don't assume EV/PV should be moving.")
+
+    # Log a snapshot for trend tracking (one per project per day)
+    try:
+        with _pg() as snap_conn:
+            with snap_conn.cursor() as snap_cur:
+                snap_cur.execute("""
+                    INSERT INTO cost_forecasts (project_id, bac, ac, ev, pv, cpi, spi, eac, etc, vac, notes)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (project_id, snapshot_date) DO UPDATE SET
+                        bac=EXCLUDED.bac, ac=EXCLUDED.ac, ev=EXCLUDED.ev, pv=EXCLUDED.pv,
+                        cpi=EXCLUDED.cpi, spi=EXCLUDED.spi, eac=EXCLUDED.eac, etc=EXCLUDED.etc,
+                        vac=EXCLUDED.vac, notes=EXCLUDED.notes
+                """, (pid, bac, ac, ev, pv, cpi, spi, eac, etc, vac, "; ".join(notes) or None))
+            snap_conn.commit()
+    except Exception:
+        pass  # snapshot logging is best-effort, never block the response
+
+    return {
+        "project": proj["name"],
+        "project_code": proj["project_code"],
+        "bac_budget_at_completion": bac,
+        "ac_actual_cost": ac,
+        "ev_earned_value": ev,
+        "pv_planned_value": pv,
+        "cpi_cost_performance_index": cpi,
+        "spi_schedule_performance_index": spi,
+        "eac_estimate_at_completion": eac,
+        "etc_estimate_to_complete": etc,
+        "vac_variance_at_completion": vac,
+        "pct_schedule_complete": round(pct_complete * 100, 1),
+        "notes": notes,
+    }
+
+
 @router.get("/project/{code}/cost-forecast")
 def project_cost_forecast(code: str):
-    """Earned Value Management (EVM) cost forecast — CYCLE49 queue item #5, 2026-07-02.
-    BAC from contract_value, AC from awarded bid_entries, EV from % schedule complete x BAC,
-    PV from % of schedule items that should have started by today x BAC. Grounded entirely
-    in real committed/awarded numbers already in the DB - no fabricated progress. Pre-permit
-    projects will correctly show EV/PV near zero, not a bug."""
+    """EVM (earned value management) forecast — CPI/SPI/EAC/VAC. See
+    _gather_cost_forecast for the calc and the 2026-07-08 EAC-reliability fix."""
     t0 = time.time()
     try:
-        with _pg() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT id, name, project_code, contract_value, permit_status
-                    FROM projects WHERE UPPER(project_code) = UPPER(%s)
-                """, (code,))
-                proj = cur.fetchone()
-                if not proj:
-                    return _response(f"/project/{code}/cost-forecast", {}, errors=[f"Unknown project code: {code}"], start=t0)
-                pid = proj["id"]
-                bac = float(proj["contract_value"] or 0)
-
-                # AC: actual cost = sum of awarded bid package amounts (real committed dollars)
-                cur.execute("""
-                    SELECT COALESCE(SUM(awarded_amount), 0) AS ac
-                    FROM bid_packages WHERE project_id = %s AND status = 'awarded'
-                """, (pid,))
-                ac = float(cur.fetchone()["ac"] or 0)
-
-                # Schedule completion %  and %  that should have started by today (for PV)
-                cur.execute("""
-                    SELECT COUNT(*) AS total,
-                        COUNT(*) FILTER (WHERE status ILIKE 'complete%%' OR status ILIKE 'done') AS complete,
-                        COUNT(*) FILTER (WHERE start_date IS NOT NULL AND start_date <= CURRENT_DATE) AS should_have_started
-                    FROM project_schedule_items WHERE project_id = %s::text
-                """, (pid,))
-                sched = cur.fetchone()
-                total_items = sched["total"] or 0
-                pct_complete = (sched["complete"] / total_items) if total_items else 0.0
-                pct_should_have_started = (sched["should_have_started"] / total_items) if total_items else 0.0
-
-        ev = round(bac * pct_complete, 2)
-        pv = round(bac * pct_should_have_started, 2)
-        cpi = round(ev / ac, 3) if ac > 0 else None
-        spi = round(ev / pv, 3) if pv > 0 else None
-
-        # EAC = BAC/CPI is standard EVM, but CPI is only meaningful once there's
-        # enough real progress behind it. Found live 2026-07-08: 246GW at 1.4%
-        # schedule complete produced CPI=0.014 (near-zero denominator noise, not
-        # a real cost-performance signal) and EAC=$450,000,000 on a $6.3M
-        # project - a forecast that would have gone straight into a management
-        # report if it hadn't been caught here. Require both a minimum schedule
-        # completion AND a CPI in a plausible band before trusting the
-        # CPI-based formula; otherwise use the simple additive fallback
-        # (AC + remaining budget), same one already used when CPI is undefined.
-        cpi_reliable = cpi is not None and pct_complete >= 0.10 and 0.3 <= cpi <= 3.0
-        eac = round(bac / cpi, 2) if cpi_reliable else (round(ac + (bac - ev), 2) if bac else None)
-        etc = round(eac - ac, 2) if eac is not None else None
-        vac = round(bac - eac, 2) if eac is not None else None
-
-        notes = []
-        if total_items == 0:
-            notes.append("No schedule items on file - EV/PV/SPI cannot be computed.")
-        if ac == 0:
-            notes.append("No packages awarded yet - CPI undefined, EAC falls back to BAC - EV + AC.")
-        elif cpi is not None and not cpi_reliable:
-            notes.append(f"CPI ({cpi}) not yet reliable - only {round(pct_complete*100,1)}% schedule complete, or ratio out of a sane range. EAC uses the simple additive fallback, not BAC/CPI, until there's enough real progress to trust the ratio.")
-        if proj["permit_status"] == "not_issued":
-            notes.append("No permit issued - near-zero EV/PV reflects pre-construction reality, not missing data.")
-        elif proj["permit_status"] == "iffr":
-            notes.append("IFFR permit - field work is permitted under IFFR scope, but the project may still be on hold (e.g. bids/awards only, no active construction) - check daily-log recency, don't assume EV/PV should be moving.")
-
-        # Log a snapshot for trend tracking (one per project per day)
-        try:
-            with _pg() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO cost_forecasts (project_id, bac, ac, ev, pv, cpi, spi, eac, etc, vac, notes)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                        ON CONFLICT (project_id, snapshot_date) DO UPDATE SET
-                            bac=EXCLUDED.bac, ac=EXCLUDED.ac, ev=EXCLUDED.ev, pv=EXCLUDED.pv,
-                            cpi=EXCLUDED.cpi, spi=EXCLUDED.spi, eac=EXCLUDED.eac, etc=EXCLUDED.etc,
-                            vac=EXCLUDED.vac, notes=EXCLUDED.notes
-                    """, (pid, bac, ac, ev, pv, cpi, spi, eac, etc, vac, "; ".join(notes) or None))
-        except Exception:
-            pass  # snapshot logging is best-effort, never block the response
-
-        return _response(f"/project/{code}/cost-forecast", {
-            "project": proj["name"],
-            "project_code": proj["project_code"],
-            "bac_budget_at_completion": bac,
-            "ac_actual_cost": ac,
-            "ev_earned_value": ev,
-            "pv_planned_value": pv,
-            "cpi_cost_performance_index": cpi,
-            "spi_schedule_performance_index": spi,
-            "eac_estimate_at_completion": eac,
-            "etc_estimate_to_complete": etc,
-            "vac_variance_at_completion": vac,
-            "pct_schedule_complete": round(pct_complete * 100, 1),
-            "notes": notes,
-        }, start=t0)
+        data = _gather_cost_forecast(code)
+        return _response(f"/project/{code}/cost-forecast", data, start=t0)
+    except ValueError as e:
+        return _response(f"/project/{code}/cost-forecast", {}, errors=[str(e)], start=t0)
     except Exception as e:
         return _response(f"/project/{code}/cost-forecast", {}, errors=[str(e)], start=t0)
 

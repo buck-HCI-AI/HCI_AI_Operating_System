@@ -46,6 +46,16 @@ _DB = dict(
 MAX_RETRIES = 3
 RETRY_BACKOFF = [2, 5, 15]  # seconds between retries
 
+LIVE_STATUSES = {"active", "pilot"}
+
+
+class NonLiveProjectWriteBlocked(Exception):
+    """Raised when an ingest payload targets a project outside the live set
+    without an explicit, logged override. See ADR-016 addendum 2026-07-08."""
+    def __init__(self, blocked: dict):
+        self.blocked = blocked
+        super().__init__(f"Write blocked — targets non-live/unresolvable project(s): {blocked}")
+
 
 class ConnectorResult:
     def __init__(self, connector: str, entity_type: str):
@@ -89,10 +99,23 @@ class BaseConnector(ABC):
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
-    def ingest(self, payload: dict) -> dict:
+    def ingest(self, payload: dict, allow_non_live: bool = False, override_reason: Optional[str] = None) -> dict:
         """
         Entry point for all connector data.
         Runs the 7-stage pipeline per entity type found in payload.
+
+        Fixed 2026-07-08 (ADR-016 addendum): this had no awareness of
+        projects.status at all. A generic /connectors/{name}/ingest call with
+        a valid Houzz project_id would persist to any project regardless of
+        whether it was live, monitoring, or reference — the only thing
+        stopping a write to a non-live project was the caller choosing not
+        to. That's exactly what happened: 120 houzz_daily_logs rows landed
+        on 6 reference-status projects in one session. Now every non-dry-run
+        ingest is checked against LIVE_STATUSES before anything is written;
+        an unresolvable or non-live project reference blocks the whole batch
+        unless allow_non_live=True is passed explicitly, in which case the
+        override is written to notification_log with override_reason so it's
+        traceable, not silent.
         """
         results = {}
         total_inserted = 0
@@ -100,6 +123,16 @@ class BaseConnector(ABC):
 
         with self._db() as conn:
             self._conn = conn
+
+            if not self.dry_run:
+                blocked = self._project_scope_check(payload, conn)
+                if blocked:
+                    if not allow_non_live:
+                        conn.rollback()
+                        self._conn = None
+                        raise NonLiveProjectWriteBlocked(blocked)
+                    self._log_scope_override(blocked, override_reason, conn)
+
             for entity_type in self.supported_entities:
                 records = payload.get(entity_type, [])
                 if not records:
@@ -177,6 +210,30 @@ class BaseConnector(ABC):
     def publish_event(self, event_type: str, entity_type: str, count: int) -> None:
         """Override to publish events to n8n or internal event bus."""
         logger.info("[%s] event:%s entity:%s count:%d", self.name, event_type, entity_type, count)
+
+    def _project_scope_check(self, payload: dict, conn) -> dict:
+        """
+        Return {project_ref: {"project_code": ..., "status": ...}} for every
+        project referenced in payload that is NOT in LIVE_STATUSES (including
+        refs that can't be resolved at all — fail closed). Base implementation
+        does no project-scoped writes, so it returns {} (nothing to check).
+        Override in connectors whose entities carry a project reference.
+        """
+        return {}
+
+    def _log_scope_override(self, blocked: dict, override_reason: Optional[str], conn) -> None:
+        """Audit trail for an explicit allow_non_live write. Never silent."""
+        reason = override_reason or "(no reason given)"
+        logger.warning("[%s] NON-LIVE PROJECT WRITE OVERRIDE: %s — reason: %s", self.name, blocked, reason)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO notification_log
+                        (event_type, entity_type, entity_id, severity, message, success)
+                    VALUES ('non_live_project_write_override', %s, %s, 'WARNING', %s, true)
+                """, (self.name, json.dumps(blocked)[:200], f"reason: {reason} | blocked: {json.dumps(blocked)}"))
+        except Exception as e:
+            logger.error("[%s] Failed to log scope override: %s", self.name, e)
 
     # ── 7-Stage Pipeline ───────────────────────────────────────────────────────
 

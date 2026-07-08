@@ -22,7 +22,7 @@ import os, json, logging
 from datetime import datetime, date
 from typing import Optional
 
-from base_connector import BaseConnector, ConnectorResult
+from base_connector import BaseConnector, ConnectorResult, LIVE_STATUSES
 
 logger = logging.getLogger("hci.connector.houzz")
 
@@ -501,6 +501,45 @@ class HouzzConnector(BaseConnector):
             r.get("license_number"), r.get("insurance_expiry"), r.get("status"),
             json.dumps(r.get("raw_data") or {}),
         ))
+
+    # ── Project scope guard ───────────────────────────────────────────────────
+
+    def _project_scope_check(self, payload: dict, conn) -> dict:
+        """
+        "projects" entity writes are exempt — that's just registering/updating
+        Houzz's own project registry (name, houzz_project_id), which is how we
+        bootstrap the mapping in the first place. Every other entity type
+        carries houzz_project_id or project_id and gets resolved against
+        projects.status via houzz_projects.name. Unresolvable refs block too
+        (fail closed) — a Houzz project we don't recognize yet has no business
+        having operational data written for it.
+        """
+        refs = set()
+        for entity_type in self.supported_entities:
+            if entity_type == "projects":
+                continue
+            for r in payload.get(entity_type, []):
+                pid = r.get("houzz_project_id") or r.get("project_id")
+                if pid:
+                    refs.add(str(pid).strip())
+        if not refs:
+            return {}
+
+        blocked = {}
+        with conn.cursor() as cur:
+            for ref in refs:
+                cur.execute("""
+                    SELECT p.project_code, p.status
+                    FROM houzz_projects hp
+                    JOIN projects p ON p.name = hp.name
+                    WHERE hp.houzz_project_id = %s
+                """, (ref,))
+                row = cur.fetchone()
+                if not row:
+                    blocked[ref] = {"project_code": None, "status": "unresolvable"}
+                elif row["status"] not in LIVE_STATUSES:
+                    blocked[ref] = {"project_code": row["project_code"], "status": row["status"]}
+        return blocked
 
     # ── Stage 4: Post-persist hook ─────────────────────────────────────────────
 
