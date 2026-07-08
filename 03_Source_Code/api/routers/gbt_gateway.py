@@ -8,7 +8,7 @@ Architecture:  ChatGPT → ngrok → FastAPI Gateway → internal HCI services �
 Prefix: /gateway
 Auth:   X-API-Key header  OR  ?api_key= query param
 """
-import os, uuid, time, sys, json, subprocess, threading
+import os, re, uuid, time, sys, json, subprocess, threading
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import psycopg2, psycopg2.extras, requests
@@ -8887,3 +8887,112 @@ def brain_ask(req: FieldBrainPayload):
         return _response("/brain/ask", {}, errors=[str(e.detail)], start=t0)
     except Exception as e:
         return _response("/brain/ask", {}, errors=[str(e)], start=t0)
+
+
+# ── Book (canonical Operations Manual) read/write for GBT — 2026-07-08 ──────────
+# GBT flagged tonight it has no file-read action for HCI_AI_OS_MANUAL.md, so it
+# couldn't spot-check chapters or contribute to the book at all. Chapter-scoped,
+# not whole-file: reads/writes always operate on one chapter's content between its
+# own header and the next chapter's header, so a write can't silently corrupt
+# unrelated chapters (the same class of bug as the sync-live-state regex incident
+# earlier tonight - this is deliberately structured to make that impossible here).
+# Writes commit locally with full attribution; never auto-pushed, matching standing
+# git-push-needs-Buck's-OK policy.
+_BOOK_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "HCI_AI_OS_MANUAL.md")
+_CHAPTER_RE = re.compile(r"^#{1,2}\s+Chapter\s+(\d+)\s+—\s*(.*)$", re.MULTILINE)
+
+
+def _book_chapter_index():
+    with open(_BOOK_PATH, "r") as f:
+        text = f.read()
+    matches = list(_CHAPTER_RE.finditer(text))
+    chapters = []
+    for i, m in enumerate(matches):
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        chapters.append({
+            "number": int(m.group(1)),
+            "title": m.group(2).strip(),
+            "start": start,
+            "end": end,
+        })
+    return text, chapters
+
+
+@router.get("/book/chapters")
+def book_chapters():
+    """List every chapter in the canonical Operations Manual with title + line count."""
+    t0 = time.time()
+    try:
+        text, chapters = _book_chapter_index()
+        out = [{"number": c["number"], "title": c["title"],
+                "char_count": c["end"] - c["start"]} for c in chapters]
+        return _response("/book/chapters", {"total_chapters": len(out), "chapters": out}, start=t0)
+    except Exception as e:
+        return _response("/book/chapters", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/book/chapter/{number}")
+def book_chapter_read(number: int):
+    """Read one chapter's full real content, verbatim, from the canonical manual."""
+    t0 = time.time()
+    try:
+        text, chapters = _book_chapter_index()
+        match = next((c for c in chapters if c["number"] == number), None)
+        if not match:
+            return _response(f"/book/chapter/{number}", {}, errors=[f"Chapter {number} not found"], start=t0)
+        content = text[match["start"]:match["end"]].strip()
+        return _response(f"/book/chapter/{number}", {
+            "number": number, "title": match["title"], "content": content,
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/book/chapter/{number}", {}, errors=[str(e)], start=t0)
+
+
+class BookChapterWrite(BaseModel):
+    content: str
+    author: str = "chatgpt"
+    summary: str = ""
+
+
+@router.post("/book/chapter/{number}")
+def book_chapter_write(number: int, req: BookChapterWrite):
+    """Replace one chapter's content. Chapter-scoped so a write can't touch any
+    other chapter. Commits locally to git for a real audit trail; never pushed
+    automatically. content must start with the chapter's own '# Chapter N — Title'
+    header line."""
+    t0 = time.time()
+    try:
+        if not re.match(r"^#{1,2}\s+Chapter\s+\d+\s+—", req.content.strip()):
+            return _response(f"/book/chapter/{number}", {}, errors=[
+                "content must start with a '# Chapter N — Title' header line matching this chapter"
+            ], start=t0)
+        text, chapters = _book_chapter_index()
+        match = next((c for c in chapters if c["number"] == number), None)
+        if not match:
+            return _response(f"/book/chapter/{number}", {}, errors=[f"Chapter {number} not found - use book/chapters to list valid numbers"], start=t0)
+        new_content = req.content.strip() + "\n\n"
+        new_text = text[:match["start"]] + new_content + text[match["end"]:]
+        with open(_BOOK_PATH, "w") as f:
+            f.write(new_text)
+        commit_msg = f"Book: update Chapter {number} via GBT ({req.author})\n\n{req.summary}".strip()
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        # Path-scoped commit (`git commit -- <path>`), not `git add` + plain commit —
+        # found 2026-07-08: `git add` on this one file, followed by a bare `git commit`,
+        # swept in whatever else happened to already be staged from unrelated work in
+        # progress at call time and misattributed it to this endpoint's author. `commit
+        # -- <path>` only ever commits that path's changes regardless of index state.
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", commit_msg, "--", "HCI_AI_OS_MANUAL.md"],
+            cwd=repo_root, capture_output=True, text=True,
+        )
+        _log(f"/book/chapter/{number}", req.author, "HCI_AI_OS_MANUAL.md", "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"chapter {number} updated")
+        return _response(f"/book/chapter/{number}", {
+            "number": number, "status": "written",
+            "committed_locally": commit_result.returncode == 0,
+            "git_output": (commit_result.stdout or commit_result.stderr).strip()[:300],
+            "note": "Committed locally only - not pushed. Buck's standing policy requires explicit authorization to git push.",
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/book/chapter/{number}", {}, errors=[str(e)], start=t0)

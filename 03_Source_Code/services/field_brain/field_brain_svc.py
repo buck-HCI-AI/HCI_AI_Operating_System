@@ -118,6 +118,46 @@ class FieldBrainService(BaseIntelligenceService):
                         f"avg_cost_variance={var}, bid_count={v['bid_count']}"
                     )
 
+        # Buck, 2026-07-08: "we need more than just sqft details - we need full
+        # picture of build questions that will be asked on site." Lessons learned
+        # and risk patterns cover sequencing, lead times, code compliance, safety,
+        # schedule drivers - the actual shape of on-site questions, not just cost/sub.
+        # Pulled unconditionally (not gated behind a keyword list) because these
+        # real 45 rows span too many real topics to enumerate trigger words for.
+        try:
+            from lessons_learned_svc import LessonsLearnedService
+            ll = LessonsLearnedService.search_lessons(question)
+            text_matches = ll.get("text_matches") or []
+            if text_matches:
+                lines.append("\nRELEVANT LESSONS LEARNED (real, from past HCI projects):")
+                for l in text_matches[:5]:
+                    lines.append(
+                        f"  [{l.get('category', 'other')}"
+                        f"{', Div ' + l['csi_division'] if l.get('csi_division') else ''}] "
+                        f"{l.get('title', '')}: {(l.get('description') or '')[:200]}"
+                        + (f" Recommendation: {l['future_recommendation'][:150]}" if l.get('future_recommendation') else "")
+                    )
+        except Exception:
+            pass
+
+        risk_words = ("risk", "issue", "problem", "delay", "watch out", "careful", "gotcha", "gone wrong")
+        if any(w in q for w in risk_words):
+            try:
+                rows = FieldBrainService.pg_query("""
+                    SELECT r.risk_type, r.severity, r.description, p.project_code
+                    FROM risks r JOIN projects p ON p.id = r.project_id
+                    WHERE r.status = 'open'
+                    ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1
+                              WHEN 'medium' THEN 2 ELSE 3 END
+                    LIMIT 8
+                """)
+                if rows:
+                    lines.append("\nOPEN RISK PATTERNS ACROSS LIVE PROJECTS (real, from risks table):")
+                    for r in rows:
+                        lines.append(f"  [{r['severity']}] {r['project_code']} ({r['risk_type']}): {r['description'][:180]}")
+            except Exception:
+                pass
+
         return lines
 
     @classmethod
