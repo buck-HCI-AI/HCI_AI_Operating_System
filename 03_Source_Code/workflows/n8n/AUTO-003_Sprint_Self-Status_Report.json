@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-08T00:27:30.169Z",
+  "updatedAt": "2026-07-08T00:29:35.837Z",
   "createdAt": "2026-06-27T01:02:14.832Z",
   "id": "s1m9fvGkS53Ce2Rt",
   "name": "AUTO-003 Sprint Self-Status Report",
@@ -92,7 +92,7 @@
       ],
       "parameters": {
         "method": "GET",
-        "url": "http://host.docker.internal:8000/api/v1/mvp/roi-summary?project_filter=all",
+        "url": "http://host.docker.internal:8000/api/v1/mvp/roi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -209,9 +209,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "c8dbc375-bcf6-46c5-b99c-6bba43c1b7ba",
-  "activeVersionId": "c8dbc375-bcf6-46c5-b99c-6bba43c1b7ba",
-  "versionCounter": 4,
+  "versionId": "273aa9ca-123e-4108-bb51-d1a908371d16",
+  "activeVersionId": "273aa9ca-123e-4108-bb51-d1a908371d16",
+  "versionCounter": 6,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -236,9 +236,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-08T00:27:30.170Z",
-    "createdAt": "2026-07-08T00:27:30.170Z",
-    "versionId": "c8dbc375-bcf6-46c5-b99c-6bba43c1b7ba",
+    "updatedAt": "2026-07-08T00:29:35.838Z",
+    "createdAt": "2026-07-08T00:29:35.838Z",
+    "versionId": "273aa9ca-123e-4108-bb51-d1a908371d16",
     "workflowId": "s1m9fvGkS53Ce2Rt",
     "nodes": [
       {
@@ -326,7 +326,7 @@
         ],
         "parameters": {
           "method": "GET",
-          "url": "http://host.docker.internal:8000/api/v1/mvp/roi-summary?project_filter=all",
+          "url": "http://host.docker.internal:8000/api/v1/mvp/roi",
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
@@ -437,18 +437,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-08T00:27:30.185Z",
-        "id": 455,
+        "createdAt": "2026-07-08T00:29:35.856Z",
+        "id": 465,
         "workflowId": "s1m9fvGkS53Ce2Rt",
-        "versionId": "c8dbc375-bcf6-46c5-b99c-6bba43c1b7ba",
+        "versionId": "273aa9ca-123e-4108-bb51-d1a908371d16",
         "event": "activated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       },
       {
-        "createdAt": "2026-07-08T00:27:30.181Z",
-        "id": 454,
+        "createdAt": "2026-07-08T00:29:35.850Z",
+        "id": 464,
         "workflowId": "s1m9fvGkS53Ce2Rt",
-        "versionId": "c8dbc375-bcf6-46c5-b99c-6bba43c1b7ba",
+        "versionId": "273aa9ca-123e-4108-bb51-d1a908371d16",
         "event": "deactivated",
         "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
       }
