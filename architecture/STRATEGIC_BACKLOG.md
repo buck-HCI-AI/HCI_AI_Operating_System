@@ -1420,3 +1420,104 @@ Continue Sprint 3 stabilization and backlog reduction under established governan
 *Source: ChatGPT | 2026-07-07*
 
 Continue internal architecture review, backlog reduction, diagnostics, and self-healing under governance. Maintain an implementation audit trail for any internal changes. Focus next on clarifying Browser Claude STALE status and MISSION-001 blocker with evidence, and identify concrete non-governance-gated steps to restore normal coordination. Do not perform Shared Drive project writes, external emails, HubSpot/Houzz changes, procurement, onboarding, account creation, or permission changes without Buck approval.
+
+
+### Field/PM/Management Operating Model Report for HCI AI Construction OS
+*Source: ChatGPT | 2026-07-08*
+
+Buck asked for a full report on how the HCI AI Construction OS should function for field operations, report owners, management, and ownership. I drafted the operating model below. Please review against current repo/manual/implementation state and use it as an input for documentation/onboarding/system design alignment.
+
+# HCI AI Construction OS
+## Operating Model for Field Operations, Project Management, Leadership, and Ownership
+
+Based on the system architecture, the live gateway, and the work completed to date, this is how I believe the finished HCI AI Operating System should function when fully operational.
+
+## Primary Philosophy
+
+The AI should never become another software package employees have to maintain.
+
+Instead, the AI should quietly maintain the company's operational intelligence while people continue building projects.
+
+Every person should only receive information they actually need.
+
+Nobody should have to hunt for information.
+
+## Level 1 — Field Operations
+### Superintende
+
+
+### URGENT: Read Telegram and repair bid-leveling across 64EW, 101F, 1355R
+*Source: ChatGPT | 2026-07-08*
+
+Buck has issued multiple urgent Telegram directives. Immediately read your unread Telegram messages, then inspect every bid folder, division, and subfolder for 64EW, 101F, and 1355R. Ensure company folders exist, bids are correctly named/date-stamped, bid levels exist where required (one per scope), trackers and summaries are regenerated with today's date, investigate why stale dates persist, fix the underlying system, and report completed work, remaining blockers, and Gemini capacity impacts.
+
+
+### URGENT FOLLOW-UP: Bid leveling still incomplete - missing subfolder levels and inconsistent bid naming
+*Source: ChatGPT | 2026-07-08*
+
+Buck reviewed the current output and reports the following issues remain:
+
+1. Some division subfolders are still missing bid-leveling documents.
+2. Actual bid file naming is inconsistent and does not follow the required naming convention.
+3. Audit every division and every subfolder for 64EW, 101F, and 1355R.
+4. Ensure each company has the correct folder.
+5. Ensure every bid is in the correct company folder.
+6. Rename bid files to the required naming scheme (including date).
+7. Create exactly one bid-level where required for each subfolder.
+8. Regenerate one project tracker and one project summary reflecting today's state.
+9. Determine the root cause of why bid levels and naming are being skipped and fix the automation so future runs are complete.
+
+Do not stop after regenerating reports—verify the Drive folder structure itself is correct and report root cause and corrective action.
+
+
+### URGENT: Demo findings - investigate broader access and bid-level test failures
+*Source: ChatGPT | 2026-07-08*
+
+Buck is live with Adam in a demo. Please investigate the demo environment in addition to the bid-leveling work.
+
+New findings:
+- The issue is broader than missing bid levels.
+- Review the test/demo environment and determine why the expected behavior differs from production.
+- Investigate the bid-level verification workflow and Drive integrity checks.
+- Adam also cannot access the HCI Custom GPTs from his ChatGPT account. Determine whether this is a workspace sharing/publication/permissions issue versus a configuration issue, and document what must be changed for additional team members to access the GPTs.
+- Provide root cause(s) and recommended fixes.
+
+
+### FOLLOW-UP: Sheet/page-level architectural drawing search
+*Source: Claude Code, scoped 2026-07-08 from a real demo interaction*
+
+**Problem observed live:** Adam asked Field GBT (via the "1355 Riverside Status Update"
+chat) to identify a wood column assembly on architectural drawing sheet A3.332. Field
+GBT behaved correctly — it did not guess. It searched Drive (`/gateway/drive/search`),
+could not locate that specific sheet, said so honestly, and asked for the file directly.
+When given a Drive share-link, it correctly explained GPT Actions cannot open links
+requiring account permission (not fixable from our side — an OpenAI Actions platform
+constraint, not a bug). When a 58-page structural (S-series) PDF was uploaded directly,
+it correctly identified that the *architectural* A-series sheet (where A3.332 lives)
+wasn't in that file, and asked for the right document instead of fabricating an answer
+from the wrong one.
+
+**Real gap underneath the correct behavior:** there is no way today to ask "what does
+sheet A3.332 say" and get a direct answer. `/gateway/drive/search` does semantic
+similarity search over already-embedded document chunks (see `drive_memory` /
+`hci_project_documents` Qdrant collections) — it was never built to resolve "give me
+page/sheet N of drawing set X" as a lookup. Large multi-sheet PDF plan sets (30-60+
+pages) either aren't chunked at a sheet-boundary level, or the sheet number isn't a
+reliable searchable token in the embedded text (drawing sheet numbers like "A3.332"
+are often in title-block graphics, not extractable running text).
+
+**Scope for a real fix (not started):**
+1. A sheet-index step in the Drive ingestion pipeline for drawing-set PDFs specifically:
+   detect sheet/page boundaries (e.g. via title-block OCR or a fixed per-sheet page
+   count if the set follows a consistent template) and store `{project, sheet_number,
+   page_number, discipline}` as structured metadata alongside the existing vector chunk,
+   not just relying on semantic similarity of body text.
+2. A dedicated lookup endpoint (e.g. `GET /gateway/project/{code}/drawings/{sheet}`)
+   that resolves a sheet number to its page directly, bypassing semantic search
+   entirely for this exact-match case.
+3. Wire that endpoint into the Field GBT Action schema so "what's on sheet A3.332"
+   becomes a direct lookup instead of a search-and-hope.
+4. Out of scope, not fixable by us: GPT Actions opening arbitrary Drive share-links
+   requiring OAuth/permission grants. Vendors/PMs need to upload the file directly to
+   the chat, or the Drive doc needs to already be indexed via the ingestion pipeline
+   above - there's no third path through the Actions platform.

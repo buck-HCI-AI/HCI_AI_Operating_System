@@ -9327,6 +9327,68 @@ def brain_ask(req: FieldBrainPayload):
         return _response("/brain/ask", {}, errors=[str(e)], start=t0)
 
 
+# ── Drawing Reader — 2026-07-08 ──────────────────────────────────────────────
+# Built after a real demo failure: Adam asked about a wood column on sheet
+# A3.332, Field GBT correctly couldn't find it via semantic search (drawings
+# are graphical, sheet numbers live in title blocks, not embedded body text)
+# and correctly refused to guess. This reads the actual drawing-set PDF
+# directly with Claude's native PDF vision instead of text search - see
+# services/drawing_reader/drawing_reader_svc.py and the STRATEGIC_BACKLOG.md
+# entry for the bigger sheet-indexing follow-up this doesn't yet cover.
+
+class DrawingAskPayload(BaseModel):
+    project_code: str = ""
+    question: str = ""
+    job_id: Optional[str] = None
+
+_DRAWING_JOBS: dict = {}
+
+def _run_drawing_job(job_id: str, project_code: str, question: str):
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "drawing_reader"))
+        from drawing_reader_svc import DrawingReaderService
+        result = DrawingReaderService.ask(project_code, question)
+        _DRAWING_JOBS[job_id] = {"status": "done", "result": result}
+    except Exception as e:
+        _DRAWING_JOBS[job_id] = {"status": "error", "error": str(e)}
+
+@router.post("/drawings/ask")
+def drawings_ask(req: DrawingAskPayload):
+    """Ask a question about a project's drawing set (architectural, structural,
+    civil) - reads the actual PDF directly rather than semantic search, which
+    doesn't work for drawing sheets. Async like /brain/ask: call without
+    job_id to start, call again with the returned job_id after ~15-30s (PDF
+    download + Claude vision takes longer than the field-brain text search)."""
+    t0 = time.time()
+    try:
+        if req.job_id:
+            job = _DRAWING_JOBS.get(req.job_id)
+            if not job:
+                return _response("/drawings/ask", {"job_id": req.job_id, "status": "unknown"},
+                                  errors=["No job with that ID - it may have expired (server restart) or never existed"], start=t0)
+            if job["status"] == "done":
+                return _response("/drawings/ask", job["result"], start=t0)
+            if job["status"] == "error":
+                return _response("/drawings/ask", {"job_id": req.job_id, "status": "error"},
+                                  errors=[job["error"]], start=t0)
+            return _response("/drawings/ask", {"job_id": req.job_id, "status": "processing",
+                              "note": "Still running - poll again in a few seconds with the same job_id."}, start=t0)
+
+        if not req.project_code.strip() or not req.question.strip():
+            return _response("/drawings/ask", {}, errors=["project_code and question are both required"], start=t0)
+        job_id = str(uuid.uuid4())[:12]
+        _DRAWING_JOBS[job_id] = {"status": "processing"}
+        thread = threading.Thread(target=_run_drawing_job, args=(job_id, req.project_code, req.question), daemon=True)
+        thread.start()
+        _log("/drawings/ask", "ChatGPT", "drawing_reader", "ok", round((time.time()-t0)*1000), str(uuid.uuid4())[:8], req.question[:80])
+        return _response("/drawings/ask", {
+            "job_id": job_id, "status": "processing",
+            "note": "Query started - call this same endpoint again with this job_id to get the result (~15-30s)."
+        }, start=t0)
+    except Exception as e:
+        return _response("/drawings/ask", {}, errors=[str(e)], start=t0)
+
+
 # ── Book (canonical Operations Manual) read/write for GBT — 2026-07-08 ──────────
 # GBT flagged tonight it has no file-read action for HCI_AI_OS_MANUAL.md, so it
 # couldn't spot-check chapters or contribute to the book at all. Chapter-scoped,
