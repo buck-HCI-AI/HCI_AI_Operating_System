@@ -967,6 +967,994 @@ This is how HCI AI OS compounds in value over time. The more projects it manages
 
 ---
 
+# Chapter 2 — Daily Operations: Morning Routine
+**HCI AI Operations Manual | Part I — Business Operations**
+*Authority: Buck Adams | Last Updated: 2026-06-30*
+
+---
+
+## 2.1 Overview
+
+Every HCI workday starts the same way: the system runs its overnight checks, generates a morning brief, and delivers a prioritized action list. The morning routine is designed so that within 15 minutes, Buck and the field team know exactly what needs to happen today across all four projects.
+
+**Morning brief delivery: 7:00am weekdays**
+- Telegram notification to Buck's phone
+- Stale bid check completed (7:00am n8n trigger)
+- Schedule variance scan completed (7:00am n8n trigger)
+
+---
+
+## 2.2 Buck's Morning Sequence (15 minutes)
+
+### Step 1 — Telegram Check (2 min)
+Open @hciaiossystem_bot. Look for:
+- 🚨 CRITICAL alerts — act on these immediately
+- ⚠️ Budget or schedule flags from overnight scans
+- Any messages from GBT or BC while you were sleeping
+
+If there are no alerts, the system is healthy. Move to Step 2.
+
+### Step 2 — Executive Dashboard (3 min)
+```
+GET /gateway/executive/mission-control
+```
+This returns:
+- Portfolio health (GREEN / YELLOW / RED per project)
+- Count of decisions pending in approval queue
+- Active AI missions status
+
+If all four projects are GREEN and the approval queue is empty: today is routine.
+If any project is RED: jump to that project's PM console immediately.
+
+### Step 3 — Approval Queue (5 min)
+```
+GET /gateway/executive/report
+```
+Review any items awaiting your decision:
+- Bid awards pending your approval
+- Budget commitments that need sign-off
+- Client-facing communications ready for your review
+
+Approve, reject, or defer each. The system handles the rest.
+
+### Step 4 — Project Flags (5 min)
+Check any project showing YELLOW or RED:
+```
+GET /gateway/project/1355R/pm   ← always check 1355R first (highest risk)
+GET /gateway/project/101F/pm
+GET /gateway/project/64EW/pm
+GET /gateway/project/246GW/budget
+```
+
+---
+
+## 2.3 Field Team Morning Sequence
+
+The superintendent and site team have a simplified morning view designed for the field — no dashboards, no API calls. Just the information they need.
+
+**Superintendent daily check-in:**
+1. Log into Houzz Pro → review today's schedule items
+2. Check any open RFIs that need responses before crew arrives
+3. Flag any delivery issues or subcontractor no-shows in Houzz (BC will capture this)
+4. Text Buck directly if there's a site emergency — the AI system supplements, never replaces, direct communication in a crisis
+
+**Office daily check-in:**
+1. Review any vendor emails that came in overnight for bids
+2. Log received bids in HubSpot (or notify GBT to update the system)
+3. Check Outlook for any client communications requiring a response
+4. Flag anything needing Buck's attention before noon
+
+---
+
+## 2.4 Weekly Rhythm
+
+| Day | Extra Activity |
+|-----|---------------|
+| Monday | GBT sends weekly project digest to Buck via Telegram |
+| Tuesday | Best day for bid leveling sessions — subs have had the weekend to respond |
+| Wednesday | Mid-week health check — any bids going stale this week? |
+| Thursday | Review award queue — any subs with expiring bids before Friday? |
+| Friday | Week-close: confirm all active bids are in system, no stale items |
+
+---
+
+## 2.5 The Bid Stale Alert System
+
+Every weekday at 7:00am, the system runs a stale bid check. If anything needs attention, Buck gets a Telegram alert before he reads anything else.
+
+**What triggers an alert:**
+- A bid expiring within 3 days (EXPIRING SOON)
+- A bid that has already expired and hasn't been received (EXPIRED)
+- A bid sent more than 7 days ago with no response (NO RESPONSE WARNING)
+- A bid sent more than 14 days ago with no response (NO RESPONSE ALERT)
+
+**What to do when you get an alert:**
+1. Open the alert — it tells you the vendor, project, and expiry date
+2. Call or email the vendor directly — the AI does not make outbound calls
+3. If they're extending their bid: update the expiry date in the system
+4. If they're not bidding: mark them inactive and find a replacement sub
+
+**Current watch item (2026-06-30):**
+Aspen Welding LLC — 1355 Riverside structural steel SOW — bid expires 2026-07-02. Call before then or the bid is void.
+
+---
+
+## 2.6 The Schedule Variance Alert
+
+Every weekday at 7:00am, the system scans all schedule items across live projects and flags anything overdue.
+
+**Current status (2026-06-30):**
+101 Francis — 74 items overdue, 55-71 days past end dates, all NOT_STARTED.
+These are Houzz schedule items entered before the project started. When you're ready to begin construction at 101F, review and update these dates in Houzz. BC will capture the updated schedule automatically.
+
+**What "overdue" means:**
+A schedule item is overdue if its end_date has passed and its status is not "Complete" or "Done." This includes tasks that may have been completed but not marked done in Houzz. Always check Houzz first before treating an item as truly overdue.
+
+---
+
+## 2.7 End-of-Day Close
+
+At 7:00pm, the system runs an end-of-day brief. No action required unless Buck sees a red flag.
+
+**EOD brief includes:**
+- Summary of what changed today (bids received, status updates)
+- Any items due tomorrow that aren't started
+- Approval queue count
+
+**Field close-out (superintendent):**
+- Log daily progress in Houzz daily log (this is captured by BC overnight)
+- Note any RFIs, submittals, or issues that came up today
+- Confirm tomorrow's subs are scheduled and confirmed
+
+---
+
+## 2.8 When the System is Down
+
+If Telegram alerts stop arriving, the gateway is unreachable, or the dashboard won't load:
+
+1. Check ngrok: `curl https://speculate-armband-retinal.ngrok-free.dev/gateway/health`
+2. If no response: restart ngrok — `ngrok http 8000` in Terminal
+3. If still down: check Docker — `docker ps` — ensure hci_postgres and other containers are running
+4. Full restart procedure: see Chapter 26 — Emergency Procedures
+
+**Never wait for the AI system if a field emergency occurs.** Call Buck directly. The AI augments operations; it does not replace direct communication when lives or project integrity are at risk.
+
+---
+
+*Next: Chapter 03 — Field Operations*
+
+*Ported from the pre-consolidation Operations_Manual/ (drafted 2026-06-30) during the 2026-07-08 Drive-hygiene pass — this content already existed and was real, it just wasn't in the canonical file.*
+
+---
+
+# Chapter 3 — Superintendent Field Operations
+**HCI AI Operations Manual | Part I — Business Operations**
+*Authority: Buck Adams | Last Updated: 2026-06-30*
+
+---
+
+## 3.1 Overview
+
+Field operations are the daily rhythm of the construction site — subcontractors arriving, materials being delivered, work being inspected, problems being identified and resolved. The HCI AI system supports field operations without getting in the way of the work.
+
+The superintendent runs the site. The AI system captures what happens, surfaces risks, and keeps the office and ownership informed without requiring the field team to manage software.
+
+---
+
+## 3.2 The Superintendent's Role in the System
+
+The superintendent's only system touchpoint is **Houzz Pro**. That's it.
+
+**What the superintendent does in Houzz:**
+- Logs daily progress notes in the daily log
+- Marks schedule items complete when work is done
+- Documents issues (weather delays, material shortfalls, subcontractor problems)
+- Takes and uploads site photos
+
+**What happens automatically:**
+- BC (Browser Claude) reads Houzz daily and extracts all entries
+- Data is loaded into the HCI database overnight
+- GBT analyzes changes and flags risks
+- Buck gets the summary in his morning brief
+
+**The superintendent does not need to:**
+- Log into the HCI gateway or dashboard
+- Manage bids or vendors in the system
+- Track budgets or approvals
+- Use any tool other than Houzz Pro
+
+---
+
+## 3.3 Daily Log Standards
+
+A good daily log entry takes 5 minutes and prevents 50 minutes of phone calls. Every entry should include:
+
+**Minimum required fields:**
+- Date and weather conditions
+- Crews on site (which subs, how many people)
+- Work completed today (specific — "poured east foundation wall, 45 cy concrete" not "concrete work")
+- Materials received (what, quantity, any damage or shortages)
+- Issues or delays (be specific — "Ajax Electric no-show, no advance notice, 3-hour delay to electrical rough")
+- Tomorrow's plan
+
+**What makes a log entry useful:**
+```
+2026-06-30 — Partly cloudy, 68°F
+On site: TJ Concrete (6), Premier Landworks (3)
+Work: East wall pour complete, 47cy. West wall forms set for tomorrow.
+Received: Keller drilled pier cage reinforcement — all 22 pieces, no damage.
+Issues: Premier running 1 day behind on site utilities — backfill not complete.
+         Rescheduled concrete flatwork for 7/3 per Buck approval.
+Tomorrow: West wall pour (weather permitting), continue site utility backfill.
+```
+
+---
+
+## 3.4 RFI Workflow in the Field
+
+When the field identifies something that doesn't match the plans:
+
+**Step 1 — Field identifies the issue**
+Superintendent notes the discrepancy in the Houzz daily log. Include exact location, what the plans say vs. what's found, and what needs to be clarified before work can proceed.
+
+**Step 2 — Office generates RFI**
+Office team or GBT drafts the RFI based on the daily log entry. RFI number format: `[PROJECT]-RFI-[###]` (e.g., 1355R-RFI-001).
+
+**Step 3 — RFI is submitted**
+Sent to the design team (architect, structural engineer, MEP) via Outlook. Saved to the project Drive folder. Status tracked in the system.
+
+**Step 4 — Response received**
+When the design team responds, the response is logged in the system. If work was stopped pending the response, field is notified immediately.
+
+**Current open RFI:**
+1355R-RFI-001: Axis B Beam Pocket — structural engineer review pending. Sent to Michael@aliusdc.com. Do not proceed with that beam pocket until response is received.
+
+---
+
+## 3.5 Delivery and Material Management
+
+All material deliveries should be logged in Houzz on the day they arrive. This triggers:
+- BC to capture delivery confirmation
+- Inventory to be updated in the project record
+- Any shortages or damage to be flagged for follow-up
+
+**Delivery protocol:**
+1. Inspect delivery before the driver leaves
+2. Document any damage or shortage in the delivery receipt and Houzz
+3. Notify the supplier immediately if there's an issue — same day
+4. Never sign a delivery receipt "subject to inspection" — inspect first
+
+**Lead time awareness:**
+The system tracks which packages are still bidding. If you need a material that hasn't been awarded, flag it in Houzz immediately. Lead times at the Aspen elevation and access can add 2–4 weeks vs. front-range delivery.
+
+---
+
+## 3.6 Subcontractor Management on Site
+
+**Before subs arrive:**
+- Confirm pre-task meeting if they're starting a new scope
+- Verify current COI (Certificate of Insurance) is on file
+- Confirm they have the current drawings and any issued RFI responses
+
+**While subs are on site:**
+- Log their crew size in the daily log
+- Document any work stoppages or issues
+- Flag any scope creep — if a sub is doing work outside their contract, stop it and call Buck
+
+**When subs leave:**
+- Confirm the area is clean and protected per the spec
+- Note completion percentage in the Houzz daily log
+- If they won't return for more than 3 days, note the reason
+
+---
+
+## 3.7 Weather and Delay Management
+
+**Weather delay protocol:**
+1. Log weather conditions and work stoppage in Houzz daily log
+2. Assess impact on schedule — will this push other subs?
+3. Notify affected subs immediately so they can plan
+4. If delay is 3+ days: GBT to update schedule and notify Buck of downstream impact
+
+**The system tracks:**
+- Consecutive weather delays per project
+- Schedule impact of delays (days lost vs. float remaining)
+- Pattern alerts (if a project is falling behind a benchmark pace)
+
+**Weather does not automatically excuse contract delays.** The contract governs what constitutes an excusable delay. When in doubt, document everything and contact Buck before telling a sub they get extra time.
+
+---
+
+## 3.8 Safety and Incidents
+
+**Any site incident — no matter how minor — is logged same day.**
+
+Incident log in Houzz includes:
+- Date, time, exact location on site
+- Who was involved (name, employer, role)
+- What happened (factual, no speculation)
+- Any medical attention provided
+- Who was notified and when
+
+**For any recordable incident (OSHA definition):**
+1. Call Buck immediately
+2. Secure the area
+3. Cooperate with any required agency notification
+4. Do not post about the incident on social media or share photos publicly
+5. Preserve all evidence until told otherwise by Buck or legal counsel
+
+The HCI AI system does not manage incident reporting — that is a legal and human matter. The system's daily log captures context, but formal incident reporting follows HCI's safety policies, not the AI system.
+
+---
+
+## 3.9 Field Communication with the Office
+
+**Use Houzz for:** Everything that is part of the permanent project record.
+**Use text/call for:** Urgent issues that need same-day response.
+**Use email for:** Formal communications with design team, clients, or agencies.
+
+The AI system reads Houzz. It does not read texts or phone calls. If something matters to the project record, it goes in Houzz.
+
+---
+
+*Next: Chapter 04 — Project Manager Daily Workflow*
+
+*Ported from the pre-consolidation Operations_Manual/ (drafted 2026-06-30) during the 2026-07-08 Drive-hygiene pass — this content already existed and was real, it just wasn't in the canonical file.*
+
+---
+
+# Chapter 4 — Project Manager Daily Workflow
+**HCI AI Operations Manual | Part I — Business Operations**
+*Authority: Buck Adams | Last Updated: 2026-06-30*
+
+---
+
+## 4.1 Overview
+
+The project manager is the operational center of each project — running the schedule, tracking bids, communicating with the design team, keeping the client informed, and managing change. At HCI, the AI system handles the monitoring and alerting; the PM handles judgment and relationships.
+
+This chapter covers the PM's daily workflow for managing one or more active projects using the HCI AI Operating System.
+
+---
+
+## 4.2 PM Project Console
+
+Every project has a PM console in the gateway. This is the starting point for project management every morning:
+
+```
+GET /gateway/project/{code}/pm
+```
+Replace `{code}` with: `64EW`, `101F`, `1355R`
+
+**What the PM console returns:**
+- Project health status (GREEN / YELLOW / RED)
+- Bid package summary (total, awarded, receiving, not started)
+- Open risks and issues
+- Recent activity (last 72 hours of changes)
+- Upcoming milestones (next 14 days)
+
+**246GW is budget-managed differently:**
+```
+GET /gateway/project/246GW/budget
+```
+This project is in construction — the primary watch is budget vs. contract, not bid status.
+
+---
+
+## 4.3 Bid Package Management
+
+**The bid package lifecycle:**
+1. `NOT_STARTED` — identified but invite not yet sent
+2. `COLLECTING` — SOW sent, waiting for responses
+3. `RECEIVED` — at least one bid received, ready for leveling
+4. `LEVELED` — bids compared side-by-side, award recommendation ready
+5. `AWARDED` — Buck approved the award, contract executed
+6. `CANCELLED` — scope removed or combined with another package
+
+**PM daily bid tasks:**
+1. Check which packages expire in the next 3 days — call those subs before morning is over
+2. Review any newly received bids — log them in the system same day
+3. Check no-response list — any subs who got the SOW 7+ days ago with no reply?
+4. If a package has 3+ received bids, prepare the leveling comparison for Buck
+
+**Updating bid status:**
+```
+POST /gateway/bids/update
+X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
+{
+  "bid_id": [id],
+  "status": "received",
+  "bid_amount": 125000,
+  "received_date": "2026-06-30"
+}
+```
+
+---
+
+## 4.4 Vendor Communication Workflow
+
+**The PM manages all sub communication at the bid stage:**
+
+**Sending an SOW:**
+- SOW drafts are prepared by GBT and routed to Outlook
+- PM reviews the draft, adds any project-specific notes
+- Buck approves all SOW sends — PM routes for approval first
+- Once approved: send from Outlook via Graph API or directly in Outlook
+
+**Following up on a stale bid:**
+1. The 7am alert tells you who to call
+2. Call directly — do not email for expiring bids, you'll lose a day
+3. Log the call outcome in the system same day
+4. If extending: update expiry date in the DB
+
+**Marking a sub inactive:**
+If a sub hasn't responded after 2 follow-up attempts, mark them `inactive` for this package:
+```
+POST /gateway/bids/update
+{"bid_id": [id], "status": "no_response", "notes": "2 calls, no reply"}
+```
+Then identify a backup sub and send them the SOW.
+
+---
+
+## 4.5 Schedule Management
+
+**The PM owns the project schedule. Houzz is the schedule system of record.**
+
+**Weekly schedule review:**
+1. Open Houzz Pro → project → Schedule
+2. Identify any tasks overdue that should be marked complete
+3. Identify any tasks starting in the next 2 weeks — are the subs confirmed?
+4. Flag any milestone dates at risk to Buck
+
+**When a task falls behind:**
+1. Log it in the Houzz daily note for the day you discover it
+2. Assess downstream impact — what else moves if this pushes?
+3. Notify the affected subs in the new sequence
+4. Update the Houzz schedule — BC will capture the new dates automatically
+5. If the delay pushes the contract completion date: flag to Buck for client notification
+
+**101 Francis schedule note:**
+74 items currently show overdue in the system, but 101F is in pre-construction. These dates were entered during planning. When construction begins, update all dates in Houzz. The system will recalibrate automatically.
+
+---
+
+## 4.6 Budget Tracking
+
+**By project phase:**
+
+*Pre-construction (64EW, 101F, 1355R):*
+Budget tracking is about bid coverage. The PM tracks:
+- How many packages are still open (not awarded)
+- Sum of received bids vs. budget estimate per package
+- Any packages where the lowest bid exceeds the budget estimate (flag to Buck)
+
+*Construction (246GW):*
+Budget tracking is critical. The PM tracks:
+- Contract value vs. committed costs (awarded)
+- Remaining open estimates for unawarded packages
+- Change order totals (increases to budget)
+- Current projection: `GET /gateway/project/246GW/budget`
+
+**246GW alert (2026-06-30):**
+Current committed: $6,314,913 vs. contract $6,300,000 — over by $14,913. Open estimates add $2.75M more. This project needs value engineering or a contract amendment. Flag to Buck before awarding any more packages without budget relief.
+
+---
+
+## 4.7 Design Team Coordination
+
+**The design team (architects, engineers, interior designers) is managed through Outlook.**
+
+**PM tracking list — live at all times:**
+- Open RFIs (sent, awaiting response)
+- Pending submittals (shop drawings, product data, samples)
+- Issued for construction drawings vs. what's in the field
+
+**RFI status check:**
+- Every open RFI gets a follow-up call if no response in 3 business days
+- RFI responses are forwarded to the superintendent same day they're received
+- If an RFI is blocking work on site: escalate immediately — call the designer directly
+
+**Current open items:**
+- 1355R RFI-001: Axis B Beam Pocket — sent to Michael@aliusdc.com, no response yet
+- 1355R: Awaiting structural engineer review before steel package can be finalized
+
+---
+
+## 4.8 Client Communication
+
+**Client communication is the PM's most important relationship task and the most heavily governed by HCI policy.**
+
+**The rule:**
+Every client-facing communication is reviewed and approved by Buck before it is sent. No exceptions.
+
+**Standard client update cadence:**
+- Weekly: Brief progress summary email (what happened this week, what's next week, any items needing client decision)
+- As-needed: Any change that affects the project schedule, budget, or design intent
+
+**PM prepares the update draft. Buck approves before sending.**
+
+Draft format:
+```
+Subject: [Project Address] — Weekly Update [Date]
+
+Hi [Client First Name],
+
+This week we completed: [2-3 specific items]
+
+Next week we plan to: [2-3 specific items]
+
+Items awaiting your decision: [if any]
+
+Questions or concerns? Reply here or call [Buck's number].
+
+Buck Adams
+Hendrickson Construction
+```
+
+**Never communicate:**
+- Budget numbers without Buck's approval
+- Schedule changes that imply delay without Buck's approval
+- Change order implications without Buck's approval
+- Anything about disputes, subcontractor problems, or design issues without Buck's approval
+
+---
+
+## 4.9 Meeting and Decision Log
+
+Every meeting that affects the project is logged. This is the PM's responsibility.
+
+**Meeting log minimum:**
+- Date, attendees, meeting type (OAC, design review, pre-construction)
+- Decisions made (specific — "Owner approved change to cabinet hardware per submittal #12")
+- Action items assigned (who, what, by when)
+- Next meeting scheduled
+
+Meeting logs are saved to the project Drive folder and referenced in the system.
+
+---
+
+*Next: Chapter 05 — Bid Package Management*
+
+*Ported from the pre-consolidation Operations_Manual/ (drafted 2026-06-30) during the 2026-07-08 Drive-hygiene pass — this content already existed and was real, it just wasn't in the canonical file.*
+
+---
+
+# Chapter 5 — Bid Package Management
+**HCI AI Operations Manual | Part I — Business Operations**
+*Authority: Buck Adams | Last Updated: 2026-06-30*
+
+---
+
+## 5.1 Overview
+
+Bid package management is the engine of HCI's pre-construction operations. Every dollar of budget and every trade on the project flows through this process. Getting it right means better subs, better prices, and projects that close on budget.
+
+This chapter covers the full lifecycle of a bid package — from identification through award — using the HCI AI Operating System.
+
+---
+
+## 5.2 Current Bid Portfolio
+
+**As of 2026-06-30:**
+
+| Project | Total Pkgs | Awarded | Collecting | Not Started |
+|---------|-----------|---------|-----------|-------------|
+| 64EW | 35 | 0 | 35 | 0 |
+| 101F | 41 | 0 | 26 | 15 |
+| 1355R | 73 | 0 | 58 | 15 |
+| 246GW | 44 | 19 | 18 | 7 |
+| **Total** | **193** | **19** | **137** | **37** |
+
+137 active bid packages across 3 projects. This is the primary work front right now.
+
+---
+
+## 5.3 Package Identification and Setup
+
+**Step 1 — Define the scope**
+Each bid package has a defined scope of work. The scope should be clear enough that two different subs read it and price the same thing.
+
+Scope definition includes:
+- CSI division and trade description
+- Specific inclusions (what is in this package)
+- Specific exclusions (what is NOT in this package — allowances, owner-furnished items)
+- Drawing references (sheet numbers that govern this scope)
+- Specification sections
+- Key project constraints (access, staging, Pitkin County requirements)
+
+**Step 2 — Create in the system**
+```
+POST /gateway/bids/create
+X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
+{
+  "project_id": [id],
+  "package_name": "Structural Steel Erection",
+  "csi_division": "05",
+  "status": "not_started",
+  "budget_estimate": 285000
+}
+```
+
+**Step 3 — Identify subs**
+Use the vendor database to find qualified subs for this trade:
+```
+GET /gateway/knowledge/vendor?trade=structural_steel
+```
+Review vendor scores to prioritize who to invite:
+```
+GET /gateway/vendors/scores
+```
+A-grade vendors get first invite. C-grade or lower: only invite if no better options exist.
+
+---
+
+## 5.4 SOW Preparation
+
+**The Statement of Work (SOW) is the bid invitation document.**
+
+**SOW structure:**
+1. Project overview (address, owner, scope summary)
+2. Specific scope of work for this package
+3. Bid submission requirements (format, due date, what to include)
+4. Drawing and specification references
+5. Site logistics and constraints (staging, access, working hours per Pitkin County regs)
+6. Insurance requirements (see COI requirements in Chapter 12)
+7. Preliminary schedule (not binding, but shows context)
+
+**SOW preparation:**
+GBT prepares SOW drafts based on the scope definition. Claude Code saves drafts to Outlook. Buck reviews and approves before sending.
+
+**The no-send rule:**
+No SOW is sent without Buck's explicit approval. GBT prepares, PM reviews, Buck approves. After approval: send via Outlook (directly or via Graph API).
+
+**SOW tracking:**
+Once sent, the bid package status updates to `COLLECTING` and the sent date is logged. This starts the expiry clock.
+
+---
+
+## 5.5 Bid Expiry Management
+
+**The bid validity window is the most time-sensitive operational task in pre-construction.**
+
+**How expiry works:**
+- Most HCI SOWs request a 30-day bid validity period
+- After the due date passes, the bid expires — the sub can change their number
+- If a sub's bid expires and they haven't been awarded, they will often re-bid higher
+- Expiring bids need immediate action: award, extend, or replace
+
+**The stale bid check runs every weekday at 7am:**
+```
+GET /gateway/bids/stale
+```
+Returns four categories:
+- `EXPIRING` — expires within 3 days → call today
+- `EXPIRED` — already expired → call and get an extension or replacement
+- `NO_RESPONSE` — SOW sent 7+ days ago, no reply → follow up
+- `STALE_PACKAGE` — package open 21+ days with no new bids → review
+
+**The standard follow-up protocol:**
+- **Day 7 of no response:** Email follow-up
+- **Day 10 of no response:** Phone call
+- **Day 14 of no response:** Mark `no_response`, find replacement sub
+- **3 days before expiry:** Phone call to extend or award
+- **1 day before expiry:** Second call if no response
+
+**Current critical items:**
+- Aspen Welding LLC — 1355R steel — expires 2026-07-02 — CALL TODAY
+
+---
+
+## 5.6 Receiving and Logging Bids
+
+**When a bid comes in:**
+
+1. Record receipt in the system immediately (same day)
+2. Confirm bid is complete — does it include all scope? Are exclusions reasonable?
+3. Request clarification in writing for any missing items (same day)
+4. Update bid status:
+```
+POST /gateway/bids/update
+X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6
+{
+  "bid_id": [id],
+  "status": "received",
+  "bid_amount": 127500,
+  "received_date": "2026-06-30",
+  "notes": "Includes all structural steel erection per drawings S1-S8. Excludes fireproofing."
+}
+```
+5. Flag any bid that is more than 15% above budget estimate — GBT will prepare a reconciliation
+
+**Bid confidentiality:**
+HCI operates an open bidding process, but specific dollar amounts are confidential. Do not share one sub's number with another to negotiate. This is both unethical and damages vendor relationships.
+
+---
+
+## 5.7 Bid Leveling
+
+**Bid leveling is the comparison of received bids on a scope-adjusted basis so that Buck can make an informed award decision.**
+
+**What leveling means:**
+Two bids on the same scope may not actually be the same scope. Leveling identifies:
+- What's included vs. excluded
+- Allowances vs. lump sums
+- Material specifications (matching spec or alternate)
+- Labor assumptions (local labor or crew from outside Aspen)
+- Schedule assumptions
+
+**Leveling template (prepared by GBT):**
+
+| Item | Budget Est. | Sub A | Sub B | Sub C | Notes |
+|------|-------------|-------|-------|-------|-------|
+| Total Base Bid | $285,000 | $267,000 | $292,000 | $311,000 | |
+| Fireproofing (Ex.) | incl. | N/A | +$18,000 | incl. | Sub A excludes |
+| Mobilization | incl. | incl. | incl. | incl. | |
+| Adjusted Total | $285,000 | $285,000 | $310,000 | $311,000 | |
+| Recommendation | — | **AWARD** | 2nd choice | 3rd | |
+
+**Leveling output → Buck for award decision.**
+GBT sends the leveling summary via Telegram with a clear recommendation. Buck approves or redirects.
+
+---
+
+## 5.8 Award Process
+
+**No award is final without Buck's explicit approval.**
+
+**Award flow:**
+1. GBT sends leveling summary + recommendation to Buck via Telegram
+2. Buck approves, rejects, or asks for additional information
+3. On approval: PM issues verbal/email notification to the awarded sub
+4. Contract preparation begins (see Chapter 07 — Contract Management)
+5. System updated: `status → awarded`, `awarded_amount → [final number]`
+
+**What NOT to do:**
+- Do not tell a sub they're "probably getting the job" before Buck's approval
+- Do not give a sub a reason for why they didn't get the award — just "we went a different direction"
+- Do not award a sub whose COI has expired — verify first
+
+**After award:**
+- Unsuccessful subs receive a brief "thanks for bidding, we went a different direction" email
+- All bid amounts are archived — never deleted
+- The awarded sub gets a pre-construction meeting within 5 business days of award
+
+---
+
+## 5.9 Vendor Performance Feedback
+
+Every completed bid package creates a vendor performance data point. The system tracks:
+- Response time (days from SOW sent to bid received)
+- Coverage (what % of scope items were priced)
+- Award history (how often their bids are competitive)
+
+**After each project phase, update vendor scores:**
+```
+GET /gateway/vendors/scores/{vendor_id}
+```
+If a vendor performed poorly (no-show on site, unresponsive to RFIs, quality issues), log a note in the vendor record. This affects their score and their future invite priority.
+
+**Vendor score grades:**
+- A (80-100): First invite list, preferred
+- B (60-79): Standard invite list
+- C (40-59): Invite only if not enough A/B options
+- D (<40): Do not invite without specific reason and Buck's awareness
+
+---
+
+*Next: Chapter 06 — Vendor and Subcontractor Management*
+
+*Ported from the pre-consolidation Operations_Manual/ (drafted 2026-06-30) during the 2026-07-08 Drive-hygiene pass — this content already existed and was real, it just wasn't in the canonical file.*
+
+---
+
+# Chapter 6 — Vendor and Subcontractor Management
+**HCI AI Operations Manual | Part I — Business Operations**
+*Authority: Buck Adams | Last Updated: 2026-06-30*
+
+---
+
+## 6.1 Overview
+
+HCI's subcontractor relationships are a core competitive advantage. In the Aspen market, the best subs have choices — they can work for anyone. The contractors they choose to work with consistently are the ones who treat them fairly, pay on time, communicate clearly, and run organized projects.
+
+The HCI AI system manages the data layer. The relationships are human.
+
+---
+
+## 6.2 The Vendor Database
+
+**392 vendors** are currently tracked in the HCI system across 50+ trades.
+
+**Key vendor data points:**
+- Contact information (name, company, email, phone)
+- Trades and CSI divisions
+- Vendor score (A/B/C/D based on response, coverage, and history)
+- Project history (what they've bid, what they've won, what they've built)
+- Insurance status (COI expiry)
+- Notes (performance observations, blacklist flags)
+
+**Querying vendor data:**
+```
+GET /gateway/knowledge/vendor?name=Aspen+Welding
+GET /gateway/knowledge/vendor?trade=structural_steel
+GET /gateway/vendors/scores              ← all vendors ranked
+GET /gateway/vendors/scores/{vendor_id} ← single vendor detail
+```
+
+**Updating vendor data:**
+Route to GBT with the correction. GBT prepares the update, Claude Code executes. No direct vendor data writes from the field.
+
+---
+
+## 6.3 Vendor Categories at HCI
+
+HCI works with three categories of vendors:
+
+**Tier 1 — Strategic Partners**
+Subs HCI has worked with multiple times, who understand the Aspen luxury standard, who we prioritize in bid invitations. These relationships are personal. Buck knows their owners by name.
+- American PHCE (HVAC/plumbing)
+- Keller Foundations (foundation/piers)
+- TJ Concrete
+- Ajax Electric
+Examples — not exhaustive.
+
+**Tier 2 — Qualified Regulars**
+Subs in the database with at least one successful project or strong referral. Invited to bid when Tier 1 has capacity conflicts.
+
+**Tier 3 — New/Unproven**
+First-time bidders or referrals without project history at HCI. Always invited alongside at least two Tier 1 or Tier 2 subs. Never sole-source awarded without explicit Buck approval.
+
+---
+
+## 6.4 Adding a New Vendor
+
+When a new sub is referred or introduces themselves:
+
+**Information to collect:**
+- Company name, contact name, role
+- Email (required for SOW routing), phone
+- Trades and CSI divisions they cover
+- License number (Colorado contractor license)
+- Insurance: liability limit, workers comp, additional insured language
+- References (2 GC references for subs doing work >$50K)
+
+**Adding to the system:**
+Route to GBT: "Add new vendor: [all info above]." GBT prepares the database insert, Claude Code executes.
+
+**Do not send an SOW before:**
+1. Vendor is in the system
+2. Current COI is on file or committed
+3. References have been checked for contracts over $100K
+
+---
+
+## 6.5 Insurance Requirements
+
+**Every sub working on an HCI project must have a current COI on file before they start work.**
+
+**Minimum insurance requirements:**
+- Commercial General Liability: $1,000,000 per occurrence / $2,000,000 aggregate
+- Workers Compensation: State statutory limits
+- Auto Liability: $1,000,000 combined single limit
+- Additional Insured: "Hendrickson Construction, its officers, directors, employees, and agents"
+
+**For subs with contract value over $500K:**
+- Umbrella/Excess: $5,000,000 minimum
+
+**COI tracking:**
+The system flags subs with expiring COIs. If a sub's COI expires during active work, work stops until the new certificate is on file. No exceptions.
+
+**COI status check:**
+```
+GET /gateway/knowledge/vendor?name=[sub+name]
+```
+Check `coi_expiry` field.
+
+---
+
+## 6.6 Sub Pre-Construction Meeting
+
+Before any sub begins work, a pre-construction meeting is held. This is not optional.
+
+**Meeting agenda:**
+1. Project overview — client expectations, schedule overview, what success looks like
+2. Their specific scope — confirm they understand exactly what they are and aren't doing
+3. Coordination requirements — who do they need to coordinate with? (trades above/below/adjacent)
+4. Logistics — site access, staging area, material storage, working hours
+5. Submittal requirements — what shop drawings, product data, samples need approval before ordering
+6. Payment process — payment application cutoff (25th of month), review period, pay date
+7. Communication protocol — who is their HCI contact? How do they get RFI responses? What's the response commitment?
+8. Quality expectations — mock-up requirements, inspection points, Pitkin County inspection schedule
+
+**Who attends:**
+- HCI PM + Buck (for major subs)
+- Sub's project manager or foreman
+- Superintendent if work begins within 30 days
+
+**Meeting is logged** in the system and the project Drive folder.
+
+---
+
+## 6.7 Vendor Performance Tracking
+
+The vendor scoring system runs on three dimensions:
+
+**Response (0-40 points)**
+- Did they respond to the SOW?
+- How quickly?
+- Was the bid complete?
+
+**Coverage (0-30 points)**
+- What percentage of the scope did they price?
+- Did they exclude critical items?
+- Were exclusions reasonable and disclosed?
+
+**History (0-30 points)**
+- Have they built HCI projects before?
+- How did they perform? (quality, schedule, communication)
+- Would we award them again?
+
+**Grades:**
+- A (80-100): Preferred — invite first
+- B (60-79): Regular — standard invite list
+- C (40-59): Conditional — invite if limited options
+- D (<40): Do not invite — document reason
+
+**Updating performance:**
+After a project phase, or after a notable performance event (good or bad), PM logs a note. GBT updates the score. System records the history.
+
+---
+
+## 6.8 Managing Sub Performance During Construction
+
+**When a sub is underperforming:**
+
+**Step 1 — Document**
+Every underperformance event is logged in Houzz daily log before any conversation happens. Date, what was observed, what was not delivered, impact on schedule.
+
+**Step 2 — Conversation**
+PM speaks with the sub's superintendent or PM directly. "You're behind X days on Y scope. What's the plan to recover?" Get a specific answer with dates.
+
+**Step 3 — Written notice**
+If they're behind by more than 3 days without a credible recovery plan: written notice. GBT prepares the notice, Buck approves, PM sends via Outlook.
+
+**Step 4 — Escalation**
+If notice doesn't resolve it: contact the sub's owner. This is Buck's call, not PM's. Flag to Buck.
+
+**Step 5 — Contract remedies**
+If the sub abandons the work or cannot recover: this is a legal matter. Contact Buck immediately. The contract governs remedies — don't make promises or threats without Buck's explicit approval.
+
+---
+
+## 6.9 Sub Payment Management
+
+**Payment drives performance.** Pay on time, pay what you owe, and subs will work for you again.
+
+**Payment application cycle:**
+- Sub submits Pay App by the 25th of the month
+- PM reviews against schedule of values and work in place by the 27th
+- Buck approves by the 28th
+- Payment issued by the 5th of the following month
+
+**What to check in a Pay App review:**
+1. Does the amount requested match work in place?
+2. Are lien waivers (conditional and unconditional) attached?
+3. Are all lower-tier subs paid (joint check or waiver documentation)?
+4. Are there unapproved change orders embedded in the application?
+
+**If any of those are no:** Hold the item, notify the sub, explain what's needed to release payment.
+
+**Never withhold payment without a documented, legitimate reason.** Arbitrary payment holds damage relationships and expose HCI to legal risk.
+
+---
+
+*Next: Chapter 07 — Contract Management*
+
+*Ported from the pre-consolidation Operations_Manual/ (drafted 2026-06-30) during the 2026-07-08 Drive-hygiene pass — this content already existed and was real, it just wasn't in the canonical file.*
+
+---
+
 # Chapter 7 — Governance and Approval Framework
 
 ## Governance Before Automation

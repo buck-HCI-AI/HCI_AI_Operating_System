@@ -148,6 +148,20 @@ def get_about() -> dict:
     return _get(f"{BASE_URL}/about", {"fields": "user,storageQuota"})
 
 
+def rename_file(file_id: str, new_name: str) -> dict:
+    """PATCH a file's name — used for the DEPRECATED/DUPLICATE labeling pattern
+    (rename, never delete, so the original content and file_id stay intact)."""
+    url = f"{BASE_URL}/files/{file_id}"
+    body = json.dumps({"name": new_name}).encode()
+    req = urllib.request.Request(
+        url + "?" + urllib.parse.urlencode({"supportsAllDrives": "true"}),
+        data=body, method="PATCH",
+        headers={"Authorization": f"Bearer {_token()}", "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=30) as r:
+        return json.loads(r.read())
+
+
 def get_file_content(file_id: str) -> dict:
     """
     Return text content of a Drive file.
