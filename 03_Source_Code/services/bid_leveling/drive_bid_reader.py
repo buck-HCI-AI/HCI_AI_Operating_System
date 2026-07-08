@@ -127,6 +127,56 @@ def extract_bid_with_gemini(pdf_bytes: bytes, vendor_name: str,
         return {"error": str(e)}
 
 
+def extract_bid_with_claude(pdf_bytes: bytes, vendor_name: str,
+                             project_name: str, div_name: str) -> dict:
+    """
+    Fallback for extract_bid_with_gemini when Gemini's free-tier daily quota is
+    exhausted (found live 2026-07-08 mid-demo: gemini-3.5-flash capped at 20
+    requests/day project-wide, and switching to gemini-2.0-flash didn't help -
+    the quota is per-API-key, not per-model). Anthropic is already configured
+    and working elsewhere in this system (base.py's ask_claude), so this uses
+    the same key/billing rather than depending on Gemini's free tier at all.
+    Same input/output contract as extract_bid_with_gemini.
+    """
+    import base64
+    try:
+        import anthropic
+        from config import settings
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        prompt = (
+            f"This is a bid proposal PDF for the {div_name} division of {project_name}.\n"
+            f"Vendor: {vendor_name}\n\n"
+            "Extract the following and return ONLY valid JSON (no markdown, no explanation):\n"
+            '{"bid_amount": 123456.00, "bid_date": "YYYY-MM-DD", '
+            '"scope_summary": "One sentence describing the scope"}\n\n'
+            "Rules:\n"
+            "- bid_amount: numeric total (base bid only, no options/alternates), no commas or $\n"
+            "- bid_date: use the proposal/estimate date, not today\n"
+            "- scope_summary: 1 sentence max, what work is included\n"
+            "- If you cannot find a value, use null"
+        )
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "document", "source": {
+                        "type": "base64", "media_type": "application/pdf",
+                        "data": base64.b64encode(pdf_bytes).decode(),
+                    }},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        text = response.content[0].text.strip()
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+        return json.loads(text)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
     """
     Fallback: extract bid amount from text via regex.
@@ -350,14 +400,20 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
                 data = extract_bid_from_text(text, f["vendor_name"], f["file_name"])
                 source = "regex_text"
             elif mime == "application/pdf" or f["file_name"].lower().endswith(".pdf"):
+                pdf_bytes = _download_bytes(f["file_id"], token)
+                data = {"error": "GEMINI_API_KEY not set"}
+                source = "pending"
                 if GEMINI_API_KEY:
-                    pdf_bytes = _download_bytes(f["file_id"], token)
-                    data      = extract_bid_with_gemini(pdf_bytes, f["vendor_name"],
-                                                        proj["name"], f["division_name"])
-                    source    = "gemini"
-                else:
-                    data   = {"bid_amount": None, "bid_date": None, "scope_summary": "PDF — Gemini key not set"}
-                    source = "pending"
+                    data   = extract_bid_with_gemini(pdf_bytes, f["vendor_name"],
+                                                      proj["name"], f["division_name"])
+                    source = "gemini"
+                # Fall back to Claude on any Gemini failure (quota exhaustion,
+                # outage, etc.) rather than losing the extraction entirely -
+                # same contract, different provider/billing.
+                if "error" in data:
+                    data   = extract_bid_with_claude(pdf_bytes, f["vendor_name"],
+                                                      proj["name"], f["division_name"])
+                    source = "claude_fallback"
             else:
                 continue
 
