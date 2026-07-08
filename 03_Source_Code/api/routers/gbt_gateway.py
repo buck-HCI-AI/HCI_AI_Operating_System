@@ -5030,10 +5030,18 @@ async def sync_live_state(request: Request):
             content = f.read()
 
         import re as _re
-        # Replace the project table block
-        pattern = r"(\| ID \| Code \| Project.*?)\n\n"
-        new_block = new_table + "\n\n"
-        updated = _re.sub(pattern, new_block, content, flags=_re.DOTALL)
+        # Replace ONLY the Live Production Projects table. Found 2026-07-07: the old
+        # pattern matched on the shared "| ID | Code | Project" prefix, which all
+        # three distinct project tables in this file start with (Live Production,
+        # Monitored/Staged, All Other Projects - each with different columns after
+        # that). re.sub with no count replaced ALL THREE with identical content,
+        # destroying the real Monitored/Staged and All Other Projects lists. Anchor
+        # on the full real header (with all 9 columns) and cap at count=1.
+        pattern = r"(\| ID \| Code \| Project \| Scope \| HubSpot Deal \| Health \| Bid Pkgs \| Open Risks \| Schedule Var \|\n\|---\|---\|---\|---\|---\|---\|---\|---\|---\|\n(?:\|.*\n)*)"
+        new_block = new_table + "\n"
+        updated, n_subs = _re.subn(pattern, new_block, content, count=1)
+        if n_subs != 1:
+            raise ValueError(f"Expected exactly 1 Live Production table match, got {n_subs} - refusing to write, table format may have changed")
 
         # Update timestamp
         from datetime import datetime, timezone
