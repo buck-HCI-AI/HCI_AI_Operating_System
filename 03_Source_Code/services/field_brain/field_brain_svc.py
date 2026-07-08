@@ -46,10 +46,64 @@ class FieldBrainService(BaseIntelligenceService):
     STATUS = "active"
 
     @staticmethod
-    def _structured_context(question: str) -> list:
+    def _detect_named_project(question: str) -> dict | None:
+        """If the question names one specific job ('kitchen cabinet details on
+        101F', 'what's in the plans for 606 Starwood'), resolve it so search can
+        be scoped to just that job's own documents. Found live 2026-07-08 (Buck):
+        asking about 101F's cabinets returned Sunnyside's and Starwood's cabinet
+        docs mixed in - FIELD_COLLECTIONS is cross-project by design for
+        comparison questions ('average cost per sqft across jobs'), but a
+        single-job question has no business seeing other jobs' plans. Only scope
+        when a job is actually named, so the comparison use case stays intact."""
+        import re
+        rows = FieldBrainService.pg_query("SELECT project_code, name FROM projects WHERE status != 'sandbox'")
+        q_upper = question.upper()
+        for r in rows:
+            if r["project_code"] and re.search(rf'\b{re.escape(r["project_code"])}\b', q_upper):
+                return r
+        q_lower = question.lower()
+        for r in rows:
+            parts = (r["name"] or "").lower().split()
+            num = next((p for p in parts if p.isdigit()), None)
+            word = next((p for p in parts if p.isalpha() and len(p) > 2), None)
+            if num and word and num in q_lower and word in q_lower:
+                return r
+        return None
+
+    @staticmethod
+    def _matches_project(result: dict, project: dict) -> bool:
+        """Post-filter: Qdrant's project_number payload field is unpopulated on
+        existing hci_project_documents rows and doesn't exist at all on
+        drive_memory - the only reliable signal today is the source/filename
+        path, which real Drive-synced chunks carry as '{Project Folder}/{file}'.
+        Matches on address-key (house number + first street word) the same way
+        _addr_key() does elsewhere in this codebase, so 'Ln.' vs 'Lane' style
+        abbreviation differences don't cause false negatives."""
+        payload = result.get("payload", {})
+        source = (payload.get("source") or payload.get("original_filename") or "").lower()
+        if not source:
+            return False
+        code = (project.get("project_code") or "").lower()
+        if code and code in source:
+            return True
+        parts = (project.get("name") or "").lower().split()
+        num = next((p for p in parts if p.isdigit()), None)
+        word = next((p for p in parts if p.isalpha() and len(p) > 2), None)
+        return bool(num and word and num in source and word in source)
+
+    @staticmethod
+    def _structured_context(question: str, named_project: dict | None = None) -> list:
         """Opportunistically pull real structured DB context when the question
         looks like a cost or vendor-reliability question — cheaper and more exact
-        than relying on vector search alone for numeric answers."""
+        than relying on vector search alone for numeric answers.
+
+        named_project (2026-07-08): when the question names one specific job,
+        the cross-project cost-benchmark and vendor-reliability sections below
+        are "other jobs' data" by definition (comps FROM other jobs to estimate
+        THIS one) and get skipped entirely - Buck was explicit that a single-job
+        question shouldn't reference other jobs at all. Risk patterns get scoped
+        to just that project instead of skipped, since "risks on this job" is
+        still a legitimate single-job question."""
         import re
         lines = []
         q = question.lower()
@@ -63,7 +117,7 @@ class FieldBrainService(BaseIntelligenceService):
         sqft_words = ("sqft", "square foot", "square feet", "per sf", "per foot", "/sf")
         sub_words = ("reliable", "sub", "subcontractor", "vendor", "contractor", "trade", "who should")
 
-        if any(w in q for w in sqft_words):
+        if not named_project and any(w in q for w in sqft_words):
             from historical_cost_svc import HistoricalCostService
             bench = HistoricalCostService.sqft_benchmarks()
             if bench["comps"]:
@@ -91,7 +145,7 @@ class FieldBrainService(BaseIntelligenceService):
                             f"(expected ${est['estimate_expected']:,.0f})"
                         )
 
-        if any(w in q for w in cost_words):
+        if not named_project and any(w in q for w in cost_words):
             from historical_cost_svc import HistoricalCostService
             summary = HistoricalCostService.cost_benchmark_summary(csi_division=csi)
             if summary["by_division"]:
@@ -104,7 +158,7 @@ class FieldBrainService(BaseIntelligenceService):
                     )
                 lines.append(f"  (limitation: {summary['known_limitation']})")
 
-        if any(w in q for w in sub_words):
+        if not named_project and any(w in q for w in sub_words):
             from vendor_intelligence_svc import VendorIntelligenceService
             ranked = VendorIntelligenceService.most_reliable(csi_division=csi, limit=8)
             if ranked["ranked_vendors"]:
@@ -143,16 +197,28 @@ class FieldBrainService(BaseIntelligenceService):
         risk_words = ("risk", "issue", "problem", "delay", "watch out", "careful", "gotcha", "gone wrong")
         if any(w in q for w in risk_words):
             try:
-                rows = FieldBrainService.pg_query("""
-                    SELECT r.risk_type, r.severity, r.description, p.project_code
-                    FROM risks r JOIN projects p ON p.id = r.project_id
-                    WHERE r.status = 'open'
-                    ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1
-                              WHEN 'medium' THEN 2 ELSE 3 END
-                    LIMIT 8
-                """)
+                if named_project:
+                    rows = FieldBrainService.pg_query("""
+                        SELECT r.risk_type, r.severity, r.description, p.project_code
+                        FROM risks r JOIN projects p ON p.id = r.project_id
+                        WHERE r.status = 'open' AND p.project_code = %s
+                        ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1
+                                  WHEN 'medium' THEN 2 ELSE 3 END
+                        LIMIT 8
+                    """, (named_project["project_code"],))
+                    header = f"\nOPEN RISKS ON {named_project['project_code']} (real, from risks table):"
+                else:
+                    rows = FieldBrainService.pg_query("""
+                        SELECT r.risk_type, r.severity, r.description, p.project_code
+                        FROM risks r JOIN projects p ON p.id = r.project_id
+                        WHERE r.status = 'open'
+                        ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1
+                                  WHEN 'medium' THEN 2 ELSE 3 END
+                        LIMIT 8
+                    """)
+                    header = "\nOPEN RISK PATTERNS ACROSS LIVE PROJECTS (real, from risks table):"
                 if rows:
-                    lines.append("\nOPEN RISK PATTERNS ACROSS LIVE PROJECTS (real, from risks table):")
+                    lines.append(header)
                     for r in rows:
                         lines.append(f"  [{r['severity']}] {r['project_code']} ({r['risk_type']}): {r['description'][:180]}")
             except Exception:
@@ -168,11 +234,23 @@ class FieldBrainService(BaseIntelligenceService):
             cached["cached"] = True
             return cached
 
+        named_project = cls._detect_named_project(question)
+        # Scoped to just that job's own plans/documents when one is named (Buck,
+        # 2026-07-08) - skip the cross-project vendor/cost/lessons collections
+        # entirely rather than searching them and filtering after, since a
+        # single-job question has no business matching against other jobs' data
+        # at all. Search wider (limit) since post-filtering by source path drops
+        # most hits from other jobs' documents in the same collection.
+        collections = ["drive_memory", "hci_project_documents"] if named_project else FIELD_COLLECTIONS
+        per_collection_limit = max_sources * 4 if named_project else 3
+
         all_results = []
         seen = set()
-        for collection in FIELD_COLLECTIONS:
-            results = cls.search(question, collection=collection, limit=3)
+        for collection in collections:
+            results = cls.search(question, collection=collection, limit=per_collection_limit)
             for r in results:
+                if named_project and not cls._matches_project(r, named_project):
+                    continue
                 key = r.get("text", "")[:100] or r.get("payload", {}).get("text", "")[:100]
                 if key and key not in seen:
                     all_results.append(r)
@@ -181,7 +259,7 @@ class FieldBrainService(BaseIntelligenceService):
                 break
         all_results = all_results[:max_sources]
 
-        structured_lines = cls._structured_context(question)
+        structured_lines = cls._structured_context(question, named_project)
         context_lines = list(structured_lines)
         for r in all_results:
             text = r.get("payload", {}).get("text") or r.get("text", "")
@@ -209,6 +287,7 @@ class FieldBrainService(BaseIntelligenceService):
             "answer": answer,
             "sources": sources,
             "structured_context_used": bool(structured_lines),
+            "scoped_to_project": named_project["project_code"] if named_project else None,
             "model_used": "claude-haiku-4-5-20251001",
             "cached": False,
         }
