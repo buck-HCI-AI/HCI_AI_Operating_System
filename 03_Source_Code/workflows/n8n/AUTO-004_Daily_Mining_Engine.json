@@ -1,0 +1,265 @@
+{
+  "updatedAt": "2026-07-08T00:27:14.215Z",
+  "createdAt": "2026-06-27T15:52:40.996Z",
+  "id": "67n7ENkCpGIzHgc1",
+  "name": "AUTO-004 Daily Mining Engine (03:00)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "s004",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h004",
+      "name": "Run All Miners",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/services/mining/run/all?dry_run=false",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "c004",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst result = $('Run All Miners').item.json;\nconst today = new Date().toISOString().slice(0,10);\nconst t = result.totals || {};\nrequire('fs').writeFileSync(\n  '/Users/buckadams/HCI_AI_Operating_System/reports/daily/' + today + '-mining-run.json',\n  JSON.stringify(result, null, 2)\n);\nreturn [{json: {date:today, miners_run:result.miners_run, dry_run:result.dry_run,\n  scanned:t.records_scanned, discovered:t.records_discovered,\n  extracted:t.intelligence_extracted, queued:t.items_queued_for_review, written:t.items_auto_written}}];\n"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run All Miners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run All Miners": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        0
+      ]
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "57c89d90-2991-48bc-8e09-c49ba82ff3b2",
+  "activeVersionId": "57c89d90-2991-48bc-8e09-c49ba82ff3b2",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T15:52:40.998Z",
+      "createdAt": "2026-06-27T15:52:40.998Z",
+      "role": "workflow:owner",
+      "workflowId": "67n7ENkCpGIzHgc1",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:14.216Z",
+    "createdAt": "2026-07-08T00:27:14.216Z",
+    "versionId": "57c89d90-2991-48bc-8e09-c49ba82ff3b2",
+    "workflowId": "67n7ENkCpGIzHgc1",
+    "nodes": [
+      {
+        "id": "s004",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 3 * * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "h004",
+        "name": "Run All Miners",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/api/v1/services/mining/run/all?dry_run=false",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "id": "c004",
+        "name": "Log Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          300
+        ],
+        "parameters": {
+          "jsCode": "\nconst result = $('Run All Miners').item.json;\nconst today = new Date().toISOString().slice(0,10);\nconst t = result.totals || {};\nrequire('fs').writeFileSync(\n  '/Users/buckadams/HCI_AI_Operating_System/reports/daily/' + today + '-mining-run.json',\n  JSON.stringify(result, null, 2)\n);\nreturn [{json: {date:today, miners_run:result.miners_run, dry_run:result.dry_run,\n  scanned:t.records_scanned, discovered:t.records_discovered,\n  extracted:t.intelligence_extracted, queued:t.items_queued_for_review, written:t.items_auto_written}}];\n"
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Run All Miners",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run All Miners": {
+        "main": [
+          [
+            {
+              "node": "Log Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:14.237Z",
+        "id": 449,
+        "workflowId": "67n7ENkCpGIzHgc1",
+        "versionId": "57c89d90-2991-48bc-8e09-c49ba82ff3b2",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:14.229Z",
+        "id": 448,
+        "workflowId": "67n7ENkCpGIzHgc1",
+        "versionId": "57c89d90-2991-48bc-8e09-c49ba82ff3b2",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

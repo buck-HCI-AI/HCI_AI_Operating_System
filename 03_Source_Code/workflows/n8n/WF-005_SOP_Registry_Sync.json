@@ -1,0 +1,673 @@
+{
+  "updatedAt": "2026-07-08T00:27:39.977Z",
+  "createdAt": "2026-06-16T16:11:18.533Z",
+  "id": "xQzzjmHR48otUQOn",
+  "name": "WF-005 SOP Registry Sync",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "c8048359-23f7-4ac0-b3d2-73cf8aec2fbd",
+      "name": "Daily 6AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "'1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI' in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "id": "1eb356d0-86f6-4777-9d3d-cdf2298f176a",
+      "name": "List HCI AI Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        464,
+        304
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "UDJZyRl4iZXIr4qI",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const DEPT_MAP={PROC:{dept:'Procurement',owner:'Procurement Lead'},EST:{dept:'Estimating',owner:'Chief Estimator'},PM:{dept:'Project Management',owner:'Director of PM'},OPS:{dept:'Operations',owner:'Operations Lead'},SAFE:{dept:'Safety',owner:'Safety Officer'},FIN:{dept:'Finance',owner:'Controller'},VI:{dept:'Vendor Intelligence',owner:'Procurement Lead'},IT:{dept:'IT',owner:'HCI AI'},GEN:{dept:'General',owner:'Operations'}};return $input.all().filter(i=>(i.json.name||'').toUpperCase().startsWith('SOP-')).map(i=>{const parts=i.json.name.replace(/\\.(md|docx|pdf)$/i,'').split('-');const deptCode=(parts[1]||'GEN').toUpperCase();const title=parts.slice(2).join(' ');const m=DEPT_MAP[deptCode]||DEPT_MAP['GEN'];const reviewDue=new Date();reviewDue.setFullYear(reviewDue.getFullYear()+1);return{json:{...i.json,sopId:`${deptCode}-${String(Date.now()).slice(-3)}`,title,dept:m.dept,owner:m.owner,reviewDue:reviewDue.toISOString().split('T')[0],lastModified:new Date().toISOString().split('T')[0]}};});"
+      },
+      "id": "3746f5df-35c0-4905-b8ba-a1b8972b1d98",
+      "name": "Filter SOP Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d4ab73cc",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "20431198-3327-433e-85d7-f4730cc33408",
+      "name": "Has SOPs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        912,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "SOP Registry",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "matchingColumns": [
+              "SOP ID"
+            ],
+            "schema": [
+              {
+                "id": "SOP ID",
+                "displayName": "SOP ID",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": true,
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Title",
+                "displayName": "Title",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              },
+              {
+                "id": "Department",
+                "displayName": "Department",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              },
+              {
+                "id": "Owner",
+                "displayName": "Owner",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              },
+              {
+                "id": "Drive Link",
+                "displayName": "Drive Link",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              },
+              {
+                "id": "Status",
+                "displayName": "Status",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              },
+              {
+                "id": "Last Modified",
+                "displayName": "Last Modified",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              },
+              {
+                "id": "Review Due",
+                "displayName": "Review Due",
+                "removed": false,
+                "readOnly": false,
+                "defaultMatch": false
+              }
+            ]
+          }
+        },
+        "options": {}
+      },
+      "id": "9949d564-bfd0-437e-9232-24776191ef61",
+      "name": "Upsert SOP Registry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1120,
+        208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "76fba3fe-1ac5-4059-83d5-bacfb45f8d05",
+      "name": "No SOPs Found",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6a6ffb91-9445-4a08-b841-a8ba56b3f010",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "buck@hendricksoninc.com",
+        "subject": "\u26a0\ufe0f WF-005 SOP Registry Sync Failed",
+        "bodyContent": "={{ 'Error: ' + $json.execution.error.message }}",
+        "additionalFields": {}
+      },
+      "id": "99692565-bcf2-45e0-981d-b9a8327692df",
+      "name": "Email on Error",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        464,
+        544
+      ],
+      "webhookId": "0090730a-f8bc-4012-a432-88b02a412a3f",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 6AM": {
+      "main": [
+        [
+          {
+            "node": "List HCI AI Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List HCI AI Files": {
+      "main": [
+        [
+          {
+            "node": "Filter SOP Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter SOP Files": {
+      "main": [
+        [
+          {
+            "node": "Has SOPs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has SOPs?": {
+      "main": [
+        [
+          {
+            "node": "No SOPs Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert SOP Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Email on Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Daily 6AM": {
+      "recurrenceRules": [
+        10
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "435fa818-b319-491b-a6c3-111e521234eb",
+  "activeVersionId": "435fa818-b319-491b-a6c3-111e521234eb",
+  "versionCounter": 7,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-16T16:11:18.535Z",
+      "createdAt": "2026-06-16T16:11:18.535Z",
+      "role": "workflow:owner",
+      "workflowId": "xQzzjmHR48otUQOn",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:39.977Z",
+    "createdAt": "2026-07-08T00:27:39.977Z",
+    "versionId": "435fa818-b319-491b-a6c3-111e521234eb",
+    "workflowId": "xQzzjmHR48otUQOn",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 6 * * *"
+              }
+            ]
+          }
+        },
+        "id": "c8048359-23f7-4ac0-b3d2-73cf8aec2fbd",
+        "name": "Daily 6AM",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "fileFolder",
+          "searchMethod": "query",
+          "queryString": "'1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI' in parents",
+          "returnAll": true,
+          "filter": {},
+          "options": {}
+        },
+        "id": "1eb356d0-86f6-4777-9d3d-cdf2298f176a",
+        "name": "List HCI AI Files",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          464,
+          304
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "UDJZyRl4iZXIr4qI",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const DEPT_MAP={PROC:{dept:'Procurement',owner:'Procurement Lead'},EST:{dept:'Estimating',owner:'Chief Estimator'},PM:{dept:'Project Management',owner:'Director of PM'},OPS:{dept:'Operations',owner:'Operations Lead'},SAFE:{dept:'Safety',owner:'Safety Officer'},FIN:{dept:'Finance',owner:'Controller'},VI:{dept:'Vendor Intelligence',owner:'Procurement Lead'},IT:{dept:'IT',owner:'HCI AI'},GEN:{dept:'General',owner:'Operations'}};return $input.all().filter(i=>(i.json.name||'').toUpperCase().startsWith('SOP-')).map(i=>{const parts=i.json.name.replace(/\\.(md|docx|pdf)$/i,'').split('-');const deptCode=(parts[1]||'GEN').toUpperCase();const title=parts.slice(2).join(' ');const m=DEPT_MAP[deptCode]||DEPT_MAP['GEN'];const reviewDue=new Date();reviewDue.setFullYear(reviewDue.getFullYear()+1);return{json:{...i.json,sopId:`${deptCode}-${String(Date.now()).slice(-3)}`,title,dept:m.dept,owner:m.owner,reviewDue:reviewDue.toISOString().split('T')[0],lastModified:new Date().toISOString().split('T')[0]}};});"
+        },
+        "id": "3746f5df-35c0-4905-b8ba-a1b8972b1d98",
+        "name": "Filter SOP Files",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          688,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "d4ab73cc",
+                "leftValue": "={{ $json.name }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "20431198-3327-433e-85d7-f4730cc33408",
+        "name": "Has SOPs?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          912,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "appendOrUpdate",
+          "documentId": {
+            "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+            "mode": "id"
+          },
+          "sheetName": {
+            "value": "SOP Registry",
+            "mode": "name"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "matchingColumns": [
+                "SOP ID"
+              ],
+              "schema": [
+                {
+                  "id": "SOP ID",
+                  "displayName": "SOP ID",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": true,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Title",
+                  "displayName": "Title",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                },
+                {
+                  "id": "Department",
+                  "displayName": "Department",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                },
+                {
+                  "id": "Owner",
+                  "displayName": "Owner",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                },
+                {
+                  "id": "Drive Link",
+                  "displayName": "Drive Link",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                },
+                {
+                  "id": "Status",
+                  "displayName": "Status",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                },
+                {
+                  "id": "Last Modified",
+                  "displayName": "Last Modified",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                },
+                {
+                  "id": "Review Due",
+                  "displayName": "Review Due",
+                  "removed": false,
+                  "readOnly": false,
+                  "defaultMatch": false
+                }
+              ]
+            }
+          },
+          "options": {}
+        },
+        "id": "9949d564-bfd0-437e-9232-24776191ef61",
+        "name": "Upsert SOP Registry",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          1120,
+          208
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "id": "76fba3fe-1ac5-4059-83d5-bacfb45f8d05",
+        "name": "No SOPs Found",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1120,
+          400
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "6a6ffb91-9445-4a08-b841-a8ba56b3f010",
+        "name": "Error Handler",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          240,
+          544
+        ]
+      },
+      {
+        "parameters": {
+          "toRecipients": "buck@hendricksoninc.com",
+          "subject": "\u26a0\ufe0f WF-005 SOP Registry Sync Failed",
+          "bodyContent": "={{ 'Error: ' + $json.execution.error.message }}",
+          "additionalFields": {}
+        },
+        "id": "99692565-bcf2-45e0-981d-b9a8327692df",
+        "name": "Email on Error",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          464,
+          544
+        ],
+        "webhookId": "0090730a-f8bc-4012-a432-88b02a412a3f",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Daily 6AM": {
+        "main": [
+          [
+            {
+              "node": "List HCI AI Files",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List HCI AI Files": {
+        "main": [
+          [
+            {
+              "node": "Filter SOP Files",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter SOP Files": {
+        "main": [
+          [
+            {
+              "node": "Has SOPs?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has SOPs?": {
+        "main": [
+          [
+            {
+              "node": "No SOPs Found",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Upsert SOP Registry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Error Handler": {
+        "main": [
+          [
+            {
+              "node": "Email on Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:39.995Z",
+        "id": 461,
+        "workflowId": "xQzzjmHR48otUQOn",
+        "versionId": "435fa818-b319-491b-a6c3-111e521234eb",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:39.991Z",
+        "id": 460,
+        "workflowId": "xQzzjmHR48otUQOn",
+        "versionId": "435fa818-b319-491b-a6c3-111e521234eb",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

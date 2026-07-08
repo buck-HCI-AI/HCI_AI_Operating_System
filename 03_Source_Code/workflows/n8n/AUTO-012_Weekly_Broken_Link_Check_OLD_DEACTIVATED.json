@@ -1,0 +1,243 @@
+{
+  "updatedAt": "2026-07-07T06:30:04.234Z",
+  "createdAt": "2026-06-27T16:58:50.772Z",
+  "id": "AtHXWsAfByeYwnO1",
+  "name": "AUTO-012 Weekly Broken Link Check",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "2914d793-c5fa-48eb-8629-6b510de59a33",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 8 * * 1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "edcefe20-abfc-4d61-b3bc-5f12aa13d788",
+      "name": "Check API Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/health",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bd40e252-dbe6-478d-899a-441284bc52a9",
+      "name": "Check Mining Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        750,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/services/mining/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "e082a766-bf4a-44b5-9a7d-3ee3f5ef1b17",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst today = new Date().toISOString().split('T')[0];\nconst health = $('Check API Health').item.json;\nconst mining = $('Check Mining Status').item.json;\nconst services = health.services || health || {};\nconst broken = [], healthy = [];\nObject.entries(services).forEach(([k,v]) => {\n  const s = typeof v === 'string' ? v : (v.status || 'unknown');\n  if (['healthy','ok','running','active'].includes(s.toLowerCase())) healthy.push(k);\n  else broken.push(`${k}: ${s}`);\n});\nconst report = `# Weekly Health Check \u2014 ${today}\n## HCI AI Operating System | AUTO-012\n\n**Generated:** ${new Date().toISOString()}\n\n## Service Health\n\u2705 Healthy (${healthy.length}): ${healthy.join(', ') || 'none'}\n${broken.length > 0 ? '\\n\u26a0\ufe0f Issues:\\n' + broken.map(b => '- ' + b).join('\\n') : '\\n\u2705 No issues.'}\n\n## Mining Engine\n- Status: ${mining && !mining.error ? '\u2705 Responding' : '\u274c Not responding'}\n\n*AUTO-012 | Hendrickson Construction, Inc.*\n`;\nreturn [{ json: { report, filename: `reports/health/health-check-${today}.md`, broken_count: broken.length } }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "cefc1185-fe59-411a-8923-efa84c885054",
+      "name": "Write & Commit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst fs = require('fs');\nconst { execSync } = require('child_process');\nconst report = $input.item.json.report;\nconst filename = $input.item.json.filename;\nconst repoRoot = '/Users/buckadams/HCI_AI_Operating_System';\nconst filePath = repoRoot + '/' + filename;\nfs.mkdirSync(require('path').dirname(filePath), { recursive: true });\nfs.writeFileSync(filePath, report, 'utf8');\ntry {\n  execSync(`git -C ${repoRoot} add \"${filePath}\"`, {stdio:'pipe'});\n  execSync(`git -C ${repoRoot} diff --cached --quiet || git -C ${repoRoot} commit -m \"AUTO: ${filename.split('/').pop()} [skip ci]\"`, {stdio:'pipe'});\n} catch(e) {}\nreturn [{ json: { written: filePath, report } }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "5fbe3f27-a40a-4a72-8e67-c68115456498",
+      "name": "Alert Buck",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "buck@hendricksoninc.com",
+        "subject": "=\ud83d\udd0d Weekly Health Check \u2014 {{ $json.broken_count > 0 ? '\u26a0\ufe0f Issues Found' : '\u2705 All Clear' }}",
+        "bodyContent": "=<pre style='font-family:monospace'>{{ $json.report }}</pre>",
+        "additionalFields": {
+          "bodyContentType": "html"
+        }
+      },
+      "webhookId": "28bf7339-a632-4204-ba75-b7f14e986a43"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check API Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check API Health": {
+      "main": [
+        [
+          {
+            "node": "Check Mining Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Mining Status": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Write & Commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write & Commit": {
+      "main": [
+        [
+          {
+            "node": "Alert Buck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "1bb97320-e13c-4d9c-83b5-d1b07a3cdac2",
+  "activeVersionId": null,
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T16:58:50.773Z",
+      "createdAt": "2026-06-27T16:58:50.773Z",
+      "role": "workflow:owner",
+      "workflowId": "AtHXWsAfByeYwnO1",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}

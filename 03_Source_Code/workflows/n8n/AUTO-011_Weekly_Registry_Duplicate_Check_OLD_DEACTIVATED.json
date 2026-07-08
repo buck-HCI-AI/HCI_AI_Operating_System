@@ -1,0 +1,180 @@
+{
+  "updatedAt": "2026-07-07T06:30:04.077Z",
+  "createdAt": "2026-06-27T16:57:56.044Z",
+  "id": "3wAvUsdeVJU98ZR4",
+  "name": "AUTO-011 Weekly Registry Duplicate Check",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "ea9c7ac6-12a7-4e75-8e32-abbeeebf6413",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "interval": [
+          {
+            "field": "cronExpression",
+            "expression": "0 30 7 * * 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a1c6d793-3228-4ccd-8950-15dc5073b4ad",
+      "name": "Get Integration Registry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/services/mining/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "d35305ef-853e-442c-be5e-73bf799dbce5",
+      "name": "Check Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const today = new Date().toISOString().split('T')[0];\nconst data = $('Get Integration Registry').item.json;\n// registered_miners is an array of plain strings (miner names), not objects -\n// found 2026-07-07 the original code assumed item.name/item.display_name\n// existed, which are always undefined for strings, so every item's key\n// collapsed to '' and everything after the first got falsely flagged as a\n// duplicate. Handle both shapes correctly.\nconst items = Array.isArray(data) ? data : (data.registered_miners || []);\nconst seen = {};\nconst dupes = [];\nitems.forEach(item => {\n  const key = (typeof item === 'string' ? item : (item.name || item.display_name || '')).toLowerCase();\n  if (!key) return;\n  if (seen[key]) dupes.push(key);\n  else seen[key] = true;\n});\nconst report = `# Weekly Registry Duplicate Check \u2014 ${today}\n## HCI AI Operating System | AUTO-011\n\n**Generated:** ${new Date().toISOString()}\n\n## Integration Registry Check\n\n- **Items checked:** ${items.length}\n- **Duplicates found:** ${dupes.length}\n${dupes.length > 0 ? '\\n### \u26a0\ufe0f Duplicates:\\n' + dupes.map(d => '- ' + d).join('\\n') : '\\n\u2705 No duplicates detected.'}\n\n---\n\n*AUTO-011 Weekly Registry Check | Hendrickson Construction, Inc.*\n`;\nreturn [{ json: { report, filename: `reports/health/registry-check-${today}.md`, duplicates: dupes.length } }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "d735e147-7611-46cd-a37b-fba994a1537e",
+      "name": "Write & Commit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/gateway/admin/write-report",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({filename: $json.filename, content: $json.report}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Integration Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Integration Registry": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Write & Commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "dcfc2958-d303-4d98-b7ac-b6fb52d3d7b3",
+  "activeVersionId": null,
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T16:57:56.045Z",
+      "createdAt": "2026-06-27T16:57:56.045Z",
+      "role": "workflow:owner",
+      "workflowId": "3wAvUsdeVJU98ZR4",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}

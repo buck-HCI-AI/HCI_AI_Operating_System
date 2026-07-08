@@ -1,0 +1,333 @@
+{
+  "updatedAt": "2026-07-08T00:27:30.134Z",
+  "createdAt": "2026-06-27T18:47:58.372Z",
+  "id": "nXXrsQ7eo8JuRG2z",
+  "name": "AUTO-020 EOD Brief Email (19:00)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "e1",
+      "name": "Schedule 19:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e2",
+      "name": "Get EOD Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/executive/eod-brief",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "e3",
+      "name": "Format EOD Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst d = $('Get EOD Brief').first().json;\nconst date = d.date || new Date().toISOString().split('T')[0];\nconst summary = d.today_summary || {};\nconst missions = d.missions || {};\nconst pending = d.still_pending || [];\nconst resolved = d.resolved_today || [];\nconst plan = d.overnight_plan || [];\n\nconst pendingRows = pending.map(i => `<li><strong>${i.exec_id}</strong> \u2014 ${i.title}${i.deadline ? ` <span style=\"color:#eab308;\">(due ${i.deadline})</span>` : ''}</li>`).join('');\nconst resolvedRows = resolved.map(i => `<li>${i.exec_id} \u2192 <strong>${i.resolution}</strong></li>`).join('');\nconst planItems = plan.map(p => `<li>${p}</li>`).join('');\n\nconst subject = `HCI AI EOD \u2014 ${date} \u00b7 ${summary.decisions_pending||0} pending \u00b7 ${summary.mining_runs||0} mining runs`;\n\nconst html = `<html><body style=\"font-family:sans-serif;background:#111827;color:#f9fafb;padding:20px;max-width:600px;\">\n<h2 style=\"color:#3b82f6;\">HCI AI \u2014 End of Day \u00b7 ${date}</h2>\n<div style=\"background:#1f2937;border-radius:8px;padding:16px;margin-bottom:12px;\">\n  <strong>Today's Activity</strong><br/>\n  Mining runs: ${summary.mining_runs||0} \u00b7 Decisions resolved: ${summary.decisions_resolved||0} \u00b7 ROI: ${d.roi_hours_this_week||0}h total\n</div>\n${resolved.length ? `<div style=\"background:#14532d;border-radius:8px;padding:16px;margin-bottom:12px;\"><strong>Resolved Today</strong><ul>${resolvedRows}</ul></div>` : ''}\n${pending.length ? `<div style=\"background:#7f1d1d;border-radius:8px;padding:16px;margin-bottom:12px;\"><strong>Still Pending (${pending.length})</strong><ul>${pendingRows}</ul></div>` : '<div style=\"background:#14532d;border-radius:8px;padding:16px;margin-bottom:12px;\">No pending decisions</div>'}\n<div style=\"background:#1f2937;border-radius:8px;padding:16px;margin-bottom:12px;\">\n  <strong>Overnight Plan</strong><ul>${planItems}</ul>\n</div>\n<div style=\"background:#1f2937;border-radius:8px;padding:16px;margin-bottom:12px;\">\n  <strong>Projects</strong>${(d.projects||[]).map(p=>`<div>${p}</div>`).join('')}\n</div>\n<p><a href=\"http://host.docker.internal:8000/executive\" style=\"background:#3b82f6;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;\">Open Dashboard</a></p>\n</body></html>`;\nreturn [{json:{subject,html,to:'buck@ahmaspen.com'}}];\n"
+      }
+    },
+    {
+      "id": "e4",
+      "name": "Send EOD Email",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        940,
+        300
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.html }}",
+        "bodyContentType": "html",
+        "additionalFields": {}
+      },
+      "webhookId": "f4eb16b0-b840-4d00-9763-fcb90a0583e3"
+    }
+  ],
+  "connections": {
+    "Schedule 19:00": {
+      "main": [
+        [
+          {
+            "node": "Get EOD Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get EOD Brief": {
+      "main": [
+        [
+          {
+            "node": "Format EOD Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format EOD Email": {
+      "main": [
+        [
+          {
+            "node": "Send EOD Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule 19:00": {
+      "recurrenceRules": [
+        0
+      ]
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "ca798cdc-b05a-41fb-a9aa-19f63621c2a6",
+  "activeVersionId": "ca798cdc-b05a-41fb-a9aa-19f63621c2a6",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T18:47:58.374Z",
+      "createdAt": "2026-06-27T18:47:58.374Z",
+      "role": "workflow:owner",
+      "workflowId": "nXXrsQ7eo8JuRG2z",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:30.135Z",
+    "createdAt": "2026-07-08T00:27:30.135Z",
+    "versionId": "ca798cdc-b05a-41fb-a9aa-19f63621c2a6",
+    "workflowId": "nXXrsQ7eo8JuRG2z",
+    "nodes": [
+      {
+        "id": "e1",
+        "name": "Schedule 19:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 19 * * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "e2",
+        "name": "Get EOD Brief",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:8000/api/v1/executive/eod-brief",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              }
+            ]
+          },
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "id": "e3",
+        "name": "Format EOD Email",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ],
+        "parameters": {
+          "jsCode": "\nconst d = $('Get EOD Brief').first().json;\nconst date = d.date || new Date().toISOString().split('T')[0];\nconst summary = d.today_summary || {};\nconst missions = d.missions || {};\nconst pending = d.still_pending || [];\nconst resolved = d.resolved_today || [];\nconst plan = d.overnight_plan || [];\n\nconst pendingRows = pending.map(i => `<li><strong>${i.exec_id}</strong> \u2014 ${i.title}${i.deadline ? ` <span style=\"color:#eab308;\">(due ${i.deadline})</span>` : ''}</li>`).join('');\nconst resolvedRows = resolved.map(i => `<li>${i.exec_id} \u2192 <strong>${i.resolution}</strong></li>`).join('');\nconst planItems = plan.map(p => `<li>${p}</li>`).join('');\n\nconst subject = `HCI AI EOD \u2014 ${date} \u00b7 ${summary.decisions_pending||0} pending \u00b7 ${summary.mining_runs||0} mining runs`;\n\nconst html = `<html><body style=\"font-family:sans-serif;background:#111827;color:#f9fafb;padding:20px;max-width:600px;\">\n<h2 style=\"color:#3b82f6;\">HCI AI \u2014 End of Day \u00b7 ${date}</h2>\n<div style=\"background:#1f2937;border-radius:8px;padding:16px;margin-bottom:12px;\">\n  <strong>Today's Activity</strong><br/>\n  Mining runs: ${summary.mining_runs||0} \u00b7 Decisions resolved: ${summary.decisions_resolved||0} \u00b7 ROI: ${d.roi_hours_this_week||0}h total\n</div>\n${resolved.length ? `<div style=\"background:#14532d;border-radius:8px;padding:16px;margin-bottom:12px;\"><strong>Resolved Today</strong><ul>${resolvedRows}</ul></div>` : ''}\n${pending.length ? `<div style=\"background:#7f1d1d;border-radius:8px;padding:16px;margin-bottom:12px;\"><strong>Still Pending (${pending.length})</strong><ul>${pendingRows}</ul></div>` : '<div style=\"background:#14532d;border-radius:8px;padding:16px;margin-bottom:12px;\">No pending decisions</div>'}\n<div style=\"background:#1f2937;border-radius:8px;padding:16px;margin-bottom:12px;\">\n  <strong>Overnight Plan</strong><ul>${planItems}</ul>\n</div>\n<div style=\"background:#1f2937;border-radius:8px;padding:16px;margin-bottom:12px;\">\n  <strong>Projects</strong>${(d.projects||[]).map(p=>`<div>${p}</div>`).join('')}\n</div>\n<p><a href=\"http://host.docker.internal:8000/executive\" style=\"background:#3b82f6;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;\">Open Dashboard</a></p>\n</body></html>`;\nreturn [{json:{subject,html,to:'buck@ahmaspen.com'}}];\n"
+        }
+      },
+      {
+        "id": "e4",
+        "name": "Send EOD Email",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          940,
+          300
+        ],
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        },
+        "parameters": {
+          "resource": "message",
+          "operation": "send",
+          "toRecipients": "={{ $json.to }}",
+          "subject": "={{ $json.subject }}",
+          "bodyContent": "={{ $json.html }}",
+          "bodyContentType": "html",
+          "additionalFields": {}
+        },
+        "webhookId": "f4eb16b0-b840-4d00-9763-fcb90a0583e3"
+      }
+    ],
+    "connections": {
+      "Schedule 19:00": {
+        "main": [
+          [
+            {
+              "node": "Get EOD Brief",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get EOD Brief": {
+        "main": [
+          [
+            {
+              "node": "Format EOD Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format EOD Email": {
+        "main": [
+          [
+            {
+              "node": "Send EOD Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:30.150Z",
+        "id": 453,
+        "workflowId": "nXXrsQ7eo8JuRG2z",
+        "versionId": "ca798cdc-b05a-41fb-a9aa-19f63621c2a6",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:30.145Z",
+        "id": 452,
+        "workflowId": "nXXrsQ7eo8JuRG2z",
+        "versionId": "ca798cdc-b05a-41fb-a9aa-19f63621c2a6",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

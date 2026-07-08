@@ -1,0 +1,829 @@
+{
+  "updatedAt": "2026-07-08T00:27:39.929Z",
+  "createdAt": "2026-06-16T16:12:42.020Z",
+  "id": "P4fOHS47k2RrkZJn",
+  "name": "WF-006 Executive Alerts",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "7a5bb818-56e1-4530-b348-981c3d2cf557",
+      "name": "Daily 7AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "HCI_Vendor_Registry",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "4a297223-bcc8-4cef-ba9c-75c356e35a8b",
+      "name": "Read Vendor Registry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "HCI_Project_Registry",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "ab4fa64a-e017-4676-9ee6-8a95405e7d00",
+      "name": "Read Project Registry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "HCI_Historical_Cost_Database",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "65713d77-f9d4-4b3e-82ed-caa5c00d010b",
+      "name": "Read Cost Registry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        528
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "c65439d5-25f7-4261-94e1-50155c80ffa2",
+      "name": "Merge Registry Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        720,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all=$input.all().map(i=>i.json);const alerts=[];const today=new Date();const in30=new Date(today);in30.setDate(today.getDate()+30);for(const v of all.filter(r=>r['Vendor Name']&&r['Status']==='Active')){const exp=new Date(v['Insurance Expiry']||'2099-01-01');if(isNaN(exp))continue;if(exp<=today){alerts.push({type:'Procurement Risk',priority:'\ud83d\udd34 CRITICAL',subject:`COI EXPIRED: ${v['Vendor Name']}`,detail:`Insurance expired ${v['Insurance Expiry']}. Vendor still Active.`,action:'Request renewed COI or set Inactive.'});}else if(exp<=in30){alerts.push({type:'Procurement Risk',priority:'\ud83d\udd34 High',subject:`COI Expiring: ${v['Vendor Name']}`,detail:`Expires ${v['Insurance Expiry']} (within 30 days).`,action:'Request COI renewal.'});}}const tradeCount={};for(const v of all.filter(r=>r['Preferred Vendor']==='Yes')){tradeCount[v['Trade']]=(tradeCount[v['Trade']]||0)+1;}for(const[trade,count]of Object.entries(tradeCount)){if(count<2)alerts.push({type:'Procurement Risk',priority:'\ud83d\udfe1 Medium',subject:`Low Preferred Coverage: ${trade}`,detail:`Only ${count} preferred vendor(s).`,action:'Qualify additional vendors.'});}for(const p of all.filter(r=>r['Project Name']&&r['Status']==='Active')){const milestone=new Date(p['Next Milestone Date']||'2099-01-01');const lastUpdate=new Date(p['Last Update Date']||'2099-01-01');const daysOver=Math.floor((today-milestone)/86400000);const daysSince=Math.floor((today-lastUpdate)/86400000);if(!isNaN(milestone)&&daysOver>5)alerts.push({type:'Schedule Risk',priority:'\ud83d\udd34 High',subject:`Milestone Overdue: ${p['Project Name']}`,detail:`${daysOver} days overdue.`,action:'PM to update schedule.'});if(!isNaN(lastUpdate)&&daysSince>10)alerts.push({type:'Schedule Risk',priority:'\ud83d\udfe1 Medium',subject:`No Update: ${p['Project Name']}`,detail:`${daysSince} days since last update.`,action:'PM to log status.'});}for(const c of all.filter(r=>r['Project Name']&&r['Budget'])){const budget=parseFloat(String(c['Budget']).replace(/[,$]/g,''))||0;const forecast=parseFloat(String(c['Forecast at Completion']||'0').replace(/[,$]/g,''))||0;const contingency=parseFloat(String(c['Original Contingency']||'0').replace(/[,$]/g,''))||0;const contUsed=parseFloat(String(c['Contingency Used']||'0').replace(/[,$]/g,''))||0;if(budget>0&&forecast>0&&(forecast-budget)/budget>0.05){alerts.push({type:'Budget Variance',priority:'\ud83d\udd34 High',subject:`Budget Overrun: ${c['Project Name']}`,detail:`${(((forecast-budget)/budget)*100).toFixed(1)}% over budget. Budget: $${budget.toLocaleString()} | Forecast: $${forecast.toLocaleString()}`,action:'Review cost report with PM.'});}if(contingency>0&&contUsed/contingency>0.75){alerts.push({type:'Budget Variance',priority:'\ud83d\udfe1 Medium',subject:`Contingency Warning: ${c['Project Name']}`,detail:`${((contUsed/contingency)*100).toFixed(0)}% consumed. $${(contingency-contUsed).toLocaleString()} remaining.`,action:'Review remaining exposure.'});}}return alerts.length?alerts.map(a=>({json:a})):[{json:{noAlerts:true}}];"
+      },
+      "id": "83012694-d8cc-4c79-a400-134838f2e9f9",
+      "name": "Run Risk Checks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1bce46ce",
+              "leftValue": "={{ $json.noAlerts }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "35c78122-aef4-4b15-8b58-bc0d980b34d6",
+      "name": "Has Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "buck@hendricksoninc.com",
+        "subject": "={{ '[HCI AI Alert] ' + $json.priority + ' \u2014 ' + $json.subject }}",
+        "bodyContent": "={{ $json.priority + ' HCI AI ALERT\\n\\nType: ' + $json.type + '\\nIssue: ' + $json.detail + '\\nAction: ' + $json.action + '\\n\\n\u2014 HCI AI OS' }}",
+        "additionalFields": {}
+      },
+      "id": "2c32e21c-2f95-4253-bd25-2de157e41439",
+      "name": "Email Alert to Buck",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        240
+      ],
+      "webhookId": "68c43974-309a-4c8b-9373-20b691c40bf9",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "Alerts Log",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "4d99ba59-992b-4715-9219-97688215d1dd",
+      "name": "Log Alert",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1664,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "fe3a62f1-d07a-4437-b49a-afe0dfeb242a",
+      "name": "All Clear",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7c96636d-fb3c-4e30-941d-394a2e11a6ec",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "toRecipients": "buck@hendricksoninc.com",
+        "subject": "\u26a0\ufe0f WF-006 Executive Alerts Failed",
+        "bodyContent": "={{ 'Error: ' + $json.execution.error.message }}",
+        "additionalFields": {}
+      },
+      "id": "1210f338-6c62-41f6-9e91-680915cbafa1",
+      "name": "Email on Error",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        464,
+        560
+      ],
+      "webhookId": "1eee9919-ec91-4b49-883d-2cd3b55582fa",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 7AM": {
+      "main": [
+        [
+          {
+            "node": "Read Vendor Registry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Project Registry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Cost Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Vendor Registry": {
+      "main": [
+        [
+          {
+            "node": "Merge Registry Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Project Registry": {
+      "main": [
+        [
+          {
+            "node": "Merge Registry Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Read Cost Registry": {
+      "main": [
+        [
+          {
+            "node": "Merge Registry Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Registry Data": {
+      "main": [
+        [
+          {
+            "node": "Run Risk Checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Risk Checks": {
+      "main": [
+        [
+          {
+            "node": "Has Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Alerts?": {
+      "main": [
+        [
+          {
+            "node": "All Clear",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Alert to Buck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Alert to Buck": {
+      "main": [
+        [
+          {
+            "node": "Log Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Email on Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Daily 7AM": {
+      "recurrenceRules": [
+        10
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "f7655131-1239-4556-a3d6-59b42aac06e5",
+  "activeVersionId": "f7655131-1239-4556-a3d6-59b42aac06e5",
+  "versionCounter": 5,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-16T16:12:42.022Z",
+      "createdAt": "2026-06-16T16:12:42.022Z",
+      "role": "workflow:owner",
+      "workflowId": "P4fOHS47k2RrkZJn",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:39.930Z",
+    "createdAt": "2026-07-08T00:27:39.930Z",
+    "versionId": "f7655131-1239-4556-a3d6-59b42aac06e5",
+    "workflowId": "P4fOHS47k2RrkZJn",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 7 * * *"
+              }
+            ]
+          }
+        },
+        "id": "7a5bb818-56e1-4530-b348-981c3d2cf557",
+        "name": "Daily 7AM",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+            "mode": "id"
+          },
+          "sheetName": {
+            "value": "HCI_Vendor_Registry",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "4a297223-bcc8-4cef-ba9c-75c356e35a8b",
+        "name": "Read Vendor Registry",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          464,
+          208
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+            "mode": "id"
+          },
+          "sheetName": {
+            "value": "HCI_Project_Registry",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "ab4fa64a-e017-4676-9ee6-8a95405e7d00",
+        "name": "Read Project Registry",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          464,
+          368
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+            "mode": "id"
+          },
+          "sheetName": {
+            "value": "HCI_Historical_Cost_Database",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "65713d77-f9d4-4b3e-82ed-caa5c00d010b",
+        "name": "Read Cost Registry",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          464,
+          528
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "id": "c65439d5-25f7-4261-94e1-50155c80ffa2",
+        "name": "Merge Registry Data",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          720,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const all=$input.all().map(i=>i.json);const alerts=[];const today=new Date();const in30=new Date(today);in30.setDate(today.getDate()+30);for(const v of all.filter(r=>r['Vendor Name']&&r['Status']==='Active')){const exp=new Date(v['Insurance Expiry']||'2099-01-01');if(isNaN(exp))continue;if(exp<=today){alerts.push({type:'Procurement Risk',priority:'\ud83d\udd34 CRITICAL',subject:`COI EXPIRED: ${v['Vendor Name']}`,detail:`Insurance expired ${v['Insurance Expiry']}. Vendor still Active.`,action:'Request renewed COI or set Inactive.'});}else if(exp<=in30){alerts.push({type:'Procurement Risk',priority:'\ud83d\udd34 High',subject:`COI Expiring: ${v['Vendor Name']}`,detail:`Expires ${v['Insurance Expiry']} (within 30 days).`,action:'Request COI renewal.'});}}const tradeCount={};for(const v of all.filter(r=>r['Preferred Vendor']==='Yes')){tradeCount[v['Trade']]=(tradeCount[v['Trade']]||0)+1;}for(const[trade,count]of Object.entries(tradeCount)){if(count<2)alerts.push({type:'Procurement Risk',priority:'\ud83d\udfe1 Medium',subject:`Low Preferred Coverage: ${trade}`,detail:`Only ${count} preferred vendor(s).`,action:'Qualify additional vendors.'});}for(const p of all.filter(r=>r['Project Name']&&r['Status']==='Active')){const milestone=new Date(p['Next Milestone Date']||'2099-01-01');const lastUpdate=new Date(p['Last Update Date']||'2099-01-01');const daysOver=Math.floor((today-milestone)/86400000);const daysSince=Math.floor((today-lastUpdate)/86400000);if(!isNaN(milestone)&&daysOver>5)alerts.push({type:'Schedule Risk',priority:'\ud83d\udd34 High',subject:`Milestone Overdue: ${p['Project Name']}`,detail:`${daysOver} days overdue.`,action:'PM to update schedule.'});if(!isNaN(lastUpdate)&&daysSince>10)alerts.push({type:'Schedule Risk',priority:'\ud83d\udfe1 Medium',subject:`No Update: ${p['Project Name']}`,detail:`${daysSince} days since last update.`,action:'PM to log status.'});}for(const c of all.filter(r=>r['Project Name']&&r['Budget'])){const budget=parseFloat(String(c['Budget']).replace(/[,$]/g,''))||0;const forecast=parseFloat(String(c['Forecast at Completion']||'0').replace(/[,$]/g,''))||0;const contingency=parseFloat(String(c['Original Contingency']||'0').replace(/[,$]/g,''))||0;const contUsed=parseFloat(String(c['Contingency Used']||'0').replace(/[,$]/g,''))||0;if(budget>0&&forecast>0&&(forecast-budget)/budget>0.05){alerts.push({type:'Budget Variance',priority:'\ud83d\udd34 High',subject:`Budget Overrun: ${c['Project Name']}`,detail:`${(((forecast-budget)/budget)*100).toFixed(1)}% over budget. Budget: $${budget.toLocaleString()} | Forecast: $${forecast.toLocaleString()}`,action:'Review cost report with PM.'});}if(contingency>0&&contUsed/contingency>0.75){alerts.push({type:'Budget Variance',priority:'\ud83d\udfe1 Medium',subject:`Contingency Warning: ${c['Project Name']}`,detail:`${((contUsed/contingency)*100).toFixed(0)}% consumed. $${(contingency-contUsed).toLocaleString()} remaining.`,action:'Review remaining exposure.'});}}return alerts.length?alerts.map(a=>({json:a})):[{json:{noAlerts:true}}];"
+        },
+        "id": "83012694-d8cc-4c79-a400-134838f2e9f9",
+        "name": "Run Risk Checks",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          960,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "1bce46ce",
+                "leftValue": "={{ $json.noAlerts }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "35c78122-aef4-4b15-8b58-bc0d980b34d6",
+        "name": "Has Alerts?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1200,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "toRecipients": "buck@hendricksoninc.com",
+          "subject": "={{ '[HCI AI Alert] ' + $json.priority + ' \u2014 ' + $json.subject }}",
+          "bodyContent": "={{ $json.priority + ' HCI AI ALERT\\n\\nType: ' + $json.type + '\\nIssue: ' + $json.detail + '\\nAction: ' + $json.action + '\\n\\n\u2014 HCI AI OS' }}",
+          "additionalFields": {}
+        },
+        "id": "2c32e21c-2f95-4253-bd25-2de157e41439",
+        "name": "Email Alert to Buck",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1440,
+          240
+        ],
+        "webhookId": "68c43974-309a-4c8b-9373-20b691c40bf9",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "value": "1n2Gm_x5qVGUA1c61UWdQvAcJsOhCcIlvyQy4ecT3BLA",
+            "mode": "id"
+          },
+          "sheetName": {
+            "value": "Alerts Log",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "4d99ba59-992b-4715-9219-97688215d1dd",
+        "name": "Log Alert",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          1664,
+          240
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "id": "fe3a62f1-d07a-4437-b49a-afe0dfeb242a",
+        "name": "All Clear",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1440,
+          480
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "7c96636d-fb3c-4e30-941d-394a2e11a6ec",
+        "name": "Error Handler",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          240,
+          560
+        ]
+      },
+      {
+        "parameters": {
+          "toRecipients": "buck@hendricksoninc.com",
+          "subject": "\u26a0\ufe0f WF-006 Executive Alerts Failed",
+          "bodyContent": "={{ 'Error: ' + $json.execution.error.message }}",
+          "additionalFields": {}
+        },
+        "id": "1210f338-6c62-41f6-9e91-680915cbafa1",
+        "name": "Email on Error",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          464,
+          560
+        ],
+        "webhookId": "1eee9919-ec91-4b49-883d-2cd3b55582fa",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Daily 7AM": {
+        "main": [
+          [
+            {
+              "node": "Read Vendor Registry",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Read Project Registry",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Read Cost Registry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Vendor Registry": {
+        "main": [
+          [
+            {
+              "node": "Merge Registry Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Project Registry": {
+        "main": [
+          [
+            {
+              "node": "Merge Registry Data",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Read Cost Registry": {
+        "main": [
+          [
+            {
+              "node": "Merge Registry Data",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Merge Registry Data": {
+        "main": [
+          [
+            {
+              "node": "Run Risk Checks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Risk Checks": {
+        "main": [
+          [
+            {
+              "node": "Has Alerts?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Alerts?": {
+        "main": [
+          [
+            {
+              "node": "All Clear",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Email Alert to Buck",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Alert to Buck": {
+        "main": [
+          [
+            {
+              "node": "Log Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Error Handler": {
+        "main": [
+          [
+            {
+              "node": "Email on Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:39.954Z",
+        "id": 459,
+        "workflowId": "P4fOHS47k2RrkZJn",
+        "versionId": "f7655131-1239-4556-a3d6-59b42aac06e5",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:39.949Z",
+        "id": 458,
+        "workflowId": "P4fOHS47k2RrkZJn",
+        "versionId": "f7655131-1239-4556-a3d6-59b42aac06e5",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

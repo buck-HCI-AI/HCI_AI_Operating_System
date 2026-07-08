@@ -1,0 +1,419 @@
+{
+  "updatedAt": "2026-07-08T00:27:30.203Z",
+  "createdAt": "2026-06-27T18:47:36.590Z",
+  "id": "whHMnB1l8kTJE5gz",
+  "name": "AUTO-019 Morning Brief Email (07:00)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Schedule 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Get Morning Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/executive/morning-brief",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Get Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/executive/dashboard",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst brief = $('Get Morning Brief').first().json;\nconst dash = $('Get Dashboard').first().json;\nconst date = brief.date || new Date().toISOString().split('T')[0];\nconst inbox = dash.inbox || {};\nconst roi = dash.roi || {};\nconst items = (inbox.items || []).slice(0,5);\nconst rows = items.map(i=>`<tr><td style=\"padding:8px 12px;border-bottom:1px solid #374151;\"><strong>${i.exec_id}</strong> \u2014 ${i.title}</td><td style=\"padding:8px 12px;border-bottom:1px solid #374151;\"><a href=\"${i.approve_url}\" style=\"background:#22c55e;color:white;padding:5px 10px;border-radius:4px;text-decoration:none;font-size:13px;\">Approve</a></td></tr>`).join('');\nconst subject = `HCI AI \u2014 ${date} \u00b7 ${inbox.total_decisions||0} decisions`;\nconst html = `<html><body style=\"font-family:sans-serif;background:#111827;color:#f9fafb;padding:20px;max-width:600px;\"><h2 style=\"color:#3b82f6;\">${subject}</h2><p>${brief.system_health||'All systems green'}</p><h3 style=\"color:#9ca3af;font-size:12px;text-transform:uppercase;\">Projects</h3>${(brief.projects||[]).map(p=>`<div>${p}</div>`).join('')}<h3 style=\"color:#9ca3af;font-size:12px;text-transform:uppercase;margin-top:16px;\">Decisions</h3><table style=\"width:100%;border-collapse:collapse;\">${rows||'<tr><td>No pending decisions</td></tr>'}</table><p>ROI: ${roi.hours_saved_total||0}h saved total</p><p><a href=\"http://host.docker.internal:8000/executive\" style=\"background:#3b82f6;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;\">Open Dashboard</a></p></body></html>`;\nreturn [{json:{subject,html,to:'buck@ahmaspen.com'}}];\n"
+      }
+    },
+    {
+      "id": "n5",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.html }}",
+        "bodyContentType": "html",
+        "additionalFields": {}
+      },
+      "webhookId": "722efa39-7060-4f63-ad72-28ab4ab36596"
+    }
+  ],
+  "connections": {
+    "Schedule 07:00": {
+      "main": [
+        [
+          {
+            "node": "Get Morning Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Morning Brief": {
+      "main": [
+        [
+          {
+            "node": "Get Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule 07:00": {
+      "recurrenceRules": [
+        0
+      ]
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "bceacdec-f8f2-400d-95ab-5293dca79f74",
+  "activeVersionId": "bceacdec-f8f2-400d-95ab-5293dca79f74",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T18:47:36.592Z",
+      "createdAt": "2026-06-27T18:47:36.592Z",
+      "role": "workflow:owner",
+      "workflowId": "whHMnB1l8kTJE5gz",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:30.204Z",
+    "createdAt": "2026-07-08T00:27:30.204Z",
+    "versionId": "bceacdec-f8f2-400d-95ab-5293dca79f74",
+    "workflowId": "whHMnB1l8kTJE5gz",
+    "nodes": [
+      {
+        "id": "n1",
+        "name": "Schedule 07:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 7 * * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "n2",
+        "name": "Get Morning Brief",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:8000/api/v1/executive/morning-brief",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              }
+            ]
+          },
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "id": "n3",
+        "name": "Get Dashboard",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          680,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:8000/api/v1/executive/dashboard",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              }
+            ]
+          },
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "id": "n4",
+        "name": "Format Email",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          900,
+          300
+        ],
+        "parameters": {
+          "jsCode": "\nconst brief = $('Get Morning Brief').first().json;\nconst dash = $('Get Dashboard').first().json;\nconst date = brief.date || new Date().toISOString().split('T')[0];\nconst inbox = dash.inbox || {};\nconst roi = dash.roi || {};\nconst items = (inbox.items || []).slice(0,5);\nconst rows = items.map(i=>`<tr><td style=\"padding:8px 12px;border-bottom:1px solid #374151;\"><strong>${i.exec_id}</strong> \u2014 ${i.title}</td><td style=\"padding:8px 12px;border-bottom:1px solid #374151;\"><a href=\"${i.approve_url}\" style=\"background:#22c55e;color:white;padding:5px 10px;border-radius:4px;text-decoration:none;font-size:13px;\">Approve</a></td></tr>`).join('');\nconst subject = `HCI AI \u2014 ${date} \u00b7 ${inbox.total_decisions||0} decisions`;\nconst html = `<html><body style=\"font-family:sans-serif;background:#111827;color:#f9fafb;padding:20px;max-width:600px;\"><h2 style=\"color:#3b82f6;\">${subject}</h2><p>${brief.system_health||'All systems green'}</p><h3 style=\"color:#9ca3af;font-size:12px;text-transform:uppercase;\">Projects</h3>${(brief.projects||[]).map(p=>`<div>${p}</div>`).join('')}<h3 style=\"color:#9ca3af;font-size:12px;text-transform:uppercase;margin-top:16px;\">Decisions</h3><table style=\"width:100%;border-collapse:collapse;\">${rows||'<tr><td>No pending decisions</td></tr>'}</table><p>ROI: ${roi.hours_saved_total||0}h saved total</p><p><a href=\"http://host.docker.internal:8000/executive\" style=\"background:#3b82f6;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;\">Open Dashboard</a></p></body></html>`;\nreturn [{json:{subject,html,to:'buck@ahmaspen.com'}}];\n"
+        }
+      },
+      {
+        "id": "n5",
+        "name": "Send Email",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          300
+        ],
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        },
+        "parameters": {
+          "resource": "message",
+          "operation": "send",
+          "toRecipients": "={{ $json.to }}",
+          "subject": "={{ $json.subject }}",
+          "bodyContent": "={{ $json.html }}",
+          "bodyContentType": "html",
+          "additionalFields": {}
+        },
+        "webhookId": "722efa39-7060-4f63-ad72-28ab4ab36596"
+      }
+    ],
+    "connections": {
+      "Schedule 07:00": {
+        "main": [
+          [
+            {
+              "node": "Get Morning Brief",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Morning Brief": {
+        "main": [
+          [
+            {
+              "node": "Get Dashboard",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Dashboard": {
+        "main": [
+          [
+            {
+              "node": "Format Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Email": {
+        "main": [
+          [
+            {
+              "node": "Send Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:30.219Z",
+        "id": 457,
+        "workflowId": "whHMnB1l8kTJE5gz",
+        "versionId": "bceacdec-f8f2-400d-95ab-5293dca79f74",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:30.214Z",
+        "id": 456,
+        "workflowId": "whHMnB1l8kTJE5gz",
+        "versionId": "bceacdec-f8f2-400d-95ab-5293dca79f74",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

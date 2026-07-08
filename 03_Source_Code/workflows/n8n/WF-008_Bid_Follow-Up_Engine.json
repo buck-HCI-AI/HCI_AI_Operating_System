@@ -1,0 +1,653 @@
+{
+  "updatedAt": "2026-07-08T00:27:14.179Z",
+  "createdAt": "2026-06-20T00:44:33.331Z",
+  "id": "4UORmVSvQS4PjJ0B",
+  "name": "WF-008 Bid Follow-Up Engine",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-followup-001",
+      "name": "Daily 8am Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1brdSsQDdnPWx61vbV6gPdumXGKxAujNyhXRMpuvJVtg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Projects",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "gs-proj-reg-followup-001",
+      "name": "Load Project Registry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -480,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read Bid Tracker for each active project\n// n8n: this node aggregates bid data from all projects with a Bid Tracker Sheet ID\nconst projects = $input.all().map(i => i.json);\nconst active = projects.filter(p =>\n    p['Bid Tracker Sheet ID'] && p['Bid Tracker Sheet ID'].trim() &&\n    (p['Status'] || '').toLowerCase() !== 'complete' &&\n    (p['Status'] || '').toLowerCase() !== 'closed'\n);\n\nif (active.length === 0) {\n    return [{ json: { error: 'No active projects with Bid Tracker Sheet IDs', projects: [] } }];\n}\n\n// Return each project so the next node (Split) can process them one at a time\nreturn active.map(p => ({ json: {\n    projectName:       p['Project Name'] || '',\n    bidTrackerSheetId: (p['Bid Tracker Sheet ID'] || '').trim(),\n    tabName:           'Sheet1',\n} }));"
+      },
+      "id": "code-list-trackers-001",
+      "name": "List Active Trackers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.bidTrackerSheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.tabName }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "gs-read-tracker-followup-001",
+      "name": "Read Each Bid Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        0,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Z9ViG2jWlb66ncRi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n// INPUT: all bids from bid tracker (concatenated across all projects)\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst projects = $('Load Project Registry').all().map(i => i.json);\nconst bids     = $input.all().map(i => i.json);\nconst today    = new Date();\ntoday.setHours(0,0,0,0);\n\n// Grace period: 3 days after bid due date before sending follow-up\nconst GRACE_DAYS = 3;\nconst MS_DAY = 86400000;\n\nconst overdue = [];\n\nfor (const bid of bids) {\n    const status = (bid['Status'] || '').trim();\n    // Only follow up on bids that were \"Sent\" but never received\n    if (!['Sent', 'Pending', 'Invited', 'No Response'].includes(status)) continue;\n\n    // Check follow-up already sent\n    if (bid['Follow Up Sent'] && bid['Follow Up Sent'].trim()) continue;\n\n    const dateSent = bid['Date Sent'] ? new Date(bid['Date Sent']) : null;\n    if (!dateSent || isNaN(dateSent)) continue;\n\n    const daysSince = Math.floor((today - dateSent) / MS_DAY);\n    if (daysSince < GRACE_DAYS) continue;  // Too soon\n\n    const vendor   = (bid['Vendor']   || 'Vendor').trim();\n    const contact  = (bid['Contact']  || '').trim();\n    const email    = (bid['Email']    || '').trim();\n    const trade    = (bid['Trade']    || '').trim();\n    const division = (bid['CSI Division'] || '').trim();\n    const project  = (bid['Project Name'] || '').trim();\n    const rowNum   = bid['__rowNum']  || '';  // n8n appends row numbers if available\n\n    if (!email) continue;  // Cannot follow up without email\n\n    overdue.push({\n        vendor, contact, email, trade, division, project, daysSince,\n        dateSent: dateSent.toISOString().split('T')[0],\n        rowNum,\n    });\n}\n\nif (overdue.length === 0) {\n    return [{ json: { hasOverdue: false, count: 0, bids: [] } }];\n}\n\nreturn [{ json: { hasOverdue: true, count: overdue.length, bids: overdue } }];"
+      },
+      "id": "code-find-overdue-001",
+      "name": "Find Overdue Bids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hasOverdue }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "cond-has-overdue"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-overdue-001",
+      "name": "Any Overdue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (!data.hasOverdue) return [{ json: { skipped: true, reason: 'No overdue bids' } }];\n\nconst bids = data.bids;\nconst today = new Date().toISOString().split('T')[0];\n\n// Group by vendor email to avoid duplicate follow-ups to same vendor\nconst byEmail = {};\nfor (const bid of bids) {\n    if (!byEmail[bid.email]) byEmail[bid.email] = [];\n    byEmail[bid.email].push(bid);\n}\n\nconst drafts = [];\nfor (const [email, vendorBids] of Object.entries(byEmail)) {\n    const first = vendorBids[0];\n    const tradeLine = vendorBids.map(b => `${b.division ? b.division + ' \u2014 ' : ''}${b.trade} (${b.project})`).join(', ');\n\n    const subject = `Follow-Up: Bid Request \u2014 ${first.vendor} \u2014 ${first.trade}`;\n    const body = `Hi ${first.contact || first.vendor},\n\nI wanted to follow up on our bid request sent ${first.dateSent}. We have not yet received your bid for:\n\n${vendorBids.map(b => `  \u2022 ${b.project} | ${b.division ? b.division + ' \u2014 ' : ''}${b.trade}`).join('\\n')}\n\nWe are currently in active buyout and would appreciate receiving your bid at your earliest convenience. If you have any questions about the scope or drawings, please don't hesitate to reach out.\n\nIf you are not able to bid this project, please let us know so we can plan accordingly.\n\nThank you,\nBuck Adams\nHendrickson Construction Inc.\nbuck@hendricksoninc.com`;\n\n    drafts.push({ toEmail: email, subject, body, vendor: first.vendor, tradeLine, count: vendorBids.length });\n}\n\nreturn drafts.map(d => ({ json: d }));"
+      },
+      "id": "code-draft-emails-001",
+      "name": "Build Follow-Up Drafts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.body }}",
+        "additionalFields": {
+          "toRecipients": "={{ $json.toEmail }}"
+        }
+      },
+      "id": "outlook-draft-followup-001",
+      "name": "Create Outlook Draft",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      },
+      "webhookId": "913d315a-d3c7-43e3-8aaa-2f3d4e8f65ac"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=HCI Bid Follow-Up Engine \u2014 No Overdue Bids \u2014 {{ $now.format('yyyy-MM-dd') }}",
+        "bodyContent": "=Daily check complete. No overdue bids requiring follow-up at this time. Next check: tomorrow.",
+        "additionalFields": {
+          "toRecipients": "buck@hendricksoninc.com"
+        }
+      },
+      "id": "outlook-none-overdue-001",
+      "name": "Draft \u2014 No Overdue",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        720,
+        240
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "I9EZEhr72Zo6vPWX",
+          "name": "Microsoft Outlook account"
+        }
+      },
+      "webhookId": "55f7c9fe-4ea1-4f40-9184-2c68d073a0ba"
+    }
+  ],
+  "connections": {
+    "Daily 8am Check": {
+      "main": [
+        [
+          {
+            "node": "Load Project Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Project Registry": {
+      "main": [
+        [
+          {
+            "node": "List Active Trackers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Active Trackers": {
+      "main": [
+        [
+          {
+            "node": "Read Each Bid Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Each Bid Tracker": {
+      "main": [
+        [
+          {
+            "node": "Find Overdue Bids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Overdue Bids": {
+      "main": [
+        [
+          {
+            "node": "Any Overdue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Overdue?": {
+      "main": [
+        [
+          {
+            "node": "Build Follow-Up Drafts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft \u2014 No Overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Follow-Up Drafts": {
+      "main": [
+        [
+          {
+            "node": "Create Outlook Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Daily 8am Check": {
+      "recurrenceRules": [
+        0
+      ]
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "6efb9573-db5b-47c8-bbef-6a8a9be44d1a",
+  "activeVersionId": "6efb9573-db5b-47c8-bbef-6a8a9be44d1a",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-20T00:44:33.333Z",
+      "createdAt": "2026-06-20T00:44:33.333Z",
+      "role": "workflow:owner",
+      "workflowId": "4UORmVSvQS4PjJ0B",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:14.179Z",
+    "createdAt": "2026-07-08T00:27:14.179Z",
+    "versionId": "6efb9573-db5b-47c8-bbef-6a8a9be44d1a",
+    "workflowId": "4UORmVSvQS4PjJ0B",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 8 * * *"
+              }
+            ]
+          }
+        },
+        "id": "sched-followup-001",
+        "name": "Daily 8am Check",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -720,
+          160
+        ]
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1brdSsQDdnPWx61vbV6gPdumXGKxAujNyhXRMpuvJVtg",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "Projects",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "gs-proj-reg-followup-001",
+        "name": "Load Project Registry",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          -480,
+          80
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Read Bid Tracker for each active project\n// n8n: this node aggregates bid data from all projects with a Bid Tracker Sheet ID\nconst projects = $input.all().map(i => i.json);\nconst active = projects.filter(p =>\n    p['Bid Tracker Sheet ID'] && p['Bid Tracker Sheet ID'].trim() &&\n    (p['Status'] || '').toLowerCase() !== 'complete' &&\n    (p['Status'] || '').toLowerCase() !== 'closed'\n);\n\nif (active.length === 0) {\n    return [{ json: { error: 'No active projects with Bid Tracker Sheet IDs', projects: [] } }];\n}\n\n// Return each project so the next node (Split) can process them one at a time\nreturn active.map(p => ({ json: {\n    projectName:       p['Project Name'] || '',\n    bidTrackerSheetId: (p['Bid Tracker Sheet ID'] || '').trim(),\n    tabName:           'Sheet1',\n} }));"
+        },
+        "id": "code-list-trackers-001",
+        "name": "List Active Trackers",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -240,
+          80
+        ]
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "={{ $json.bidTrackerSheetId }}",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "={{ $json.tabName }}",
+            "mode": "name"
+          },
+          "options": {}
+        },
+        "id": "gs-read-tracker-followup-001",
+        "name": "Read Each Bid Tracker",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4,
+        "position": [
+          0,
+          80
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Z9ViG2jWlb66ncRi",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n// INPUT: all bids from bid tracker (concatenated across all projects)\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst projects = $('Load Project Registry').all().map(i => i.json);\nconst bids     = $input.all().map(i => i.json);\nconst today    = new Date();\ntoday.setHours(0,0,0,0);\n\n// Grace period: 3 days after bid due date before sending follow-up\nconst GRACE_DAYS = 3;\nconst MS_DAY = 86400000;\n\nconst overdue = [];\n\nfor (const bid of bids) {\n    const status = (bid['Status'] || '').trim();\n    // Only follow up on bids that were \"Sent\" but never received\n    if (!['Sent', 'Pending', 'Invited', 'No Response'].includes(status)) continue;\n\n    // Check follow-up already sent\n    if (bid['Follow Up Sent'] && bid['Follow Up Sent'].trim()) continue;\n\n    const dateSent = bid['Date Sent'] ? new Date(bid['Date Sent']) : null;\n    if (!dateSent || isNaN(dateSent)) continue;\n\n    const daysSince = Math.floor((today - dateSent) / MS_DAY);\n    if (daysSince < GRACE_DAYS) continue;  // Too soon\n\n    const vendor   = (bid['Vendor']   || 'Vendor').trim();\n    const contact  = (bid['Contact']  || '').trim();\n    const email    = (bid['Email']    || '').trim();\n    const trade    = (bid['Trade']    || '').trim();\n    const division = (bid['CSI Division'] || '').trim();\n    const project  = (bid['Project Name'] || '').trim();\n    const rowNum   = bid['__rowNum']  || '';  // n8n appends row numbers if available\n\n    if (!email) continue;  // Cannot follow up without email\n\n    overdue.push({\n        vendor, contact, email, trade, division, project, daysSince,\n        dateSent: dateSent.toISOString().split('T')[0],\n        rowNum,\n    });\n}\n\nif (overdue.length === 0) {\n    return [{ json: { hasOverdue: false, count: 0, bids: [] } }];\n}\n\nreturn [{ json: { hasOverdue: true, count: overdue.length, bids: overdue } }];"
+        },
+        "id": "code-find-overdue-001",
+        "name": "Find Overdue Bids",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          240,
+          80
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.hasOverdue }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                },
+                "id": "cond-has-overdue"
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-has-overdue-001",
+        "name": "Any Overdue?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          480,
+          80
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const data = $input.first().json;\nif (!data.hasOverdue) return [{ json: { skipped: true, reason: 'No overdue bids' } }];\n\nconst bids = data.bids;\nconst today = new Date().toISOString().split('T')[0];\n\n// Group by vendor email to avoid duplicate follow-ups to same vendor\nconst byEmail = {};\nfor (const bid of bids) {\n    if (!byEmail[bid.email]) byEmail[bid.email] = [];\n    byEmail[bid.email].push(bid);\n}\n\nconst drafts = [];\nfor (const [email, vendorBids] of Object.entries(byEmail)) {\n    const first = vendorBids[0];\n    const tradeLine = vendorBids.map(b => `${b.division ? b.division + ' \u2014 ' : ''}${b.trade} (${b.project})`).join(', ');\n\n    const subject = `Follow-Up: Bid Request \u2014 ${first.vendor} \u2014 ${first.trade}`;\n    const body = `Hi ${first.contact || first.vendor},\n\nI wanted to follow up on our bid request sent ${first.dateSent}. We have not yet received your bid for:\n\n${vendorBids.map(b => `  \u2022 ${b.project} | ${b.division ? b.division + ' \u2014 ' : ''}${b.trade}`).join('\\n')}\n\nWe are currently in active buyout and would appreciate receiving your bid at your earliest convenience. If you have any questions about the scope or drawings, please don't hesitate to reach out.\n\nIf you are not able to bid this project, please let us know so we can plan accordingly.\n\nThank you,\nBuck Adams\nHendrickson Construction Inc.\nbuck@hendricksoninc.com`;\n\n    drafts.push({ toEmail: email, subject, body, vendor: first.vendor, tradeLine, count: vendorBids.length });\n}\n\nreturn drafts.map(d => ({ json: d }));"
+        },
+        "id": "code-draft-emails-001",
+        "name": "Build Follow-Up Drafts",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          720,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "draft",
+          "subject": "={{ $json.subject }}",
+          "bodyContent": "={{ $json.body }}",
+          "additionalFields": {
+            "toRecipients": "={{ $json.toEmail }}"
+          }
+        },
+        "id": "outlook-draft-followup-001",
+        "name": "Create Outlook Draft",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          960,
+          0
+        ],
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        },
+        "webhookId": "913d315a-d3c7-43e3-8aaa-2f3d4e8f65ac"
+      },
+      {
+        "parameters": {
+          "resource": "draft",
+          "subject": "=HCI Bid Follow-Up Engine \u2014 No Overdue Bids \u2014 {{ $now.format('yyyy-MM-dd') }}",
+          "bodyContent": "=Daily check complete. No overdue bids requiring follow-up at this time. Next check: tomorrow.",
+          "additionalFields": {
+            "toRecipients": "buck@hendricksoninc.com"
+          }
+        },
+        "id": "outlook-none-overdue-001",
+        "name": "Draft \u2014 No Overdue",
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          720,
+          240
+        ],
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "I9EZEhr72Zo6vPWX",
+            "name": "Microsoft Outlook account"
+          }
+        },
+        "webhookId": "55f7c9fe-4ea1-4f40-9184-2c68d073a0ba"
+      }
+    ],
+    "connections": {
+      "Daily 8am Check": {
+        "main": [
+          [
+            {
+              "node": "Load Project Registry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Project Registry": {
+        "main": [
+          [
+            {
+              "node": "List Active Trackers",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List Active Trackers": {
+        "main": [
+          [
+            {
+              "node": "Read Each Bid Tracker",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Each Bid Tracker": {
+        "main": [
+          [
+            {
+              "node": "Find Overdue Bids",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Overdue Bids": {
+        "main": [
+          [
+            {
+              "node": "Any Overdue?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Any Overdue?": {
+        "main": [
+          [
+            {
+              "node": "Build Follow-Up Drafts",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Draft \u2014 No Overdue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Follow-Up Drafts": {
+        "main": [
+          [
+            {
+              "node": "Create Outlook Draft",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:14.195Z",
+        "id": 447,
+        "workflowId": "4UORmVSvQS4PjJ0B",
+        "versionId": "6efb9573-db5b-47c8-bbef-6a8a9be44d1a",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:14.191Z",
+        "id": 446,
+        "workflowId": "4UORmVSvQS4PjJ0B",
+        "versionId": "6efb9573-db5b-47c8-bbef-6a8a9be44d1a",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

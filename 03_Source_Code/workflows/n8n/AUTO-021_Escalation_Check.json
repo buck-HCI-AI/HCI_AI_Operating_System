@@ -1,0 +1,268 @@
+{
+  "updatedAt": "2026-07-08T00:27:30.098Z",
+  "createdAt": "2026-06-27T18:48:11.425Z",
+  "id": "fmNSNN797HDT5vcA",
+  "name": "AUTO-021 Escalation Check (10:00 & 18:00)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "ec1",
+      "name": "Schedule 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ec2",
+      "name": "Run Escalation Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/executive/escalation-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "ec3",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const r = $('Run Escalation Check').first().json; console.log(`Escalation check: ${r.escalations_fired} alerts fired`); return [{json: r}];"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule 10:00": {
+      "main": [
+        [
+          {
+            "node": "Run Escalation Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Escalation Check": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule 10:00": {
+      "recurrenceRules": [
+        0,
+        0
+      ]
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "96b23568-52d2-474a-bd5b-ec56278a68a9",
+  "activeVersionId": "96b23568-52d2-474a-bd5b-ec56278a68a9",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T18:48:11.426Z",
+      "createdAt": "2026-06-27T18:48:11.426Z",
+      "role": "workflow:owner",
+      "workflowId": "fmNSNN797HDT5vcA",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:27:30.098Z",
+    "createdAt": "2026-07-08T00:27:30.098Z",
+    "versionId": "96b23568-52d2-474a-bd5b-ec56278a68a9",
+    "workflowId": "fmNSNN797HDT5vcA",
+    "nodes": [
+      {
+        "id": "ec1",
+        "name": "Schedule 10:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 10 * * *"
+              },
+              {
+                "field": "cronExpression",
+                "expression": "0 18 * * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ec2",
+        "name": "Run Escalation Check",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          480,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/api/v1/executive/escalation-check",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+              }
+            ]
+          },
+          "options": {},
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        }
+      },
+      {
+        "id": "ec3",
+        "name": "Log Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const r = $('Run Escalation Check').first().json; console.log(`Escalation check: ${r.escalations_fired} alerts fired`); return [{json: r}];"
+        }
+      }
+    ],
+    "connections": {
+      "Schedule 10:00": {
+        "main": [
+          [
+            {
+              "node": "Run Escalation Check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Escalation Check": {
+        "main": [
+          [
+            {
+              "node": "Log Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:27:30.116Z",
+        "id": 451,
+        "workflowId": "fmNSNN797HDT5vcA",
+        "versionId": "96b23568-52d2-474a-bd5b-ec56278a68a9",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      },
+      {
+        "createdAt": "2026-07-08T00:27:30.110Z",
+        "id": 450,
+        "workflowId": "fmNSNN797HDT5vcA",
+        "versionId": "96b23568-52d2-474a-bd5b-ec56278a68a9",
+        "event": "deactivated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}

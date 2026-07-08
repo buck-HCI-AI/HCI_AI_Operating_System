@@ -1,0 +1,213 @@
+{
+  "updatedAt": "2026-07-07T06:30:04.210Z",
+  "createdAt": "2026-06-27T16:58:50.789Z",
+  "id": "AbP7zYz3zOGdb7mA",
+  "name": "AUTO-013 HubSpot/Drive Reconciliation Report",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "24381c86-10fe-4392-98b7-b650526b653a",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 8 * * 1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "42303977-a59a-4152-96eb-926d2d1a7cf6",
+      "name": "Get Projects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/project/list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "da03344e-9ec4-41b7-bc1d-ee645a31427c",
+      "name": "Get HubSpot Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        750,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/api/v1/hubspot/deals",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "hci-01253a2b0f87dbd03346bba60f0c31d7350e5c75b17c866c"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      }
+    },
+    {
+      "id": "f234adcc-1dbf-41c9-91ee-960a25c74276",
+      "name": "Format Reconciliation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst today = new Date().toISOString().split('T')[0];\nconst pd = $('Get Projects').item.json;\nconst hd = $('Get HubSpot Deals').item.json;\nconst projects = Array.isArray(pd) ? pd : (pd.projects || pd.data || []);\nconst deals = Array.isArray(hd) ? hd : (hd.deals || hd.data || []);\nconst pNames = projects.map(p => p.name || '').filter(Boolean);\nconst dNames = deals.map(d => d.deal_name || d.name || '').filter(Boolean);\nconst noMatch = pNames.filter(n => !dNames.some(d => d.toLowerCase().includes(n.toLowerCase().slice(0,6))));\nconst report = `# HubSpot/Project Reconciliation \u2014 ${today}\n## HCI AI Operating System | AUTO-013\n\n| Source | Count |\n|---|---|\n| Projects (DB) | ${projects.length} |\n| HubSpot Deals | ${deals.length} |\n\n## Projects without HubSpot Deal (${noMatch.length})\n${noMatch.length ? noMatch.map(n => '- ' + n).join('\\n') : '\u2705 All matched'}\n\n*AUTO-013 | Hendrickson Construction, Inc.*\n`;\nreturn [{ json: { report, filename: `reports/daily/${today}-reconciliation.md` } }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "f661374c-43f6-4105-b789-f9e9c55f091a",
+      "name": "Write & Commit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst fs = require('fs');\nconst { execSync } = require('child_process');\nconst report = $input.item.json.report;\nconst filename = $input.item.json.filename;\nconst repoRoot = '/Users/buckadams/HCI_AI_Operating_System';\nconst filePath = repoRoot + '/' + filename;\nfs.mkdirSync(require('path').dirname(filePath), { recursive: true });\nfs.writeFileSync(filePath, report, 'utf8');\ntry {\n  execSync(`git -C ${repoRoot} add \"${filePath}\"`, {stdio:'pipe'});\n  execSync(`git -C ${repoRoot} diff --cached --quiet || git -C ${repoRoot} commit -m \"AUTO: ${filename.split('/').pop()} [skip ci]\"`, {stdio:'pipe'});\n} catch(e) {}\nreturn [{ json: { written: filePath, report } }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Projects": {
+      "main": [
+        [
+          {
+            "node": "Get HubSpot Deals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get HubSpot Deals": {
+      "main": [
+        [
+          {
+            "node": "Format Reconciliation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Reconciliation": {
+      "main": [
+        [
+          {
+            "node": "Write & Commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "275c90b8-c84f-407d-83e8-a4423f6404a7",
+  "activeVersionId": null,
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-27T16:58:50.789Z",
+      "createdAt": "2026-06-27T16:58:50.789Z",
+      "role": "workflow:owner",
+      "workflowId": "AbP7zYz3zOGdb7mA",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}
