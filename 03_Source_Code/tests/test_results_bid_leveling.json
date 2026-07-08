@@ -1,5 +1,5 @@
 {
-  "run_date": "2026-07-07T19:33:10.273769",
+  "run_date": "2026-07-07T23:22:19.085996",
   "total": 23,
   "passed": 23,
   "failed": 0,
@@ -7,134 +7,134 @@
     {
       "test": "BL-SVC-01: service appears in /api/v1/services",
       "status": "PASS",
-      "detail": "services: ['project-brain', 'bid-intelligence', 'vendor-intelligence', 'document-intelligence', 'lessons-learned', 'procurement', 'historical-cost', 'schedule-intelligence', 'risk-intelligence', 'decision-intelligence', 'kpi-intelligence', 'operating-rules', 'business-process-library', 'background-learning', 'approval-queue', 'connector-registry', 'bid-leveling', 'houzz-intelligence', 'connectors', 'notifications', 'knowledge-graph', 'continuous-discovery', 'drive-intelligence']",
-      "ms": 17
+      "detail": "services: ['project-brain', 'bid-intelligence', 'vendor-intelligence', 'document-intelligence', 'lessons-learned', 'procurement', 'historical-cost', 'schedule-intelligence', 'risk-intelligence', 'decision-intelligence', 'kpi-intelligence', 'operating-rules', 'business-process-library', 'background-learning', 'approval-queue', 'connector-registry', 'bid-leveling', 'houzz-intelligence', 'connectors', 'notifications', 'knowledge-graph', 'continuous-discovery', 'drive-intelligence', 'field-brain']",
+      "ms": 13
     },
     {
       "test": "BL-SVC-02: service info endpoint returns 200",
       "status": "PASS",
       "detail": "status=200 service=bid-leveling",
-      "ms": 6
+      "ms": 5
     },
     {
       "test": "BL-SVC-03: 3+ projects configured",
       "status": "PASS",
       "detail": "count=4 projects=['64 Eastwood', '101 Francis', '1355 Riverside', '246 Gallo Way']",
-      "ms": 24
+      "ms": 17
     },
     {
       "test": "BL-READ-01: 1355 Riverside division summary reads 10+ divisions",
       "status": "PASS",
       "detail": "status=200 div_count=16",
-      "ms": 1306
+      "ms": 1517
     },
     {
       "test": "BL-READ-02: 101 Francis division summary reads 5+ divisions",
       "status": "PASS",
       "detail": "status=200 div_count=11",
-      "ms": 1024
+      "ms": 1071
     },
     {
       "test": "BL-READ-03: 64 Eastwood division summary reads 5+ divisions",
       "status": "PASS",
       "detail": "status=200 div_count=13",
-      "ms": 902
+      "ms": 1282
     },
     {
       "test": "BL-READ-04: project data endpoint returns bid_tracking data",
       "status": "PASS",
       "detail": "status=200 bid_divs=11",
-      "ms": 1411
+      "ms": 2283
     },
     {
       "test": "BL-READ-05: sheets/read endpoint works for AI agent access",
       "status": "PASS",
       "detail": "status=200 rows=17",
-      "ms": 382
+      "ms": 471
     },
     {
       "test": "BL-DRY-01: 1355 Riverside dry run \u2014 10+ divisions, 20+ bids",
       "status": "PASS",
       "detail": "status=200 mode=dry_run divs=18 bids=87",
-      "ms": 7631
+      "ms": 6802
     },
     {
       "test": "BL-DRY-02: 101 Francis dry run \u2014 5+ divisions",
       "status": "PASS",
       "detail": "status=200 divs=11 bids=5",
-      "ms": 29508
+      "ms": 42343
     },
     {
       "test": "BL-DRY-03: 64 Eastwood dry run \u2014 5+ divisions",
       "status": "PASS",
       "detail": "status=200 divs=14 bids=23",
-      "ms": 13646
+      "ms": 20122
     },
     {
       "test": "BL-DRY-04: division filter works (only 2 divisions returned)",
       "status": "PASS",
       "detail": "status=200 divs=2 excel_actions=2",
-      "ms": 8677
+      "ms": 6837
     },
     {
       "test": "BL-DRY-05: all excel_actions have .xlsx filenames",
       "status": "PASS",
       "detail": "actions=11 all_filenames=True",
-      "ms": 28930
+      "ms": 26180
     },
     {
       "test": "BL-DRY-06: 101 Francis 00_Bids folder found_existing",
       "status": "PASS",
       "detail": "bids_folder={'folder_id': '1UhsCkKuep9n9E8-uiK9FK_Owmyz8dvXR', 'created': False, 'action': 'from_db_config'}",
-      "ms": 27686
+      "ms": 32600
     },
     {
       "test": "BL-DRY-07: run-all returns 3+ projects",
       "status": "PASS",
       "detail": "status=200 projects=4",
-      "ms": 59047
+      "ms": 51860
     },
     {
       "test": "BL-EXCEL-01: generate Excel \u2014 Bid Summary + Package Detail sheets present",
       "status": "PASS",
-      "detail": "bytes=7330 sheets=['Bid Summary', 'Package Detail', 'Outstanding Items']",
-      "ms": 185
+      "detail": "bytes=7331 sheets=['Bid Summary', 'Package Detail', 'Outstanding Items']",
+      "ms": 117
     },
     {
       "test": "BL-EXCEL-02: generate Excel \u2014 Outstanding Items sheet generated",
       "status": "PASS",
       "detail": "sheets=['Bid Summary', 'Outstanding Items']",
-      "ms": 9
+      "ms": 6
     },
     {
       "test": "BL-DRIVE-01: list Drive folder (101 Francis 00_Bids) returns items",
       "status": "PASS",
       "detail": "status=200 items=11",
-      "ms": 397
+      "ms": 382
     },
     {
       "test": "BL-DRIVE-02: create-folder returns existing folder if already exists",
       "status": "PASS",
       "detail": "status=200 action=found_existing",
-      "ms": 405
+      "ms": 403
     },
     {
       "test": "BL-QUEUE-01: live run for div 16 queues at least 1 upload item",
       "status": "PASS",
       "detail": "status=200 mode=live queued=[None]",
-      "ms": 6882
+      "ms": 11212
     },
     {
       "test": "BL-QUEUE-02: queued item visible in approval-queue pending list",
       "status": "PASS",
       "detail": "bid_leveling items in queue: 1",
-      "ms": 29
+      "ms": 31
     },
     {
       "test": "BL-QUEUE-03: execute without approval returns 400 (safety control)",
       "status": "PASS",
-      "detail": "status=400 detail=Queue item 2567 is pending, not approved",
-      "ms": 34
+      "detail": "status=400 detail=Queue item 2568 is pending, not approved",
+      "ms": 36
     },
     {
       "test": "BL-QUEUE-04: cleanup - reject queued items so they don't leak into real queue",
