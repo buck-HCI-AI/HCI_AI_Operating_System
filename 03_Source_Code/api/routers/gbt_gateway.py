@@ -320,6 +320,133 @@ def project_pm(code: str):
         return _response(f"/project/{code}/pm", {}, errors=[str(e.detail)], start=t0)
 
 
+def _gather_deep_dive(code: str) -> dict:
+    """Shared data-gathering for deep-dive JSON and the status-page HTML view - one
+    query set, two presentations. Raises ValueError with a message if the project
+    code isn't found."""
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, project_code, contract_value, status, permit_status
+                FROM projects WHERE UPPER(project_code) = UPPER(%s)
+            """, (code,))
+            proj = cur.fetchone()
+            if not proj:
+                raise ValueError(f"Unknown project code: {code}")
+            pid = proj["id"]
+
+            # Daily logs — last 14 days, most recent first
+            cur.execute("""
+                SELECT log_date, work_performed, issues, weather, crew_on_site,
+                       manpower, deliveries, inspections, logged_by
+                FROM daily_logs WHERE project_id = %s
+                ORDER BY log_date DESC LIMIT 14
+            """, (pid,))
+            logs = [dict(r) for r in cur.fetchall()]
+            last_log_date = logs[0]["log_date"] if logs else None
+            days_since_log = (date.today() - last_log_date).days if last_log_date else None
+
+            # Schedule — upcoming and overdue items
+            cur.execute("""
+                SELECT activity_id, title, start_date, end_date, status, completion_pct, task_type
+                FROM project_schedule_items WHERE project_id = %s::text
+                ORDER BY start_date ASC NULLS LAST
+            """, (pid,))
+            sched_items = [dict(r) for r in cur.fetchall()]
+            today = date.today()
+            overdue = [s for s in sched_items if s["end_date"] and s["end_date"] < today
+                       and (s["status"] or "").lower() not in ("complete", "completed", "done")]
+            upcoming = [s for s in sched_items if s["start_date"] and s["start_date"] >= today][:8]
+            total_items = len(sched_items)
+            complete_items = len([s for s in sched_items if (s["status"] or "").lower() in ("complete", "completed", "done")])
+
+            # Budget — bid packages + committed amount
+            cur.execute("""
+                SELECT bp.id, bp.package_name, bp.csi_division, bp.status, bp.awarded_amount,
+                    (SELECT COUNT(*) FROM bid_entries be WHERE be.bid_package_id = bp.id) AS bid_count,
+                    (SELECT MIN(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS low_bid,
+                    (SELECT MAX(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS high_bid
+                FROM bid_packages bp WHERE bp.project_id = %s
+            """, (pid,))
+            packages = [dict(r) for r in cur.fetchall()]
+            total_packages = len(packages)
+            no_bid_packages = [p["package_name"] for p in packages if p["bid_count"] == 0]
+            awarded = [p for p in packages if p["status"] == "awarded"]
+            committed = sum(float(p["awarded_amount"] or 0) for p in awarded)
+            contract_value = float(proj["contract_value"] or 0)
+            # Flag packages with a wide bid spread — scope likely not normalized yet
+            spread_flags = [
+                {"package": p["package_name"], "low": float(p["low_bid"]), "high": float(p["high_bid"]),
+                 "spread_pct": round((float(p["high_bid"]) - float(p["low_bid"])) / float(p["low_bid"]) * 100)}
+                for p in packages if p["low_bid"] and p["high_bid"] and p["bid_count"] >= 2
+                and (float(p["high_bid"]) - float(p["low_bid"])) / float(p["low_bid"]) > 0.5
+            ]
+
+            # Risks and RFIs
+            cur.execute("""
+                SELECT risk_type, severity, description, identified_date
+                FROM risks WHERE project_id = %s AND status = 'open'
+                ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END
+            """, (pid,))
+            open_risks = [dict(r) for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT rfi_number, subject, submitted_date, required_response_date, status
+                FROM rfis WHERE project_id = %s AND status = 'open'
+                ORDER BY required_response_date ASC NULLS LAST
+            """, (pid,))
+            open_rfis = [dict(r) for r in cur.fetchall()]
+            overdue_rfis = [r for r in open_rfis if r["required_response_date"] and r["required_response_date"] < today]
+
+    # Synthesis — structured flags, not prose. Consumers (GPTs) turn these into narrative.
+    flags = []
+    if proj["permit_status"] == "not_issued":
+        flags.append("No permit issued yet — any daily-log/schedule data implying active field construction should be treated as pre-construction planning, not real progress.")
+    elif proj["permit_status"] == "iffr":
+        flags.append("Issued-for-field-review (IFFR) permit — field work is permitted under IFFR scope; full building permit is still pending. Does not imply active construction — check daily-log recency separately, since a project can be legitimately on hold (e.g. bids/awards only) while still IFFR.")
+    if days_since_log is not None and days_since_log > 7:
+        flags.append(f"No daily log in {days_since_log} days — field reporting has gone quiet.")
+    if overdue:
+        flags.append(f"{len(overdue)} schedule item(s) past their end date and not marked complete.")
+    if overdue_rfis:
+        flags.append(f"{len(overdue_rfis)} RFI(s) past their required response date.")
+    if no_bid_packages:
+        flags.append(f"{len(no_bid_packages)} bid package(s) with zero bids received.")
+    if spread_flags:
+        flags.append(f"{len(spread_flags)} bid package(s) with >50% spread between low and high bid — scope likely not normalized.")
+
+    return {
+        "project": proj["name"],
+        "project_code": proj["project_code"],
+        "status": proj["status"],
+        "permit_status": proj["permit_status"],
+        "daily_logs": {
+            "last_14_days": logs,
+            "last_log_date": last_log_date.isoformat() if last_log_date else None,
+            "days_since_last_log": days_since_log,
+        },
+        "schedule": {
+            "total_items": total_items,
+            "complete_items": complete_items,
+            "pct_complete": round(complete_items / total_items * 100) if total_items else 0,
+            "overdue": overdue,
+            "upcoming_next_8": upcoming,
+        },
+        "budget": {
+            "contract_value": contract_value,
+            "committed": committed,
+            "pct_committed": round(committed / contract_value * 100) if contract_value else 0,
+            "total_packages": total_packages,
+            "packages_with_no_bids": no_bid_packages,
+            "bid_spread_flags": spread_flags,
+        },
+        "open_risks": open_risks,
+        "open_rfis": open_rfis,
+        "overdue_rfis": overdue_rfis,
+        "flags": flags,
+    }
+
+
 @router.get("/project/{code}/deep-dive")
 def project_deep_dive(code: str):
     """Full per-project synthesis — daily logs, schedule, and budget together, not just
@@ -328,129 +455,305 @@ def project_deep_dive(code: str):
     actually answer 'where do things stand on X' with specifics."""
     t0 = time.time()
     try:
-        with _pg() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT id, name, project_code, contract_value, status, permit_status
-                    FROM projects WHERE UPPER(project_code) = UPPER(%s)
-                """, (code,))
-                proj = cur.fetchone()
-                if not proj:
-                    return _response(f"/project/{code}/deep-dive", {}, errors=[f"Unknown project code: {code}"], start=t0)
-                pid = proj["id"]
-
-                # Daily logs — last 14 days, most recent first
-                cur.execute("""
-                    SELECT log_date, work_performed, issues, weather, crew_on_site,
-                           manpower, deliveries, inspections, logged_by
-                    FROM daily_logs WHERE project_id = %s
-                    ORDER BY log_date DESC LIMIT 14
-                """, (pid,))
-                logs = [dict(r) for r in cur.fetchall()]
-                last_log_date = logs[0]["log_date"] if logs else None
-                days_since_log = (date.today() - last_log_date).days if last_log_date else None
-
-                # Schedule — upcoming and overdue items
-                cur.execute("""
-                    SELECT activity_id, title, start_date, end_date, status, completion_pct, task_type
-                    FROM project_schedule_items WHERE project_id = %s::text
-                    ORDER BY start_date ASC NULLS LAST
-                """, (pid,))
-                sched_items = [dict(r) for r in cur.fetchall()]
-                today = date.today()
-                overdue = [s for s in sched_items if s["end_date"] and s["end_date"] < today
-                           and (s["status"] or "").lower() not in ("complete", "completed", "done")]
-                upcoming = [s for s in sched_items if s["start_date"] and s["start_date"] >= today][:8]
-                total_items = len(sched_items)
-                complete_items = len([s for s in sched_items if (s["status"] or "").lower() in ("complete", "completed", "done")])
-
-                # Budget — bid packages + committed amount
-                cur.execute("""
-                    SELECT bp.id, bp.package_name, bp.csi_division, bp.status, bp.awarded_amount,
-                        (SELECT COUNT(*) FROM bid_entries be WHERE be.bid_package_id = bp.id) AS bid_count,
-                        (SELECT MIN(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS low_bid,
-                        (SELECT MAX(be.bid_amount) FROM bid_entries be WHERE be.bid_package_id = bp.id AND be.bid_amount > 0) AS high_bid
-                    FROM bid_packages bp WHERE bp.project_id = %s
-                """, (pid,))
-                packages = [dict(r) for r in cur.fetchall()]
-                total_packages = len(packages)
-                no_bid_packages = [p["package_name"] for p in packages if p["bid_count"] == 0]
-                awarded = [p for p in packages if p["status"] == "awarded"]
-                committed = sum(float(p["awarded_amount"] or 0) for p in awarded)
-                contract_value = float(proj["contract_value"] or 0)
-                # Flag packages with a wide bid spread — scope likely not normalized yet
-                spread_flags = [
-                    {"package": p["package_name"], "low": float(p["low_bid"]), "high": float(p["high_bid"]),
-                     "spread_pct": round((float(p["high_bid"]) - float(p["low_bid"])) / float(p["low_bid"]) * 100)}
-                    for p in packages if p["low_bid"] and p["high_bid"] and p["bid_count"] >= 2
-                    and (float(p["high_bid"]) - float(p["low_bid"])) / float(p["low_bid"]) > 0.5
-                ]
-
-                # Risks and RFIs
-                cur.execute("""
-                    SELECT risk_type, severity, description, identified_date
-                    FROM risks WHERE project_id = %s AND status = 'open'
-                    ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END
-                """, (pid,))
-                open_risks = [dict(r) for r in cur.fetchall()]
-
-                cur.execute("""
-                    SELECT rfi_number, subject, submitted_date, required_response_date, status
-                    FROM rfis WHERE project_id = %s AND status = 'open'
-                    ORDER BY required_response_date ASC NULLS LAST
-                """, (pid,))
-                open_rfis = [dict(r) for r in cur.fetchall()]
-                overdue_rfis = [r for r in open_rfis if r["required_response_date"] and r["required_response_date"] < today]
-
-        # Synthesis — structured flags, not prose. Consumers (GPTs) turn these into narrative.
-        flags = []
-        if proj["permit_status"] == "not_issued":
-            flags.append("No permit issued yet — any daily-log/schedule data implying active field construction should be treated as pre-construction planning, not real progress.")
-        elif proj["permit_status"] == "iffr":
-            flags.append("Issued-for-field-review (IFFR) permit — field work is permitted under IFFR scope; full building permit is still pending. Does not imply active construction — check daily-log recency separately, since a project can be legitimately on hold (e.g. bids/awards only) while still IFFR.")
-        if days_since_log is not None and days_since_log > 7:
-            flags.append(f"No daily log in {days_since_log} days — field reporting has gone quiet.")
-        if overdue:
-            flags.append(f"{len(overdue)} schedule item(s) past their end date and not marked complete.")
-        if overdue_rfis:
-            flags.append(f"{len(overdue_rfis)} RFI(s) past their required response date.")
-        if no_bid_packages:
-            flags.append(f"{len(no_bid_packages)} bid package(s) with zero bids received.")
-        if spread_flags:
-            flags.append(f"{len(spread_flags)} bid package(s) with >50% spread between low and high bid — scope likely not normalized.")
-
-        return _response(f"/project/{code}/deep-dive", {
-            "project": proj["name"],
-            "project_code": proj["project_code"],
-            "status": proj["status"],
-            "permit_status": proj["permit_status"],
-            "daily_logs": {
-                "last_14_days": logs,
-                "last_log_date": last_log_date.isoformat() if last_log_date else None,
-                "days_since_last_log": days_since_log,
-            },
-            "schedule": {
-                "total_items": total_items,
-                "complete_items": complete_items,
-                "pct_complete": round(complete_items / total_items * 100) if total_items else 0,
-                "overdue": overdue,
-                "upcoming_next_8": upcoming,
-            },
-            "budget": {
-                "contract_value": contract_value,
-                "committed": committed,
-                "pct_committed": round(committed / contract_value * 100) if contract_value else 0,
-                "total_packages": total_packages,
-                "packages_with_no_bids": no_bid_packages,
-                "bid_spread_flags": spread_flags,
-            },
-            "open_risks": open_risks,
-            "open_rfis": open_rfis,
-            "overdue_rfis": overdue_rfis,
-            "flags": flags,
-        }, start=t0)
+        data = _gather_deep_dive(code)
+        return _response(f"/project/{code}/deep-dive", data, start=t0)
+    except ValueError as e:
+        return _response(f"/project/{code}/deep-dive", {}, errors=[str(e)], start=t0)
     except Exception as e:
         return _response(f"/project/{code}/deep-dive", {}, errors=[str(e)], start=t0)
+
+
+def _money(n) -> str:
+    try:
+        return f"${float(n):,.0f}"
+    except (TypeError, ValueError):
+        return "$0"
+
+
+def _status_health(data: dict) -> tuple:
+    """Returns (label, color) - red/yellow/green banded off the same real flags
+    the JSON endpoint already computes, so the page and the API never disagree."""
+    n_flags = len(data.get("flags", []))
+    overdue_rfis = len(data.get("overdue_rfis", []))
+    critical_risks = len([r for r in data.get("open_risks", []) if r.get("severity") == "critical"])
+    if critical_risks or overdue_rfis >= 3 or n_flags >= 4:
+        return "Needs Attention", "#e0615c"
+    if n_flags >= 1:
+        return "On Track, Watching", "#e3a23f"
+    return "On Track", "#4fae7c"
+
+
+def _render_project_status_card(data: dict, standalone: bool = True) -> str:
+    """One project's full picture, rendered as a clean card - reused by both the
+    single-project status page and the weekly portfolio-wide report email."""
+    label, color = _status_health(data)
+    budget = data["budget"]
+    sched = data["schedule"]
+    logs = data["daily_logs"]
+
+    rfi_rows = "".join(
+        f'<tr><td>{r.get("rfi_number","")}</td><td>{r.get("subject","")[:60]}</td>'
+        f'<td>{r.get("required_response_date") or "—"}</td></tr>'
+        for r in data["open_rfis"][:10]
+    ) or '<tr><td colspan="3" style="color:#8d97a8">No open RFIs</td></tr>'
+
+    risk_rows = "".join(
+        f'<tr><td style="text-transform:capitalize">{r.get("severity","")}</td>'
+        f'<td>{(r.get("description") or "")[:90]}</td></tr>'
+        for r in data["open_risks"][:8]
+    ) or '<tr><td colspan="2" style="color:#8d97a8">No open risks</td></tr>'
+
+    flags_html = "".join(f"<li>{f}</li>" for f in data["flags"]) or "<li style='color:#8d97a8'>No flags — clean</li>"
+
+    return f"""
+    <div class="proj-card">
+      <div class="proj-head">
+        <div>
+          <div class="proj-name">{data['project']} <span class="proj-code">({data['project_code']})</span></div>
+          <div class="proj-sub">{(data.get('status') or '').title()} · Permit: {(data.get('permit_status') or 'unknown').upper()}</div>
+        </div>
+        <div class="pill" style="background:{color}22;color:{color};border:1px solid {color}55">{label}</div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric"><div class="mval">{_money(budget['contract_value'])}</div><div class="mlabel">Contract Value</div></div>
+        <div class="metric"><div class="mval">{_money(budget['committed'])}</div><div class="mlabel">Committed ({budget['pct_committed']}%)</div></div>
+        <div class="metric"><div class="mval">{sched['pct_complete']}%</div><div class="mlabel">Schedule Complete</div></div>
+        <div class="metric"><div class="mval">{len(data['open_rfis'])}</div><div class="mlabel">Open RFIs</div></div>
+        <div class="metric"><div class="mval">{len(data['open_risks'])}</div><div class="mlabel">Open Risks</div></div>
+        <div class="metric"><div class="mval">{logs['days_since_last_log'] if logs['days_since_last_log'] is not None else '—'}</div><div class="mlabel">Days Since Log</div></div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="section-title">Open RFIs</div>
+          <table><thead><tr><th>#</th><th>Subject</th><th>Due</th></tr></thead><tbody>{rfi_rows}</tbody></table>
+        </div>
+        <div>
+          <div class="section-title">Open Risks</div>
+          <table><thead><tr><th>Severity</th><th>Description</th></tr></thead><tbody>{risk_rows}</tbody></table>
+        </div>
+      </div>
+
+      <div class="section-title">Flags</div>
+      <ul class="flags">{flags_html}</ul>
+    </div>
+    """
+
+
+_STATUS_PAGE_CSS = """
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #10141a; color: #e7ebf0; margin: 0; padding: 24px 16px 60px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: #8d97a8; font-size: 13px; margin: 0 0 24px; }
+  .proj-card { background: #1a2029; border: 1px solid #2c3542; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .proj-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .proj-name { font-size: 17px; font-weight: 700; }
+  .proj-code { color: #8d97a8; font-weight: 400; font-size: 13px; }
+  .proj-sub { color: #8d97a8; font-size: 12.5px; margin-top: 2px; }
+  .pill { font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+  .metric-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
+  .metric { background: #212836; border-radius: 8px; padding: 10px; text-align: center; }
+  .mval { font-family: ui-monospace, monospace; font-size: 15px; font-weight: 700; }
+  .mlabel { font-size: 10px; color: #8d97a8; margin-top: 2px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8d97a8; margin: 12px 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th { text-align: left; color: #8d97a8; font-weight: 600; font-size: 10.5px; text-transform: uppercase; padding: 0 8px 6px 0; border-bottom: 1px solid #2c3542; }
+  td { padding: 6px 8px 6px 0; border-bottom: 1px solid #2c3542; vertical-align: top; }
+  .flags { margin: 0; padding-left: 18px; font-size: 12.5px; color: #e3a23f; }
+  .flags li { margin-bottom: 4px; }
+  @media (max-width: 700px) { .metric-grid { grid-template-columns: repeat(3, 1fr); } .two-col { grid-template-columns: 1fr; } }
+"""
+
+
+@router.get("/project/{code}/status-page", response_class=None)
+def project_status_page(code: str):
+    """On-demand, always-fresh full-picture status page - budget, schedule, open
+    RFIs, open risks, in one simple view. Built 2026-07-08 per Buck: budget,
+    schedule, outstanding RFIs, complete picture, simple format, for him/Chris/
+    management. Same real data as /deep-dive, just a page instead of raw JSON."""
+    from fastapi.responses import HTMLResponse
+    try:
+        data = _gather_deep_dive(code)
+    except ValueError as e:
+        return HTMLResponse(content=f"<body style='background:#10141a;color:#e0615c;font-family:sans-serif;padding:40px'>{e}</body>", status_code=404)
+    html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{data['project']} — Status</title><style>{_STATUS_PAGE_CSS}</style></head>
+<body><div class="wrap">
+<h1>{data['project']} — Project Status</h1>
+<p class="subtitle">Live as of this page load · {datetime.now(BUCK_TZ).strftime('%b %d, %Y %-I:%M %p')} MT</p>
+{_render_project_status_card(data)}
+</div></body></html>"""
+    return HTMLResponse(content=html)
+
+
+def _reportable_project_codes() -> list:
+    """Every active + monitoring project - the real 'live or monitored' set Buck
+    wants Chris/management able to see a report on. Deliberately excludes
+    'reference' (closed historical jobs + the ASPN-MC/NEW/REM synthetic
+    archetypes) and 'sandbox' - those are read-only learning sources, not
+    operational jobs to report status on. Fixed 2026-07-08: this used to be a
+    hardcoded 4-project list, which is exactly the kind of scope bug Buck flagged
+    ('that should be all jobs - not live jobs in the system')."""
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT project_code FROM projects
+                WHERE status IN ('active', 'monitoring')
+                ORDER BY status, project_code
+            """)
+            return [r["project_code"] for r in cur.fetchall()]
+
+
+@router.get("/portfolio/status", response_class=None)
+def portfolio_status_page():
+    """Every live-or-monitored project, full picture, one page. Links from each
+    card would go to /project/{code}/status-page for the single-project deep view."""
+    from fastapi.responses import HTMLResponse
+    codes = _reportable_project_codes()
+    cards = []
+    for code in codes:
+        try:
+            data = _gather_deep_dive(code)
+            cards.append(_render_project_status_card(data))
+        except Exception as e:
+            cards.append(f'<div class="proj-card" style="color:#e0615c">{code}: {e}</div>')
+    html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HCI Portfolio — Status</title><style>{_STATUS_PAGE_CSS}</style></head>
+<body><div class="wrap">
+<h1>HCI Portfolio — All Live &amp; Monitored Projects ({len(codes)})</h1>
+<p class="subtitle">Live as of this page load · {datetime.now(BUCK_TZ).strftime('%b %d, %Y %-I:%M %p')} MT</p>
+{''.join(cards)}
+</div></body></html>"""
+    return HTMLResponse(content=html)
+
+
+def _render_project_status_email(data: dict) -> str:
+    """Email-safe rendering of the same real data as the web card - table-based,
+    inline styles only, light background. Fixed 2026-07-08: the first version of
+    this report reused the dark-theme web CSS (#10141a background, light text) in
+    a <style> block. Outlook and other email clients routinely strip <style>
+    blocks and/or apply their own dark-mode color inversion on top of a dark
+    background, which is exactly how Buck's copy came through 'blacked out.'
+    Email HTML needs inline styles and a light background, full stop."""
+    label, color = _status_health(data)
+    budget = data["budget"]
+    sched = data["schedule"]
+    logs = data["daily_logs"]
+    td = 'style="padding:6px 8px;border-bottom:1px solid #e3e6ea;font-size:12.5px;color:#333333;font-family:Arial,sans-serif;"'
+    th = 'style="padding:0 8px 6px 0;border-bottom:1px solid #cccccc;font-size:10.5px;color:#666666;text-transform:uppercase;text-align:left;font-family:Arial,sans-serif;"'
+
+    rfi_rows = "".join(
+        f'<tr><td {td}>{r.get("rfi_number","")}</td><td {td}>{r.get("subject","")[:60]}</td>'
+        f'<td {td}>{r.get("required_response_date") or "—"}</td></tr>'
+        for r in data["open_rfis"][:10]
+    ) or f'<tr><td {td} colspan="3">No open RFIs</td></tr>'
+
+    risk_rows = "".join(
+        f'<tr><td {td} style="text-transform:capitalize">{r.get("severity","")}</td>'
+        f'<td {td}>{(r.get("description") or "")[:90]}</td></tr>'
+        for r in data["open_risks"][:8]
+    ) or f'<tr><td {td} colspan="2">No open risks</td></tr>'
+
+    flags_html = "".join(f'<li style="color:#a15c00;font-size:12.5px;margin-bottom:4px">{f}</li>' for f in data["flags"]) \
+        or '<li style="color:#888888;font-size:12.5px">No flags — clean</li>'
+
+    metric = lambda val, lab: (
+        f'<td style="padding:10px;text-align:center;background:#f4f5f7;border-radius:6px;font-family:Arial,sans-serif;">'
+        f'<div style="font-size:15px;font-weight:700;color:#1a1a1a;">{val}</div>'
+        f'<div style="font-size:10px;color:#888888;margin-top:2px;">{lab}</div></td>'
+    )
+
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+      style="background:#ffffff;border:1px solid #e3e6ea;border-radius:8px;margin-bottom:16px;">
+      <tr><td style="padding:18px 20px 0 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#1a1a1a;">
+            {data['project']} <span style="color:#888888;font-weight:400;font-size:12px;">({data['project_code']})</span>
+            <div style="font-size:11.5px;color:#888888;font-weight:400;margin-top:2px;">
+              {(data.get('status') or '').title()} · Permit: {(data.get('permit_status') or 'unknown').upper()}
+            </div>
+          </td>
+          <td align="right" style="font-family:Arial,sans-serif;">
+            <span style="background:{color}18;color:{color};border:1px solid {color};border-radius:14px;padding:4px 10px;font-size:11px;font-weight:700;">{label}</span>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:14px 20px 0 20px;">
+        <table role="presentation" width="100%" cellpadding="6" cellspacing="6"><tr>
+          {metric(_money(budget['contract_value']), 'Contract Value')}
+          {metric(_money(budget['committed']) + f" ({budget['pct_committed']}%)", 'Committed')}
+          {metric(str(sched['pct_complete']) + '%', 'Schedule Complete')}
+          {metric(len(data['open_rfis']), 'Open RFIs')}
+          {metric(len(data['open_risks']), 'Open Risks')}
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:14px 20px 0 20px;">
+        <div style="font-family:Arial,sans-serif;font-size:11px;text-transform:uppercase;color:#888888;margin-bottom:6px;">Open RFIs</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><th {th}>#</th><th {th}>Subject</th><th {th}>Due</th></tr>{rfi_rows}
+        </table>
+      </td></tr>
+      <tr><td style="padding:14px 20px 0 20px;">
+        <div style="font-family:Arial,sans-serif;font-size:11px;text-transform:uppercase;color:#888888;margin-bottom:6px;">Open Risks</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><th {th}>Severity</th><th {th}>Description</th></tr>{risk_rows}
+        </table>
+      </td></tr>
+      <tr><td style="padding:14px 20px 20px 20px;">
+        <div style="font-family:Arial,sans-serif;font-size:11px;text-transform:uppercase;color:#888888;margin-bottom:6px;">Flags</div>
+        <ul style="margin:0;padding-left:18px;">{flags_html}</ul>
+      </td></tr>
+    </table>
+    """
+
+
+@router.post("/reports/weekly-status")
+def send_weekly_status_report(codes: str = Query(None, description="Comma-separated project codes; defaults to every active+monitoring project")):
+    """End-of-week detailed status report - budget, schedule, RFIs, risks for every
+    live-or-monitored project, one email. Built 2026-07-08 per Buck: eventual
+    audience is Chris (Hendrickson Construction owner) + management, but for now
+    (next ~week) it goes to Buck only so he can review and tune before it goes
+    live to Chris. Default scope is every active+monitoring project, not a
+    hardcoded list - Buck: 'that should be all jobs - not live jobs in the
+    system.' Email-safe rendering (see _render_project_status_email) - the first
+    version reused dark web-page CSS and came through blacked-out in Outlook."""
+    t0 = time.time()
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from microsoft_graph import send_email
+        code_list = [c.strip().upper() for c in codes.split(",") if c.strip()] if codes else _reportable_project_codes()
+        cards = []
+        for code in code_list:
+            try:
+                data = _gather_deep_dive(code)
+                cards.append(_render_project_status_email(data))
+            except Exception as e:
+                cards.append(f'<div style="color:#c0392b;font-family:Arial,sans-serif;padding:10px;">{code}: {e}</div>')
+        week_str = datetime.now(BUCK_TZ).strftime("%b %d, %Y")
+        html = f"""<!DOCTYPE html><html><body style="background:#f0f1f3;margin:0;padding:20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:700px;margin:0 auto;">
+<tr><td style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;color:#1a1a1a;padding-bottom:2px;">HCI Weekly Project Status — {week_str}</td></tr>
+<tr><td style="font-family:Arial,sans-serif;font-size:12.5px;color:#888888;padding-bottom:16px;">Detailed status across {len(code_list)} live/monitored project(s) — draft audience: Buck only, for review before this goes to Chris</td></tr>
+<tr><td>{''.join(cards)}</td></tr>
+</table></body></html>"""
+        result, err = send_email(
+            subject=f"HCI Weekly Project Status — {week_str}",
+            html_body=html,
+            to=[_BUCK_EMAIL],
+        )
+        if err:
+            return _response("/reports/weekly-status", {}, errors=[err], start=t0)
+        _log("/reports/weekly-status", "system", "weekly-report", "ok",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8], f"{len(code_list)} projects")
+        return _response("/reports/weekly-status", {
+            "sent_to": _BUCK_EMAIL[1], "projects_covered": code_list, "status": result.get("status"),
+        }, start=t0)
+    except Exception as e:
+        return _response("/reports/weekly-status", {}, errors=[str(e)], start=t0)
 
 
 @router.get("/project/{code}/cost-forecast")
