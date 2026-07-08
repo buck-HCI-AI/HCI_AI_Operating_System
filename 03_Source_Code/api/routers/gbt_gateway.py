@@ -7757,6 +7757,28 @@ def ai_warm_start():
                     r["created_at"] = r["created_at"].isoformat()
                 out["open_system_alerts"] = open_alerts
 
+                # Found 2026-07-07: Claude Code had never once called /telegram/ack
+                # in this project's history (last_telegram_ack_id was still its
+                # default of 0) - 229 real Telegram messages from Buck, including
+                # direct questions and explicit instructions, sat completely unread
+                # across more than a week of sessions. /telegram/messages already
+                # existed for exactly this (built 2026-07-01 for GBT/BC, who can't
+                # receive a live push at all) but nothing made checking it
+                # mandatory for Claude Code specifically, who *can* receive pushes
+                # and so had no obvious reason to think polling was still needed.
+                # Surface the real unread count here so it can't be missed at
+                # session start regardless of agent.
+                for _agent_key in ("claude_code", "chatgpt", "browser_claude"):
+                    cur.execute("SELECT metadata FROM ai_agent_heartbeat WHERE agent = %s", (_agent_key,))
+                    _row = cur.fetchone()
+                    _last_ack = (_row["metadata"] or {}).get("last_telegram_ack_id", 0) if _row else 0
+                    cur.execute(
+                        "SELECT COUNT(*) AS c FROM platform_events WHERE event_type='buck_message' AND id > %s",
+                        (_last_ack,),
+                    )
+                    _unread = cur.fetchone()["c"]
+                    out.setdefault("telegram_unread_by_agent", {})[_agent_key] = _unread
+
                 cur.execute("""
                     SELECT mission_id, title, status, priority FROM missions
                     WHERE assigned_to = 'claude_code' AND status IN ('OPEN','IN_PROGRESS','BLOCKED')
