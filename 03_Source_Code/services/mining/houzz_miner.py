@@ -36,7 +36,7 @@ class HouzzMiner(BaseMiner):
             SELECT hp.id, hp.name as project_name, hp.houzz_project_id,
                    p.id as db_project_id
             FROM houzz_projects hp
-            LEFT JOIN projects p ON p.name ILIKE '%' || split_part(hp.name, ' ', 1) || '%'
+            LEFT JOIN projects p ON p.name = hp.name
             LIMIT 10
         """)
         result.records_scanned += len(projects)
@@ -57,14 +57,28 @@ class HouzzMiner(BaseMiner):
         # and failing its FK constraint on every single run since the daily mining engine
         # went live - the whole miner was dead on arrival, silently, because AUTO-004
         # itself wasn't executing (separate n8n/SQLite issue) so nobody ever saw the error.
+        # Was LIMIT 50 ORDER BY log_date DESC across ALL projects combined - found
+        # 2026-07-07 registering 212 Cleveland (a real historical/reference project,
+        # logs dated 2025-08 through 2026-02) that its logs never got mined at all,
+        # because live-project activity alone (101F/64EW/etc, all 2026 dates) fills
+        # the top 50 every time. A single global recency window structurally can't
+        # ever reach historical data - defeats the entire point of learning from
+        # past jobs. Mine per-project instead, most-recent-first within each, so
+        # every project (live or reference) gets covered regardless of what else
+        # is happening system-wide.
         logs = self._query("""
-            SELECT dl.id, dl.project_id as houzz_project_id, dl.log_date,
-                   dl.content, dl.synced_at, p.id as db_project_id
-            FROM houzz_daily_logs dl
-            LEFT JOIN houzz_projects hp ON hp.houzz_project_id = dl.project_id
-            LEFT JOIN projects p ON p.name ILIKE '%' || split_part(hp.name, ' ', 1) || '%'
-            ORDER BY dl.log_date DESC NULLS LAST
-            LIMIT 50
+            WITH ranked AS (
+                SELECT dl.id, dl.project_id as houzz_project_id, dl.log_date,
+                       dl.content, dl.synced_at,
+                       ROW_NUMBER() OVER (PARTITION BY dl.project_id ORDER BY dl.log_date DESC NULLS LAST) as rn
+                FROM houzz_daily_logs dl
+            )
+            SELECT r.id, r.houzz_project_id, r.log_date, r.content, r.synced_at, p.id as db_project_id
+            FROM ranked r
+            LEFT JOIN houzz_projects hp ON hp.houzz_project_id = r.houzz_project_id
+            LEFT JOIN projects p ON p.name = hp.name
+            WHERE r.rn <= 50
+            ORDER BY r.log_date DESC NULLS LAST
         """)
         result.records_scanned += len(logs)
 
@@ -96,7 +110,7 @@ class HouzzMiner(BaseMiner):
                    si.start_date, si.end_date, si.status, p.id as db_project_id
             FROM project_schedule_items si
             LEFT JOIN houzz_projects hp ON hp.houzz_project_id = si.project_id
-            LEFT JOIN projects p ON p.name ILIKE '%' || split_part(hp.name, ' ', 1) || '%'
+            LEFT JOIN projects p ON p.name = hp.name
             WHERE si.status IN ('delayed', 'overdue', 'at_risk', 'behind')
             LIMIT 30
         """)
