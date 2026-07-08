@@ -76,9 +76,16 @@ def _download_bytes(file_id: str, token: str) -> bytes:
         return r.read()
 
 
-def _export_google_doc(file_id: str, token: str) -> str:
-    """Export Google Docs/Sheets as plain text."""
-    url = f"{BASE_URL}/files/{file_id}/export?mimeType=text/plain&supportsAllDrives=true"
+def _export_google_doc(file_id: str, token: str, mime: str = "application/vnd.google-apps.document") -> str:
+    """
+    Export Google Docs/Sheets as text. Found live 2026-07-08 chasing a "1355
+    insulation" bid file that errored with HTTP 400: this hardcoded
+    mimeType=text/plain, which Drive's export endpoint only supports for Docs -
+    a native Google Sheet has no text/plain export target and 400s every time.
+    Sheets need text/csv instead; Docs still use text/plain.
+    """
+    export_mime = "text/csv" if mime == "application/vnd.google-apps.spreadsheet" else "text/plain"
+    url = f"{BASE_URL}/files/{file_id}/export?mimeType={export_mime}&supportsAllDrives=true"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     with urllib.request.urlopen(req, context=SSL_CTX, timeout=30) as r:
         return r.read().decode("utf-8", errors="replace")
@@ -396,7 +403,7 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
             mime = f["file_mime"]
 
             if mime in ("application/vnd.google-apps.document", "application/vnd.google-apps.spreadsheet"):
-                text = _export_google_doc(f["file_id"], token)
+                text = _export_google_doc(f["file_id"], token, mime)
                 data = extract_bid_from_text(text, f["vendor_name"], f["file_name"])
                 source = "regex_text"
             elif mime == "application/pdf" or f["file_name"].lower().endswith(".pdf"):
