@@ -74,6 +74,60 @@ class HistoricalCostService(BaseIntelligenceService):
         }
 
     @staticmethod
+    def sqft_benchmarks(project_type: str = None) -> dict:
+        """Real $/SF comps — populated 2026-07-08 from a real ROM the team already
+        built (574_Johnson_ROM_v3_Benchmarked.xlsx), sourced from monitored/reference
+        projects (813 McSkimming, 655 Garmisch, 212 Cleveland, 246 Gallo Way/Chaparral)
+        that have completed or in-progress real construction cost history. This is the
+        mechanism Buck asked for: learn $/SF from the monitored jobs, apply it to make
+        estimates for the live pilot jobs (101F/1355R/64EW) smarter — those three are
+        still in permitting and have no real construction cost history of their own yet."""
+        conditions, params = [], []
+        if project_type:
+            conditions.append("LOWER(b.project_type) LIKE LOWER(%s)")
+            params.append(f"%{project_type}%")
+        where = "WHERE " + " AND ".join(conditions) if conditions else ""
+        rows = HistoricalCostService.pg_query(f"""
+            SELECT p.project_code, p.name as project_name, b.project_type,
+                   b.total_cost, b.gsf, b.cost_per_sf, b.cost_basis, b.cost_basis_date, b.source
+            FROM project_sqft_benchmarks b
+            JOIN projects p ON p.id = b.project_id
+            {where}
+            ORDER BY b.cost_per_sf DESC
+        """, params or None)
+        comps = [dict(r) for r in rows]
+        weighted_avg = None
+        if comps:
+            total_gsf = sum(float(c["gsf"]) for c in comps)
+            weighted_avg = round(sum(float(c["cost_per_sf"]) * float(c["gsf"]) for c in comps) / total_gsf, 2) if total_gsf else None
+        return {
+            "filter": {"project_type": project_type},
+            "comps": comps,
+            "weighted_avg_cost_per_sf": weighted_avg,
+            "note": "GSF-weighted average across real comps. Apply a remodel factor (~0.75-0.95 of new-build $/SF) for renovation scopes vs new-build.",
+        }
+
+    @staticmethod
+    def estimate_by_sqft(target_sqft: float, is_remodel: bool = True) -> dict:
+        """Apply the real $/SF comps to a target square footage — the concrete
+        'make the live jobs smarter using the monitored jobs' calculation."""
+        bench = HistoricalCostService.sqft_benchmarks()
+        weighted = bench["weighted_avg_cost_per_sf"]
+        if not weighted:
+            return {"error": "No sqft benchmark comps available"}
+        low_factor, exp_factor, high_factor = (0.75, 0.85, 0.95) if is_remodel else (1.0, 1.0, 1.0)
+        return {
+            "target_sqft": target_sqft,
+            "is_remodel": is_remodel,
+            "new_build_weighted_cost_per_sf": weighted,
+            "estimate_low": round(target_sqft * weighted * low_factor, 0),
+            "estimate_expected": round(target_sqft * weighted * exp_factor, 0),
+            "estimate_high": round(target_sqft * weighted * high_factor, 0),
+            "comps_used": [c["project_code"] for c in bench["comps"]],
+            "methodology": "Same remodel-factor approach used in 574 Johnson's ROM v3 (real, human-reviewed precedent).",
+        }
+
+    @staticmethod
     def bid_vs_actual(project_number: str) -> dict:
         """Compare winning bids to actual costs for a project."""
         pid = HistoricalCostService.resolve_project_id(project_number)

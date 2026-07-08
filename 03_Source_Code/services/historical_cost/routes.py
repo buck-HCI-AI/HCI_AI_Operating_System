@@ -29,3 +29,11 @@ def bid_vs_actual(project_number: str):
 @router.get("/search")
 def search(q: str):
     return HistoricalCostService.search(q)
+
+@router.get("/sqft-benchmarks")
+def sqft_benchmarks(project_type: Optional[str] = None):
+    return HistoricalCostService.sqft_benchmarks(project_type)
+
+@router.get("/estimate-by-sqft")
+def estimate_by_sqft(target_sqft: float, is_remodel: bool = True):
+    return HistoricalCostService.estimate_by_sqft(target_sqft, is_remodel)

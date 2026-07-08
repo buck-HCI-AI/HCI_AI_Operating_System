@@ -60,13 +60,42 @@ class FieldBrainService(BaseIntelligenceService):
             csi = (csi_match.group(1) or csi_match.group(2)).zfill(2)
 
         cost_words = ("cost", "price", "budget", "expensive", "$", "sqft", "square foot", "per foot")
+        sqft_words = ("sqft", "square foot", "square feet", "per sf", "per foot", "/sf")
         sub_words = ("reliable", "sub", "subcontractor", "vendor", "contractor", "trade", "who should")
+
+        if any(w in q for w in sqft_words):
+            from historical_cost_svc import HistoricalCostService
+            bench = HistoricalCostService.sqft_benchmarks()
+            if bench["comps"]:
+                lines.append(
+                    "REAL $/SF COMPS (2026-07-08 — learned from monitored/reference jobs with real "
+                    "construction cost history, to inform estimates on the live pilot jobs, which are "
+                    "still in permitting and have no cost history of their own yet):"
+                )
+                for c in bench["comps"]:
+                    lines.append(
+                        f"  {c['project_code']} ({c['project_type']}): ${c['cost_per_sf']:,.2f}/SF "
+                        f"@ {c['gsf']:,.0f} SF, total ${c['total_cost']:,.0f} — {c['cost_basis']}"
+                    )
+                lines.append(f"  GSF-weighted average new-build $/SF: ${bench['weighted_avg_cost_per_sf']:,.2f}")
+                lines.append(f"  {bench['note']}")
+                sqft_num = re.search(r'(\d[\d,]{2,6})\s*(?:sq\.?\s*ft|sf\b|square)', q)
+                if sqft_num:
+                    target = float(sqft_num.group(1).replace(",", ""))
+                    is_remodel = "remodel" in q or "renovation" in q or "existing" in q or not ("new build" in q or "new construction" in q)
+                    est = HistoricalCostService.estimate_by_sqft(target, is_remodel)
+                    if "error" not in est:
+                        lines.append(
+                            f"  Applied to {target:,.0f} SF ({'remodel' if is_remodel else 'new build'}): "
+                            f"${est['estimate_low']:,.0f} - ${est['estimate_high']:,.0f} "
+                            f"(expected ${est['estimate_expected']:,.0f})"
+                        )
 
         if any(w in q for w in cost_words):
             from historical_cost_svc import HistoricalCostService
             summary = HistoricalCostService.cost_benchmark_summary(csi_division=csi)
             if summary["by_division"]:
-                lines.append("HISTORICAL COST BENCHMARKS (real, from historical_cost_records):")
+                lines.append("HISTORICAL COST BENCHMARKS BY CSI DIVISION (real, from historical_cost_records):")
                 for g in summary["by_division"][:6]:
                     lines.append(
                         f"  Division {g['csi_division']}: n={g['sample_size']}, "

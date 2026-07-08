@@ -1748,6 +1748,19 @@ If a vendor performed poorly (no-show on site, unresponsive to RFIs, quality iss
 
 ---
 
+## 5.8 Cost Benchmarking — Field Brain
+
+As of 2026-07-08, real $/SF cost comps are available via the Field Brain
+(`POST /gateway/brain/ask`), learned from monitored/reference projects with
+actual construction cost history (813 McSkimming, 655 Garmisch, 212 Cleveland,
+246 Gallo Way) and applied to inform bid-package budgeting on live pilot
+projects, which are still in permitting and have no cost history of their own.
+Ask a question like "what should we expect 5000 sqft of remodel to cost" and
+it returns a real range with sources cited, not a guess.
+
+
+---
+
 # Chapter 6 — Vendor and Subcontractor Management
 **HCI AI Operations Manual | Part I — Business Operations**
 *Authority: Buck Adams | Last Updated: 2026-06-30*
