@@ -5,6 +5,7 @@ commands, escalation/retry, telegram/health, ai/warm-start, ai/events.
 """
 import requests
 import subprocess
+import time
 
 API = "http://localhost:8000/gateway"
 HEADERS = {"X-API-Key": "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"}
@@ -356,6 +357,10 @@ if p101:
               (p101.get("schedule_variance_days"), exec_p101.get("schedule_variance_days")))
 
 # ── 19. Plan-review-to-RFI pipeline (2026-07-01: formalizes the RFI-batch incident) ─
+# Made async 2026-07-07 (job_id/poll pattern - ChatGPT's Action layer times out
+# faster than analysis takes). Test was never updated to match - found running
+# the full suite tonight, not a new regression. Poll to the real result instead
+# of asserting on the immediate "processing" response.
 print("\n19. POST /gateway/plan-review/analyze — gaps become logged RFIs, never emailed")
 code, d = post("/plan-review/analyze", {
     "project_code": "QATEST", "reviewed_by": "test_suite",
@@ -363,6 +368,17 @@ code, d = post("/plan-review/analyze", {
 })
 check("Returns 200", code == 200, code)
 p = d.get("payload", {})
+check("Kicks off async job with a job_id", isinstance(p.get("job_id"), str) and len(p["job_id"]) > 0, p)
+
+job_id = p.get("job_id")
+p = {}
+for _ in range(20):
+    time.sleep(1.5)
+    code, d = post("/plan-review/analyze", {"project_code": "QATEST", "job_id": job_id})
+    p = d.get("payload", {})
+    if p.get("status") != "processing":
+        break
+check("Async job reached a real result (not stuck processing)", p.get("status") != "processing", p)
 check("Has gaps_found as int", isinstance(p.get("gaps_found"), int), p)
 check("Has ready_for_rom bool", isinstance(p.get("ready_for_rom"), bool), p)
 check("Never sends an email itself — only logs RFIs", "email" not in str(p.get("note", "")).lower() or "requires" in str(p.get("note", "")).lower())
@@ -567,10 +583,16 @@ check("Ordinary package has no long-lead flags", no_match_flags == [], no_match_
 print("\n24. GET /gateway/project/{code}/plan-review-pending")
 before_code, before_d = get("/project/QATEST/plan-review-pending")
 before_total = before_d.get("payload", {}).get("total_pending_review", 0)
-post("/plan-review/analyze", {
+_code24, _d24 = post("/plan-review/analyze", {
     "project_code": "QATEST", "reviewed_by": "test_suite",
     "sheet_text": "Sheet A1.1: Master Bath lavatory - MFGR/MODEL/COLOR all BLANK.",
 })
+_job24 = _d24.get("payload", {}).get("job_id")
+for _ in range(20):
+    time.sleep(1.5)
+    _c24, _pd24 = post("/plan-review/analyze", {"project_code": "QATEST", "job_id": _job24})
+    if _pd24.get("payload", {}).get("status") != "processing":
+        break
 code, d = get("/project/QATEST/plan-review-pending")
 check("Returns 200", code == 200, code)
 p = d.get("payload", {})
