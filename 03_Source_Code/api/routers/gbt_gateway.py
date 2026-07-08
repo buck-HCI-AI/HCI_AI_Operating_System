@@ -3888,6 +3888,41 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Scheduled-job liveness check errored: {e}"})
 
+    # 20. Live-project set drift - found 2026-07-08 by Buck, not by any prior audit:
+    #     projects.status for 246GW had said 'active' since 2026-06-28 even though it
+    #     was never a live/pilot project (Buck: "246 is not a live project - it is the
+    #     next potential pilot"). Every write-scope decision in the system - the
+    #     base_connector.py guard added earlier the same day, _LIVE_PROJECT_CODES in
+    #     this file, bid_leveling's get_all_configured_projects() - all trust
+    #     projects.status IN ('active','pilot') as ground truth. Every prior audit this
+    #     session (including the one run right before this bug was found) ALSO trusted
+    #     that same column, so it could never have caught its own blind spot - an audit
+    #     that reuses the corrupted signal it's supposed to be checking will always agree
+    #     with it. This check is deliberately independent: the canonical live-project set
+    #     is hardcoded here, separately from _LIVE_PROJECT_CODES, so the two can never
+    #     silently drift in the same wrong direction together. Any project with
+    #     status IN ('active','pilot') outside this set is flagged - it either needs its
+    #     status corrected, or the canonical set below needs a deliberate, reasoned update
+    #     (never just a copy-paste of whatever the DB currently says).
+    try:
+        _CANONICAL_LIVE_CODES = {"64EW", "101F", "1355R"}
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT project_code, name, status, updated_at
+                    FROM projects WHERE status IN ('active', 'pilot')
+                """)
+                drifted = [r for r in cur.fetchall() if r["project_code"] not in _CANONICAL_LIVE_CODES]
+                if drifted:
+                    findings.append({
+                        "severity": "high",
+                        "category": "live_project_set_drift",
+                        "detail": f"{len(drifted)} project(s) have status='active'/'pilot' (write-authorized) but are NOT in the canonical live set {sorted(_CANONICAL_LIVE_CODES)} - this is exactly the bug that let real writes land on 246GW.",
+                        "items": [f"{r['project_code']} ({r['name']}): status={r['status']}, last changed {r['updated_at'].date()}" for r in drifted],
+                    })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Live-project set drift check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),

@@ -148,7 +148,7 @@ def ingest(name: str, payload: IngestPayload):
     except NonLiveProjectWriteBlocked as e:
         raise HTTPException(status_code=403, detail={
             "error": "non_live_project_write_blocked",
-            "message": "This payload targets project(s) outside the live set (64EW/101F/1355R/246GW). "
+            "message": "This payload targets project(s) outside the live set (64EW/101F/1355R). "
                         "Live projects only get automatic writes. To write historical/reference data "
                         "intentionally, resend with allow_non_live=true and override_reason set — it will "
                         "be logged, not silent.",

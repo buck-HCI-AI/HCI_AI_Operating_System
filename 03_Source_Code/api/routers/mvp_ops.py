@@ -41,6 +41,15 @@ PILOT_PROJECTS = {
     "ASPN-MC": {"id": 13, "name": "200 E Hopkins — Luxury Condos", "role": "aspen_multifamily"},
 }
 
+# The module docstring above has always said "3 pilot projects," but this dict
+# carries 10 (test fixtures + 246GW, which is a pilot *candidate*, not live) and
+# _get_project() never cross-checked write-triggering endpoints against the real
+# live set. Found 2026-07-08 during the same audit that caught 246GW wrongly
+# treated as live elsewhere (base_connector.py's write guard, ADR-017). Checked:
+# no daily_logs rows exist for 246GW or any non-canonical code, so this specific
+# gap was never actually exploited - but it's real and gets closed the same way.
+_WRITE_ELIGIBLE_CODES = {"64EW", "101F", "1355R"}
+
 
 def _pg():
     return psycopg2.connect(**DB, cursor_factory=psycopg2.extras.RealDictCursor)
@@ -82,10 +91,12 @@ def _audit(event_type: str, actor: str, entity_id: int, summary: str, payload: d
         pass
 
 
-def _get_project(code: str) -> dict:
+def _get_project(code: str, require_live: bool = False) -> dict:
     p = PILOT_PROJECTS.get(code.upper())
     if not p:
         raise HTTPException(404, f"Project code '{code}' not found. Valid codes: {list(PILOT_PROJECTS.keys())}")
+    if require_live and code.upper() not in _WRITE_ELIGIBLE_CODES:
+        raise HTTPException(403, f"'{code}' is not a live/write-eligible project. Live set: {sorted(_WRITE_ELIGIBLE_CODES)}")
     return p
 
 
@@ -120,7 +131,7 @@ def init_project_brain(code: str, actor: str = "Buck Adams"):
     Pulls project data from Postgres, links HubSpot + Houzz + Drive connectors,
     and establishes workflow state baseline.
     """
-    proj = _get_project(code)
+    proj = _get_project(code, require_live=True)
     pid = proj["id"]
 
     with _pg() as conn:
@@ -205,7 +216,7 @@ def import_bid(code: str, req: BidImportRequest):
     Import a bid for a project. dry_run=True (default) queues the DB write for approval.
     dry_run=False requires explicit authorization — still queued but marked urgent.
     """
-    proj = _get_project(code)
+    proj = _get_project(code, require_live=True)
     pid = proj["id"]
 
     proposed = {
@@ -281,7 +292,7 @@ def submit_daily_log(code: str, req: DailyLogRequest):
     dry_run=True returns intelligence analysis without writing to DB.
     dry_run=False queues the DB write for approval.
     """
-    proj = _get_project(code)
+    proj = _get_project(code, require_live=True)
     pid = proj["id"]
     log_date = req.date or datetime.now(timezone.utc).date().isoformat()
 

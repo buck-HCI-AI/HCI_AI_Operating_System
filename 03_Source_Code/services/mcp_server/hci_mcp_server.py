@@ -1180,8 +1180,9 @@ def GetProjectRegistry(status: str = "") -> dict:
             'bidding', 'preconstruction', 'completed', 'closeout', 'design'.
             Leave blank for all projects.
 
-    Live/operated projects: 64EW, 101F, 1355R, 246GW.
-    Reference projects (monitoring + learning only): all others.
+    Live/operated projects (write-authorized): 64EW, 101F, 1355R.
+    246GW is a pilot candidate under consideration - not live yet.
+    Reference/monitoring projects (read-only, learning only): all others.
     """
     path = "/gateway/projects"
     if status:

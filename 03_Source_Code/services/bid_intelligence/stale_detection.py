@@ -19,7 +19,9 @@ _THRESHOLDS = {
     "expiry_warn_days": int(os.environ.get("BID_EXPIRY_WARN_DAYS", "3")),
 }
 
-LIVE_PROJECT_IDS = [1, 2, 3, 8]  # 64EW, 101F, 1355R, 246GW
+LIVE_PROJECT_IDS = [1, 2, 3]  # 64EW, 101F, 1355R. Fixed 2026-07-08: id 8 (246GW) was
+# wrongly included - it's a pilot candidate, not live (Buck). Read-only alert generation,
+# no writes, but was generating stale/expiry alerts for it as if it were an active pilot.
 
 
 def run_stale_check(conn) -> dict[str, Any]:
