@@ -27,7 +27,7 @@ _ARCH          = _ROOT / "architecture"
 _HANDBOOK      = _ARCH / "Handbook"
 _DRAFTS        = _HANDBOOK / "Drafts"
 _PUBLISHED     = _HANDBOOK / "Published"
-_ADR_DIR       = _HANDBOOK / "ADR"
+_ADR_DIR       = _ARCH / "ADRs"
 _CHANGELOG     = _HANDBOOK / "CHANGELOG.md"
 _MASTER_INDEX  = _HANDBOOK / "00_Master_Index.md"
 _AUTH_QUEUE    = _HANDBOOK / "AUTHORING_QUEUE.md"
@@ -96,16 +96,25 @@ def _volume_status(vol: dict) -> dict:
 
 
 def _adr_list() -> list:
+    # Was pointed at Handbook/ADR/ (6 stale files, ADR-001-006) instead of the
+    # real, actively-maintained architecture/ADRs/ (16 files as of 2026-07-07) -
+    # found while wiring the weekly book-refresh workflow. Every ADR documenting
+    # this project's drift-detection/self-heal work (016) plus the last week's
+    # incidents (007-015) was invisible to /status and /sync as a result.
     if not _ADR_DIR.exists():
         return []
     adrs = []
     for f in sorted(_ADR_DIR.glob("ADR-*.md")):
         content = f.read_text()
-        status_match = re.search(r"\*\*Status:\*\* (\w+)", content)
-        title_match = re.search(r"^# ADR-\d+: (.+)$", content, re.MULTILINE)
+        # Two formats coexist: markdown heading ("# ADR-001: Title") for early
+        # ADRs, YAML frontmatter (title:/status:) for 006+. Handle both.
+        status_match = re.search(r"^status:\s*(\w+)", content, re.MULTILINE) or \
+                       re.search(r"\*\*Status:\*\* (\w+)", content)
+        title_match = re.search(r"^title:\s*(.+)$", content, re.MULTILINE) or \
+                      re.search(r"^# ADR-\d+:?\s*(.+)$", content, re.MULTILINE)
         adrs.append({
             "file": f.name,
-            "title": title_match.group(1) if title_match else f.stem,
+            "title": title_match.group(1).strip() if title_match else f.stem,
             "status": status_match.group(1) if status_match else "Unknown",
         })
     return adrs

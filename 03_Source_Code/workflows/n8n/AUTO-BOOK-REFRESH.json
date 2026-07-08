@@ -1,0 +1,309 @@
+{
+  "updatedAt": "2026-07-08T00:35:40.590Z",
+  "createdAt": "2026-07-08T00:35:40.590Z",
+  "id": "E86EvsrjKgaZ9o7n",
+  "name": "AUTO-BOOK-REFRESH \u2014 Weekly Handbook Auto-Sync",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 * * 1"
+            }
+          ]
+        }
+      },
+      "name": "Cron Monday 05:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        300
+      ],
+      "id": "book-refresh-cron-01"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/services/architecture-sync/refresh-automation-library",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Refresh Automation Library",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        320,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "book-refresh-http-01"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/services/architecture-sync/sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Force Full Sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        540,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fCSKMz294hUajaxu",
+          "name": "HCI Gateway API Key"
+        }
+      },
+      "id": "book-refresh-http-02"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/hci-executive",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: 'Handbook Auto-Refreshed', message: `Automation Library: ${$json.active_workflows} active workflows documented. Weekly sync complete.`, priority: 2 }) }}",
+        "options": {}
+      },
+      "name": "Notify Buck",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        760,
+        300
+      ],
+      "id": "book-refresh-http-03"
+    }
+  ],
+  "connections": {
+    "Cron Monday 05:00": {
+      "main": [
+        [
+          {
+            "node": "Refresh Automation Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Automation Library": {
+      "main": [
+        [
+          {
+            "node": "Force Full Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Force Full Sync": {
+      "main": [
+        [
+          {
+            "node": "Notify Buck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Cron Monday 05:00": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "91a515fc-25a7-4191-aeba-11e7235f3dd9",
+  "activeVersionId": "91a515fc-25a7-4191-aeba-11e7235f3dd9",
+  "versionCounter": 1,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-07-08T00:35:40.592Z",
+      "createdAt": "2026-07-08T00:35:40.592Z",
+      "role": "workflow:owner",
+      "workflowId": "E86EvsrjKgaZ9o7n",
+      "projectId": "ZyJUZXA49m8REtF6",
+      "project": {
+        "updatedAt": "2026-06-13T17:47:03.534Z",
+        "createdAt": "2026-06-13T17:44:54.962Z",
+        "id": "ZyJUZXA49m8REtF6",
+        "name": "Buck Adams <buck@hendricksoninc.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-07-08T00:35:40.593Z",
+    "createdAt": "2026-07-08T00:35:40.593Z",
+    "versionId": "91a515fc-25a7-4191-aeba-11e7235f3dd9",
+    "workflowId": "E86EvsrjKgaZ9o7n",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 5 * * 1"
+              }
+            ]
+          }
+        },
+        "name": "Cron Monday 05:00",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          100,
+          300
+        ],
+        "id": "book-refresh-cron-01"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/api/v1/services/architecture-sync/refresh-automation-library",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Refresh Automation Library",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          320,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "book-refresh-http-01"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/api/v1/services/architecture-sync/sync",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "name": "Force Full Sync",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          540,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "fCSKMz294hUajaxu",
+            "name": "HCI Gateway API Key"
+          }
+        },
+        "id": "book-refresh-http-02"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://ntfy.sh/hci-executive",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ title: 'Handbook Auto-Refreshed', message: `Automation Library: ${$json.active_workflows} active workflows documented. Weekly sync complete.`, priority: 2 }) }}",
+          "options": {}
+        },
+        "name": "Notify Buck",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          760,
+          300
+        ],
+        "id": "book-refresh-http-03"
+      }
+    ],
+    "connections": {
+      "Cron Monday 05:00": {
+        "main": [
+          [
+            {
+              "node": "Refresh Automation Library",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Refresh Automation Library": {
+        "main": [
+          [
+            {
+              "node": "Force Full Sync",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Force Full Sync": {
+        "main": [
+          [
+            {
+              "node": "Notify Buck",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Buck Adams",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-07-08T00:35:47.570Z",
+        "id": 466,
+        "workflowId": "E86EvsrjKgaZ9o7n",
+        "versionId": "91a515fc-25a7-4191-aeba-11e7235f3dd9",
+        "event": "activated",
+        "userId": "3aeb1463-fc8a-4ad9-a1e5-3c02668cd637"
+      }
+    ]
+  }
+}
