@@ -15,6 +15,9 @@ class HistoricalCostService(BaseIntelligenceService):
         if csi_division:
             conditions.append("csi_division = %s")
             params.append(csi_division)
+        if scope_type:
+            conditions.append("(LOWER(scope_description) LIKE LOWER(%s) OR LOWER(notes) LIKE LOWER(%s))")
+            params += [f"%{scope_type}%", f"%{scope_type}%"]
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
         rows = HistoricalCostService.pg_query(f"""
             SELECT hcr.*, p.name as project_name
@@ -24,6 +27,51 @@ class HistoricalCostService(BaseIntelligenceService):
             ORDER BY hcr.csi_division, hcr.completed_date DESC
         """, params or None)
         return {"records": [dict(r) for r in rows], "total": len(rows)}
+
+    @staticmethod
+    def cost_benchmark_summary(csi_division: str = None, scope_type: str = None) -> dict:
+        """Real answer to 'what does a similar build cost' — aggregated stats per
+        CSI division, not a raw record dump. No square-footage column exists
+        anywhere in the schema (projects, houzz_projects) as of 2026-07-08, so this
+        benchmarks by division + scope keyword match, the best real proxy available
+        — not fabricated $/sqft."""
+        conditions, params = ["hcr.awarded_amount IS NOT NULL"], []
+        if csi_division:
+            conditions.append("hcr.csi_division = %s")
+            params.append(csi_division)
+        if scope_type:
+            conditions.append("(LOWER(hcr.scope_description) LIKE LOWER(%s) OR LOWER(hcr.notes) LIKE LOWER(%s))")
+            params += [f"%{scope_type}%", f"%{scope_type}%"]
+        where = "WHERE " + " AND ".join(conditions)
+        groups = HistoricalCostService.pg_query(f"""
+            SELECT hcr.csi_division,
+                   count(*) as sample_size,
+                   round(avg(hcr.awarded_amount)::numeric, 0) as avg_awarded,
+                   round((percentile_cont(0.5) WITHIN GROUP (ORDER BY hcr.awarded_amount))::numeric, 0) as median_awarded,
+                   round(min(hcr.awarded_amount)::numeric, 0) as min_awarded,
+                   round(max(hcr.awarded_amount)::numeric, 0) as max_awarded,
+                   round(avg(hcr.variance_pct) FILTER (WHERE hcr.variance_pct IS NOT NULL)::numeric, 2) as avg_variance_pct,
+                   count(*) FILTER (WHERE hcr.variance_pct IS NOT NULL) as variance_sample_size
+            FROM historical_cost_records hcr
+            {where}
+            GROUP BY hcr.csi_division
+            ORDER BY sample_size DESC
+        """, params or None)
+        examples = HistoricalCostService.pg_query(f"""
+            SELECT hcr.csi_division, hcr.awarded_amount, hcr.scope_description, hcr.notes,
+                   p.name as project_name, hcr.completed_date, hcr.source
+            FROM historical_cost_records hcr
+            LEFT JOIN projects p ON p.id = hcr.project_id
+            {where}
+            ORDER BY hcr.completed_date DESC NULLS LAST
+            LIMIT 10
+        """, params or None)
+        return {
+            "filter": {"csi_division": csi_division, "scope_keyword": scope_type},
+            "by_division": [dict(r) for r in groups],
+            "example_records": [dict(r) for r in examples],
+            "known_limitation": "No square-footage field exists in the schema yet — benchmark is by CSI division + scope keyword, not $/sqft.",
+        }
 
     @staticmethod
     def bid_vs_actual(project_number: str) -> dict:

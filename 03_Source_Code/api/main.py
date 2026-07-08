@@ -77,6 +77,7 @@ arch_sync_routes        = _load_svc("architecture_sync")
 kg_routes               = _load_svc("knowledge_graph")
 cd_routes               = _load_svc("continuous_discovery")
 drive_routes            = _load_svc("drive_intelligence")
+field_brain_routes      = _load_svc("field_brain")
 
 from routers.mining import router as mining_router
 
@@ -170,6 +171,7 @@ svc.include_router(arch_sync_routes,    prefix="/architecture-sync",           t
 svc.include_router(kg_routes,           prefix="/knowledge-graph",             tags=["knowledge-graph"])
 svc.include_router(cd_routes,           prefix="/continuous-discovery",        tags=["continuous-discovery"])
 svc.include_router(drive_routes,        prefix="/drive-intelligence",           tags=["drive-intelligence"])
+svc.include_router(field_brain_routes,  prefix="/field-brain",                  tags=["field-brain"])
 svc.include_router(mining_router,     prefix="",                          tags=["mining"])
 
 @svc.get("")
@@ -198,6 +200,7 @@ def list_services():
         {"name": "knowledge-graph",             "status": "active",   "path": "/api/v1/services/knowledge-graph"},
         {"name": "continuous-discovery",        "status": "active",   "path": "/api/v1/services/continuous-discovery"},
         {"name": "drive-intelligence",          "status": "active",   "path": "/api/v1/services/drive-intelligence"},
+        {"name": "field-brain",                 "status": "active",   "path": "/api/v1/services/field-brain"},
     ]}
 
 v1.include_router(svc)

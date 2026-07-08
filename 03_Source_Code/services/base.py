@@ -65,7 +65,16 @@ class BaseIntelligenceService:
                 query=query, collection=collection,
                 limit=limit, filters=filters or None,
             )
-        except Exception:
+        except Exception as e:
+            # 2026-07-08: this used to swallow silently — a real qdrant-client API
+            # break (client.search() removed in 1.18, see vector.py) went undetected
+            # system-wide because every caller of BaseIntelligenceService.search()
+            # just saw an empty list, indistinguishable from "no results." Log so a
+            # future breaking change here shows up somewhere instead of hiding.
+            import logging
+            logging.getLogger("hci.vector_search").warning(
+                f"vector.search failed for collection={collection!r} query={query[:60]!r}: {e}"
+            )
             return []
 
     @staticmethod

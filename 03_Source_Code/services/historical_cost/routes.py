@@ -18,6 +18,10 @@ def service_info():
 def benchmarks(csi_division: Optional[str] = None, scope_type: Optional[str] = None):
     return HistoricalCostService.cost_benchmarks(csi_division, scope_type)
 
+@router.get("/benchmark-summary")
+def benchmark_summary(csi_division: Optional[str] = None, scope_type: Optional[str] = None):
+    return HistoricalCostService.cost_benchmark_summary(csi_division, scope_type)
+
 @router.get("/bid-vs-actual/{project_number}")
 def bid_vs_actual(project_number: str):
     return HistoricalCostService.bid_vs_actual(project_number)

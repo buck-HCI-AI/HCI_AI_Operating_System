@@ -60,6 +60,7 @@ SERVICE_REGISTRY = [
     {"name": "role-client",         "path": "/gateway/role/client/{code}",        "description": "BTW-5: Client portal — project status, RFIs, change orders"},
     {"name": "role-trade-partner",  "path": "/gateway/role/trade-partner",        "description": "BTW-5: Trade partner — work queue, bids, open RFIs (?vendor=X&code=Y)"},
     {"name": "project-brain",       "path": "/gateway/project/{code}/brain",      "description": "Full project intelligence snapshot"},
+    {"name": "field-brain",         "path": "/gateway/brain/ask",                 "description": "Ask any cross-project historical question (cost benchmarks, sub reliability, past issues) — POST, async job_id pattern"},
     {"name": "project-schedule",    "path": "/gateway/project/{code}/schedule",   "description": "Schedule status and variances"},
     {"name": "project-bids",        "path": "/gateway/project/{code}/bids",       "description": "Bid packages and procurement status"},
     {"name": "bid-leveling",        "path": "/gateway/project/{code}/bid-level",  "description": "GET: leveling view from bid_packages/entries. POST: full Drive scan + Gemini extraction + Excel generation"},
@@ -8825,3 +8826,64 @@ async def event_drive_scan(request: Request):
         "new_files_found": len(new_files),
         "new_files": new_files,
     }, start=t0)
+
+
+# ── Field Brain — cross-project historical Q&A (2026-07-08) ─────────────────────
+# Buck's framing: "what does a similar build cost per sqft, who is the most
+# reliable sub" were examples, not the whole spec — this answers any cross-project
+# historical question, field or GBT side. Uses the same async job_id pattern as
+# /plan-review/analyze: the underlying call does multiple Qdrant searches plus a
+# Claude synthesis call, which is exactly the kind of multi-second latency that
+# broke GBT's Action layer before (see /project/{code}/brain's ai_summary=false
+# fix and _PLAN_REVIEW_JOBS docstring above) - don't make the same mistake twice.
+class FieldBrainPayload(BaseModel):
+    question: str = ""
+    job_id: Optional[str] = None
+
+_FIELD_BRAIN_JOBS: dict = {}
+
+def _run_field_brain_job(job_id: str, question: str):
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "field_brain"))
+        from field_brain_svc import FieldBrainService
+        result = FieldBrainService.query(question)
+        _FIELD_BRAIN_JOBS[job_id] = {"status": "done", "result": result}
+    except Exception as e:
+        _FIELD_BRAIN_JOBS[job_id] = {"status": "error", "error": str(e)}
+
+@router.post("/brain/ask")
+def brain_ask(req: FieldBrainPayload):
+    """Ask the Field Brain any cross-project historical question — cost benchmarks,
+    sub reliability, past issues on similar scopes, lessons learned. Not scoped to
+    one project. Async: call without job_id to start, call again with the returned
+    job_id to get the result (usually ready in 5-10s)."""
+    t0 = time.time()
+    try:
+        if req.job_id:
+            job = _FIELD_BRAIN_JOBS.get(req.job_id)
+            if not job:
+                return _response("/brain/ask", {"job_id": req.job_id, "status": "unknown"},
+                                  errors=["No job with that ID - it may have expired (server restart) or never existed"], start=t0)
+            if job["status"] == "done":
+                return _response("/brain/ask", job["result"], start=t0)
+            if job["status"] == "error":
+                return _response("/brain/ask", {"job_id": req.job_id, "status": "error"},
+                                  errors=[job["error"]], start=t0)
+            return _response("/brain/ask", {"job_id": req.job_id, "status": "processing",
+                              "note": "Still running - poll again in a few seconds with the same job_id."}, start=t0)
+
+        if not req.question.strip():
+            return _response("/brain/ask", {}, errors=["question is required"], start=t0)
+        job_id = str(uuid.uuid4())[:12]
+        _FIELD_BRAIN_JOBS[job_id] = {"status": "processing"}
+        thread = threading.Thread(target=_run_field_brain_job, args=(job_id, req.question), daemon=True)
+        thread.start()
+        _log("/brain/ask", "ChatGPT", "field_brain", "ok", round((time.time()-t0)*1000), str(uuid.uuid4())[:8], req.question[:80])
+        return _response("/brain/ask", {
+            "job_id": job_id, "status": "processing",
+            "note": "Query started - call this same endpoint again with this job_id to get the result."
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/brain/ask", {}, errors=[str(e.detail)], start=t0)
+    except Exception as e:
+        return _response("/brain/ask", {}, errors=[str(e)], start=t0)

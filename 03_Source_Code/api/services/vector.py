@@ -12,7 +12,7 @@ COLLECTION_ALIASES = {
     "sops":       "hci_sops",
     "procurement":"hci_procurement",
     "costs":      "hci_historical_costs",
-    "lessons":    "hci_lessons_learned",
+    "lessons":    "lessons_learned",
     "drive":      "drive_memory",
     "memory":     "drive_memory",
 }
@@ -66,9 +66,15 @@ def search(
         if conditions:
             qdrant_filter = Filter(must=conditions)
 
-    results = client.search(
+    # qdrant-client 1.18 removed QdrantClient.search() in favor of query_points()
+    # (query= not query_vector=, response wraps points in .points) — found 2026-07-08:
+    # every semantic search system-wide was silently returning [] via the bare
+    # `except Exception: return []` in base.py, for however long this client version
+    # has been installed. No caller could tell the difference between "no relevant
+    # results" and "the call itself is broken."
+    response = client.query_points(
         collection_name=col,
-        query_vector=vector,
+        query=vector,
         limit=limit,
         score_threshold=score_threshold,
         query_filter=qdrant_filter,
@@ -82,7 +88,7 @@ def search(
             "payload":    r.payload or {},
             "text":       (r.payload or {}).get("text", ""),
         }
-        for r in results
+        for r in response.points
     ]
 
 

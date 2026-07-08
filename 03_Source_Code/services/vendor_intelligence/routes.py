@@ -25,3 +25,7 @@ def vendor_performance(vendor_id: int):
 @router.get("/search")
 def search_vendors(q: str):
     return VendorIntelligenceService.search_vendors(q)
+
+@router.get("/reliable")
+def most_reliable(csi_division: Optional[str] = None, trade: Optional[str] = None, limit: int = 15):
+    return VendorIntelligenceService.most_reliable(csi_division, trade, limit)
