@@ -28,6 +28,31 @@ Issued verbatim: *"Somehow jobs where set up in HCI AI my drive. That should not
 - Found 2026-07-09 via direct audit: a "Projects Folder" subfolder inside HCI AI - Master contained real duplicate/stale job files for all 3 active projects (bids, SOWs, project intelligence briefs), including a 1355 Riverside spreadsheet a prior agent had already labeled "[CANONICAL - use this one]" next to one labeled "[DUPLICATE - verify against other copy before using]" — flagged but never fixed. This is exactly the class of drift this rule exists to prevent going forward.
 - Applies to every team member (Claude Code, GBT, Browser Claude). Cleanup of misplaced active-job files follows the active-job write-scope rule above (read/write/archive, Buck-only delete); cleanup of anything monitored-job-related in HCI AI Drive is report-only per that same rule.
 
+## PERMANENT — HCI Canonical 16-Division Bid Folder Structure (Buck Adams, 2026-07-09, via GBT)
+Buck specified the exact required folder scheme (shared as a Google Doc, id `1CVqJr-wgfmNds3Hl4K9HzsX2wgpkIcGB`, and pasted directly into GBT chat). Each active project's `00_Bids` folder must contain these top-level division folders; several major divisions contain **sub-package folders numbered independently of the division number** (e.g. `07_Thermal & Moisture` contains sub-packages `5_Waterproofing`, `13_Insulation`, `14_Roofing` — the "5" is a package number within that division, not a top-level division 5). This explains what earlier drift-check work mistakenly treated as a "garbage division code" bug (e.g. `5_Waterproofing` in 1355 Riverside) — that folder is Buck's real intended structure, not contamination. The bid-leveling code does not yet model this two-level (division → sub-package) structure; it currently either treats a folder as a top-level division or skips it. Building real support for this is tracked as open work, not yet done — see [[project_hci_canonical_folder_structure]].
+
+Full structure:
+```
+00_Bids
+01_General Requirement
+02_Site Work
+03_Concrete
+04_Masonry
+05_Metals
+06_Wood & Plastic (sub-packages: 9_Carpentry, 11_Cabinets, 12_T&G Ceiling)
+07_Thermal & Moisture (sub-packages: 5_Waterproofing, 13_Insulation, 14_Roofing)
+08_Door & Windows (sub-packages: 15_Doors/Windows Exterior, 16_Interior Doors)
+09_Finishes (sub-packages: 17_Glazing, 18_Drywall & Plaster, 19_Tile & Stone, 20_Flooring, 22_Paint)
+10_Specialties (sub-packages: 11_Equipment & Appliances, 12_Furnishings, 13_Special Construction, 14_Conveying Systems)
+15_Mechanical (sub-packages: 21_HVAC, 24_Plumbing)
+16_Electrical (sub-packages: 25_Electric, 26_Low Voltage, 34_Solar)
+28_Landscaping
+33_Radon
+```
+Within each division/sub-package, split further by subcontractor name (one folder per vendor for their bid documents).
+
+Also confirmed by Buck: **the pre-existing Google Sheet bid tracker is the canonical Bid Tracker** — build automation around it, don't replace its structure/tabs/formulas. The auto-generated per-division `*_Bid_Leveling.xlsx` files are a separate "Bid Summary" executive view derived from the same underlying data, not a competing tracker.
+
 ## Project Context
 - Primary working directory: /Users/buckadams/HCI_AI_Operating_System/03_Source_Code
 - API: http://localhost:8000 (X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6)
