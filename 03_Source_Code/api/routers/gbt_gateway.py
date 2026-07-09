@@ -1162,11 +1162,27 @@ def portfolio_status_brief():
         "next_action": (b.get("recommended_next_actions") or [{}])[0].get("action") if b.get("recommended_next_actions") else None,
     } for b in briefs if "error" not in b]
 
+    # Found 2026-07-08 testing live in Proj Stat GBT: the full nested brief for
+    # every RED/YELLOW project made this payload ~50KB (8 projects x full
+    # financial_snapshot + recent_activity + everything) and the GPT Action
+    # call never came back - too much for a single Actions round-trip to
+    # synthesize. Trimmed to just what a portfolio rollup actually needs to
+    # explain WHY a project is flagged; call getStatusBrief on that one project
+    # code for the full picture instead of duplicating it here.
+    expanded_detail = [{
+        "project_code": b.get("project_code"),
+        "health": (b.get("header", {}) or {}).get("health"),
+        "executive_summary": b.get("executive_summary"),
+        "top_issues": (b.get("top_issues") or [])[:3],
+        "recommended_next_actions": (b.get("recommended_next_actions") or [])[:3],
+    } for b in briefs if (b.get("header", {}) or {}).get("health") == "Needs Attention"]
+
     return _response("/portfolio/status-brief", {
         "portfolio_summary": counts,
         "table": table,
-        "expanded_detail": [b for b in briefs if (b.get("header", {}) or {}).get("health") in ("Needs Attention", "On Track, Watching")],
-        "source_of_truth_note": "Built from live gateway/project tables per project - does not read LIVE_PROJECT_STATE.md.",
+        "expanded_detail": expanded_detail,
+        "source_of_truth_note": "Built from live gateway/project tables per project - does not read LIVE_PROJECT_STATE.md. "
+                                 "Call getStatusBrief for one project's full detail (financials, schedule, recent activity).",
     }, start=t0)
 
 
