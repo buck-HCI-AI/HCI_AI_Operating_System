@@ -14,6 +14,21 @@
 
 ---
 
+## [STATE CHANGE 2026-07-09 late night] Monitored-project Drive mining begun — real historical cost data ingested from 2 of 7 shared project Drives
+
+Executed jointly with Browser Claude (BC) per Buck's instruction to fully mine the G Drive shared/monitored project folders for the historical cost/vendor brain, and to keep BC and GBT actively triggered rather than idle. Full recursive structural walks (every folder, every file, via direct Drive API — not sampling) completed for three monitored/reference project Drives: 212 Cleveland (800 folders / 1,865 files), 606 Starwood (171 folders / 550 files), 655 Garmisch (215 folders / 1,718 files). 574 Johnson and 275 Sunnyside not yet walked.
+
+**Real data extracted and ingested into `historical_cost_records` (not summarized, not estimated):**
+- **212 Cleveland** (project_id 18, CLOSED/reference, final contract $7,614,844.16): read `212_Cleveland_Reconciliation_FINAL.xlsx` directly — a complete, bank-matched financial closeout (20 pay apps, Nov 2023–Feb 2026). Ingested 38 vendor-level final-cost records by trade, all bank-verified payment totals (Vision Builders $403,821 framing, B&Y Drilling $321,983 shoring, American Plumbing $230,328, Eagle Welding $226,645, and 34 more down to $720). `historical_cost_records` count: 296 → 341.
+- Same reconciliation file flagged a real, unresolved item: Pitkin County use tax may be underpaid by ~$15,063 (filed on a $200K materials base vs. the City of Aspen's $1.7M base for the same project), plus ~$6,825 RFTA status unconfirmed — total potential exposure $21,887.50. Logged as `ai_messages` financial_review alert requiring Buck's review (not auto-actioned — this is a call-the-county-and-confirm item, not a system fix).
+- **655 Garmisch** (project_id 15, reference): ingested 7 signed subcontract awards BC read directly from the actual PDF contracts, spot-verified by Claude Code independently confirming all 7 files exist in the Drive tree with matching vendor names (file-existence + naming cross-check, not a full re-read of contract text). B&Y Drilling $1,235,740, Skyline $643,613, Myers $455,240, TJ Concrete $682,305, J&C Services $528,167, Vision Builders $525,180, American Plumbing $687,160 — total $4,757,405.
+- 606 Starwood and 655 Garmisch full file trees catalogued but not yet content-mined beyond the above — 606 Starwood's own budget/bid folders and 655 Garmisch's "LLC Builders" and "American Plumbing" subcontract subfolders (flagged by BC as unidentified) remain unread.
+- 574 Johnson has a historical-cost database embedded directly in its own working budget workbook (per BC's live read — Laminar Plumbing, Hagist Excavation, LiveRoof unit rates, plus a 4-project $/SF benchmark table) — not yet pulled into the system DB.
+
+**Not done tonight, stated plainly rather than left implicit:** full content-level mining of all ~4,100 files across the three walked projects; any work on 574 Johnson or 275 Sunnyside; the confirmed vendor trade/CSI classification gap (1,052 of 1,256 vendors, 84%, still have no trade assigned). This is genuinely multi-session work at the volume Buck asked for ("every folder, every subfolder, every file") — tonight prioritized the highest-value, lowest-risk-of-error documents (closed-project final reconciliations, signed contracts) over exhaustively opening loose invoice PDFs.
+
+---
+
 ## [STATE CHANGE 2026-07-09] Live tables refreshed — the "Live Production Projects", "Approval Queue", and "ROI" tables below (dated 06-26 through 07-02) were stale and are SUPERSEDED by this block. Do not read past this block for current bid/health/approval numbers — read here first.
 
 **Verified directly against the live database/API 2026-07-09 05:05 UTC, not copied from any prior claim:**

@@ -1538,3 +1538,21 @@ CONTEXT / PROBLEM
 
 GOAL
 When Bu
+
+
+### URGENT: Execute full recursive Drive audit now
+*Source: ChatGPT | 2026-07-09*
+
+Buck has directed immediate execution. Perform a recursive, file-level audit of the Shared Drive bid folders for 64EW, 101F, and 1355R. Inspect every folder, subfolder, and accessible file; verify names, dates, duplicates, trackers, summaries, and bid-level outputs. Fix discrepancies within authorized governance, and return an evidence-backed report listing every remaining unverified item if any access limitation exists. Do not stop at folder metadata or summaries.
+
+
+### Deep verification mandate for bid folders (64EW/101F/1355R)
+*Source: ChatGPT | 2026-07-09*
+
+Execute an evidence-first audit of 64EW, 101F, and 1355R bid folders. Traverse every folder, every subfolder, and inspect every accessible file. Verify naming, dates, duplicates, company folders, bid-level files, division trackers, master tracker, and summaries. Do not report complete unless each item is verified or explicitly listed as unverifiable. Where discrepancies are found, identify root cause and implement durable fixes within governance. If any API/tool cannot inspect file contents, record the limitation and use the appropriate mechanism to continue the audit rather than assuming correctness. Produce an evidence-backed report of findings and remaining gaps.
+
+
+### BUILD/EXECUTE: Recursive Shared Drive mining for all live + monitored HCI jobs
+*Source: ChatGPT | 2026-07-09*
+
+Buck authorized continuation. Build and/or execute a recursive Shared Drive mining pass for all live and monitored HCI projects. Scope: live projects 64EW, 101F, 1355R; next/monitored projects including 246GW, 83SB, 813MS, 275SS, 574J, 606SW, 1395SV, LICHT, plus any other active/monitor-only folders found in the HCI Shared Drive. Requirement: do not stop at top-level folders. Traverse project folder -> every subfolder -> every file. Index metadata and, where supported, read file contents. Classify files by project, discipline, CSI/division, vendor, document type, version/date, and provenance. Detect misfiled docs, duplicate/superseded docs, naming-standard violations, missing expected folders, stale trackers/summaries, and source-of-truth conflicts. Preserve all data; do not delete or destructively modify anything without explicit approval. For allowed fixes inside existing authorized bid-folder repair scope, apply only if governance permits and log every action. Output an evidence-bac
