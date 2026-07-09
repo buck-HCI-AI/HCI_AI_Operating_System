@@ -3477,15 +3477,18 @@ def system_drift_check():
                 cur.execute("""
                     SELECT project_id, vendor_name, file_name
                     FROM drive_bids
-                    WHERE vendor_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?)\\y'
-                       OR file_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?)\\y'
+                    WHERE vendor_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?|bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\\y'
+                       OR file_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?|bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\\y'
+                       OR vendor_name ~* '^(archived?|old|superseded)\\y'
+                       OR file_name ~* '^(archived?|old|superseded)\\y'
+                       OR division_num !~ '^[0-9]+$'
                 """)
                 sow_contaminated = cur.fetchall()
                 if sow_contaminated:
                     findings.append({
                         "severity": "high",
                         "category": "bid_leveling_sow_contamination",
-                        "detail": f"{len(sow_contaminated)} drive_bids row(s) are outbound SOW/template documents misfiled as vendor bids - will appear in generated leveling sheets as fake vendors",
+                        "detail": f"{len(sow_contaminated)} drive_bids row(s) are outbound docs/trackers/archived items/garbage division codes misfiled as vendor bids - will appear in generated leveling sheets as fake vendors or fake divisions",
                         "items": [f"project {r['project_id']}: {r['vendor_name']}" for r in sow_contaminated[:15]],
                     })
     except Exception as e:
