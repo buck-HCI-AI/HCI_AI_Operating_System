@@ -14,6 +14,16 @@
 
 ---
 
+## [STATE CHANGE 2026-07-09 very late night] HCI AI Drive cleared of active-job content — new permanent system-wide rule closed out with evidence
+
+Buck found real drift: job data (bids, SOWs, project intelligence briefs, bid-leveling trackers) for all 3 active projects was duplicated inside the "HCI AI - Master" Google Drive folder instead of living only in each project's real Shared Drive — including a 1355 Riverside spreadsheet a prior agent had already labeled "[CANONICAL - use this one]" sitting next to one labeled "[DUPLICATE - verify against other copy before using]," flagged but never resolved. New permanent rule filed in CLAUDE.md: **HCI AI Drive is system-only — job source of truth (active or monitored) is always the job's own Shared Drive, HubSpot, and Houzz.** 246 Gallo Way is the one explicit, temporary exception (no dedicated Shared Drive exists for it yet).
+
+**Executed, not just diagnosed:** Browser Claude audited all 14 items in HCI AI Master's "Projects Folder" file-by-file against each project's real Shared Drive. Claude Code then verified each finding independently before acting (confirming Shared Drive equivalents actually exist and are dated later, not just trusting the audit), and — with Buck's explicit real-time delete authorization for this specific cleanup — executed: 2 genuinely live files (1355R's bid-leveling workbook, plus a HubSpot-Schedule reconciliation doc that turned out to be a distinct real document, not an actual duplicate of the first) moved to the active Shared Drive budget folder; 7 confirmed-superseded files relocated to 1355R's own archive folder (nothing deleted, only moved); 8 confirmed-empty-or-superseded items (three empty division-scaffold folders, a self-labeled DEPRECATED folder, a stale project brief, a generic email template) sent to Drive trash (recoverable, not permanently deleted). HCI AI Master now has zero active-job content. Full per-file log in Drive: `DRIVE_CLEANUP_LOG_2026-07-09.md`.
+
+Also this session: fixed AUTO-001/002/003 n8n failures (root cause: `Module 'fs' is disallowed` in n8n's JS task-runner sandbox; added `NODE_FUNCTION_ALLOW_BUILTIN=fs`) — not yet independently verified via a real scheduled run, check after 6/7/8 AM MT. Verified the `analyzePlanReview` async job pattern end-to-end live (fresh test job completed correctly in ~7s with 7 real gap RFIs), then deleted the 7 test RFI rows it created so they don't pollute 101F's real RFI table. Confirmed `/gateway/project/{code}/status-brief` and `/gateway/portfolio/status-brief` are live and working — watched a Field GPT tab pull a real, accurate 64EW status brief from it.
+
+---
+
 ## [STATE CHANGE 2026-07-09 late night] Monitored-project Drive mining begun — real historical cost data ingested from 2 of 7 shared project Drives
 
 Executed jointly with Browser Claude (BC) per Buck's instruction to fully mine the G Drive shared/monitored project folders for the historical cost/vendor brain, and to keep BC and GBT actively triggered rather than idle. Full recursive structural walks (every folder, every file, via direct Drive API — not sampling) completed for three monitored/reference project Drives: 212 Cleveland (800 folders / 1,865 files), 606 Starwood (171 folders / 550 files), 655 Garmisch (215 folders / 1,718 files). 574 Johnson and 275 Sunnyside not yet walked.
