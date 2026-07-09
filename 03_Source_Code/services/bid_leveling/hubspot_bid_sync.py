@@ -50,9 +50,15 @@ DB = dict(
     password=os.environ.get("POSTGRES_PASSWORD", ""),
 )
 
-# HubSpot deal names for division-level packages follow "{Project} — {div}{sub} {Desc}",
+# HubSpot deal names for division-level packages follow "{Project} <dash> {div}{sub} {Desc}",
 # e.g. "1355 Riverside — 06D Custom Cabinets (Kitchen / Baths / Laundry / Built-ins)".
-_DEAL_DIV_PATTERN = re.compile(r"—\s*(\d{2})([A-Z]?)\s+(.+)$")
+# Found live 2026-07-09: not every project uses the em-dash "—" - 64 Eastwood's deals
+# use a plain hyphen ("64 Eastwood - 04  Masonry/Stonework"), which silently made
+# find_division_deals() return zero deals for that project (deals_checked: 0, no
+# error surfaced) - this is why the HubSpot cross-check never caught anything for
+# 64EW even though it's wired up correctly for 101F/1355R. Matches em-dash, en-dash,
+# or plain hyphen now, with optional surrounding whitespace variance too.
+_DEAL_DIV_PATTERN = re.compile(r"[—–-]\s*(\d{2})([A-Z]?)\s+(.+)$")
 
 
 def _pg():
@@ -97,7 +103,9 @@ def find_division_deals(project_name: str) -> list:
             cur.execute("""
                 SELECT hubspot_deal_id, deal_name, amount FROM hubspot_deals
                 WHERE deal_name ILIKE %s
-            """, (f"{project_name} —%",))
+            """, (f"{project_name}%",))  # broad match here - _DEAL_DIV_PATTERN below
+                                          # does the real filtering, since the exact
+                                          # dash character varies by project (see note above)
             rows = cur.fetchall()
     out = []
     for r in rows:

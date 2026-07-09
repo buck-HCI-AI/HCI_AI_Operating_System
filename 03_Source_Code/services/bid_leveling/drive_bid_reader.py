@@ -188,22 +188,45 @@ def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
     """
     Fallback: extract bid amount from text via regex.
     Used for Google Docs/Sheets where we can export as text without Gemini.
+
+    scope_summary used to unconditionally return f"Extracted from {file_name}"
+    regardless of whether extraction succeeded - found live 2026-07-09 when
+    Buck caught generated leveling sheets showing that placeholder instead of
+    real scope content for every Docs/Sheets-sourced bid, while PDF-sourced
+    (Gemini/Claude) bids had real extracted scope. Now pulls an actual text
+    excerpt near the matched total, falling back to the first substantive
+    line of the document - never just echoes the filename back.
     """
-    # Find dollar amounts — look for "total", "grand total", "base bid" patterns
-    patterns = [
+    # Find dollar amounts — look for "total", "grand total", "base bid" patterns first
+    # (higher confidence); the bare "$amount" pattern is a last resort and prone to
+    # matching an unrelated figure mentioned in the doc, so it's kept separate and
+    # flagged as low-confidence via the "confidence" field rather than trusted equally.
+    strong_patterns = [
         r"(?:grand\s+total|total\s+base\s+bid|base\s+bid\s+price|total\s+price|total\s+contract\s+price)[^\$\n]*\$?\s*([\d,]+\.?\d*)",
         r"total[:\s]+\$?\s*([\d,]+\.?\d*)",
-        r"\$\s*([\d,]+\.?\d*)\s*(?:dollars?)?(?:\s|$)",
     ]
     amount = None
-    for pat in patterns:
+    confidence = None
+    match_span = None
+    for pat in strong_patterns:
         m = re.search(pat, text, re.IGNORECASE)
         if m:
             try:
                 amount = float(m.group(1).replace(",", ""))
+                confidence = "high"
+                match_span = m.span()
                 break
             except ValueError:
                 continue
+    if amount is None:
+        m = re.search(r"\$\s*([\d,]+\.?\d*)\s*(?:dollars?)?(?:\s|$)", text)
+        if m:
+            try:
+                amount = float(m.group(1).replace(",", ""))
+                confidence = "low"
+                match_span = m.span()
+            except ValueError:
+                pass
 
     # Find date
     date_str = None
@@ -220,10 +243,26 @@ def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
         except Exception:
             pass
 
+    # Real scope excerpt: text around the matched total, or the first substantive
+    # (non-blank, non-boilerplate-short) line if no amount was found at all.
+    scope_summary = None
+    if match_span:
+        start = max(0, match_span[0] - 150)
+        end = min(len(text), match_span[1] + 150)
+        excerpt = " ".join(text[start:end].split())
+        scope_summary = excerpt[:300]
+    else:
+        for line in text.splitlines():
+            line = line.strip()
+            if len(line) > 25 and not line.lower().startswith(file_name.lower()[:15]):
+                scope_summary = line[:300]
+                break
+
     return {
         "bid_amount": amount,
+        "bid_amount_confidence": confidence,
         "bid_date": date_str,
-        "scope_summary": f"Extracted from {file_name}",
+        "scope_summary": scope_summary,
     }
 
 
@@ -354,6 +393,24 @@ def _vendor_name_from_filename(filename: str) -> str:
     return (m.group(1) if m else base).strip()
 
 
+_NON_BID_FILENAME_RE = re.compile(
+    r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
+    r"email templates?|division index|bid instructions?)\b", re.IGNORECASE
+)
+
+
+def _is_outbound_not_a_bid(filename: str) -> bool:
+    """Files HCI sends OUT (scope-of-work docs, email templates, bid-request
+    letters) live in the same vendor/division folders as real vendor bid
+    responses and were being walked and extracted as if they were bids -
+    found live 2026-07-09 when Buck caught SOW/template filenames appearing
+    as 'SUBCONTRACTOR' rows in generated leveling sheets with bid_amount
+    always null. Filename-pattern exclusion, not content-based, because
+    these are outbound documents HCI authors - the filenames are the
+    reliable signal, not something that needs a PDF read to detect."""
+    return bool(_NON_BID_FILENAME_RE.search(filename))
+
+
 def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_name: str, depth: int) -> list:
     """One level of the vendor search. A subfolder is treated as a category to
     recurse into - either a numbered subdivision (e.g. "13_Insulation") or any
@@ -372,7 +429,8 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
     entries = _drive_list(folder_id, token)
     folders = [e for e in entries if "folder" in e.get("mimeType", "")]
     loose_files = [e for e in entries if "folder" not in e.get("mimeType", "")
-                   and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))]
+                   and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))
+                   and not _is_outbound_not_a_bid(e.get("name", ""))]
 
     for entry in folders:
         name = entry["name"]
@@ -385,7 +443,8 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
         sub_folders = [e for e in sub_entries if "folder" in e.get("mimeType", "")
                        and not re.match(r"^(archived?|old|superseded)\b", e["name"], re.IGNORECASE)]
         sub_files = [e for e in sub_entries if "folder" not in e.get("mimeType", "")
-                     and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))]
+                     and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))
+                     and not _is_outbound_not_a_bid(e.get("name", ""))]
         # A folder is a leaf vendor folder only if it has no (non-archive)
         # subfolders of its own. Any other subfolder presence means recurse -
         # Buck found live that a folder can have BOTH a real vendor subfolder
