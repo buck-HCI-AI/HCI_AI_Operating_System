@@ -325,6 +325,60 @@ def _log_stale_tracker_alert(project_id: int, project_name: str, findings: list)
         pass
 
 
+# Buck's canonical 16-division folder structure (filed 2026-07-09, CLAUDE.md):
+# several divisions contain sub-package folders numbered INDEPENDENTLY of the
+# division number - e.g. "5_Waterproofing" is a sub-package of division 07
+# (Thermal & Moisture), not a folder for division 5 (which is Metals). When a
+# sub-package folder is correctly NESTED inside its parent division folder,
+# _walk_vendor_level()'s existing recursion already handles it fine. The bug
+# this map fixes is when a sub-package folder sits LOOSE at the TOP LEVEL of
+# 00_Bids (a sibling of the real divisions, not nested under its logical
+# parent - confirmed live on 1355 Riverside) - it would otherwise zero-pad
+# ("5" -> "05") and silently collide with the real division 05 (Metals),
+# merging two unrelated trades' bids into one division bucket. Keyed by
+# lowercased, whitespace-collapsed sub-package name (not number alone, since
+# the same bare number means different things under different parents - "11"
+# is Cabinets under division 06 but Equipment & Appliances under division 10).
+_SUB_PACKAGE_TO_PARENT_DIVISION = {
+    "carpentry":                       ("06", "Wood & Plastic"),
+    "cabinets":                        ("06", "Wood & Plastic"),
+    "t&g ceiling":                     ("06", "Wood & Plastic"),
+    "waterproofing":                   ("07", "Thermal & Moisture"),
+    "insulation":                      ("07", "Thermal & Moisture"),
+    "roofing":                         ("07", "Thermal & Moisture"),
+    "doors/windows exterior":          ("08", "Door & Windows"),
+    "interior doors":                  ("08", "Door & Windows"),
+    "glazing":                         ("09", "Finishes"),
+    "drywall & plaster":               ("09", "Finishes"),
+    "tile & stone":                    ("09", "Finishes"),
+    "flooring":                        ("09", "Finishes"),
+    "paint":                           ("09", "Finishes"),
+    "equipment & appliances":          ("10", "Specialties"),
+    "furnishings":                     ("10", "Specialties"),
+    "special construction":            ("10", "Specialties"),
+    "conveying systems":               ("10", "Specialties"),
+    "hvac":                            ("15", "Mechanical"),
+    "plumbing":                        ("15", "Mechanical"),
+    "electric":                        ("16", "Electrical"),
+    "low voltage":                     ("16", "Electrical"),
+    "solar":                           ("16", "Electrical"),
+}
+
+
+def _sub_package_parent(div_raw: str, division_num: str, division_name: str) -> tuple:
+    """If this folder's name matches a known sub-package (by name, not just its
+    own leading number, which is ambiguous across parents), reroute it to its
+    real parent division instead of colliding with a same-numbered top-level
+    division. Returns (division_num, division_name) - unchanged if no match."""
+    name_key = division_name.strip().lower()
+    match = _SUB_PACKAGE_TO_PARENT_DIVISION.get(name_key)
+    if match:
+        parent_num, parent_name = match
+        if parent_num != division_num:
+            return parent_num, f"{parent_name} — {division_name.strip()}"
+    return division_num, division_name
+
+
 def walk_bid_folders(bid_folder_id: str, token: str) -> list:
     """
     Walk the division folder structure and return a flat list of vendor files.
@@ -387,6 +441,7 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
                 # naming convention, skip it - don't invent a division code.
                 continue
 
+        division_num, division_name = _sub_package_parent(div_raw, division_num, division_name)
         results.extend(_walk_vendor_level(div_folder["id"], token, division_num, division_name, depth=0))
     return results
 
@@ -411,7 +466,7 @@ _NON_BID_FILENAME_RE = re.compile(
     r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
     r"email templates?|division index|bid instructions?|"
     r"bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\b|"
-    r"^(archived?|old|superseded)\b", re.IGNORECASE
+    r"^(archived?|old|superseded)([\s_-]|$)", re.IGNORECASE
 )
 
 
@@ -458,7 +513,7 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
         # with its contents as that "vendor's" bids. The existing archive check
         # below only excludes archive SUBfolders from disqualifying their
         # PARENT - it never checked the current folder's own name.
-        if re.match(r"^(archived?|old|superseded)\b", name, re.IGNORECASE):
+        if re.match(r"^(archived?|old|superseded)([\s_-]|$)", name, re.IGNORECASE):
             continue
         sub_entries = _drive_list(entry["id"], token)
         # "Archived"/"Old"/"Superseded" subfolders don't disqualify a folder from
@@ -467,7 +522,7 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
         # inside it for old bid versions, which otherwise made this folder look
         # like a category and triggered a pointless recursion into it.
         sub_folders = [e for e in sub_entries if "folder" in e.get("mimeType", "")
-                       and not re.match(r"^(archived?|old|superseded)\b", e["name"], re.IGNORECASE)]
+                       and not re.match(r"^(archived?|old|superseded)([\s_-]|$)", e["name"], re.IGNORECASE)]
         sub_files = [e for e in sub_entries if "folder" not in e.get("mimeType", "")
                      and (e.get("mimeType") in READABLE_MIME or e.get("name", "").lower().endswith((".pdf", ".docx")))
                      and not _is_outbound_not_a_bid(e.get("name", ""))]

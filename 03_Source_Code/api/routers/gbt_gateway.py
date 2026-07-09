@@ -3479,8 +3479,8 @@ def system_drift_check():
                     FROM drive_bids
                     WHERE vendor_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?|bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\\y'
                        OR file_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?|bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\\y'
-                       OR vendor_name ~* '^(archived?|old|superseded)\\y'
-                       OR file_name ~* '^(archived?|old|superseded)\\y'
+                       OR vendor_name ~* '^(archived?|old|superseded)([[:space:]_-]|$)'
+                       OR file_name ~* '^(archived?|old|superseded)([[:space:]_-]|$)'
                        OR division_num !~ '^[0-9]+$'
                 """)
                 sow_contaminated = cur.fetchall()
