@@ -25,6 +25,12 @@ services:
       # using them got a MALFORMED_TOKEN auth failure on every single run.
       - HUBSPOT_API_KEY=${HUBSPOT_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # AUTO-001/002/003 (self-report workflows) fail 100% of runs with
+      # "Module 'fs' is disallowed" - their Code nodes write report files to
+      # disk. n8n's Code-node sandbox blocks fs by default; scoped allow-list
+      # (not '*') to keep the rest of the sandbox intact. Found 2026-07-09
+      # via /gateway/admin/drift-check.
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs
       # WAL mode does far fewer fsync/lock operations than the default rollback
       # journal — mitigates the recurring SQLITE_IOERR seen with SQLite over a
       # host bind-mount on Docker Desktop for macOS (~/.n8n below is a bind

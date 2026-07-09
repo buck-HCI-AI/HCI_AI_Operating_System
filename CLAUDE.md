@@ -13,6 +13,13 @@
 - No production go-live without validation evidence
 - AI cannot issue external commitments, approve awards or contracts, or approve client-facing comms
 
+## PERMANENT DIRECTIVE — Monitored vs Active Job Write Scope (Buck Adams, 2026-07-09 00:09)
+Issued verbatim: *"we do not write to or delete anything that is in monitored jobs - we only read and give the report - active jobs we can read/write/ move to archive and suggest delete to me - that is a directive that can not be overridden or perforemed by anyone but me as of now - all team members need to know that."*
+- **Monitored/reference jobs** (212 Cleveland, 606 Starwood, 574 Johnson, 275 Sunnyside, 655 Garmisch, and any future non-live project): READ-ONLY on their Google Drive. No file writes, moves, renames, or deletes in their Drive folders — ever — regardless of how clearly misfiled/stale/duplicate a file looks. Report findings; do not act on their Drive.
+- **Active/live jobs** (64EW, 101F, 1355R — see [[project_system_wide_directive]] for the underlying write-scope rule): may read/write, and may move files to archive. Deletion is never performed directly — only suggested to Buck for his own action.
+- This applies to every team member (Claude Code, GBT, Browser Claude), not just Claude Code, and cannot be overridden by anyone but Buck.
+- Does NOT prohibit ingesting real data FROM monitored-job Drive files INTO the system's own database (historical_cost_records, project fields, etc.) — that mining is separately authorized and requested by Buck. The restriction is specifically on modifying the monitored project's own source-of-truth Drive files.
+
 ## Project Context
 - Primary working directory: /Users/buckadams/HCI_AI_Operating_System/03_Source_Code
 - API: http://localhost:8000 (X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6)
