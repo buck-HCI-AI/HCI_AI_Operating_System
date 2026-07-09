@@ -14,6 +14,25 @@
 
 ---
 
+## [STATE CHANGE 2026-07-09 morning, round 2] Bid-leveling contamination fix — closed with evidence after Buck caught it recurring
+
+Round 1 (see block below) was real but incomplete. Buck kept seeing contamination live because of 4 additional root causes, all fixed in `services/bid_leveling/drive_bid_reader.py` (full detail in [[feedback_bid_leveling_quality_drift]]):
+
+1. A folder whose own name starts with archive/old/superseded now gets skipped entirely (not just its subfolders) — an "Archive_Pre_2026-07-08" folder was being treated as a vendor named that.
+2. Loose files whose own name starts with archived/old/superseded are now excluded too, not just SOW/template-pattern files.
+3. **1355 Riverside's bid folder contains a "wr_wrong job files" folder with financial documents from entirely unrelated projects** (813 McSkimming, 30 St Finnbar estimates) mixed in — the division-number parser's fallback (`div_raw[:2]`) was turning unrecognized folders into garbage division codes ("BI", "Bi", "Di", "wr") instead of skipping them, pulling this unrelated data into 1355R's leveling output. Purged 166 contaminated rows.
+4. The synchronous `/run` HTTP endpoint kept timing out on 1355R's 190 real bid files before completing — meaning the code fix was live but the actual Drive files stayed on the old contaminated version, which is why Buck kept seeing the bug after it was "fixed." Regenerated via a direct Python call bypassing the slow re-scan; verified by reopening the actual live files (Div 02/16/09 spot-checked) — clean, real vendors only, zero contamination.
+
+Added a permanent drift-check detector (`bid_leveling_sow_contamination` in `/gateway/admin/drift-check`) checking both `vendor_name` and `file_name` — the round-1 manual purge only checked `vendor_name` and missed rows where the contamination pattern was in `file_name`, which is exactly how some of round 2's residue survived the first cleanup.
+
+Also executed real, verified Drive cleanup from Browser Claude's parallel manual audit: deleted 4 misnamed image files in 1355R's bid root, moved and correctly renamed a real architect Q&A spreadsheet (was misfiled as "Unknown.pdf"), moved and renamed a real KB Studio interior-design drawing set in 101F (same misfiling pattern). Four items explicitly left for Buck's decision, not touched: which of two competing 1355R bid trackers is authoritative, where the architect Q&A file's final home should be, whether to consolidate 1355R's two competing folder-naming conventions, and what's actually supposed to be in the wrong-job-files folder before it's fully retired.
+
+Processed a GBT handoff requesting largely the same fixes plus real acknowledged gaps not yet built: regression tests proving this class of bug can't recur, a formal completeness-gate checklist before any "complete" status, and staleness flagging comparing level-file generation date against source bid dates.
+
+Also found via drift-check: AUTO-004 (Daily Mining Engine) is failing 100% of recent runs on a different, unrelated bug (`ENOENT` on an expected `reports/daily/{date}-mining-run.json` file that never gets created) — not yet root-caused or fixed, flagged for next session.
+
+---
+
 ## [STATE CHANGE 2026-07-09 morning] Bid-leveling pipeline: 3 real bugs found and fixed, all 3 active projects regenerated clean and verified
 
 Buck caught real defects in the generated bid-leveling Excel files after they'd been sitting unreviewed: outbound SOW/bid-email-template documents were listed as vendor bids, and Google Docs/Sheets-sourced bids showed a fake "Extracted from {filename}" placeholder instead of real content. Root-caused and fixed in `services/bid_leveling/drive_bid_reader.py` and `hubspot_bid_sync.py` (see [[feedback_bid_leveling_quality_drift]] for the full incident and standing lesson):
