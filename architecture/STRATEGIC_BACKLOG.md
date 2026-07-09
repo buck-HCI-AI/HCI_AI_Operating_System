@@ -1556,3 +1556,285 @@ Execute an evidence-first audit of 64EW, 101F, and 1355R bid folders. Traverse e
 *Source: ChatGPT | 2026-07-09*
 
 Buck authorized continuation. Build and/or execute a recursive Shared Drive mining pass for all live and monitored HCI projects. Scope: live projects 64EW, 101F, 1355R; next/monitored projects including 246GW, 83SB, 813MS, 275SS, 574J, 606SW, 1395SV, LICHT, plus any other active/monitor-only folders found in the HCI Shared Drive. Requirement: do not stop at top-level folders. Traverse project folder -> every subfolder -> every file. Index metadata and, where supported, read file contents. Classify files by project, discipline, CSI/division, vendor, document type, version/date, and provenance. Detect misfiled docs, duplicate/superseded docs, naming-standard violations, missing expected folders, stale trackers/summaries, and source-of-truth conflicts. Preserve all data; do not delete or destructively modify anything without explicit approval. For allowed fixes inside existing authorized bid-folder repair scope, apply only if governance permits and log every action. Output an evidence-bac
+
+
+### URGENT: expose/read team Drive message docs for GBT - BC bid audit not accessible
+*Source: ChatGPT | 2026-07-09*
+
+Buck confirms this was supposed to have been done already: GBT/Chief Architect needs direct ability to read team message documents in the HCI AI Master shared channel. Current blocker: Browser Claude placed BC_TO_TEAM_BID_FOLDER_AUDIT_2026-07-09.md in HCI AI Master folder ID 1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI, but GBT cannot open/read that arbitrary Drive file from current exposed actions. This blocks immediate architecture review of the newest bid-leveling audit.
+
+Please fix ASAP:
+1. Verify the file exists and read BC_TO_TEAM_BID_FOLDER_AUDIT_2026-07-09.md immediately.
+2. Feed its key findings into the active bid-leveling code-fix work.
+3. Expose or repair a gateway action/path that lets GBT read team docs by Drive file ID or filename from the HCI AI Master folder.
+4. Add a simple test/proof: GBT can request/read a known team message doc without Buck pasting contents.
+5. Return evidence: endpoint/tool name, sample response, permissions boundary, and whether this is HCI AI Master only o
+
+
+### URGENT REGRESSION INCIDENT: bid leveling went backwards / haywire — root cause, freeze, repair, prove with fresh regenerated outputs
+*Source: ChatGPT | 2026-07-09*
+
+Buck just reported at 2026-07-09 09:11 MT: "The system went backwards we need to fix the bid level now - what happened. Go it went totally haywire." Treat this as an active production regression incident.
+
+Immediate instructions:
+1. STOP relying on any previously generated bid-leveling Excel/Sheet output until revalidated. Mark current bid-leveling outputs for 64EW, 101F, 1355R as suspect/stale internally if you have a flag/path to do so. Do not delete source files.
+2. Run a fresh self-audit of bid_leveling code paths and Drive output paths, especially anything changed after the two documented fixes in LIVE_PROJECT_STATE on 2026-07-09: services/bid_leveling/drive_bid_reader.py, bid_leveling_service.py, approval execution/upload route, direct Python regeneration bypass, Google Sheet sync, hardcoded fallback folder pointers, and any archive/wrong-job-file filters.
+3. Find WHY it went backwards. Specifically check for rollback/restart using old code, duplicate endpoint path, stale generat
+
+
+### TEAM DIRECTIVE: Production quality and bid-folder governance expectations
+*Source: ChatGPT | 2026-07-09*
+
+Effective immediately for Claude Code and Browser Claude:
+
+Buck's expectation is that the AI team eliminates confusion, not creates it. Team members and project staff should not be asking Buck why duplicate folders suddenly appeared.
+
+New engineering expectations:
+
+1. One canonical bid-folder structure per project (64EW, 101F, 1355R). No process may recreate duplicate or legacy folder trees.
+2. If an automation cannot prove it is creating the canonical structure, it must fail safely and raise an internal alert instead of writing to Drive.
+3. Every cleanup must include regression protection. 'Fixed once' is not acceptable if the issue can return.
+4. Before claiming a fix is complete, verify the actual Shared Drive, generated outputs, and user-visible results—not just logs or API success.
+5. Any regression that recreates duplicate folders or contaminates bid-leveling output is to be treated as a production incident with root cause, timeline, corrective action, and permanent prevention.
+6
+
+
+### IMPLEMENT CANONICAL HCI 16-DIVISION BID FOLDER WORKFLOW: HubSpot + Shared Drive alignment, SOW/email/bid-leveling automation
+*Source: ChatGPT | 2026-07-09*
+
+Buck has now defined the required HCI standard for live project bid folders. Implement this as the canonical bid-folder workflow for 64EW, 101F, and 1355R. Treat current duplicate-folder behavior as noncompliant.
+
+CANONICAL REQUIREMENT:
+Each live project Shared Drive must have one project bid root: 00_Bids. Under 00_Bids, folders must follow the HCI 16-division layout and align with HubSpot division/deal/attachment reading so HubSpot pulls map cleanly to the correct Drive location.
+
+Required 16-division structure under 00_Bids:
+00_Bids/
+  01_General Requirements/
+  02_Existing Conditions/
+  03_Concrete/
+  04_Masonry/
+  05_Metals/
+  06_Wood Plastics Composites/
+  07_Thermal Moisture Protection/
+  08_Openings/
+  09_Finishes/
+  10_Specialties/
+  11_Equipment/
+  12_Furnishings/
+  13_Special Construction/
+  14_Conveying Equipment/
+  15_Mechanical Plumbing HVAC/
+  16_Electrical/
+  00_Bid Tracker and Summary/
+
+Inside each division folder:
+- SOW built from the plans for that division/subdivisi
+
+
+### Revision: Two-track procurement reporting (Bid Tracker + Executive Summary)
+*Source: ChatGPT | 2026-07-09*
+
+Buck revised the architecture.
+
+Do NOT replace the Bid Tracker with a single summary.
+
+Implement TWO connected workbooks/views:
+
+1. Bid Tracker (operational)
+- Detailed package-by-package management.
+- One row per bid package/vendor activity.
+- Sent date, due date, bids received, vendor count, leveling status, recommendation, award status, missing documents, HubSpot sync, Drive sync, PM owner.
+
+2. Bid Summary (executive)
+- First page is an executive dashboard with simple at-a-glance status.
+- Traffic-light status by division.
+- % complete.
+- Packages complete.
+- Packages waiting for bids.
+- Packages needing leveling.
+- Packages ready for award.
+- Critical overdue items.
+- Overall procurement progress.
+
+Additional pages in the Summary can provide division rollups and recommendations, but page 1 must be an easy dashboard Buck, Chris, PMs and Supers can understand in seconds.
+
+Both reports must be generated from the same underlying data so there is only one source of truth.
+
+
+### MISSION: Live HubSpot-to-HCI Folder Architecture Alignment Audit
+*Source: ChatGPT | 2026-07-09*
+
+Buck has approved the next architecture step.
+
+MISSION
+Perform a live architecture audit comparing HubSpot against the proposed HCI canonical project folder standard before any migration.
+
+Scope:
+- Active projects only: 64EW, 101F, 1355R.
+
+Capture a live snapshot of HubSpot including:
+- Deal structure
+- Bid packages
+- Pipelines/stages
+- Custom properties relevant to procurement
+- Attachments by bid package
+- Existing naming conventions
+
+Compare against the approved HCI canonical folder structure.
+
+Produce a mapping matrix:
+HubSpot Bid Package -> HCI Division -> HCI Folder Path -> Status (Aligned / Needs Change).
+
+Identify:
+- Naming conflicts
+- Duplicate bid packages
+- Missing divisions
+- Missing subtrades
+- Attachment routing issues
+- Anything that would prevent automatic synchronization.
+
+Then propose the final production mapping that will allow:
+- HubSpot remains the workflow engine.
+- Shared Drive remains the canonical source of truth.
+- Automatic routing of attachments into the cor
+
+
+### EXECUTION MISSION: Canonicalize G Drive + Bid Leveling End-to-End
+*Source: ChatGPT | 2026-07-09*
+
+Buck's priority for the current sprint is execution, not additional design.
+
+Mission outcome:
+1. The Google Shared Drive folder structure is clean, canonical, and follows the approved HCI naming standard.
+2. Bid-leveling operates correctly end-to-end.
+3. Bid Tracker and Bid Summary are accurate and generated from the same source of truth.
+
+Execution sequence:
+
+Phase 1 – Audit
+- Audit 64EW, 101F, 1355R.
+- Inventory every folder under each project.
+- Compare to the approved HCI project template and canonical 00_Bids structure.
+- Produce a variance report.
+
+Phase 2 – Mapping
+- Map every HubSpot bid package to the correct division/subtrade.
+- Verify attachment routing.
+- Verify vendor folder naming.
+
+Phase 3 – Migration Plan
+- List every rename, move, merge, archive, and duplicate requiring action.
+- Preserve data integrity and history.
+- No destructive Shared Drive changes without Buck approval.
+
+Phase 4 – Automation
+- Validate naming standards (YYMMDD prefixes where applicable).
+- Valida
+
+
+### BUCK APPROVED EXECUTION: Clean G Drive folders + bid trackers/summaries for 64EW, 101F, 1355R
+*Source: ChatGPT | 2026-07-09*
+
+Buck has now said: "Ok make it happen." Treat this as approval to proceed with the execution mission for the active-project folder cleanup and bid-leveling/reporting correction.
+
+Proceed for ACTIVE PROJECTS ONLY: 64EW, 101F, 1355R.
+
+Execute in controlled phases:
+
+1. Snapshot/backup first
+- Capture current folder tree for each active project before changes.
+- Capture current HubSpot bid package/attachment snapshot.
+- Capture current Bid Tracker and Bid Summary files.
+- Preserve all data. No permanent deletes.
+
+2. Canonical folder cleanup
+- Bring each project folder into the approved HCI folder standard.
+- Ensure 00_Bids follows the approved 16-division/subtrade scheme.
+- Remove duplicate/legacy clutter by moving/archiving safely, not deleting.
+- Use HCI naming convention, including YYMMDD prefixes where required.
+- Prevent old automation from recreating duplicate folders.
+
+3. HubSpot alignment
+- Map HubSpot bid packages to the correct HCI division/subtrade folder.
+- Route/copy HubSpot a
+
+
+### ASAP EXECUTION: Fix G Drive folders + complete bid leveling/tracker/summary reconciliation + clean HCI AI My Drive clutter
+*Source: ChatGPT | 2026-07-09*
+
+Buck has escalated again. This is ASAP and should be treated as a production recovery mission, not more design.
+
+Buck's direction: "we need this fixed asap - again the g-drive fixed and leveled - and then the system - but if it needs to be the other way - however we just need this fixed asap - we also need clean up my drive all the external bs that is there should be cleaned up."
+
+MISSION OUTCOME
+1. Active project Shared Drive folders are clean and follow the approved HCI naming/folder standard.
+2. Bid leveling is complete wherever required by received bids.
+3. Bid Tracker and Bid Summary are accurate and updated from one reconciled source of truth.
+4. System workflows are patched afterward so the corrected state does not regress.
+5. HCI AI My Drive is cleaned of external/project-source clutter and kept system-only.
+
+ORDER OF OPERATIONS
+Use the fastest safe path. If manual/one-time repair is faster than waiting for full automation, do the controlled repair first, then fix the automatio
+
+
+### FINAL EXECUTION AUTHORIZATION: Build production system around Buck's standards
+*Source: ChatGPT | 2026-07-09*
+
+Buck's instruction is: 'make it happen.' This is the execution authorization.
+
+This is now the production objective for Sprint 3.
+
+Authoritative standards:
+1. Buck's canonical project folder structure is the standard.
+2. Buck's canonical 00_Bids structure is the standard.
+3. Buck's Google Sheet is the canonical Bid Tracker. Build around it; do not replace it.
+4. Bid Summary is a separate executive report generated from the same underlying data.
+5. Shared Drive is the project source of truth. HCI AI My Drive is system-only.
+6. HubSpot is the workflow engine and synchronizes with the Shared Drive and tracker.
+
+Execute the recovery and implementation in phases, prioritizing restoring correct production state for 64EW, 101F, and 1355R. If a controlled one-time reconciliation is required before automation is fully corrected, perform the reconciliation first, then harden the automation.
+
+Expected outcome:
+- Canonical folder structures implemented.
+- Duplicate folders eliminated safely.
+- Bid
+
+
+### Canonical Bid Tracker Source Confirmed by Buck
+*Source: ChatGPT | 2026-07-09*
+
+Buck has identified the canonical Bid Tracker format. Effective immediately, use the Google Sheet he referenced as the design and data model for the production Bid Tracker. Do not invent a new tracker layout.
+
+Requirements:
+- Preserve the existing structure, tabs, formulas, workflow, and reporting intent from Buck's tracker.
+- Build automation around this tracker rather than replacing it.
+- The Bid Summary should be generated from the same underlying data model but remain a separate executive view.
+- Map HubSpot bid packages and Shared Drive folders into this tracker.
+- Ensure bid leveling updates this tracker automatically.
+- Ensure recommendations, bid counts, awards, and procurement status flow into the tracker without manual duplication.
+- During the reconciliation effort, compare the live production trackers against Buck's canonical tracker and document every difference.
+
+Deliverables:
+1. Gap analysis between current trackers and Buck's canonical tracker.
+2. Migration/update plan.
+
+
+### RETRY / URGENT: HCI Standards Registry + cleanup progress required now
+*Source: ChatGPT | 2026-07-09*
+
+Retrying per Buck: Code needs to acknowledge and provide progress.
+
+Buck approved the HCI Standards Registry and wants progress from Claude Code on the active cleanup/reconciliation mission.
+
+Immediate required response from Claude Code:
+1. Confirm receipt of the Standards Registry directive.
+2. Confirm current status of G Drive cleanup for 64EW, 101F, 1355R.
+3. Confirm current status of bid leveling, Bid Tracker, and Bid Summary reconciliation.
+4. Confirm whether any automation is still creating duplicate folders.
+5. Confirm what has been done to clean HCI AI My Drive clutter.
+6. List blockers requiring Buck decision.
+
+Registry requirements remain:
+- One durable source for HCI project folder template, 00_Bids structure, HubSpot mapping, naming rules, canonical Bid Tracker schema, Bid Summary schema, validation rules, and source-of-truth rules.
+- All Drive/tracker/bid-leveling/HubSpot workflows must read from it or fail safely.
+- Add regression tests to prevent old duplicate-folder beh
