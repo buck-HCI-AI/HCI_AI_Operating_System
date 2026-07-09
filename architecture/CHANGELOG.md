@@ -5,6 +5,39 @@
 
 ---
 
+## v4.7 — 2026-07-09 | n8n auto-push removal; systemic fabricated-data cleanup + permanent detectors
+
+**Trigger:** Buck, after the 246GW fabricated-data find: "fix the n8n workflows - push
+everything - how are we still finding false info - check everything - fix so this never
+happens again."
+
+- **n8n governance fix (not a patch):** AUTO-001/002/003 were all failing on an n8n
+  sandbox error ("fs is disallowed"). The underlying node code was worse than the
+  error: `require('fs')` + `execSync('git push origin main')` on an unattended daily
+  schedule — a direct violation of "git push always needs Buck's explicit approval."
+  The sandbox error was the only thing preventing an unattended auto-push from ever
+  firing. Removed the git logic entirely (replaced with a safe API log call via a
+  native HTTP Request node) — these workflows can no longer touch git at all.
+- **246GW fabrication, corrected scope:** deleted 44 fabricated bid_packages (verified
+  by content, approved by Buck). Also mistakenly deleted 56 historical_cost_records
+  believing they were downstream of the same fabrication — they were not (traced to
+  a coincidental ID-range overlap from an already-fixed, unrelated miner bug); told
+  Buck immediately. Found the bug's real blast radius (130 more corrupted rows,
+  system-wide) and **repaired** rather than deleted them — recovered the correct
+  bid_package_id from the source bid_entries data, zero information lost.
+- **Widened the search, found 5 more affected projects** from the same 2026-06-28
+  event: ASPN-MC/NEW/REM (documented synthetic templates — real differentiated bid
+  data, left alone as deliberate reference content) and 574 Johnson / 275 Sunnyside
+  (real monitored projects — 15 packages falsely marked "bid_received" with zero real
+  bids behind them, relabeled "not_started"; scope structure itself left intact).
+- **Two new permanent drift-check detectors** so this class of issue surfaces on its
+  own next session, not by someone happening to ask the right question:
+  `unbacked_bulk_bid_packages` (5+ bid_packages bulk-created with no HubSpot/Drive
+  backing) and `orphaned_historical_cost_fk` (historical_cost_records pointing at a
+  bid_package_id that doesn't resolve for that project).
+
+---
+
 ## v4.6 — 2026-07-08 | Bid-scan archive-folder contamination fix
 
 **Trigger:** Buck asked for a full read-everything audit of 64EW/101F/1355R bid
