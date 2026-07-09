@@ -4194,6 +4194,72 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Live-project set drift check errored: {e}"})
 
+    # 21. Bulk-inserted bid_packages with zero real backing - found 2026-07-08/09 when
+    #     Buck asked "where are you getting this information" about 246 Gallo Way: a
+    #     2026-06-28 handoff asked only to add 4 vendor names to a registry, but whatever
+    #     executed it fabricated 44 full bid_packages rows (incl. 19 "awarded") with no
+    #     hubspot_deal_id, no drive_bids extraction, and an empty Drive tracker behind any
+    #     of them. It sat 11 days feeding executive reports as if real contracts existed.
+    #     General signature: a batch of bid_packages created in the same instant, with no
+    #     link to HubSpot or Drive at all - a real bid pipeline never produces this shape
+    #     (bids arrive one at a time, over days, each tied to a source). Flags any project
+    #     with 5+ such rows so this class of issue surfaces on its own next time, not by
+    #     someone happening to ask the right question. Excludes _SYNTHETIC_TEMPLATE_CODES
+    #     (ASPN-MC/NEW/REM etc.) - checked 2026-07-09, their bulk-seeded packages have real
+    #     differentiated multi-bid competition (matching bid_entries with sensible dollar
+    #     progressions), consistent with deliberate benchmark/reference template data, not
+    #     accidental fabrication - unlike 246GW's, whose package names were literal document
+    #     title fragments with zero bid_entries behind any of them.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_code, p.name, bp.created_at::date as batch_date, count(*) c
+                    FROM bid_packages bp
+                    JOIN projects p ON p.id = bp.project_id
+                    WHERE bp.hubspot_deal_id IS NULL
+                      AND p.project_code NOT IN %s
+                      AND NOT EXISTS (SELECT 1 FROM drive_bids db WHERE db.project_id = bp.project_id)
+                    GROUP BY p.project_code, p.name, bp.created_at::date
+                    HAVING count(*) >= 5
+                """, (_SYNTHETIC_TEMPLATE_CODES,))
+                batches = cur.fetchall()
+                if batches:
+                    findings.append({
+                        "severity": "high",
+                        "category": "unbacked_bulk_bid_packages",
+                        "detail": f"{len(batches)} project/date batch(es) of 5+ bid_packages created in a single instant with zero HubSpot or Drive backing - real bids don't arrive this way, verify before trusting any dollar figures from these.",
+                        "items": [f"{r['project_code']} ({r['name']}): {r['c']} package(s) created {r['batch_date']}" for r in batches],
+                    })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Unbacked-bulk-bid-packages check errored: {e}"})
+
+    # 22. historical_cost_records with a bid_package_id that doesn't resolve to a real
+    #     package for that project - the exact corruption found 2026-07-09 from a
+    #     historical_cost_miner bug (fixed 2026-07-07, commit e4654df) that wrote
+    #     bid_entries.id into the bid_package_id column instead of the real bid_packages.id.
+    #     130 rows were found and repaired (not deleted - the real value was recoverable
+    #     via bid_entries) the same session; this check exists so any future recurrence
+    #     of the same shape (e.g. a similar miner bug) is caught automatically instead of
+    #     needing a human to notice a coincidental ID-range collision by hand.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT count(*) c FROM historical_cost_records hcr
+                    LEFT JOIN bid_packages bp ON bp.id = hcr.bid_package_id AND bp.project_id = hcr.project_id
+                    WHERE hcr.bid_package_id IS NOT NULL AND bp.id IS NULL
+                """)
+                orphans = cur.fetchone()["c"]
+                if orphans:
+                    findings.append({
+                        "severity": "high",
+                        "category": "orphaned_historical_cost_fk",
+                        "detail": f"{orphans} historical_cost_records row(s) have a bid_package_id that doesn't resolve to a real bid_packages row for that project - likely FK corruption from a miner bug, not real data. Check bid_entries for a recoverable real value before deleting (see 2026-07-09 repair).",
+                    })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Orphaned-historical-cost-FK check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
