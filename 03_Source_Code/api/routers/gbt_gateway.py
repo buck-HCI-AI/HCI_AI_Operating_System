@@ -1043,9 +1043,13 @@ def _gather_status_brief(code: str) -> dict:
                     "last_scan_at": str(scan_row["last_scan"]) if scan_row["last_scan"] else None,
                     "divisions_scanned": scan_row["divisions_scanned"],
                     "claude_fallback_extractions": scan_row["claude_fallback_count"],
-                    "note": "Verified clean via full subfolder sweep 2026-07-08 - 0 duplicate/stale level files "
-                            "remained after cleanup. Re-run the sweep before trusting this claim again after "
-                            "any future bulk Drive operation.",
+                    "note": "divisions_scanned counts divisions with at least one extracted bid in drive_bids, "
+                            "not total division folders in Drive - a low number here can mean bids just haven't "
+                            "come in yet for that division, not that scanning is broken. This field does not "
+                            "check for duplicate/stale files live (too slow for this endpoint's response-time "
+                            "budget) - a manual Drive sweep is the only way to confirm folder cleanliness at a "
+                            "point in time; treat any past 'verified clean' claim as stale the moment new files "
+                            "are added.",
                 }
             # Recent activity feed - last 5 days of daily logs + directives touching this project
             cur.execute("""

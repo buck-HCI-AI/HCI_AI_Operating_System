@@ -261,6 +261,15 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
         if "folder" not in div_folder.get("mimeType", ""):
             continue
         div_raw = div_folder["name"]
+        if re.match(r"^archive", div_raw, re.IGNORECASE):
+            # Found 2026-07-09: an "Archive_Pre_..." top-level folder (created
+            # during the 2026-07-08 cleanup pass) doesn't match _DIV_PREFIX_RE,
+            # so it fell into the "not a division" branch below and got treated
+            # as one anyway (division_num="Ar", division_name="Archive_Pre_...")
+            # - the walk then recursed into it and re-ingested superseded/old
+            # bid files as if they were current, live data. Skip archive
+            # folders outright; nothing under them should ever reach drive_bids.
+            continue
         m = _DIV_PREFIX_RE.match(div_raw)
         if m:
             division_num  = m.group(1).zfill(2) if len(m.group(1)) == 1 else m.group(1)

@@ -144,3 +144,8 @@
 | 2026-07-07 14:56 | _TEST_HOUZZ_ROUTE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/Houzz/Current/_TEST_HOUZZ_ROUTE.md |
 | 2026-07-07 14:56 | _TEST_AUTO_INJECT.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/HubSpot/Current/_TEST_AUTO_INJECT.md |
 | 2026-07-07 14:56 | _TEST_HOUZZ_ROUTE.md | browser_discovery | Browser Claude | PROCESSED | → Architecture/Platform_Intelligence/Houzz/Current/_TEST_HOUZZ_ROUTE.md |
+| 2026-07-08 17:45 | GBT_HANDOFF_2026-07-08_Field_PM_Management_Operating_Model_Repo_7adff3b4.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-08 20:40 | GBT_HANDOFF_2026-07-08_URGENT__Read_Telegram_and_repair_bid-lev_d627e324.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-08 22:15 | GBT_HANDOFF_2026-07-08_URGENT_FOLLOW-UP__Bid_leveling_still_inc_0bf94203.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-08 22:50 | GBT_HANDOFF_2026-07-08_URGENT__Demo_findings_-_investigate_broa_043b39b8.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-08 23:30 | GBT_HANDOFF_2026-07-08_Build_robust_Project_Status_GBT_summary__b7eb23fd.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |

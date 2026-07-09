@@ -1521,3 +1521,20 @@ are often in title-block graphics, not extractable running text).
    requiring OAuth/permission grants. Vendors/PMs need to upload the file directly to
    the chat, or the Drive doc needs to already be indexed via the ingestion pipeline
    above - there's no third path through the Actions platform.
+
+
+### Build robust Project Status GBT summary format + live-data response contract
+*Source: ChatGPT | 2026-07-08*
+
+Buck asked: “we need the proj stat gbt to give a more robust summary of jobs as we discussed - please build what this should look like and send to code.”
+
+Implement the PROJECT STATUS GBT ROBUST SUMMARY CONTRACT below for the Project Status / Field GBT response behavior and supporting gateway/data endpoints where needed.
+
+CONTEXT / PROBLEM
+- Buck is demoing/testing live and the Project Status GBT is giving summaries that are too thin and sometimes stale.
+- Current top-of-file LIVE_PROJECT_STATE tables are known stale in places and must NOT be used as the primary source for job summaries.
+- Use live project APIs/tables as source of truth: project PM console, deep dive, cost forecast, bids/procurement, schedule, risks/RFIs, recent logs, connector freshness, and drive/bid-folder status where available.
+- Active projects to fully support now: 64EW, 101F, 1355R. Also handle 246GW and monitor-only projects with an explicit “data coverage” note instead of pretending full detail.
+
+GOAL
+When Bu

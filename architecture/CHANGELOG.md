@@ -5,6 +5,36 @@
 
 ---
 
+## v4.6 — 2026-07-08 | Bid-scan archive-folder contamination fix
+
+**Trigger:** Buck asked for a full read-everything audit of 64EW/101F/1355R bid
+folders. Re-running a real (non-dry-run) Drive scan on all three to verify surfaced
+a live bug on 1355R.
+
+- Root cause: `walk_bid_folders()` in `services/bid_leveling/drive_bid_reader.py`
+  had no exclusion for the `Archive_Pre_2026-07-08` folder created during the
+  earlier cleanup pass. It fell through to the "unrecognized folder = division"
+  branch (`division_num="Ar"`), then recursed into it and extracted old superseded
+  bid-leveling tracker documents as if they were live vendor bid submissions —
+  18 fabricated `drive_bids` rows and 12 spurious `bid_packages` rows (garbage
+  names like `[SUPERSEDED - see...]`, fake dollar amounts pulled from tracker
+  docs) landed in the live data 1355R's status-brief and GPT reporting reads from.
+- Fixed: `walk_bid_folders()` now skips any top-level folder matching `^archive`
+  (case-insensitive) before it ever reaches the division-parsing logic.
+- Cleanup: deleted all 18 contaminated `drive_bids` rows and 12 spurious
+  `bid_packages` rows (verified by `created_at` timestamp + division_num='Ar'
+  marker — confirmed isolated to 1355R, 64EW/101F unaffected). Re-ran the scan
+  clean post-fix: 10 real files, 0 new, 0 errors, correct 22/76 received count
+  restored.
+- Also fixed same session: `_gather_status_brief`'s `bid_folder_status.note` had
+  a hardcoded string always claiming "verified clean, 0 duplicates" regardless of
+  actual state — replaced with an honest description of what the field actually
+  measures, since it was actively misleading at the moment this bug was found.
+- Archived one genuine byte-identical duplicate file on 101F (confirmed via MD5
+  match before moving, not deleted — moved to that project's own Archive folder).
+
+---
+
 ## v4.5 — 2026-07-08 | Live-project write scope guard (ADR-017)
 
 **Trigger:** Buck found 120 `houzz_daily_logs` rows written to 6 reference-status
