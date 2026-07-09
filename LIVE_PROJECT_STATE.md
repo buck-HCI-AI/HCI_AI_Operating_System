@@ -3,14 +3,39 @@
 
 **Organization:** Hendrickson Construction, Inc. (owned by Chris Hendrickson)
 **Owner:** @buck-HCI-AI (Buck Adams) — PM & Superintendent at Hendrickson Construction; owner/operator of HCI-AI, this repository
-**Last Updated:** 2026-07-08T01:18 MST
-**Updated By:** Claude Code — connector/email-safety hardening, bid-leveling Drive/Sheet fixes, GBT async plan-review fix (this session). See handoff block below.
+**Last Updated:** 2026-07-09T05:10 UTC (2026-07-08 11:10 PM MT)
+**Updated By:** Claude Code — SYSTEM WIDE DIRECTIVE filed permanently, n8n governance fix, systemic fabricated-data cleanup (246GW + 5 other projects), analyzePlanReview verified end-to-end from live GBT, approval-queue/project-table refresh below. See handoff block below.
 **Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
 > **Update Protocol:** Any agent may commit factual, observable updates to this file.
 > Always append — never remove history. Tag significant changes with `[STATE CHANGE]`.
 > Human owner is the final authority on all state decisions.
+
+---
+
+## [STATE CHANGE 2026-07-09] Live tables refreshed — the "Live Production Projects", "Approval Queue", and "ROI" tables below (dated 06-26 through 07-02) were stale and are SUPERSEDED by this block. Do not read past this block for current bid/health/approval numbers — read here first.
+
+**Verified directly against the live database/API 2026-07-09 05:05 UTC, not copied from any prior claim:**
+
+### Live Production Projects (current, verified)
+| Code | Project | Health | Bid Pkgs | Pkgs w/ No Bids | Open Issues | Schedule % Complete |
+|---|---|---|---|---|---|---|
+| 64EW | 64 Eastwood | 🟡 On Track, Watching | 24 | 16 | 2 | 0% |
+| 101F | 101 Francis | 🟡 Needs Attention | 42 | 10 | 2 | 1.8% |
+| 1355R | 1355 Riverside | 🟡 On Track, Watching | 76 | 22 | 4 | 0% |
+
+**246GW is explicitly NOT a live production project** (see ADR-017, corrected 2026-07-08 — it's a pilot candidate, not live/write-authorized). It previously showed 44 bid_packages and GREEN health in the stale table above — that data was fabricated (traced to an over-executed 2026-06-28 handoff, see [`architecture/SYSTEM_WIDE_DIRECTIVE.md`](architecture/SYSTEM_WIDE_DIRECTIVE.md) and CHANGELOG v4.7). Deleted 2026-07-08/09. 246GW currently shows 0 bid_packages — correct, since no real bidding has started on this project.
+
+### Approval Queue (current, verified via `GET /api/v1/services/approval-queue/items`)
+**Total:** 50 items | **Pending:** 16 | **Executed:** 34
+
+All 16 pending items are 64 Eastwood bid-leveling Excel Drive-upload approvals (divisions 00, 01-09, 11, 16, 26, 31-33), created in a single batch 2026-07-08 22:01 UTC. 101F and 1355R's equivalent batches already executed. The "11 items, 9 pending" figure in the stale table below (dated 06-26) and the "~57 pending" figure cited in a same-day audit earlier tonight were both wrong — neither reflected the live queue at check time.
+
+### n8n
+69 total workflows, 57 active (verified via n8n API 2026-07-09). AUTO-001/002/003 were failing on an n8n sandbox restriction that also masked a real governance issue — see SYSTEM_WIDE_DIRECTIVE / CHANGELOG v4.7.
+
+**Not refreshed this pass (flagging honestly rather than guessing):** the ROI table below (dated 2026-06-26) was not recomputed — doing so requires a real mining/aggregation pass, not a copy-paste, and wasn't run this session. Treat those ROI numbers as historical, not current, until someone runs that calculation fresh.
 
 ---
 
