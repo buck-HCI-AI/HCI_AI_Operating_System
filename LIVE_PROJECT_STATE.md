@@ -14,6 +14,24 @@
 
 ---
 
+## [STATE CHANGE 2026-07-09 morning] Bid-leveling pipeline: 3 real bugs found and fixed, all 3 active projects regenerated clean and verified
+
+Buck caught real defects in the generated bid-leveling Excel files after they'd been sitting unreviewed: outbound SOW/bid-email-template documents were listed as vendor bids, and Google Docs/Sheets-sourced bids showed a fake "Extracted from {filename}" placeholder instead of real content. Root-caused and fixed in `services/bid_leveling/drive_bid_reader.py` and `hubspot_bid_sync.py` (see [[feedback_bid_leveling_quality_drift]] for the full incident and standing lesson):
+
+1. **SOW/template contamination** — the Drive-folder walker had no filename filter distinguishing outbound HCI documents from real vendor bid responses. Added `_is_outbound_not_a_bid()`. Purged 29 already-contaminated `drive_bids` rows across 64EW/101F/1355R.
+2. **Fake scope summaries** — `extract_bid_from_text()` (the Docs/Sheets fallback path only — PDF extraction via Gemini/Claude was already reading real content correctly) unconditionally returned a filename echo. Fixed to pull a real text excerpt.
+3. **1355 Riverside's `bid_folder_id` pointed at a subfolder** ("Division 7 - Thermal & Moisture") instead of the real `00_Bids` root — every scan for months only ever walked 1 of 17 divisions. Fixed the pointer; rescan went from 9 known bid files to **190 real files found, 184 now in the database**.
+
+Also fixed: `hubspot_bid_sync.py`'s `find_division_deals()` only matched an em-dash deal-name separator ("101 Francis — 17 HVAC"), silently missing 64 Eastwood's hyphen-separated deals ("64 Eastwood - 04 Masonry") — 0 deals checked, no error surfaced. Now matches em-dash, en-dash, or hyphen; 64EW now finds 13 real deals. Real remaining blocker (not code-fixable): HubSpot's Private App is missing the `crm.objects.emails.read` scope, so attachment content still can't be pulled — needs Buck's grant in HubSpot Settings. Per Buck's direction, this is a flag-only check going forward (Drive is the true source of truth for leveling), not a blocker.
+
+Regenerated and spot-verified (opened the actual Excel file, not just the API response) clean leveling files for all 18 divisions of 1355R, 11 of 101F, 16 of 64EW. Example verified output: 1355R Div 03 Concrete shows 4 real vendors (TJ/High-Con/All Valley/GS Concrete) with real 2025-2026 dates and a real recommendation; 101F Div 07 shows CQ Roofing with real extracted scope detail and a real date.
+
+**Process note:** mid-fix, mistakenly called the generic `/approval-queue/items/{id}/execute` bookkeeping endpoint instead of the actual `/bid-leveling/projects/{id}/execute-upload/{id}` endpoint that performs the real Drive write — this would have silently marked 16 files "executed" with nothing actually written. Caught by checking real Drive `modifiedTime` against the clock rather than trusting the API status; reverted and redone correctly.
+
+API server was restarted once mid-session to pick up the code fixes (no `--reload` flag configured) — brief downtime, no data impact.
+
+---
+
 ## [STATE CHANGE 2026-07-09 very late night] HCI AI Drive cleared of active-job content — new permanent system-wide rule closed out with evidence
 
 Buck found real drift: job data (bids, SOWs, project intelligence briefs, bid-leveling trackers) for all 3 active projects was duplicated inside the "HCI AI - Master" Google Drive folder instead of living only in each project's real Shared Drive — including a 1355 Riverside spreadsheet a prior agent had already labeled "[CANONICAL - use this one]" sitting next to one labeled "[DUPLICATE - verify against other copy before using]," flagged but never resolved. New permanent rule filed in CLAUDE.md: **HCI AI Drive is system-only — job source of truth (active or monitored) is always the job's own Shared Drive, HubSpot, and Houzz.** 246 Gallo Way is the one explicit, temporary exception (no dedicated Shared Drive exists for it yet).
