@@ -409,7 +409,8 @@ def _vendor_name_from_filename(filename: str) -> str:
 
 _NON_BID_FILENAME_RE = re.compile(
     r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
-    r"email templates?|division index|bid instructions?)\b|"
+    r"email templates?|division index|bid instructions?|"
+    r"bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\b|"
     r"^(archived?|old|superseded)\b", re.IGNORECASE
 )
 

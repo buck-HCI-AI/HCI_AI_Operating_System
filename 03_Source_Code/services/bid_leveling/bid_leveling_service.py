@@ -132,7 +132,7 @@ def _drive_list(folder_id: str, token: str) -> list:
     """Lists files/folders in a Drive folder (supports Shared/Team Drives)."""
     params = urllib.parse.urlencode({
         "q": f"'{folder_id}' in parents and trashed=false",
-        "fields": "files(id,name,mimeType)",
+        "fields": "files(id,name,mimeType,modifiedTime)",
         "pageSize": 200,
         "supportsAllDrives": "true",
         "includeItemsFromAllDrives": "true",
@@ -210,6 +210,30 @@ def _drive_find_file(folder_id: str, name: str, token: str) -> Optional[str]:
         if item["name"] == name:
             return item["id"]
     return None
+
+
+def _drive_find_bid_leveling_file(folder_id: str, project_name: str, div_num: str, token: str) -> Optional[str]:
+    """Finds an existing bid-leveling Excel for this division by PREFIX
+    (project + Div{num}_), not exact full filename match. Found live
+    2026-07-09: the filename embeds the division NAME
+    (f"{project}_Div{num}_{name}_Bid_Leveling.xlsx"), and that name can come
+    from either the legacy Sheet tracker or the Drive-extracted division
+    folder depending on which data source populated first - a run before a
+    code fix used the Sheet name, a run after used the Drive name, and
+    since they differ slightly ("Site Work" vs "Site Work / Exterior
+    Improvements"), exact-match _drive_find_file() never found the earlier
+    file and silently created a brand new one every time the name drifted,
+    instead of updating the same file. Matching on the stable
+    "{project}_Div{num}_" prefix survives any division-name-source drift."""
+    items = _drive_list(folder_id, token)
+    prefix = f"{project_name.replace(' ', '_')}_Div{div_num}_"
+    matches = [it for it in items if it["name"].startswith(prefix) and it["name"].endswith("_Bid_Leveling.xlsx")]
+    if not matches:
+        return None
+    # If more than one already exists (drift already happened before this fix),
+    # prefer the most recently modified and let the caller know there's cleanup to do.
+    matches.sort(key=lambda it: it.get("modifiedTime", ""), reverse=True)
+    return matches[0]["id"]
 
 
 class BidLevelingService:
@@ -844,16 +868,25 @@ class BidLevelingService:
         token_drive  = get_google_token("drive")
 
         # ── Step 1: Scan Drive for new bids ──────────────────────────────────
+        # scan_drive=False used to skip BOTH the slow Drive re-walk/extraction
+        # AND the (fast) read of already-extracted drive_bids rows from the DB,
+        # since both were gated by the same flag - found live 2026-07-09 when a
+        # scan_drive=False call (meant only to skip the slow ~190-file re-scan
+        # on a project with an already-current database) silently fell back to
+        # the stale legacy Google Sheets tracker for every division instead of
+        # the clean, already-extracted Drive data, because drive_bids_by_div
+        # stayed {}. The DB read is cheap; only the Drive walk/AI-extraction is
+        # slow. Now the read always runs; only the walk is gated.
         drive_scan_result = None
         drive_bids_by_div = {}
-        if config.get("bid_folder_id") and scan_drive:
+        leveling_summary = {}
+        if config.get("bid_folder_id"):
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             from drive_bid_reader import scan_project_bids, read_drive_bids, get_leveling_summary
-            drive_scan_result  = scan_project_bids(project_id, dry_run=dry_run)
+            if scan_drive:
+                drive_scan_result = scan_project_bids(project_id, dry_run=dry_run)
             drive_bids_by_div  = read_drive_bids(project_id, latest_only=True)
             leveling_summary   = get_leveling_summary(project_id)
-        else:
-            leveling_summary = {}
 
         # ── Step 2: Read Google Sheet data ───────────────────────────────────
         # Read all data sources
@@ -1000,6 +1033,8 @@ class BidLevelingService:
                         proposed_payload={
                             "folder_id":  folder_id,
                             "filename":   filename,
+                            "project_name": project_name,
+                            "div_num":    div_num,
                             "content_b64": base64.b64encode(content).decode(),
                             "mime_type":  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         },
@@ -1113,8 +1148,19 @@ class BidLevelingService:
         mime_type  = payload.get("mime_type",
                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-        # Check if file already exists (update vs create)
-        existing_id = _drive_find_file(folder_id, filename, token)
+        # Check if file already exists (update vs create). Prefer the stable
+        # project+division-number prefix match over an exact filename match -
+        # the filename embeds the division NAME, which can drift between runs
+        # depending on data source (Sheet vs Drive), which used to cause a
+        # silent duplicate file every time the name drifted instead of an
+        # update to the same file. Fall back to exact match for older queue
+        # items that predate the project_name/div_num payload fields.
+        project_name = payload.get("project_name")
+        div_num      = payload.get("div_num")
+        if project_name and div_num:
+            existing_id = _drive_find_bid_leveling_file(folder_id, project_name, div_num, token)
+        else:
+            existing_id = _drive_find_file(folder_id, filename, token)
         if existing_id:
             file_id = _drive_update_file(existing_id, content, mime_type, token)
             action = "updated"
