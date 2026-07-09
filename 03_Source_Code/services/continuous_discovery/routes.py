@@ -100,10 +100,44 @@ def detect_one(connector_name: str):
     return detect_changes(connector_name)
 
 
+_AUTO_HEAL_CAPABLE = {"hubspot"}  # houzz has no self-fetching sync() - no official API exists to pull from
+
+
+def _auto_heal_if_stale(r: dict) -> dict:
+    """
+    Found 2026-07-08 (Buck: "what needs fixing right now"): this workflow has
+    been running hourly, correctly detecting HubSpot as STALE, correctly firing
+    a standing alert every time - and then doing nothing about it. The alert
+    sat unactioned for 33+ hours until manually checked. detect_changes() was
+    never wired to actually fix what it detects.
+
+    A HubSpot sync is a pure read from HubSpot's own API into our local mirror
+    tables - no write-back to HubSpot, no external commitment, same safety
+    class as the existing n8n SQLITE_IOERR self-heal (/gateway/admin/self-heal
+    - container-level infra only, never business data). Auto-triggering it here
+    is that same pattern applied to connector staleness: safe to auto-fix,
+    still visibly alerted (not silent), re-detects after to log the real
+    outcome rather than assuming success.
+    """
+    if r.get("detection_status") != "STALE" or r.get("connector") not in _AUTO_HEAL_CAPABLE:
+        return r
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "connectors"))
+        from hubspot_connector import HubSpotConnector
+        c = HubSpotConnector(dry_run=False)
+        heal_result = c.sync()
+        r["auto_heal"] = {"attempted": True, "result": heal_result}
+        return detect_changes(r["connector"]) | {"auto_heal": r["auto_heal"]}
+    except Exception as e:
+        r["auto_heal"] = {"attempted": True, "error": str(e)}
+        return r
+
+
 @router.post("/scan-and-notify")
 def scan_and_notify(connector_name: str = Query(None, description="Connector to scan (omit for all)")):
     """
-    Run change detection and log result to platform_events.
+    Run change detection, auto-heal known-safe staleness (HubSpot only - see
+    _auto_heal_if_stale), and log the result to platform_events.
     Used by n8n AUTO-CONTINUOUS-DISCOVERY workflow.
     """
     if connector_name:
@@ -111,10 +145,11 @@ def scan_and_notify(connector_name: str = Query(None, description="Connector to 
         if connector_name not in valid:
             raise HTTPException(400, f"Unknown connector '{connector_name}'")
         result = detect_changes(connector_name)
+        result = _auto_heal_if_stale(result)
         results = [result]
     else:
         result = detect_all_connectors()
-        results = result.get("connectors", [])
+        results = [_auto_heal_if_stale(c) for c in result.get("connectors", [])]
 
     for r in results:
         log_discovery_scan(
