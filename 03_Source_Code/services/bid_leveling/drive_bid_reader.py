@@ -228,6 +228,62 @@ def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
 
 
 _DIV_PREFIX_RE = re.compile(r"^(\d+)[_\s-]+(.+)$")
+_TRACKER_KEYWORDS = ("level", "tracker", "summary", "audit")
+
+
+def check_duplicate_tracker_files(bid_folder_id: str, token: str) -> list:
+    """
+    Found 2026-07-09: Buck kept reporting he still saw old bid-level files and
+    duplicate summaries in Drive after a "repair complete" claim - a manual
+    sweep found two real cases (1355R's 13_Insulation and 14_Roofing) where an
+    old tracker/leveling artifact (a superseded native-Sheet version, a stray
+    .url shortcut) sat right next to the current .xlsx tracker. Prior cleanup
+    passes checked division-root loose files for duplicates but never made
+    this check a standing, automatic part of every scan - it only ran because
+    someone manually looked. Wiring it into scan_project_bids() so it runs on
+    every routine scan (mining engine, manual triggers) instead of requiring
+    a human to notice the same thing again. Does not delete anything - flags
+    for review, same as every other data-integrity check in this codebase.
+    """
+    findings = []
+    div_folders = _drive_list(bid_folder_id, token)
+    for div_folder in div_folders:
+        if "folder" not in div_folder.get("mimeType", ""):
+            continue
+        if re.match(r"^archive", div_folder["name"], re.IGNORECASE):
+            continue
+        items = _drive_list(div_folder["id"], token)
+        loose_docs = [it for it in items if "folder" not in it.get("mimeType", "")]
+        tracker_like = [it for it in loose_docs
+                         if any(k in it["name"].lower() for k in _TRACKER_KEYWORDS)]
+        if len(tracker_like) > 1:
+            findings.append({
+                "division": div_folder["name"],
+                "files": [{"name": f["name"], "modified": f.get("modifiedTime"), "id": f["id"]} for f in tracker_like],
+            })
+    return findings
+
+
+def _log_stale_tracker_alert(project_id: int, project_name: str, findings: list) -> None:
+    """Best-effort standing alert - never let this break the actual scan."""
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                title = f"Duplicate bid-tracker files found: {project_name}"
+                cur.execute(
+                    "SELECT id FROM ai_messages WHERE title = %s AND status NOT IN ('COMPLETE','REJECTED') LIMIT 1",
+                    (title,),
+                )
+                if cur.fetchone():
+                    return
+                cur.execute("""
+                    INSERT INTO ai_messages
+                        (source_agent, target_agent, message_type, title, body, status, priority, project_code)
+                    VALUES ('bid_leveling_scan', 'buck', 'status_update', %s, %s, 'ISSUED', 'medium', %s)
+                """, (title, json.dumps(findings, default=str), project_name))
+            conn.commit()
+    except Exception:
+        pass
 
 
 def walk_bid_folders(bid_folder_id: str, token: str) -> list:
@@ -562,6 +618,10 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
             """, (project_id,))
         conn.commit()
 
+    stale_trackers = check_duplicate_tracker_files(proj["bid_folder_id"], token)
+    if stale_trackers:
+        _log_stale_tracker_alert(project_id, proj["name"], stale_trackers)
+
     return {
         "project":    proj["name"],
         "project_id": project_id,
@@ -570,6 +630,7 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
         "already_known": skipped,
         "new_bids":      upserted,
         "errors":        errors,
+        "duplicate_tracker_files": stale_trackers,
     }
 
 
