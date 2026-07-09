@@ -370,8 +370,22 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
             division_num  = m.group(1).zfill(2) if len(m.group(1)) == 1 else m.group(1)
             division_name = m.group(2).replace("_", " ").strip()
         else:
-            division_num  = div_raw[:2]
-            division_name = div_raw
+            # 1355 Riverside uses "Division N - Name" instead of the "0N_Name"
+            # convention other projects follow - _DIV_PREFIX_RE doesn't match
+            # that either. Try it before giving up.
+            m2 = re.match(r"^Division\s+(\d+)\s*[-–—]?\s*(.*)$", div_raw, re.IGNORECASE)
+            if m2:
+                division_num  = m2.group(1).zfill(2) if len(m2.group(1)) == 1 else m2.group(1)
+                division_name = m2.group(2).strip() or div_raw
+            else:
+                # Found live 2026-07-09: folders that are neither pattern - "BId
+                # Package to subs", "Bid Leveling Summaries", "wrong job files" -
+                # were falling back to div_raw[:2] as a fake division_num ("BI",
+                # "Bi", "wr"), producing garbage "Division BI"/"Division wr"
+                # leveling files with real bid data mixed in under a nonsense
+                # division. If a folder isn't recognizably a division by either
+                # naming convention, skip it - don't invent a division code.
+                continue
 
         results.extend(_walk_vendor_level(div_folder["id"], token, division_num, division_name, depth=0))
     return results
@@ -395,7 +409,8 @@ def _vendor_name_from_filename(filename: str) -> str:
 
 _NON_BID_FILENAME_RE = re.compile(
     r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
-    r"email templates?|division index|bid instructions?)\b", re.IGNORECASE
+    r"email templates?|division index|bid instructions?)\b|"
+    r"^(archived?|old|superseded)\b", re.IGNORECASE
 )
 
 
@@ -434,6 +449,16 @@ def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_n
 
     for entry in folders:
         name = entry["name"]
+        # A folder whose OWN name matches archive/old/superseded gets skipped
+        # entirely, not walked as a vendor - found live 2026-07-09: an
+        # "Archive_Pre_2026-07-08" folder (containing genuinely superseded SOW
+        # docs moved there during cleanup) had no subfolders of its own, so it
+        # fell through to being treated as a vendor named "Archive_Pre_2026-07-08"
+        # with its contents as that "vendor's" bids. The existing archive check
+        # below only excludes archive SUBfolders from disqualifying their
+        # PARENT - it never checked the current folder's own name.
+        if re.match(r"^(archived?|old|superseded)\b", name, re.IGNORECASE):
+            continue
         sub_entries = _drive_list(entry["id"], token)
         # "Archived"/"Old"/"Superseded" subfolders don't disqualify a folder from
         # being a real leaf vendor folder - found live: "Accurate Insulation/"

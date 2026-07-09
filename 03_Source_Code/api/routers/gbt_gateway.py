@@ -3466,6 +3466,28 @@ def system_drift_check():
                         "detail": f"{len(stale_msgs)} directive(s) STALE for 24h+, nobody has acted on them",
                         "items": [f"#{r['id']} to {r['target_agent']}: {r['title']} (since {r['created_at'].date()})" for r in stale_msgs],
                     })
+
+                # 2b. drive_bids rows that are outbound documents (SOW, bid email
+                #     templates, bid requests) misfiled as vendor bids - the exact
+                #     pattern Buck caught live 2026-07-09 in generated leveling
+                #     sheets, present since the feature was built with no check
+                #     ever catching it. See services/bid_leveling/drive_bid_reader.py
+                #     _is_outbound_not_a_bid() for the filter that now prevents new
+                #     ones; this check catches any that slip through or predate it.
+                cur.execute("""
+                    SELECT project_id, vendor_name, file_name
+                    FROM drive_bids
+                    WHERE vendor_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?)\\y'
+                       OR file_name ~* '\\y(SOW|bid email template|bid request|bid package set|email templates?|division index|bid instructions?)\\y'
+                """)
+                sow_contaminated = cur.fetchall()
+                if sow_contaminated:
+                    findings.append({
+                        "severity": "high",
+                        "category": "bid_leveling_sow_contamination",
+                        "detail": f"{len(sow_contaminated)} drive_bids row(s) are outbound SOW/template documents misfiled as vendor bids - will appear in generated leveling sheets as fake vendors",
+                        "items": [f"project {r['project_id']}: {r['vendor_name']}" for r in sow_contaminated[:15]],
+                    })
     except Exception as e:
         findings.append({"severity": "high", "category": "check_failed", "detail": f"DB checks errored: {e}"})
 
