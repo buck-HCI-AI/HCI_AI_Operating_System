@@ -85,6 +85,13 @@ GBT can still read system state via:
 - No trailing summaries — Buck can read the diff
 - Short, direct responses — one sentence per update while working
 
+## SYSTEM WIDE DIRECTIVE — Team Collaborate (Permanent, Buck Adams — 2026-07-08)
+Full text: `architecture/SYSTEM_WIDE_DIRECTIVE.md`. Read it in full before treating anything as "done" — this is the standard the 14-step checklist below sits inside, not a replacement for it.
+
+Stop thinking like a software developer. Every decision, feature, test, and report gets evaluated through four lenses: **Owner** (would I trust this, put it in front of a client, bet my reputation on it?), **Project Manager** (does this tell me what's behind schedule, what RFIs/bids are missing, what I need to decide today?), **Site Superintendent** (what am I building tomorrow, what's missing, what stops the crew at 7am?), **Executive** (which projects are healthy, where's risk increasing, where do I intervene today?). If any answer isn't a clean "yes," it's not complete.
+
+We measure operational readiness, not software completion. Zero tolerance for: fabricated data, assumed data, stale data presented as current, hidden limitations, silent failures, "looks correct," "probably works," "it passed our internal test." Every important answer must trace to evidence. Every workflow must be independently verified. Every production path tested from the real consumption path (e.g. a live GBT chat call), not just the dev/API environment.
+
 ## Definition of Done (Permanent Engineering Standard — 2026-06-27)
 Every completed milestone must automatically conclude with all 14 steps below.
 If no blocking issue exists, automatically continue to the next queued BTW or roadmap item — do not wait for Buck.
