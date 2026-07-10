@@ -19,7 +19,40 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~16:07 MT, by Claude Code — GBT RECONNECTED, RFI 917 REPAIRED, AUTO-004+TITLE FIXED, 275SS AWAITING BUCK
+2026-07-10, ~16:10 MT, by Claude Code — DRIFT-CHECK 5→3, HOLDING FOR BUCK/BC ON 2 REMAINING
+
+## Cycle 4 (2026-07-10 ~16:08-16:10 MT) — drift-check detector fix, session wrap
+Fixed the `fabricated_commit_claim` detector false-positiving on ai_message
+#335 (a 2026-07-02 peer-review report that already caught+resolved that
+exact issue - flagging it every run since was noise). Skip when the text
+around a bad hash already says it doesn't exist/was fabricated. Verified
+both directions: #335 no longer flagged, a freshly-inserted genuine test
+fabrication still is (inserted, confirmed caught, deleted immediately).
+Commit `d59d959`.
+
+**Drift-check: 5→3 findings this session, all explained:**
+1. `n8n_workflow_consistently_failing` (AUTO-004) - already fixed+verified
+   this cycle, self-clears after tomorrow's real 3am run.
+2. `unbacked_bulk_bid_packages` (275SS) - diagnosed, not touched, question
+   sent to Buck ~16:05 MT, unanswered as of this checkpoint. 574J turned out
+   NOT to be the same issue (real vendor+dollar data on all 9 packages,
+   likely a genuine bulk import / drift-check false positive - no action).
+3. `connector_stale` (Houzz, project 3218059) - confirmed a real manual-
+   extraction process gap (there's a whole `AUTO-HOUZZ-REMINDER` workflow
+   whose job is nudging someone to run it daily, hasn't happened in ~2
+   weeks), not a code bug - nothing to fix in code.
+
+**8 commits today:** `bdee17d` `4fd5e91` `98048b1` `a721328` `f9dca53`
+`c9509b8` `55e5972` `929fc56` `d59d959` (checkpoint-only commits omitted).
+Every one independently verified against real data/real failing scenarios
+before being called done, not just written and claimed.
+
+**Currently holding** - everything unblocked this session is done. Waiting
+on: (a) Buck's answer on 275SS (monitored project, won't touch without his
+yes), (b) BC's actual sign-off on the email-draft schema question (asked via
+ai_messages id 731, BC is chat-based and only responds when a session is
+open - can't force it). Not polling aggressively; will pick up immediately
+if either answers or a new GBT handoff arrives.
 
 ## Cycle 3 (2026-07-10 ~15:45-16:07 MT) — GBT reconnect, RFI verification, more fixes
 - **GBT reconnected live** (Buck authorized driving the browser for this specific
