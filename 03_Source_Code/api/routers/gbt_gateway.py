@@ -89,6 +89,7 @@ SERVICE_REGISTRY = [
     {"name": "agent-handoff",       "path": "/gateway/agent/handoff",            "description": "POST a platform intelligence document"},
     {"name": "field-note",          "path": "/gateway/field/note",               "description": "POST quick field note from SS/PM (direct write, no approval)"},
     {"name": "field-rfi",           "path": "/gateway/field/rfi",                "description": "POST new RFI from field (Gap11)"},
+    {"name": "email-draft",         "path": "/gateway/email/draft",              "description": "POST general-purpose Outlook draft (subject, body_html, to_email?, to_name?) - for bid solicitations and other non-RFI outbound email; gates on is_onboarded and self-BCCs Buck, draft-only, never auto-sent"},
     {"name": "field-daily-report",  "path": "/gateway/field/daily-report",       "description": "POST daily field report from SS (direct write)"},
     {"name": "field-open-items",    "path": "/gateway/field/open-items",         "description": "GET all open items for a project (RFIs+risks+flags)"},
     {"name": "field-daily-log-fmt", "path": "/gateway/field/daily-log-formatted","description": "GET Houzz-ready formatted daily log for a project+date"},
@@ -4962,6 +4963,52 @@ def field_process_rfi(rfi_id: int, req: RFIProcessPayload):
         return _response(f"/field/rfi/{rfi_id}/process", result, start=t0)
     except Exception as e:
         return _response(f"/field/rfi/{rfi_id}/process", {}, errors=[str(e)], start=t0)
+
+
+class EmailDraftPayload(BaseModel):
+    subject: str
+    body_html: str
+    to_email: Optional[str] = None
+    to_name: Optional[str] = None
+    project_code: Optional[str] = None
+
+
+@router.post("/email/draft")
+def create_email_draft(req: EmailDraftPayload):
+    """
+    General-purpose Outlook draft creation for Field GPT - closes the gap it
+    self-reported 2026-07-10 (see 'Email Draft for Bids' chat): it could
+    generate bid-solicitation email text but had no way to actually land it
+    in Buck's real Outlook Drafts folder, only /field/rfi/{id}/process
+    existed and that's RFI-specific (generates+attaches the RFI Word doc,
+    which a bid-solicitation email doesn't need). Same safety rules as the
+    RFI path: is_onboarded gate on the recipient, self-BCC to Buck when the
+    recipient isn't him, draft-only (never auto-sent) per the permanent
+    outbound-messaging rule.
+    """
+    t0 = time.time()
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
+        import rfi_workflow
+        from microsoft_graph import create_draft
+
+        gate = rfi_workflow._resolve_recipient_gate(req.to_email)
+        defaulted_to_buck = not req.to_email or gate["redirected"]
+        draft_to_email = gate["email"]
+        draft_to_name = "Buck Adams" if defaulted_to_buck else (req.to_name or req.to_email)
+        bcc = None if draft_to_email.lower() == rfi_workflow.BUCK_EMAIL else [("Buck Adams", rfi_workflow.BUCK_EMAIL)]
+
+        draft = create_draft(req.subject, req.body_html, [(draft_to_name, draft_to_email)], bcc=bcc)
+        result = {
+            "draft_id": draft["id"], "to": draft_to_email, "bcc_buck": bcc is not None,
+            "defaulted_to_buck": defaulted_to_buck, "redirect_reason": gate["reason"],
+        }
+        _log("/email/draft", "field", req.project_code or "", "draft_created",
+             round((time.time()-t0)*1000), str(uuid.uuid4())[:8], req.subject[:60])
+        return _response("/email/draft", result, start=t0)
+    except Exception as e:
+        return _response("/email/draft", {}, errors=[str(e)], start=t0)
 
 
 class PlanReviewPayload(BaseModel):
