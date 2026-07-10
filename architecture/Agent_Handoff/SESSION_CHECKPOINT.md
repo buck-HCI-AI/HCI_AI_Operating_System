@@ -19,13 +19,22 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~14:05 MT, by Claude Code
+2026-07-10, ~14:26 MT, by Claude Code
 
 ## Active mission
-Restart/recovery system stabilization (Buck's explicit pre-departure priority,
-selected via AskUserQuestion over Role Onboarding dry-run and open drift-check
-findings). Infra self-heal layer shipped this cycle (ADR-018) — see below for
-what's still open in GBT's fuller spec.
+Restart/recovery ADR-018 + checkpoint file shipped and committed. Reverting to
+default active mission: Role Onboarding conversational flow dry-run on Buck
+("test on me first") — picked as default next step since Buck's 1:05 PM MT
+Telegram message ("those 2 things are the priority") is ambiguous about which
+2 items he means; asked him to clarify, not blocking on the answer.
+
+## Test-data cleanup this cycle (per feedback_test_data_auto_delete, applied not just flagged)
+Deleted on discovery, no approval wait needed per Buck's standing rule: "Jane PM"
+leftover test row from platform_users; 5 void test RFIs + 1 test event from
+1355R's real tables (genuine RFI 917 left untouched). Re-ran drift-check —
+down to 4 real findings: 2 failing n8n workflows (AUTO-004, AUTO-HANDOFF-PROCESSOR),
+23 unbacked bulk bid_packages on 275SS/574J (246GW-fabrication-shaped, unresolved,
+queued pending Buck's priority call), 20 stale Houzz connector rows.
 
 ## Safe to resume automatically?
 **Yes.** No irreversible action was mid-flight when this was last written. All
@@ -53,27 +62,33 @@ straight to "Next action" below with no re-briefing needed.
   `POST /gateway/users/onboard` endpoint, but the flow itself not yet built.
 
 ## Last-processed coordination state
+- Telegram: acked through message_id 1465 (2026-07-10 1:21 PM MT) via
+  `POST /gateway/telegram/ack`. Replied asking Buck to clarify "those 2 things
+  are the priority" (1463, 1:05 PM MT) — genuinely ambiguous, don't guess.
+  Also addressed 1464 (no visible Code/GBT book-vetting coms) — pointed to the
+  last confirmed Operating Book audit (CH01-07, complete, no gaps).
+- Applied Buck's new standing rule (2026-07-10): sign shared-channel messages
+  by agent name ("Code:"/"GBT:"/"BC:") — see [[feedback_agent_identity_signing]].
 - Last GBT handoff read from `architecture/Agent_Handoff/Inbox/`: none pending
   as of this checkpoint — most recent items already in `Processed/`.
-- Last ntfy/Telegram send: 2026-07-10 ~14:01 MT, "Restart/recovery: infra layer
-  done, evidence attached" (restart/recovery milestone report to hci-executive).
-- Git HEAD: `150dcb5` ("Extend monitor.sh with ngrok/mcp-server checks + Docker
-  self-heal; fix drive-watcher path bug"), branch `main`, uncommitted changes
-  exist from earlier this session (gbt_gateway.py, microsoft_graph.py,
-  bid_leveling_service.py, CLAUDE.md, rfi_workflow.py — untouched this cycle,
-  not yet reviewed for a commit).
+- Last ntfy/Telegram send: 2026-07-10 ~2:25 PM MT, identity-signed reply re:
+  the 3 Telegram messages above.
+- Git HEAD: `51922b0` (adds SESSION_CHECKPOINT.md, commits pending 10-min
+  alerting rule), branch `main`. Prior commit `150dcb5` = monitor.sh + drive-
+  watcher fix. Older uncommitted changes still sitting in the working tree
+  from earlier this session (gbt_gateway.py, microsoft_graph.py,
+  bid_leveling_service.py, rfi_workflow.py) — untouched this cycle, not yet
+  reviewed for a commit.
 
 ## Next action
-Ask Buck (or, if genuinely no blocking issue and time permits, proceed
-autonomously per Definition of Done) whether to build the remaining pieces of
-GBT's 8-point restart-recovery spec: per-agent role recovery from canonical
-config, a detect-diagnose-autocorrect-verify-record self-heal loop beyond the
-current infra-only checks, a recovery-evidence manifest, and a controlled
-restart drill. If proceeding: start with role recovery, since GBT/BC's "role"
-is already defined in their own Project/GPT instructions docs (built in an
-earlier session per `feedback_agent_handoff_must_survive_restart.md`) — the
-gap is codifying that Claude Code itself reloads role/scope from this file +
-CLAUDE.md at every session start, not from conversational memory alone.
+Default: build/dry-run the Role Onboarding conversational flow on Buck
+himself (per his "test on me first"). If Buck answers with which 2 things he
+meant by "those 2 things are the priority," that takes precedence over the
+default. Separately, still open and unblocked whenever picked up: the
+remaining pieces of GBT's 8-point restart-recovery spec (per-agent role
+recovery from canonical config, a broader self-heal loop, a recovery-evidence
+manifest, a controlled restart drill) — deliberately paused per
+[[feedback_route_tradeoffs_through_3agent_review]], not abandoned.
 
 ## Known-good baseline (for the restart drill, when run)
 - API: `curl http://localhost:8000/health` → 200
