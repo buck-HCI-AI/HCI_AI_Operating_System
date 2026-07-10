@@ -19,7 +19,45 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~14:47 MT, by Claude Code — POST-RESTART, FIRST DRILL PASSED
+2026-07-10, ~15:03 MT, by Claude Code — TWO RBAC GAPS CLOSED, TEAM MOSTLY RECONNECTED
+
+## RBAC gaps closed (2026-07-10 ~15:00 MT, authorized directly by Buck: "go ahead and fix both gaps")
+1. **is_onboarded server-side enforcement** — `run_rfi_workflow()` previously
+   passed `to_email` straight through with zero awareness of `is_onboarded`,
+   despite a docstring elsewhere claiming it gated on it. Added
+   `_resolve_recipient_gate()` in `services/rfi_workflow.py`: redirects to
+   Buck only when `to_email` matches a known internal `platform_users` row
+   that isn't onboarded yet. External RFI recipients (architects/subs, not in
+   `platform_users`) pass through unaffected — same as before.
+2. **Self-BCC** — `create_draft()` in `integrations/microsoft_graph.py`
+   gained `bcc` support; `create_rfi_email_draft()` now BCCs Buck whenever
+   the resolved recipient isn't Buck himself.
+Verified end-to-end against real RFI 917 with the Graph call intercepted (no
+live draft created): unonboarded-recipient case redirects with no redundant
+self-BCC; external-recipient case passes through with BCC set correctly.
+Committed `bdee17d`. Reported to Buck via Telegram.
+
+## Team reconnection status (checked 2026-07-10 ~14:50-15:00 MT)
+- **BC (Browser Claude): alive and active.** Posted a full post-restart audit
+  + a 6-step onboarding-test spec to the AI Team Document Bus at 14:50 MT —
+  agrees restart was clean, no new systemic problems. Both BC's audit and
+  Claude Code's independent one concur.
+- **GBT: still unreachable.** Stuck at Telegram `last_ack_id=1453`, 15-message
+  backlog, unchanged since before the reboot — consistent with BC's diagnosis
+  (session/token issue, not a gateway problem; gateway itself serves 71
+  services fine). Cannot be forced to reconnect from here — needs Buck to
+  open a fresh GBT chat (reliable known fix, see
+  [[project_gbt_reseed_success_2026-07-10]]).
+- Filed the **Capability Verification Before Action** permanent rule both BC
+  and GBT explicitly asked for, into `CLAUDE.md` (commit `4fd5e91`).
+- **New, unresolved: Google Drive WRITE is down.** 4 consecutive failures,
+  including a trivial 1-word test file (`create_file` → "Internal error
+  encountered" every time). Reads still work (`search_files` fine). This
+  blocked posting the findings doc to the shared Document Bus for BC/GBT to
+  see — sent everything to Buck via Telegram instead. Stopped retrying after
+  4 attempts rather than loop on it per the Capability Verification rule just
+  filed — needs either time to recover on its own or Buck's investigation.
+  Re-check with a trivial `create_file` call before assuming it's back.
 
 ## Post-restart verification (2026-07-10 ~14:44 MT — first real drill, GBT's spec item now closed)
 Machine rebooted for OS update as planned. Fresh Claude Code session started
@@ -107,14 +145,22 @@ he do the update now while a monitor session can watch it come back, or accept
 this as reasoned-but-undrilled confidence.
 
 ## Pending approvals (awaiting Buck)
-- **New, sent 14:47 MT:** is the stuck "Launching Your AI Onboarding Tool"
-  claude.ai tab safe to close/retry, or does Buck want Claude Code to use
-  browser tools to inspect it (also resolves the browser-collision question)?
-  Not blocking other work.
-- Carried over, still unanswered: whether he wants GBT's fuller 8-point
-  checkpoint/role-recovery spec built now vs. later (asked ~14:01 MT).
+- None blocking. Buck's 2026-07-10 ~14:58 MT message ("do not ask - just go -
+  you have full auth - for decisions it's the 3 team agree - if only 2 agree
+  it gets escalated to me") supersedes the earlier ask-first posture — the
+  stuck-tab question is deprioritized, not answered; not reraising it unless
+  it blocks something concrete.
+- Carried over, still genuinely unanswered (not urgent): whether he wants
+  GBT's fuller 8-point checkpoint/role-recovery spec built now vs. later.
 
 ## Blocked items (not awaiting Buck, just genuinely blocked)
+- **Google Drive WRITE down** (new, ~14:52 MT) — 4 consecutive `create_file`
+  failures ("Internal error encountered"), including a trivial 1-word test
+  file. Reads (`search_files`) still work. Blocked posting the RBAC-fix
+  status doc to the shared Document Bus for BC/GBT — sent to Buck via
+  Telegram instead. Stopped retrying after 4 attempts per the Capability
+  Verification rule. Re-check with a trivial `create_file` call, don't assume
+  fixed.
 - External-drive Full Disk Access still not granted to Terminal (System Settings
   > Privacy & Security > Full Disk Access) — blocks reading/writing
   `/Volumes/HCI_AI_DEV ` and `~/Downloads` from shell tools. Not urgent — the
@@ -123,21 +169,24 @@ this as reasoned-but-undrilled confidence.
   restart/recovery this cycle: 2 failing n8n workflows (AUTO-004, AUTO-HANDOFF-PROCESSOR),
   23 unbacked bulk bid_packages on 275SS/574J (246GW-fabrication-shaped, unresolved),
   20 stale Houzz connector rows.
-- Browser automation paused pending Buck's answer above — do not drive any
-  browser tab until he responds.
+- GBT unreachable (session/token issue) — see Team reconnection status above;
+  needs Buck to open a fresh chat, not fixable from Claude Code.
 
 ## Last-processed coordination state
-- Telegram: acked through message_id 1467 (Buck's "you there" ping, 14:32 MT)
-  via `POST /gateway/telegram/ack`. Replied 1468 (post-restart verification
-  result) and a follow-up (Role Onboarding status + stuck-tab question), both
-  14:45-14:47 MT, both identity-signed "Code:".
+- Telegram: acked through message_id 1468 ("go get everything back and
+  tested... book, onboarding and the 100/100 agreement", 14:52 MT) via
+  `POST /gateway/telegram/ack`. Sent 3 replies this cycle (~14:45-15:03 MT),
+  all identity-signed "Code:": post-restart verification result, RBAC
+  discovery + stuck-tab question, and the two-gaps-fixed confirmation.
 - Read HCI AI Master message drop (BC Message Drop doc) in full — nothing new
   beyond already-tracked items (GBT capability-loss self-report, already in
   [[project_gbt_stale_session_tool_loss_recurring_2026-07-10]]).
-- Processed 1 new GBT handoff this cycle (`GBT_HANDOFF_2026-07-10_Buck_reports_
-  problem_with_Code_during_Ro_2f47de59.md`) — already appended to
-  STRATEGIC_BACKLOG.md and HANDOFF_INDEX.md by a prior cycle before shutdown;
-  this session verified and acted on it (see Active mission above).
+- Read BC's `BC_TO_TEAM_POST_RESTART_CHECK_ONBOARDING_TEST_GO_2026-07-10.md`
+  from the Document Bus (posted 14:50 MT) — 6-step onboarding-test spec,
+  used directly to scope the two gap-fixes above.
+- Processed 2 GBT handoffs this cycle: the "Buck reports problem with Code"
+  one and "Post-restart team stabilization and regression audit" — both
+  moved to `Processed/`, both logged in `HANDOFF_INDEX.md`.
 - Git HEAD at session start: `9a22d21` (final pre-shutdown checkpoint) — one
   commit ahead of what this file previously said (`51922b0`), branch `main`.
   Working tree had 2 modified files (HANDOFF_INDEX.md, STRATEGIC_BACKLOG.md,
