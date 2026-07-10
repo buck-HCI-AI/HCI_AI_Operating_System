@@ -176,7 +176,7 @@ def extract_bid_with_claude(pdf_bytes: bytes, vendor_name: str,
                 ],
             }],
         )
-        text = response.content[0].text.strip()
+        text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text").strip()
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
         return json.loads(text)

@@ -109,7 +109,8 @@ def analyze_with_claude(pages: list, model: str, project_code: str = None, scope
                 ]
             }]
         )
-        findings.append({"page": i, "file": Path(page_path).name, "model": model_id, "analysis": resp.content[0].text})
+        analysis_text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+        findings.append({"page": i, "file": Path(page_path).name, "model": model_id, "analysis": analysis_text})
 
     return findings
 

@@ -157,7 +157,17 @@ class DrawingReaderService(BaseIntelligenceService):
                 ],
             }],
         )
-        answer = response.content[0].text.strip()
+        # response.content[0] isn't reliably a text block - a ThinkingBlock
+        # (extended thinking) can come first and has no .text attribute,
+        # which crashed every call with "'ThinkingBlock' object has no
+        # attribute 'text'" (found live 2026-07-10 via a real Field GPT
+        # drawing-extraction job failure, job 990eda01-e38). Filter for the
+        # actual text block(s) instead of assuming position.
+        text_blocks = [b.text for b in response.content if getattr(b, "type", None) == "text"]
+        if not text_blocks:
+            return {"error": "Claude returned no text content for this drawing question "
+                              f"(response had {len(response.content)} block(s), none were text)"}
+        answer = "".join(text_blocks).strip()
 
         return {
             "project": row["name"],

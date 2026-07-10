@@ -81,7 +81,7 @@ def analyze_with_claude(content: str, project_code: str) -> str:
             "content": f"{ANALYSIS_PROMPT}\n\nPROJECT: {project_code}\n\n{content}"
         }]
     )
-    return resp.content[0].text
+    return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
 
 
 def post_to_gbt_inbox(project_code: str, analysis: str, file_title: str) -> str:

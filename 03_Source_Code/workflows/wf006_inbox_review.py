@@ -282,7 +282,7 @@ def draft_reply(subject: str, sender_name: str, body_preview: str, project: str)
                 )
             }]
         )
-        return msg.content[0].text
+        return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
     except Exception as e:
         return _template_draft(sender_name, subject, project) + f"\n\n[AI draft failed: {e}]"
 

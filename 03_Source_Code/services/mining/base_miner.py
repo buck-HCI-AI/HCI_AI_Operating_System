@@ -222,7 +222,7 @@ class BaseMiner:
             if system:
                 kwargs["system"] = system
             resp = client.messages.create(**kwargs)
-            return resp.content[0].text
+            return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
         except Exception:
             return "{}"
 

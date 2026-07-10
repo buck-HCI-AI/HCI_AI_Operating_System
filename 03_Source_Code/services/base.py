@@ -96,7 +96,11 @@ class BaseIntelligenceService:
         if system:
             kwargs["system"] = system
         response = client.messages.create(**kwargs)
-        return response.content[0].text
+        # content[0] isn't reliably a text block (a ThinkingBlock can come
+        # first under extended thinking and has no .text attribute) - filter
+        # for actual text blocks instead of assuming position. Found live
+        # 2026-07-10 crashing services/drawing_reader/drawing_reader_svc.py.
+        return "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
 
     @staticmethod
     def parse_json_response(raw: str) -> dict:
