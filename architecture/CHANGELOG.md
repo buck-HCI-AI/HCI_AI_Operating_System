@@ -5,6 +5,25 @@
 
 ---
 
+## v4.9 — 2026-07-10 | Unattended restart/recovery: ngrok/mcp-server monitoring + Docker self-heal
+
+**Trigger:** Buck stepping away, asked to prep the system for unattended recovery.
+See `architecture/ADRs/ADR-018-unattended-restart-recovery-monitor-coverage.md`.
+
+- Extended `scripts/monitor.sh` (5-min launchd cron) with ngrok tunnel monitoring
+  (GBT's only path in — previously unmonitored), mcp-server monitoring (previously
+  unmonitored), and Docker container self-heal (previously alert-only, now attempts
+  `docker compose up -d` before alerting).
+- Fixed `com.hci.drive-watcher`'s `WatchPaths` — real mount point has a trailing
+  space (`HCI_AI_DEV `) the plist never matched, so the watcher had never fired once.
+  Now watches both variants; reloaded via launchctl.
+- Confirmed process-crash and reboot recovery for api-server/mcp-server (launchd
+  KeepAlive) and all 5 Docker containers (restart: unless-stopped + Docker Desktop
+  as login item) was already solid — no changes needed there.
+- Explicitly did NOT wire the external-drive full storage migration
+  (`setup_storage_drive.sh`/`migrate_volumes.sh`) to auto-fire — it stops all live
+  services as its first step and needs Buck present, not unattended.
+
 ## v4.7 — 2026-07-09 | n8n auto-push removal; systemic fabricated-data cleanup + permanent detectors
 
 **Trigger:** Buck, after the 246GW fabricated-data find: "fix the n8n workflows - push

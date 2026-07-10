@@ -98,8 +98,57 @@ for cname in "${EXPECTED_CONTAINERS[@]}"; do
 done
 
 if [[ "${#DOWN_CONTAINERS[@]}" -gt 0 ]]; then
-  BODY="The following Docker containers are NOT running: ${DOWN_CONTAINERS[*]}. Run: cd ~/HCI_AI_Operating_System/infrastructure && docker compose up -d"
-  send_alert "⚠ HCI AI Containers Down" "$BODY"
+  log "[monitor] Attempting self-heal: docker compose up -d"
+  ( cd "$HOME/HCI_AI_Operating_System/infrastructure" && docker compose up -d ) >>"$LOG_FILE" 2>&1
+  sleep 10
+  STILL_DOWN=()
+  for entry in "${DOWN_CONTAINERS[@]}"; do
+    cname="${entry%% *}"
+    STATUS=$(docker inspect --format='{{.State.Status}}' "$cname" 2>/dev/null || echo "not_found")
+    [[ "$STATUS" != "running" ]] && STILL_DOWN+=("$cname ($STATUS)")
+  done
+  if [[ "${#STILL_DOWN[@]}" -gt 0 ]]; then
+    BODY="The following Docker containers are NOT running and self-heal (docker compose up -d) did not bring them back: ${STILL_DOWN[*]}. Manual check needed: cd ~/HCI_AI_Operating_System/infrastructure && docker compose up -d"
+    send_alert "🚨 HCI AI Containers Down — self-heal failed" "$BODY"
+  else
+    log "[monitor] ✓ Self-heal recovered all containers"
+  fi
+fi
+
+# ── 2b. ngrok Tunnel Check (GBT's only path in) ─────────────────────────────
+log "[monitor] Checking ngrok tunnel…"
+NGROK_STATUS=$(curl -sf --max-time 8 -o /dev/null -w "%{http_code}" http://localhost:4040/api/tunnels 2>/dev/null || echo "000")
+if [[ "$NGROK_STATUS" != "200" ]]; then
+  log "[monitor] ⚠ ngrok DOWN (local API check HTTP $NGROK_STATUS) — attempting restart"
+  launchctl kickstart -k "gui/$(id -u)/com.ngrok.hci" 2>/dev/null || true
+  sleep 10
+  NGROK_RETRY=$(curl -sf --max-time 8 -o /dev/null -w "%{http_code}" http://localhost:4040/api/tunnels 2>/dev/null || echo "000")
+  if [[ "$NGROK_RETRY" == "200" ]]; then
+    log "[monitor] ✓ ngrok recovered after restart"
+  else
+    BODY="ngrok tunnel is down (this is GBT/Chief Architect's only path into the system). Restart attempt failed. Manual check: launchctl kickstart -k gui/\$(id -u)/com.ngrok.hci"
+    send_alert "🚨 HCI AI ngrok DOWN — GBT gateway unreachable" "$BODY"
+  fi
+else
+  log "[monitor] ✓ ngrok tunnel healthy"
+fi
+
+# ── 2c. MCP Server Check ─────────────────────────────────────────────────────
+log "[monitor] Checking mcp-server…"
+MCP_STATUS=$(curl -s --max-time 8 -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null || echo "000")
+if [[ "$MCP_STATUS" == "000" ]]; then
+  log "[monitor] ⚠ mcp-server DOWN — attempting restart"
+  launchctl kickstart -k "gui/$(id -u)/com.hci.mcp-server" 2>/dev/null || true
+  sleep 10
+  MCP_RETRY=$(curl -s --max-time 8 -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null || echo "000")
+  if [[ "$MCP_RETRY" != "000" ]]; then
+    log "[monitor] ✓ mcp-server recovered after restart"
+  else
+    BODY="mcp-server (port 8080) is not responding at all. Restart attempt failed. Manual check: launchctl kickstart -k gui/\$(id -u)/com.hci.mcp-server"
+    send_alert "🚨 HCI AI mcp-server DOWN" "$BODY"
+  fi
+else
+  log "[monitor] ✓ mcp-server responding (HTTP $MCP_STATUS)"
 fi
 
 # ── 3. Disk Usage Check ──────────────────────────────────────────────────────
