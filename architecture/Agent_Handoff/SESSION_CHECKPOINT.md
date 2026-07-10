@@ -19,7 +19,77 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~15:34 MT, by Claude Code — 1355R DATA CLEANED, 2 SYSTEMIC BUGS FIXED, EMAIL-DRAFT ENDPOINT BUILT
+2026-07-10, ~16:07 MT, by Claude Code — GBT RECONNECTED, RFI 917 REPAIRED, AUTO-004+TITLE FIXED, 275SS AWAITING BUCK
+
+## Cycle 3 (2026-07-10 ~15:45-16:07 MT) — GBT reconnect, RFI verification, more fixes
+- **GBT reconnected live** (Buck authorized driving the browser for this specific
+  purpose): fresh chat restored gateway tool access after the version-pinning
+  issue. Got a real architecture sign-off on the email-draft schema question
+  (6 concrete safeguards: draft-only, additive op-id, backward-compatible,
+  versioned, validate-before-publish, expect old chats stay on old schema).
+  GBT initially claimed BC had also approved with zero evidence - flagged it,
+  GBT retracted immediately. Real status: 2/3 (Code+GBT), BC asked directly
+  via ai_messages (id 731), not yet answered.
+- **Browser tooling: Buck explicitly revoked ad-hoc access mid-cycle**
+  ("you keep opening new and not checking what's open, STOP IT" - then
+  briefly asked again, then said "never mind I did it" himself). Net: only
+  use browser tools when Buck gives a fresh, explicit, in-the-moment ask -
+  never proactively, even to "check on GBT."
+- **RFI pipeline verification (GBT handoff eeb54df5, now Processed):** found
+  RFI 917 (real 1355R foundation-waterproofing question) had been overwritten
+  by an earlier same-day pipeline test - `status='void'`, `response` replaced
+  with literal "TEST - Field GPT E2E acceptance test, safe to ignore/delete"
+  text. Restored `status='open'`, cleared the test response. Also found a
+  stray `text/plain` file in the RFIs Drive folder (not a real Word doc,
+  non-standard filename, an encoding artifact) that something wrote directly
+  to Drive bypassing the real pipeline - re-ran `run_rfi_workflow(917)`
+  through the actual pipeline, all 4 steps verified with real evidence (37KB
+  docx, correct Drive filename/folder, tracker row 11 confirmed via direct
+  read, real Outlook draft id). Did NOT delete the stray text file myself -
+  flagging for Buck/team review, not an active-job destructive action to
+  take solo.
+- **Fixed Field GPT introducing Buck as "Owner/Executive"** — added
+  `platform_users.title` (separate from `role`, which stays "owner" for
+  RBAC/access purposes), set to "PM/Superintendent" for Buck, `GET
+  /gateway/users` now returns both with a docstring telling callers to use
+  `title` for identity display.
+- **Fixed AUTO-004** (n8n Daily Mining Engine, 4-day 100%-failure streak):
+  root cause was `docker-compose.yml`'s n8n service having zero volume mount
+  of the repo at all - the workflow's Code node `writeFileSync`s to an
+  absolute host path that plain didn't exist in the container. Bind-mounted
+  the exact same path (zero workflow-JSON changes needed), recreated the
+  container, verified the exact write call now succeeds and lands on the
+  host filesystem. AUTO-001/002/003 confirmed unaffected (no host-path fs
+  writes in their code). Will show green after tomorrow's 3am scheduled run.
+- **275SS/574J unbacked-bulk-bid-packages: diagnosed, NOT touched, awaiting
+  Buck.** These are monitored (not active) projects - his standing directive
+  is read+report-only on those (scoped to Drive in the letter of the rule,
+  but the spirit clearly extends caution here, and there's a DB-cleanup
+  precedent from the 246GW incident cutting the other way) - asked rather
+  than assumed. Real finding, not identical to 1355R: 574J's 9 packages
+  *all* have real vendor+dollar data attached (looks like a genuine bulk
+  historical import, probably a drift-check false positive). 275SS's 14
+  packages have zero bid_entries, zero real data at all (matches the true
+  fabrication signature). Question sent to Buck via Telegram, unanswered as
+  of this checkpoint.
+- **Stale Houzz connector (20 rows, project external_id 3218059):
+  diagnosed, not a code bug.** `AUTO-CONTINUOUS-DISCOVERY` runs nightly and
+  is succeeding, but it's a lightweight change-detection/notify layer, not
+  a full sync - there's a separate `AUTO-HOUZZ-REMINDER` workflow whose whole
+  job is nudging someone to run a *manual* extraction daily, which hasn't
+  happened for this project in ~2 weeks. Structural/process gap, not
+  something fixable in code.
+
+Commits this cycle: `55e5972` (title field), `929fc56` (AUTO-004),
+`6e410d8` (handoff/report housekeeping). Combined with cycle 2's `bdee17d`,
+`98048b1`, `a721328`, `f9dca53` - 7 commits total today, each independently
+verified against real data/real failing scenarios before being called done.
+
+Drift-check: 4 findings remain (AUTO-004 will self-clear after its next
+real run; fabricated_commit_claim #335 from 2026-07-02 still unaddressed,
+low priority; connector_stale explained above, not fixable in code;
+unbacked_bulk_bid_packages is the 275SS/574J question above). Zero new
+regressions introduced this cycle.
 
 ## This cycle's work (2026-07-10 ~15:12-15:34 MT, Buck live-tested Field GPT and found real problems)
 Buck ran the actual Step-5 live verification (asking Field GPT for a 1355R
