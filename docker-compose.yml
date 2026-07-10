@@ -43,6 +43,12 @@ services:
       # block storage instead of macOS's gRPC-FUSE/VirtioFS file-sharing path.
       # Original ~/.n8n left on disk untouched as a fallback copy.
       - n8n_data:/home/node/.n8n
+      # AUTO-004's "Log Result" Code node writeFileSync's to this exact host
+      # path with no volume backing it - container has no /Users/buckadams
+      # at all, so every run failed with ENOENT (found 2026-07-10 via
+      # drift-check: 4/4 recent runs failed). Bind-mounting the same absolute
+      # path means the existing workflow JSON needs zero changes.
+      - /Users/buckadams/HCI_AI_Operating_System/reports:/Users/buckadams/HCI_AI_Operating_System/reports
     networks:
       - hci_network
     healthcheck:
