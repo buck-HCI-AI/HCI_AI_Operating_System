@@ -202,3 +202,8 @@
 | 2026-07-10 19:30 | GBT_HANDOFF_2026-07-10_Request_implementation_feedback__Role_On_38340671.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-10 20:35 | GBT_HANDOFF_2026-07-10_Buck_reports_problem_with_Code_during_Ro_2f47de59.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-10 14:46 | GBT_HANDOFF_2026-07-10_Post-restart_team_stabilization_and_regr_00b5c0d3.md | implementation_request | ChatGPT | PROCESSED | → Regression audit run (drift-check clean, no new regressions), stale 06_NEXT_SESSION.md fixed |
+| 2026-07-10 21:05 | GBT_HANDOFF_2026-07-10_Fix_Field_GPT_bid-invitation_orchestrati_acf20c94.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-10 21:25 | GBT_HANDOFF_2026-07-10_Priority_1__Investigate_and_repair_1355R_b25cdd88.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-10 21:30 | GBT_HANDOFF_2026-07-10_Team_directive_from_Buck__continue_auton_9c5410f1.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-10 21:55 | GBT_HANDOFF_2026-07-10_Include_RFI_verification_and_Browser_Cla_eeb54df5.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-10 15:53 | GBT_HANDOFF_2026-07-10_Include_RFI_verification_and_Browser_Cla_eeb54df5.md | implementation_request | ChatGPT | PROCESSED | → RFI 917 verified against live data, found+fixed real corruption, evidence in STRATEGIC_BACKLOG.md |

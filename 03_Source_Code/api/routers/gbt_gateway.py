@@ -4788,6 +4788,15 @@ def list_users():
     Does NOT drive email TO-routing - see draft_to_email logic in
     services/rfi_workflow.py, which defaults to Buck until is_onboarded=True.
     Reads platform_users (the canonical identity store), not a hardcoded list.
+
+    `role` vs `title`: `role` is the platform RBAC/access level (owner/pm/
+    superintendent/etc - drives permissions, ROLE_HIERARCHY). `title` is the
+    person's real operational title to use when addressing/describing them
+    (e.g. Buck's role is "owner" for system-access purposes, but his real
+    title at Hendrickson Construction is "PM/Superintendent" - he owns
+    HCI-AI, not the construction company. Callers introducing a user (Field
+    GPT etc) should use `title`, not `role`, for that - found live 2026-07-10
+    when Field GPT introduced Buck as "Owner/Executive," which is wrong).
     """
     t0 = time.time()
     try:
@@ -4803,12 +4812,12 @@ def list_users():
                 # which missed cases like actor_name='AI' vs role='ai_agent'.
                 # Excluded here, not deleted from the table.
                 cur.execute("""
-                    SELECT u.actor_name AS name, u.email, u.role, u.is_onboarded,
+                    SELECT u.actor_name AS name, u.email, u.role, u.title, u.is_onboarded,
                            COALESCE(array_agg(p.project_code) FILTER (WHERE p.project_code IS NOT NULL), '{}') AS projects
                     FROM platform_users u
                     LEFT JOIN platform_user_projects p ON p.user_id = u.id
                     WHERE u.active = TRUE AND u.email IS NOT NULL
-                    GROUP BY u.id, u.actor_name, u.email, u.role, u.is_onboarded
+                    GROUP BY u.id, u.actor_name, u.email, u.role, u.title, u.is_onboarded
                     ORDER BY u.role, u.actor_name
                 """)
                 users = [dict(r) for r in cur.fetchall()]
