@@ -13,6 +13,14 @@
 - No production go-live without validation evidence
 - AI cannot issue external commitments, approve awards or contracts, or approve client-facing comms
 
+## PERMANENT RULE — 10-Minute Agent Alerting (Buck Adams, via GBT, 2026-07-10)
+Every agent (Claude Code, GBT/Chief Architect, Browser Claude) must push a Telegram message to Buck within 10 minutes maximum whenever: idle waiting on his decision, a pending approval, a blocked mission, a genuinely ambiguous judgment call, or a completed milestone. Do not wait for Buck to check in manually — he should never have to poll for status.
+- Every check-in loop must read from the same shared coordination state: Telegram, unread AI Team Document Bus / HCI AI Master coordination docs, active Agent_Handoff items, blocked missions, pending approvals — and acknowledge/mark items processed so the next loop (by any agent) has accurate shared state, not stale/partial context.
+- Alerts must state what is waiting, why Buck specifically is needed, the consequence of delay, and the exact decision/request — not a vague status note.
+- Completed-milestone alerts must be concise and evidence-backed (what was verified, how), not a self-graded claim.
+- Deduplicate: do not re-alert on unchanged state; only escalate on genuine new information or the 10-minute threshold itself.
+- Claude Code's standing practice already satisfies this (270s/4.5min Telegram+handoff check-in cadence during active work) — this codifies it as a permanent, cross-agent rule rather than a session-specific habit, and lowers the max interval from the informal ~4.5min baseline to a firm 10-minute ceiling that must never be exceeded even for GBT/BC (who are chat-based and can only poll when a message arrives — see `project_multi_agent_collaboration_constraints` memory for why their compliance looks different from Claude Code's).
+
 ## PERMANENT DIRECTIVE — Monitored vs Active Job Write Scope (Buck Adams, 2026-07-09 00:09)
 Issued verbatim: *"we do not write to or delete anything that is in monitored jobs - we only read and give the report - active jobs we can read/write/ move to archive and suggest delete to me - that is a directive that can not be overridden or perforemed by anyone but me as of now - all team members need to know that."*
 - **Monitored/reference jobs** (212 Cleveland, 606 Starwood, 574 Johnson, 275 Sunnyside, 655 Garmisch, and any future non-live project): READ-ONLY on their Google Drive. No file writes, moves, renames, or deletes in their Drive folders — ever — regardless of how clearly misfiled/stale/duplicate a file looks. Report findings; do not act on their Drive.
@@ -69,11 +77,21 @@ The Gateway Bridge is how ChatGPT (GBT / Chief Architect) connects to the OS. Cl
 **Source file:** `03_Source_Code/api/routers/gbt_gateway.py`
 **Registered at:** `/gateway/*` in `main.py`
 
-### At the start of every session:
+### At the start of every session (restart/recovery sequence — ADR-018):
+0. Read `architecture/Agent_Handoff/SESSION_CHECKPOINT.md` FIRST — it's the
+   current pick-up-where-left-off snapshot (active mission, pending approvals,
+   blocked items, last-processed coordination state, next action). This is not
+   optional context, it's how a fresh session avoids re-deriving or re-asking
+   about state a prior session already established.
 1. Verify the gateway is live: `curl -s https://speculate-armband-retinal.ngrok-free.dev/gateway/health`
 2. Check for pending GBT handoffs: `ls Architecture/Agent_Handoff/Inbox/`
 3. If handoffs exist, read and execute them before taking other work
 4. If ngrok is down, restart it: `ngrok http 8000` — the URL is static on the free plan
+   (as of ADR-018, `scripts/monitor.sh` auto-detects and restarts a dead ngrok
+   tunnel every 5 min, so this should be rare — check `~/Library/Logs/hci_monitor.log`
+   for the actual cause before manually restarting)
+5. Update `SESSION_CHECKPOINT.md` at each check-in cycle and at any natural task
+   boundary — always overwrite in full, it's current state not a log.
 
 ### Key endpoints GBT uses (reads — no auth):
 | Endpoint | What GBT Gets |
