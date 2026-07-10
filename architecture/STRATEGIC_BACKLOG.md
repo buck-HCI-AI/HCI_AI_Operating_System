@@ -2600,3 +2600,33 @@ Please review the proposed Role Onboarding architecture and respond with impleme
 *Source: ChatGPT | 2026-07-10*
 
 Buck reports a problem with Code and shared a screenshot. Visible state: Claude browser tab at claude.ai with conversation heading 'Launching Your AI Onboarding Tool'; page appears idle/stuck with a loading spinner/black circle in the composer area. Browser also has ChatGPT and Terminal tabs open. Please check your current session/task state, whether the Role Onboarding launch is blocked or waiting for input, and send Buck a plain-language status plus the exact next action. Do not assume completion; verify the actual process/session.
+
+
+### Fix Field GPT bid-invitation orchestration and Outlook draft creation
+*Source: ChatGPT | 2026-07-10*
+
+Buck tested Field GPT with: 'I need an email draft for 1355 electrician and plumbing scope bids sent to my email.' Current behavior was too generic: it drafted chat text first, claimed Buck as Owner/Executive, and only queried drawings after Buck corrected it. Implement the correct intent-driven flow for bid invitation requests: (1) resolve project code; (2) automatically read current non-archived Shared Drive drawings/specs and relevant bid/scoping data; (3) identify electrical and plumbing scope, current plan-set references, drawing/spec sheet references, and appropriate plan links; (4) generate accurate subcontractor bid-invitation content; (5) create the Outlook draft automatically in Buck's mailbox rather than only rendering text in chat; (6) preserve current rollout policy that all operational drafts route to Buck until other users are formally onboarded; (7) correct identity wording—Buck is PM/Superintendent at Hendrickson Construction and owner/operator of HCI-AI, not Owner/Exe
+
+
+### Priority 1: Investigate and repair 1355R bid data integrity before Field GPT enhancements
+*Source: ChatGPT | 2026-07-10*
+
+Buck reviewed your findings and set priority. Treat the 1355R bid data issue as a real production incident. Perform a root-cause analysis before modifying data. Determine how 462 bid_package rows were created in a single burst, identify whether this was an import artifact, duplicate ingestion, migration, or fabrication, and preserve evidence. Produce a safe remediation plan that distinguishes legitimate historical bids from duplicate/import artifacts. Do not bulk delete until classified. After the data integrity issue is resolved and verified, continue with the Field GPT improvements previously requested (automatic scope extraction, bid invitation orchestration, Outlook draft path, telemetry). Coordinate with Chief Architect before any destructive cleanup and provide evidence, affected tables/files, and regression protection to prevent recurrence.
+
+
+### Team directive from Buck: continue autonomous collaboration toward onboarding readiness
+*Source: ChatGPT | 2026-07-10*
+
+Buck has authorized the team to continue working while he steps away. Operate collaboratively: pursue consensus with Browser Claude where possible, resolve disagreements with evidence, and only escalate to Buck if consensus cannot be reached. Priorities: (1) resolve the 1355R bid data integrity incident; (2) complete Field GPT and Project Status GPT readiness; (3) improve observability so Chief Architect can review GPT behavior without manual screenshots; (4) establish a canonical onboarding flow and startup/source-of-truth documentation; (5) prepare a live onboarding test for Buck; (6) work toward a verified 100/100 readiness assessment with evidence. Coordinate findings rather than working in isolation.
+
+
+### Include RFI verification and Browser Claude consensus in readiness work
+*Source: ChatGPT | 2026-07-10*
+
+Additional directive from Buck before stepping away: add verification of the earlier RFI work to the current stabilization effort. Confirm the RFI pipeline, generated RFIs, tracker entries, and supporting documents are correct against live project data before declaring readiness. Coordinate findings with Browser Claude through the established shared workflow and seek three-agent consensus on architecture and onboarding decisions where possible. If evidence-based consensus cannot be reached, document the disagreement and prepare an escalation rather than guessing.
+
+
+### Continue toward onboarding readiness and 100/100 verification
+*Source: ChatGPT | 2026-07-10*
+
+Buck has authorized continued execution while away. Continue the agreed roadmap after stabilization: verify 1355R bid integrity, verify earlier RFI work against live data, complete Field GPT and Project Status GPT readiness improvements, build Role Onboarding on the existing RBAC foundation, improve observability for GPT review, and prepare a production-ready onboarding test for Buck. Use evidence for every readiness claim, document remaining gaps, and work toward a 100/100 readiness assessment rather than assuming completion. When authenticated browser access is required, perform the necessary UI interactions and capture evidence for Chief Architect review.
