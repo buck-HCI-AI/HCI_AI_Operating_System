@@ -85,7 +85,10 @@ RunAtLoad) are now drilled-and-confirmed, not just reasoned-about.
 ## Active mission
 Resumed Role Onboarding "test on me first" dry-run per prior checkpoint's
 default. Backend confirmed done: `platform_users` row for Buck already shows
-`is_onboarded=true`, `onboarded_at` 2026-07-10 19:37 MT (flipped via
+`is_onboarded=true`, `onboarded_at` 2026-07-10 1:37 PM MT (raw DB value is
+19:37:07 UTC — corrected here 15:xx MT after Buck caught it stated wrong as
+"19:37 MT" earlier this cycle; see [[feedback_timezone_mountain_not_utc]])
+(flipped via
 `POST /gateway/users/onboard` in the pre-shutdown session). No dedicated
 "hats" DB table exists — hat-switching (Executive vs PM/Super) is conversational
 logic inside Field GPT, confirmed live-tested per
