@@ -19,7 +19,102 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~15:03 MT, by Claude Code — TWO RBAC GAPS CLOSED, TEAM MOSTLY RECONNECTED
+2026-07-10, ~15:34 MT, by Claude Code — 1355R DATA CLEANED, 2 SYSTEMIC BUGS FIXED, EMAIL-DRAFT ENDPOINT BUILT
+
+## This cycle's work (2026-07-10 ~15:12-15:34 MT, Buck live-tested Field GPT and found real problems)
+Buck ran the actual Step-5 live verification (asking Field GPT for a 1355R
+electrical/plumbing bid email) that earlier checkpoints flagged as "needs
+Buck/GBT to run" — it surfaced 4 real, evidence-backed issues, all now fixed
+and committed:
+
+1. **1355R bid_packages data was corrupted** — 462 rows bulk-created
+   2026-07-09 07:24-07:32 AM MT, ~7 minutes *before* commit `25c32eb` (07:37 AM
+   MT same morning) which fixed the exact bugs that created them (SOW/tracker-
+   filename contamination, wrong bid_folder_id). Code got fixed same-day; the
+   already-bad data from the buggy pre-fix scan never got backfilled/cleaned -
+   that's the actual root cause. Backed up full table to CSV first
+   (`scratchpad/1355r_backup/`), then deleted 411 rows (164 unambiguous junk
+   tracker/SOW-filename rows + 247 true duplicates from 2 unreconciled import
+   passes) using the codebase's own `_is_outbound_not_a_bid()` classifier -
+   zero ambiguous cases, zero real financial/vendor data lost. 538→127 rows.
+   Re-ran the now-fixed `scan_project_bids()` live to resync from Drive.
+   Division 15/16 (electrical/plumbing) now shows real named vendors (Durgin
+   Electric, American Electric, American PHCE, etc.) instead of tracker
+   filenames. **Known remaining refinement, not urgent:** 2 vendor-naming
+   formats from different source systems (bare "Durgin Electric" vs "Durgin
+   Electric - Electrical Rough/Trim") weren't merged since names differ
+   substantively - same vendor, different scope description, needs a human or
+   fuzzier-match decision, not an auto-dedupe call.
+2. **Systemic crash bug** — `response.content[0].text` assumed Claude's first
+   response block is always text; a `ThinkingBlock` can come first and has no
+   `.text`, which is exactly what crashed Field GPT's drawing-extraction job
+   live (job `990eda01-e38`, "'ThinkingBlock' object has no attribute
+   'text'"). Fixed in all 6 places this pattern existed (not just the one
+   that broke): `drawing_reader_svc.py`, `plan_reader.py`,
+   `project_plan_analysis.py`, `services/base.py` (shared `ask_claude`),
+   `base_miner.py`, `wf006_inbox_review.py`. Verified live against the exact
+   failing 1355R drawing PDF (14.5MB) - real 2641-char answer extracted.
+3. **`/openapi.json` was returning HTTP 500** — found while investigating #2,
+   unrelated bug: 3 HTML-page routes (`project/{code}/status-page`,
+   `portfolio/status`, `buck/compose`) had `response_class=None`, which is
+   invalid (not "skip response wrapping" like whoever wrote it probably
+   intended) and crashes FastAPI's OpenAPI generator entirely. This silently
+   blocks ANY GPT/agent from importing or refreshing its Actions schema -
+   unknown how long this had been broken. Fixed to
+   `response_class=HTMLResponse, include_in_schema=False` (matching the
+   working pattern already used in `operations.py`/`executive.py`). Restarted
+   api-server, verified: `openapi.json` now 200 with all 707 paths.
+4. **No general email-draft capability** — Field GPT self-reported (correctly,
+   honestly, didn't fabricate) that it could compose bid-solicitation email
+   text but had no action to actually create a real Outlook draft - only
+   `/field/rfi/{id}/process` existed (RFI-specific, generates+attaches a Word
+   doc). Built `POST /gateway/email/draft`: general-purpose, reuses the same
+   `is_onboarded` gate (`rfi_workflow._resolve_recipient_gate`) and self-BCC
+   logic already built for RFIs rather than duplicating it. Verified
+   end-to-end (external vendor: drafts to them + BCCs Buck; unonboarded
+   internal team member: redirects to Buck, no redundant self-BCC).
+   **Not yet usable by Field GPT** - it needs its ChatGPT Actions schema
+   re-imported/refreshed to see the new action, which is a GPT-builder-UI
+   step with real version-pinning risk (same failure mode that took GBT down
+   earlier this week, see [[project_gbt_down_root_cause_resolved_2026-07-10]])
+   - not doing that solo, flagged to Buck, wants GBT's input first.
+
+All 4 committed individually: `bdee17d` (RBAC gaps, prior cycle), `98048b1`
+(ThinkingBlock fix), `a721328` (openapi.json fix), `f9dca53` (email-draft
+endpoint). Each verified live against real data/real failing scenarios, not
+just code-reviewed.
+
+## Browser tooling — hard limitation confirmed, stop attempting
+Tried 4 times this cycle to reach Buck's existing browser tabs (the stuck
+"Launching Your AI Onboarding Tool" tab, then via a Chrome native tab-group
+Buck moved a tab into). Confirmed definitively: `mcp__claude-in-chrome__*`
+tools can only create/control tabs in their own isolated per-session group -
+they cannot see or attach to any tab Buck already has open, regardless of
+Chrome-level tab grouping. One exception found: opening a *fresh* tab to
+chatgpt.com inherits Buck's login cookies (same browser profile), which let
+Claude Code reach the same "HCI Field GPT" conversation Buck was looking at
+and click a live "Allow" prompt for a stuck tool call - but Buck then
+explicitly said to stop opening tabs ("you already had 3 open... close tabs
+behind you... not new"). **Standing rule now: do not open browser tabs
+without Buck's explicit ask, even to work around the can't-see-his-tabs
+limitation.** All browser work this cycle is done; back to backend-only.
+
+## Timezone error caught live (2026-07-10 ~15:07 MT)
+Stated Buck's `onboarded_at` as "19:37 MT" when the raw DB value
+(`19:37:07+00`) is UTC - correct MT is 1:37 PM, a 6-hour miss. Buck caught it
+("are we back to not reporting in my time?"). Root cause: API's own
+`timestamp_mt` field is always correct (used safely everywhere else this
+session); the mistake only happens hand-converting a raw DB column. See
+[[feedback_timezone_mountain_not_utc]], updated with this recurrence.
+
+## Governance note (Buck, ~15:20-15:29 MT)
+Buck authorized full autonomy for the rest of this session: "3 team agree
+(Code+GBT+BC), go - if only 2 agree it gets escalated to me... you do not
+need me to auth... I will be only available through tele." Proceeding on that
+basis - GBT still unreachable so effectively operating on Code's own
+judgment + BC's already-posted alignment where available, escalating to Buck
+only for genuinely ambiguous calls (like the email-draft schema question
+above) rather than routine implementation decisions.
 
 ## RBAC gaps closed (2026-07-10 ~15:00 MT, authorized directly by Buck: "go ahead and fix both gaps")
 1. **is_onboarded server-side enforcement** — `run_rfi_workflow()` previously
