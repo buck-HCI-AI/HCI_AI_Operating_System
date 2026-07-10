@@ -19,9 +19,13 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~14:14 MT, by Claude Code — PRE-SHUTDOWN CHECKPOINT
-Buck said (2:05 PM MT): "Just let me know when we are ready to shut down and
-update the os." This is that readiness snapshot.
+2026-07-10, ~14:18 MT, by Claude Code — SHUTDOWN IN PROGRESS
+Buck said "go ahead and shut down" then "I want to be sure the team comes back
+on line and we pick up as this never happened." Shutdown triggered via
+`osascript` at ~14:18 MT. THIS EXACT SESSION ENDS HERE. A fresh Claude Code
+session must be started after reboot — it does not resume automatically. That
+fresh session should read this file + CLAUDE.md's session-start sequence FIRST,
+before anything else, per the wiring done earlier this cycle.
 
 ## Active mission
 Restart/recovery ADR-018 + checkpoint file shipped and committed. Working tree
@@ -112,15 +116,30 @@ this as reasoned-but-undrilled confidence.
   bid_leveling_service.py, rfi_workflow.py) — untouched this cycle, not yet
   reviewed for a commit.
 
-## Next action
-Default: build/dry-run the Role Onboarding conversational flow on Buck
-himself (per his "test on me first"). If Buck answers with which 2 things he
-meant by "those 2 things are the priority," that takes precedence over the
-default. Separately, still open and unblocked whenever picked up: the
-remaining pieces of GBT's 8-point restart-recovery spec (per-agent role
-recovery from canonical config, a broader self-heal loop, a recovery-evidence
-manifest, a controlled restart drill) — deliberately paused per
-[[feedback_route_tradeoffs_through_3agent_review]], not abandoned.
+## Next action (for the fresh session that picks this up post-reboot)
+1. Run the pre-shutdown readiness checklist IN REVERSE — verify API/gateway/
+   ngrok/mcp-server/all 5 Docker containers actually came back up clean. This
+   IS the restart drill GBT's spec asked for and none has been run yet — this
+   is the first real one, do it deliberately and record the result (append a
+   "post-restart verification" section to this file with what came back clean
+   vs. what needed manual intervention).
+2. Report the verification result to Buck via Telegram BEFORE anything else —
+   he explicitly asked to be sure "the team comes back on line and we pick up
+   as this never happened." Be honest: infra (API/DB/ngrok/mcp-server) should
+   auto-recover per ADR-018 with no action from him; GBT is an external
+   ChatGPT service unaffected by this machine's reboot except brief gateway
+   unreachability, resumes automatically; BC (browser-based on this same Mac)
+   will need its browser/extension re-established, not fully automatic; this
+   Claude Code session itself does NOT auto-resume — a fresh session has to be
+   started, which is what's reading this file right now.
+3. Once verified, default active mission resumes: Role Onboarding conversational
+   flow dry-run on Buck ("test on me first"). If Buck answered "those 2 things
+   are the priority" in the interim, that takes precedence.
+4. Still open, unblocked, deliberately paused not abandoned: remaining pieces
+   of GBT's 8-point restart-recovery spec (per-agent role recovery from
+   canonical config, a broader self-heal loop, a recovery-evidence manifest) —
+   per [[feedback_route_tradeoffs_through_3agent_review]], loop in GBT/BC
+   before building further on this, don't solo it.
 
 ## Known-good baseline (for the restart drill, when run)
 - API: `curl http://localhost:8000/health` → 200
