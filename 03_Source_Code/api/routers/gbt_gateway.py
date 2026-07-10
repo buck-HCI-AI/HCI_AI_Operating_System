@@ -3916,6 +3916,14 @@ def system_drift_check():
                     ORDER BY created_at DESC LIMIT 100
                 """)
                 candidates = cur.fetchall()
+        # A message that quotes a bad hash to *report* a fabrication (a peer-review
+        # correction) is not itself a new fabricated claim - found live 2026-07-10
+        # re-flagging #335, the actual 2026-07-02 review that caught and resolved
+        # this exact hash. Skip when the text right around the hash already says
+        # it doesn't exist/was fabricated - that's self-documentation, not a
+        # repeat offense.
+        self_documenting_re = _re.compile(
+            r"(does not exist|not in git history|fabricat|self-issued|no such commit)", _re.IGNORECASE)
         fabricated = []
         for r in candidates:
             for m in hash_pattern.finditer(r["body"]):
@@ -3923,6 +3931,9 @@ def system_drift_check():
                 check = subprocess.run(["git", "cat-file", "-t", h], cwd=repo_root,
                                         capture_output=True, text=True, timeout=5)
                 if check.returncode != 0:
+                    context = r["body"][max(0, m.start()-80):m.end()+120]
+                    if self_documenting_re.search(context):
+                        continue
                     fabricated.append(f"#{r['id']} ({r['source_agent']}, {r['created_at'].date()}): "
                                        f"cites commit {h} - not in git history - \"{r['title']}\"")
         if fabricated:
