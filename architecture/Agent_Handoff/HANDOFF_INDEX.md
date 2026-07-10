@@ -200,3 +200,5 @@
 | 2026-07-10 17:20 | GBT_HANDOFF_2026-07-10_Browser_cleanup_request_with_verificatio_fa53b09d.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-10 19:30 | GBT_HANDOFF_2026-07-10_Role_Onboarding_System_architecture_revi_e8c3735e.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-10 19:30 | GBT_HANDOFF_2026-07-10_Request_implementation_feedback__Role_On_38340671.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-10 20:35 | GBT_HANDOFF_2026-07-10_Buck_reports_problem_with_Code_during_Ro_2f47de59.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-10 14:46 | GBT_HANDOFF_2026-07-10_Post-restart_team_stabilization_and_regr_00b5c0d3.md | implementation_request | ChatGPT | PROCESSED | → Regression audit run (drift-check clean, no new regressions), stale 06_NEXT_SESSION.md fixed |

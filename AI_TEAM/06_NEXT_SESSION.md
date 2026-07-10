@@ -1,4 +1,13 @@
 # 06_NEXT_SESSION.md
+**SUPERSEDED — 2026-07-10.** This file is stale (last updated 2026-06-26,
+pre-dates MVP Sprint 1 close-out, Gate 5 pilot end, and everything since).
+**The actual pick-up-where-left-off doc is
+`architecture/Agent_Handoff/SESSION_CHECKPOINT.md`** — read that first at the
+start of any session, not this file. Kept below for historical command
+reference only (bid-leveling curl examples etc. are still syntactically
+valid); do not treat any "System State" or "START HERE" section below as
+current.
+
 **Exact starting point for next Claude Code session**
 Last updated: 2026-06-26 (MVP Sprint 1 COMPLETE)
 

@@ -19,22 +19,50 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~14:18 MT, by Claude Code — SHUTDOWN IN PROGRESS
-Buck said "go ahead and shut down" then "I want to be sure the team comes back
-on line and we pick up as this never happened." Shutdown triggered via
-`osascript` at ~14:18 MT. THIS EXACT SESSION ENDS HERE. A fresh Claude Code
-session must be started after reboot — it does not resume automatically. That
-fresh session should read this file + CLAUDE.md's session-start sequence FIRST,
-before anything else, per the wiring done earlier this cycle.
+2026-07-10, ~14:47 MT, by Claude Code — POST-RESTART, FIRST DRILL PASSED
+
+## Post-restart verification (2026-07-10 ~14:44 MT — first real drill, GBT's spec item now closed)
+Machine rebooted for OS update as planned. Fresh Claude Code session started
+when Buck dropped a `Start up.docx` in Downloads after also messaging Telegram
+"you there... dont seem to be responding" (1467, sent 14:32 MT, 15 min before
+this session picked it up — first response lag to close going forward).
+Verified clean:
+- API `localhost:8000/health` → 200
+- Gateway (GBT's path in) → reachable, 71 services
+- ngrok tunnel → healthy, same static URL
+- mcp-server → HTTP 404 (normal/up)
+- Docker: `hci_postgres`/`hci_redis`/`hci_minio`/`hci_qdrant`/`n8n` → all healthy, up since reboot
+- `monitor.sh` (real path: `03_Source_Code/scripts/monitor.sh`, not `scripts/monitor.sh`
+  as previously written here — corrected) → ran automatically post-reboot at 14:42 MT
+  via launchd, all 6 checks green, LastExitStatus 0
+- **Known non-blocking issue, not a regression:** `com.hci.drive-watcher` errors
+  (`/Volumes/HCI_AI_DEV/03_MinIO_Data missing`) — expected, external-drive Full
+  Disk Access still not granted, Docker containers start fine independently of
+  it, migration is intentionally deferred per ADR-018.
+Reported to Buck via Telegram (1468) immediately after verification, per his
+explicit "be sure the team comes back on line" ask. ADR-018's self-heal
+mechanisms (launchd KeepAlive, Docker restart:unless-stopped, monitor.sh
+RunAtLoad) are now drilled-and-confirmed, not just reasoned-about.
 
 ## Active mission
-Restart/recovery ADR-018 + checkpoint file shipped and committed. Working tree
-is now clean (git HEAD `2bf035a`) — all earlier-session verified work (Role
-Onboarding endpoints, RFI workflow, bid-leveling/reply-draft fixes, processed
-handoffs) committed as pre-shutdown housekeeping. Next active mission after
-restart defaults to: Role Onboarding conversational flow dry-run on Buck
-("test on me first") — picked as default since his "those 2 things are the
-priority" message is still unclarified; asked him, not blocking on the answer.
+Resumed Role Onboarding "test on me first" dry-run per prior checkpoint's
+default. Backend confirmed done: `platform_users` row for Buck already shows
+`is_onboarded=true`, `onboarded_at` 2026-07-10 19:37 MT (flipped via
+`POST /gateway/users/onboard` in the pre-shutdown session). No dedicated
+"hats" DB table exists — hat-switching (Executive vs PM/Super) is conversational
+logic inside Field GPT, confirmed live-tested per
+[[project_build1_complete_2026-07-10]], not a gap.
+**Open fork, sent to Buck 14:47 MT, awaiting his answer (not blocking other work):**
+GBT relayed a screenshot at 20:35 MT showing a stuck/idle `claude.ai` browser
+tab titled "Launching Your AI Onboarding Tool" (spinner in composer). This is
+almost certainly a separate Browser-Claude (BC) session Buck opened for the
+interactive walkthrough, not this CLI session — Claude Code cannot see or
+drive that tab. Also ties into the still-open
+[[project_possible_concurrent_browser_automation_collision_2026-07-10]]
+question (native Claude side panel driving the same browser) — asked Buck
+whether the stuck tab is safe to just close/retry, or whether he wants
+Claude Code to use browser tools to go look (which would also resolve the
+collision question). Do not touch browser automation until he answers.
 
 ## Test-data cleanup this cycle (per feedback_test_data_auto_delete, applied not just flagged)
 Deleted on discovery, no approval wait needed per Buck's standing rule: "Jane PM"
@@ -79,10 +107,12 @@ he do the update now while a monitor session can watch it come back, or accept
 this as reasoned-but-undrilled confidence.
 
 ## Pending approvals (awaiting Buck)
-- None blocking right now. Buck was asked (via ntfy, 2026-07-10 ~14:01 MT)
-  whether he wants GBT's fuller 8-point checkpoint/role-recovery spec built now
-  vs. later — not blocking, work continues either way per standing "don't wait
-  to be prompted" directive.
+- **New, sent 14:47 MT:** is the stuck "Launching Your AI Onboarding Tool"
+  claude.ai tab safe to close/retry, or does Buck want Claude Code to use
+  browser tools to inspect it (also resolves the browser-collision question)?
+  Not blocking other work.
+- Carried over, still unanswered: whether he wants GBT's fuller 8-point
+  checkpoint/role-recovery spec built now vs. later (asked ~14:01 MT).
 
 ## Blocked items (not awaiting Buck, just genuinely blocked)
 - External-drive Full Disk Access still not granted to Terminal (System Settings
@@ -93,48 +123,36 @@ this as reasoned-but-undrilled confidence.
   restart/recovery this cycle: 2 failing n8n workflows (AUTO-004, AUTO-HANDOFF-PROCESSOR),
   23 unbacked bulk bid_packages on 275SS/574J (246GW-fabrication-shaped, unresolved),
   20 stale Houzz connector rows.
-- Role Onboarding conversational flow (the actual walk-someone-through-activation
-  sequence, dry-run on Buck per "test on me first") — built up through the
-  `POST /gateway/users/onboard` endpoint, but the flow itself not yet built.
+- Browser automation paused pending Buck's answer above — do not drive any
+  browser tab until he responds.
 
 ## Last-processed coordination state
-- Telegram: acked through message_id 1465 (2026-07-10 1:21 PM MT) via
-  `POST /gateway/telegram/ack`. Replied asking Buck to clarify "those 2 things
-  are the priority" (1463, 1:05 PM MT) — genuinely ambiguous, don't guess.
-  Also addressed 1464 (no visible Code/GBT book-vetting coms) — pointed to the
-  last confirmed Operating Book audit (CH01-07, complete, no gaps).
-- Applied Buck's new standing rule (2026-07-10): sign shared-channel messages
-  by agent name ("Code:"/"GBT:"/"BC:") — see [[feedback_agent_identity_signing]].
-- Last GBT handoff read from `architecture/Agent_Handoff/Inbox/`: none pending
-  as of this checkpoint — most recent items already in `Processed/`.
-- Last ntfy/Telegram send: 2026-07-10 ~2:25 PM MT, identity-signed reply re:
-  the 3 Telegram messages above.
-- Git HEAD: `51922b0` (adds SESSION_CHECKPOINT.md, commits pending 10-min
-  alerting rule), branch `main`. Prior commit `150dcb5` = monitor.sh + drive-
-  watcher fix. Older uncommitted changes still sitting in the working tree
-  from earlier this session (gbt_gateway.py, microsoft_graph.py,
-  bid_leveling_service.py, rfi_workflow.py) — untouched this cycle, not yet
-  reviewed for a commit.
+- Telegram: acked through message_id 1467 (Buck's "you there" ping, 14:32 MT)
+  via `POST /gateway/telegram/ack`. Replied 1468 (post-restart verification
+  result) and a follow-up (Role Onboarding status + stuck-tab question), both
+  14:45-14:47 MT, both identity-signed "Code:".
+- Read HCI AI Master message drop (BC Message Drop doc) in full — nothing new
+  beyond already-tracked items (GBT capability-loss self-report, already in
+  [[project_gbt_stale_session_tool_loss_recurring_2026-07-10]]).
+- Processed 1 new GBT handoff this cycle (`GBT_HANDOFF_2026-07-10_Buck_reports_
+  problem_with_Code_during_Ro_2f47de59.md`) — already appended to
+  STRATEGIC_BACKLOG.md and HANDOFF_INDEX.md by a prior cycle before shutdown;
+  this session verified and acted on it (see Active mission above).
+- Git HEAD at session start: `9a22d21` (final pre-shutdown checkpoint) — one
+  commit ahead of what this file previously said (`51922b0`), branch `main`.
+  Working tree had 2 modified files (HANDOFF_INDEX.md, STRATEGIC_BACKLOG.md,
+  both routine handoff-processing edits already reflected in this checkpoint)
+  plus the 1 new Processed handoff file above — committing as routine
+  housekeeping this cycle.
 
-## Next action (for the fresh session that picks this up post-reboot)
-1. Run the pre-shutdown readiness checklist IN REVERSE — verify API/gateway/
-   ngrok/mcp-server/all 5 Docker containers actually came back up clean. This
-   IS the restart drill GBT's spec asked for and none has been run yet — this
-   is the first real one, do it deliberately and record the result (append a
-   "post-restart verification" section to this file with what came back clean
-   vs. what needed manual intervention).
-2. Report the verification result to Buck via Telegram BEFORE anything else —
-   he explicitly asked to be sure "the team comes back on line and we pick up
-   as this never happened." Be honest: infra (API/DB/ngrok/mcp-server) should
-   auto-recover per ADR-018 with no action from him; GBT is an external
-   ChatGPT service unaffected by this machine's reboot except brief gateway
-   unreachability, resumes automatically; BC (browser-based on this same Mac)
-   will need its browser/extension re-established, not fully automatic; this
-   Claude Code session itself does NOT auto-resume — a fresh session has to be
-   started, which is what's reading this file right now.
-3. Once verified, default active mission resumes: Role Onboarding conversational
-   flow dry-run on Buck ("test on me first"). If Buck answered "those 2 things
-   are the priority" in the interim, that takes precedence.
+## Next action
+1. Awaiting Buck's answer on the stuck-tab question above.
+2. Once answered: continue the Role Onboarding "test on me first" dry-run —
+   next real gap is the actual conversational walkthrough Buck experiences
+   when a new user hits Field GPT for the first time post-onboard, not just
+   the backend flag flip (already done).
+3. If Buck answers "those 2 things are the priority" (still unclarified from
+   earlier today), that takes precedence over the above.
 4. Still open, unblocked, deliberately paused not abandoned: remaining pieces
    of GBT's 8-point restart-recovery spec (per-agent role recovery from
    canonical config, a broader self-heal loop, a recovery-evidence manifest) —
@@ -146,4 +164,7 @@ this as reasoned-but-undrilled confidence.
 - Gateway (external, GBT's path in): `curl https://speculate-armband-retinal.ngrok-free.dev/gateway/health` → `service_count: 71`
 - Docker: `hci_postgres`, `hci_redis`, `hci_minio`, `hci_qdrant`, `n8n` all `running`
 - mcp-server: `curl http://localhost:8080/` → any HTTP response (404 is normal — means it's up)
-- monitor.sh: `bash -n scripts/monitor.sh` passes; last live run 2026-07-10 14:00 MT, all 6 checks green, no alert
+- monitor.sh: `bash -n 03_Source_Code/scripts/monitor.sh` passes (real path — not
+  `scripts/monitor.sh`); confirmed auto-runs post-reboot via launchd `RunAtLoad`,
+  last live run 2026-07-10 14:42 MT, all 6 checks green, no alert — restart
+  drill passed
