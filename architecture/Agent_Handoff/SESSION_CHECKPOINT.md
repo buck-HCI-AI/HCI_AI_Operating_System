@@ -19,14 +19,18 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~14:26 MT, by Claude Code
+2026-07-10, ~14:14 MT, by Claude Code — PRE-SHUTDOWN CHECKPOINT
+Buck said (2:05 PM MT): "Just let me know when we are ready to shut down and
+update the os." This is that readiness snapshot.
 
 ## Active mission
-Restart/recovery ADR-018 + checkpoint file shipped and committed. Reverting to
-default active mission: Role Onboarding conversational flow dry-run on Buck
-("test on me first") — picked as default next step since Buck's 1:05 PM MT
-Telegram message ("those 2 things are the priority") is ambiguous about which
-2 items he means; asked him to clarify, not blocking on the answer.
+Restart/recovery ADR-018 + checkpoint file shipped and committed. Working tree
+is now clean (git HEAD `2bf035a`) — all earlier-session verified work (Role
+Onboarding endpoints, RFI workflow, bid-leveling/reply-draft fixes, processed
+handoffs) committed as pre-shutdown housekeeping. Next active mission after
+restart defaults to: Role Onboarding conversational flow dry-run on Buck
+("test on me first") — picked as default since his "those 2 things are the
+priority" message is still unclarified; asked him, not blocking on the answer.
 
 ## Test-data cleanup this cycle (per feedback_test_data_auto_delete, applied not just flagged)
 Deleted on discovery, no approval wait needed per Buck's standing rule: "Jane PM"
@@ -37,10 +41,38 @@ down to 4 real findings: 2 failing n8n workflows (AUTO-004, AUTO-HANDOFF-PROCESS
 queued pending Buck's priority call), 20 stale Houzz connector rows.
 
 ## Safe to resume automatically?
-**Yes.** No irreversible action was mid-flight when this was last written. All
-changes this cycle were local file edits (monitor.sh, a plist, docs) — already
-committed to git (`150dcb5`). A fresh session can pick this file up and continue
+**Yes.** No irreversible action was mid-flight when this was last written. Git
+working tree is fully clean at `2bf035a` — nothing uncommitted, nothing to lose.
+A fresh session (or a post-reboot session) can pick this file up and continue
 straight to "Next action" below with no re-briefing needed.
+
+## Pre-shutdown readiness (Buck asked to be told when ready — this is that answer)
+**Ready.** Verified live at 2:11 PM MT, all green:
+- API: HTTP 200 (`localhost:8000/health`)
+- Gateway (GBT's external path in): reachable, 71 services (`.../gateway/health`)
+- ngrok tunnel: HTTP 200 (`localhost:4040/api/tunnels`)
+- mcp-server: responding (`localhost:8080/`)
+- Docker: `hci_postgres`, `hci_redis`, `hci_minio`, `hci_qdrant`, `n8n` all `running`
+- Disk: 2% used, no pressure
+- `monitor.sh`: syntax-clean, extended this session with ngrok/mcp-server/Docker
+  self-heal (ADR-018)
+- Git: working tree clean, `2bf035a`
+
+**What auto-recovers after the OS update reboot, and why it's expected to work:**
+launchd `KeepAlive:true` on api-server/mcp-server (standard macOS mechanism,
+survives reboot by design) + Docker Desktop as a login item + all 5 containers
+on `restart:unless-stopped` (standard Docker mechanism) + `monitor.sh` running
+every 5 min via `RunAtLoad:true` catching anything those miss (now including
+ngrok, which was the one real gap closed this session).
+
+**Honest caveat:** this reasoning has NOT been verified with an actual live
+restart drill in this session — GBT's spec explicitly calls for one
+(restart-drill item, still open) and none has been run. The mechanisms above
+are standard, well-understood OS/Docker behavior, not experimental code, so
+confidence is reasonably high — but "should auto-recover" is not the same
+as "drilled and confirmed." If Buck wants zero risk, the honest ask is either
+he do the update now while a monitor session can watch it come back, or accept
+this as reasoned-but-undrilled confidence.
 
 ## Pending approvals (awaiting Buck)
 - None blocking right now. Buck was asked (via ntfy, 2026-07-10 ~14:01 MT)
