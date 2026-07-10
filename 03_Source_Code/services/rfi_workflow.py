@@ -323,9 +323,47 @@ def update_rfi_log_tracker(rfi: dict) -> dict:
     return {"ok": True, "row": target_row, "tab": log_tab}
 
 
+BUCK_EMAIL = "buck@hendricksoninc.com"
+
+
+def _resolve_recipient_gate(to_email: str | None) -> dict:
+    """
+    Server-side is_onboarded enforcement. Buck's docstring in gbt_gateway.py
+    (GET /users) claims TO-routing already gates on is_onboarded - it didn't;
+    to_email was passed straight through from the caller with no check. This
+    closes that gap (found + authorized to fix 2026-07-10).
+
+    Scope: only applies when to_email matches a known internal platform_users
+    row - i.e. someone Field GPT might address directly as an HCI team
+    member. External RFI recipients (architects, subs - not in platform_users
+    at all) are unaffected; the RFI-to-external-party path is the normal,
+    expected use of this workflow, not something onboarding status governs.
+    """
+    if not to_email:
+        return {"email": BUCK_EMAIL, "redirected": False, "reason": "no_recipient_given"}
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT actor_name, is_onboarded FROM platform_users WHERE email = %s AND active = TRUE",
+                    (to_email,)
+                )
+                row = cur.fetchone()
+    except Exception:
+        row = None
+    if row and not row["is_onboarded"]:
+        return {"email": BUCK_EMAIL, "redirected": True,
+                "reason": f"{row['actor_name']} is a known team member but not yet onboarded"}
+    return {"email": to_email, "redirected": False, "reason": None}
+
+
 def create_rfi_email_draft(rfi: dict, docx_bytes: bytes, to_email: str, to_name: str) -> dict:
     """Creates an Outlook draft (never auto-sent) with the generated RFI
-    document attached, addressed to the concerned party."""
+    document attached, addressed to the concerned party. BCCs Buck whenever
+    the primary recipient isn't Buck himself, so he has direct visibility on
+    every outbound draft regardless of who else gets formally onboarded with
+    their own routing later - see BC's onboarding-test Step 3 spec,
+    2026-07-10."""
     from microsoft_graph import create_draft, add_attachment_bytes
 
     subject = f"RFI {rfi['rfi_number']} - {rfi['subject']} - {rfi.get('project_name', '')}"
@@ -337,7 +375,8 @@ def create_rfi_email_draft(rfi: dict, docx_bytes: bytes, to_email: str, to_name:
         f"<p>Please respond by replying to this email or returning the attached form.</p>"
         f"<p>Thanks,<br>Buck Adams<br>Hendrickson Construction</p>"
     )
-    draft = create_draft(subject, body_html, [(to_name, to_email)])
+    bcc = None if to_email.lower() == BUCK_EMAIL else [("Buck Adams", BUCK_EMAIL)]
+    draft = create_draft(subject, body_html, [(to_name, to_email)], bcc=bcc)
     draft_id = draft["id"]
     filename = f"{rfi['rfi_number']} - {rfi['subject']}.docx"
     _, err = add_attachment_bytes(draft_id, filename,
@@ -380,14 +419,18 @@ def run_rfi_workflow(rfi_id: int, to_email: str = None, to_name: str = None) -> 
     # default the draft to Buck rather than skipping the step. He reviews and
     # redirects/CCs the actual concerned party before sending (drafts never
     # auto-send regardless of recipient - see feedback_emails_land_in_drafts_not_autosend).
-    defaulted_to_buck = not to_email
-    draft_to_email = to_email or "buck@hendricksoninc.com"
-    draft_to_name = to_name or (to_email or "Buck Adams")
+    # Also gate on is_onboarded: if to_email resolves to a known internal team
+    # member who isn't onboarded yet, redirect to Buck the same way (closed
+    # 2026-07-10 - this was previously a documented-but-unenforced behavior).
+    gate = _resolve_recipient_gate(to_email)
+    defaulted_to_buck = not to_email or gate["redirected"]
+    draft_to_email = gate["email"]
+    draft_to_name = "Buck Adams" if defaulted_to_buck else (to_name or to_email)
 
     email_result = create_rfi_email_draft(rfi, docx_bytes, draft_to_email, draft_to_name)
     evidence["steps"]["create_email_draft"] = (
         {"ok": True, "draft_id": email_result["draft"]["id"], "attached": email_result.get("attached"),
-         "defaulted_to_buck": defaulted_to_buck}
+         "defaulted_to_buck": defaulted_to_buck, "redirect_reason": gate["reason"]}
         if "draft" in email_result else {"ok": False, "error": str(email_result)}
     )
 
