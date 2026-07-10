@@ -81,6 +81,10 @@ SERVICE_REGISTRY = [
     {"name": "knowledge-vendors",   "path": "/gateway/knowledge/vendors",        "description": "Paginated vendor list with CSI + search filters (Gap5)"},
     {"name": "knowledge-lessons",   "path": "/gateway/knowledge/lessons",        "description": "Lessons learned from past projects (Gap6)"},
     {"name": "drive-search",        "path": "/gateway/drive/search",             "description": "Search Google Drive files"},
+    {"name": "coord-docs-list",      "path": "/gateway/coordination/documents",           "description": "AI Team Document Bus - GET HCI AI Master coordination docs, optional ?since= filter"},
+    {"name": "coord-docs-read",      "path": "/gateway/coordination/documents/{file_id}", "description": "AI Team Document Bus - GET read a coordination doc's content"},
+    {"name": "coord-docs-ack",       "path": "/gateway/coordination/documents/{file_id}/acknowledge", "description": "AI Team Document Bus - POST record an agent acknowledged a doc"},
+    {"name": "coord-docs-status",    "path": "/gateway/coordination/documents/{file_id}/status", "description": "AI Team Document Bus - GET which agents have/haven't acknowledged a doc"},
     {"name": "agent-handoff",       "path": "/gateway/agent/handoff",            "description": "POST a platform intelligence document"},
     {"name": "field-note",          "path": "/gateway/field/note",               "description": "POST quick field note from SS/PM (direct write, no approval)"},
     {"name": "field-rfi",           "path": "/gateway/field/rfi",                "description": "POST new RFI from field (Gap11)"},
@@ -99,6 +103,7 @@ SERVICE_REGISTRY = [
     {"name": "bid-level",           "path": "/gateway/project/{code}/bid-level", "description": "GET bid leveling view — all packages with all bids sorted low-to-high"},
     {"name": "project-list",        "path": "/gateway/projects",                 "description": "GET full project registry — all real projects with status, scope, team"},
     {"name": "procurement-risk",    "path": "/gateway/project/{code}/procurement-risk", "description": "GET procurement risk analysis — gaps, single bids, awarded, coverage %"},
+    {"name": "users-list",          "path": "/gateway/users",                    "description": "GET HCI team roster (name, email, role, projects, onboarded status) for Field GPT/GBT user-identity flow"},
     {"name": "health",              "path": "/gateway/health",                   "description": "Gateway health check"},
     {"name": "services",            "path": "/gateway/services",                 "description": "This service registry"},
     {"name": "plan-read",           "path": "/gateway/plan/read",                "description": "POST: Vision AI plan reader — Drive PDF → page images → Sonnet/Opus gap analysis"},
@@ -1771,7 +1776,14 @@ def _run_stale_check(conn) -> dict:
     """BTW-4 inline stale detection — avoids cross-package import issues."""
     from datetime import date, timedelta
     today = date.today()
-    LIVE = [1, 2, 3, 8]
+    # 2026-07-10: was [1, 2, 3, 8] - id 8 is 246GW (status='monitoring', not
+    # active). This is the same class of bug the 2026-07-08 fix addressed for
+    # _LIVE_PROJECT_CODES (see that comment above) but that fix only touched
+    # the string-code list, not this separate numeric-ID one used by
+    # stale-detection/schedule-variance - 246GW was still getting real
+    # staleness/overdue alerts as if it were a live project. Buck flagged this
+    # directly ("I still see it being referenced in places it shouldn't").
+    LIVE = [1, 2, 3]
     WARN_DAYS, ALERT_DAYS, PKG_DAYS, EXPIRY_WARN = 7, 14, 21, 3
     r = {"run_date": today.isoformat(), "expiring": [], "expired": [],
          "no_response": [], "stale_packages": []}
@@ -2134,7 +2146,14 @@ def _drive_token() -> str:
 def schedule_variance():
     """BTW-5 — Schedule variance: overdue items, data anomalies, per-project summary."""
     t0 = time.time()
-    LIVE = [1, 2, 3, 8]
+    # 2026-07-10: was [1, 2, 3, 8] - id 8 is 246GW (status='monitoring', not
+    # active). This is the same class of bug the 2026-07-08 fix addressed for
+    # _LIVE_PROJECT_CODES (see that comment above) but that fix only touched
+    # the string-code list, not this separate numeric-ID one used by
+    # stale-detection/schedule-variance - 246GW was still getting real
+    # staleness/overdue alerts as if it were a live project. Buck flagged this
+    # directly ("I still see it being referenced in places it shouldn't").
+    LIVE = [1, 2, 3]
     WARN_DAYS, ALERT_DAYS = 3, 7
     try:
         from datetime import date
@@ -2853,6 +2872,194 @@ def drive_folder_files(folder_id: str):
         return _response("/drive/folder/files", data, start=t0)
     except HTTPException as e:
         return _response("/drive/folder/files", {}, errors=[str(e.detail)], start=t0)
+
+
+# ── AI Team Document Bus ──────────────────────────────────────────────────────
+# 2026-07-10, GBT BUILD NOW directive. Read-only cross-agent access to HCI AI
+# Master coordination documents (ADRs, audits, directives, peer reviews, team
+# messages) so Claude Code / GBT / BC can pick up each other's writes without
+# Buck manually relaying files. Scoped to HCI AI Master's top-level files only
+# — never recurses into project-adjacent subfolders (e.g. "246 Gallo Way")
+# since HCI AI Master is system-only, not project source-of-truth (see
+# CLAUDE.md's "HCI AI Drive Is System-Only" directive) and this must not blur
+# into a generic project Drive reader.
+
+HCI_MASTER_FOLDER_ID = "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI"
+_COORD_DOC_MIME_TYPES = {"text/plain", "text/markdown", "application/vnd.google-apps.document"}
+
+
+def _classify_coord_doc(filename: str) -> str:
+    name = filename.upper()
+    if name.startswith("ADR") or "ADR-" in name:
+        return "adr"
+    if "AUDIT" in name:
+        return "audit"
+    if "DIRECTIVE" in name or "PERMANENT_RULE" in name or "STANDARD" in name:
+        return "directive"
+    if "REVIEW" in name:
+        return "peer_review"
+    if name.startswith("BC_TO_") or name.startswith("GBT_") or "REPORT" in name or "SUMMARY" in name:
+        return "team_message"
+    return "other"
+
+
+# Fixed 3-member roster for "pending" calculation in STATUS. BC's own acceptance
+# test (BC_STANDING_TASK_DOCUMENT_BUS_ACCEPTANCE_TEST.md, written 2026-07-09)
+# uses these exact literal agent strings when it calls /acknowledge, so this
+# endpoint's canonical agent names are "CODE"/"GBT"/"BC" - a separate, smaller
+# vocabulary from the "claude_code"/"chatgpt"/"browser_claude" convention used
+# elsewhere (ai_messages, telegram ack). Accept any string an agent sends
+# rather than validating against this list; it's only used to compute "pending".
+_COORD_DOC_ROSTER = ("CODE", "GBT", "BC")
+
+
+def _sync_coordination_documents() -> list:
+    """Scans HCI AI Master's top-level files, upserts any not-yet-seen ones into
+    coordination_documents (capturing the Drive owner as author), and returns
+    all current rows with their per-document acknowledged_by list."""
+    token = _drive_token()
+    r = requests.get(
+        "https://www.googleapis.com/drive/v3/files",
+        headers={"Authorization": f"Bearer {token}"},
+        params={
+            "q": f"'{HCI_MASTER_FOLDER_ID}' in parents and trashed=false",
+            "fields": "files(id,name,mimeType,createdTime,modifiedTime,owners(displayName))",
+            "pageSize": 200,
+        }, timeout=30,
+    )
+    r.raise_for_status()
+    files = [f for f in r.json().get("files", []) if f.get("mimeType") in _COORD_DOC_MIME_TYPES]
+
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            for f in files:
+                author = (f.get("owners") or [{}])[0].get("displayName", "")
+                cur.execute("""
+                    INSERT INTO coordination_documents
+                        (file_id, filename, source, document_type, drive_created_at, drive_modified_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (file_id) DO UPDATE SET
+                        filename = EXCLUDED.filename,
+                        source = EXCLUDED.source,
+                        drive_modified_at = EXCLUDED.drive_modified_at
+                """, (f["id"], f["name"], author or "drive", _classify_coord_doc(f["name"]),
+                      f.get("createdTime"), f.get("modifiedTime")))
+            conn.commit()
+            cur.execute("""
+                SELECT file_id, filename, source, document_type, drive_created_at,
+                       drive_modified_at, first_seen_at
+                FROM coordination_documents ORDER BY drive_modified_at DESC
+            """)
+            rows = [dict(row) for row in cur.fetchall()]
+            cur.execute("SELECT file_id, agent FROM coordination_document_acks")
+            acks_by_file: Dict[str, list] = {}
+            for row in cur.fetchall():
+                acks_by_file.setdefault(row["file_id"], []).append(row["agent"])
+
+    for row in rows:
+        for k in ("drive_created_at", "drive_modified_at", "first_seen_at"):
+            if row.get(k):
+                row[k] = row[k].isoformat()
+        row["title"] = row.pop("filename")
+        row["author"] = row.pop("source")
+        row["created_time_mt"] = (
+            datetime.fromisoformat(row["drive_created_at"]).astimezone(BUCK_TZ).strftime("%Y-%m-%d %-I:%M %p MT")
+            if row.get("drive_created_at") else None
+        )
+        row["acknowledged_by"] = acks_by_file.get(row["file_id"], [])
+    return rows
+
+
+@router.get("/coordination/documents")
+def coordination_documents_list(since: Optional[str] = Query(None, description="ISO timestamp - only docs modified after this")):
+    """AI Team Document Bus — LIST. Returns HCI AI Master coordination documents
+    (optionally filtered to those modified after `since`), each carrying its own
+    acknowledged_by list so any caller can tell what it still needs to read."""
+    t0 = time.time()
+    try:
+        docs = _sync_coordination_documents()
+        if since:
+            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+            docs = [d for d in docs if d.get("drive_modified_at") and datetime.fromisoformat(d["drive_modified_at"]) > since_dt]
+        return _response("/coordination/documents", {
+            "count": len(docs), "documents": docs,
+        }, start=t0)
+    except Exception as e:
+        return _response("/coordination/documents", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/coordination/documents/{file_id}")
+def coordination_documents_read(file_id: str):
+    """AI Team Document Bus — READ. Reads a coordination document's content by Drive file ID."""
+    t0 = time.time()
+    try:
+        content_data = _proxy(f"/services/drive-intelligence/file/{file_id}/content")
+        meta = _proxy(f"/services/drive-intelligence/file/{file_id}")
+        _log("/coordination/documents/read", "team", "", "coordination_doc_read", 0, str(uuid.uuid4())[:8], file_id)
+        return _response("/coordination/documents/read", {
+            "file_id": file_id,
+            "title": meta.get("name", file_id),
+            "content": content_data.get("content", ""),
+        }, start=t0)
+    except HTTPException as e:
+        return _response("/coordination/documents/read", {}, errors=[str(e.detail)], start=t0)
+
+
+class DocAckPayload(BaseModel):
+    agent: str
+
+
+@router.post("/coordination/documents/{file_id}/acknowledge")
+def coordination_documents_acknowledge(file_id: str, req: DocAckPayload, request: Request):
+    """AI Team Document Bus — ACKNOWLEDGE. Records that an agent has processed a document."""
+    _require_key(request)
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM coordination_documents WHERE file_id = %s", (file_id,))
+                if not cur.fetchone():
+                    return _response("/coordination/documents/acknowledge", {},
+                                     errors=[f"unknown file_id {file_id} - call LIST first"], start=t0)
+                cur.execute("""
+                    INSERT INTO coordination_document_acks (file_id, agent)
+                    VALUES (%s, %s)
+                    ON CONFLICT (file_id, agent) DO UPDATE SET acked_at = now()
+                    RETURNING acked_at
+                """, (file_id, req.agent))
+                acked_at = cur.fetchone()["acked_at"]
+                conn.commit()
+        return _response("/coordination/documents/acknowledge", {
+            "file_id": file_id, "agent": req.agent, "acked_at": acked_at.isoformat(),
+        }, start=t0)
+    except Exception as e:
+        return _response("/coordination/documents/acknowledge", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/coordination/documents/{file_id}/status")
+def coordination_documents_status(file_id: str):
+    """AI Team Document Bus — STATUS. Shows which agents have (and haven't) acknowledged a document."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT filename FROM coordination_documents WHERE file_id = %s", (file_id,))
+                doc = cur.fetchone()
+                if not doc:
+                    return _response("/coordination/documents/status", {}, errors=[f"unknown file_id {file_id}"], start=t0)
+                cur.execute("""
+                    SELECT agent, acked_at FROM coordination_document_acks
+                    WHERE file_id = %s ORDER BY acked_at
+                """, (file_id,))
+                acks = [dict(row) for row in cur.fetchall()]
+        acked_by = [a["agent"] for a in acks]
+        pending = [a for a in _COORD_DOC_ROSTER if a not in acked_by]
+        return _response("/coordination/documents/status", {
+            "file_id": file_id, "title": doc["filename"],
+            "acknowledged_by": acked_by, "pending": pending,
+        }, start=t0)
+    except Exception as e:
+        return _response("/coordination/documents/status", {}, errors=[str(e)], start=t0)
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────
@@ -4285,6 +4492,35 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Orphaned-historical-cost-FK check errored: {e}"})
 
+    # 23. Test/seed rows in platform_users leaking into real identity lookups - found
+    #     2026-07-10 the exact shape of check #11 above (test_data_in_real_project),
+    #     just on a table that check never covered because platform_users didn't exist
+    #     when it was written. A "Jane PM" row from 2026-06-26 RBAC-bootstrap seeding
+    #     was still sitting active=true with a real-looking email, indistinguishable
+    #     from Adam/Trafford's genuine rows to any endpoint or agent reading the table
+    #     (found manually while building Role Onboarding on GET /gateway/users, not by
+    #     any existing check). Flags test-signature actor_names/emails so this doesn't
+    #     require another manual catch next time a new identity table gets seeded.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT actor_name, role, email FROM platform_users
+                    WHERE active = TRUE
+                      AND (actor_name ILIKE '%test%' OR email ILIKE '%test%'
+                           OR actor_name ~* '^(jane|john|test|demo|sample) ')
+                """)
+                test_users = cur.fetchall()
+        if test_users:
+            findings.append({
+                "severity": "medium",
+                "category": "test_data_in_platform_users",
+                "detail": f"{len(test_users)} platform_users row(s) look like test/seed data (not real HCI people) but are active=true - indistinguishable from real team members to any endpoint reading this table, verify and purge or deactivate.",
+                "items": [f"{r['actor_name']} ({r['role']}, {r['email']})" for r in test_users],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Platform-users-test-data check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
@@ -4531,6 +4767,98 @@ def field_submit_note(req: FieldNotePayload):
         return _response("/field/note", {}, errors=[str(e)], start=t0)
 
 
+# ── Role Onboarding System (Build 2) — real identity, not a hardcoded roster ─
+#
+# 2026-07-10: Build 1 shipped with a hardcoded _HCI_TEAM_ROSTER list as a
+# pragmatic shortcut (see BC_TO_CODE_FIELD_GPT_USER_IDENTITY_EMAIL_ROUTING_
+# DESIGN.md). GBT + BC architecture review (3-agent consensus, see handoff
+# e8c3735e) flagged that as a second source of truth alongside the existing
+# platform_users/platform_permissions RBAC service (services/platform/
+# identity/identity_service.py) and recommended migrating onto it instead.
+# Buck's real team is now real rows in platform_users, extended with
+# is_onboarded/onboarded_at, plus platform_user_projects for assignments
+# (a join table per GBT's recommendation, not a flat array column).
+@router.get("/users")
+def list_users():
+    """
+    Field GPT / GBT user-identity lookup - "who am I working with today."
+    Drives RFI Sent-By, role-appropriate content, and project scoping.
+    Does NOT drive email TO-routing - see draft_to_email logic in
+    services/rfi_workflow.py, which defaults to Buck until is_onboarded=True.
+    Reads platform_users (the canonical identity store), not a hardcoded list.
+    """
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                # 2026-07-10: platform_users also holds generic role-bootstrap
+                # placeholder rows (e.g. 'pm', 'super', 'system', 'AI') seeded
+                # 2026-06-26 for the RBAC system to have a row per role to
+                # attach permissions to - those aren't real people and would
+                # corrupt Field GPT's "who am I working with" name matching.
+                # None of them have an email; every real person does - that's
+                # a more robust filter than matching actor_name against role,
+                # which missed cases like actor_name='AI' vs role='ai_agent'.
+                # Excluded here, not deleted from the table.
+                cur.execute("""
+                    SELECT u.actor_name AS name, u.email, u.role, u.is_onboarded,
+                           COALESCE(array_agg(p.project_code) FILTER (WHERE p.project_code IS NOT NULL), '{}') AS projects
+                    FROM platform_users u
+                    LEFT JOIN platform_user_projects p ON p.user_id = u.id
+                    WHERE u.active = TRUE AND u.email IS NOT NULL
+                    GROUP BY u.id, u.actor_name, u.email, u.role, u.is_onboarded
+                    ORDER BY u.role, u.actor_name
+                """)
+                users = [dict(r) for r in cur.fetchall()]
+        return _response("/users", {"users": users, "count": len(users)}, start=t0)
+    except Exception as e:
+        return _response("/users", {}, errors=[str(e)], start=t0)
+
+
+class OnboardUserPayload(BaseModel):
+    actor_name: str
+    onboarded_by: str = "buck"
+
+
+@router.post("/users/onboard")
+def onboard_user(req: OnboardUserPayload):
+    """
+    Flips a real team member from is_onboarded=false to true - the actual
+    go-live switch for their own email routing (see BC_TO_CODE_FIELD_GPT_
+    EMAIL_FINAL_SPEC_2026-07-10.md: TO-team-member routing only activates
+    once someone is formally onboarded). This is a real operational decision,
+    not something Field GPT or GBT should trigger on their own judgment -
+    only call this when Buck has explicitly said to onboard someone by name.
+    """
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE platform_users
+                    SET is_onboarded = TRUE, onboarded_at = NOW(), updated_at = NOW()
+                    WHERE actor_name = %s AND active = TRUE
+                    RETURNING actor_name, role, email, is_onboarded, onboarded_at
+                """, (req.actor_name,))
+                row = cur.fetchone()
+        if not row:
+            return _response("/users/onboard", {}, errors=[f"no active user found named '{req.actor_name}'"], start=t0)
+        result = dict(row)
+        result["onboarded_at"] = result["onboarded_at"].isoformat()
+        try:
+            requests.post("https://ntfy.sh/hci-executive",
+                data=f"{req.actor_name} onboarded by {req.onboarded_by} - email routing now active for their own inbox.",
+                headers={"Title": "Team member onboarded", "Priority": "default", "Tags": "bust_in_silhouette"},
+                timeout=3)
+        except Exception:
+            pass
+        _log("/users/onboard", req.onboarded_by, "", "onboarded", round((time.time()-t0)*1000), req.actor_name)
+        return _response("/users/onboard", result, start=t0)
+    except Exception as e:
+        return _response("/users/onboard", {}, errors=[str(e)], start=t0)
+
+
 @router.post("/field/rfi")
 def field_submit_rfi(req: FieldRFIPayload):
     """
@@ -4571,6 +4899,68 @@ def field_submit_rfi(req: FieldRFIPayload):
         return _response("/field/rfi", {}, errors=[str(e.detail)], start=t0)
     except Exception as e:
         return _response("/field/rfi", {}, errors=[str(e)], start=t0)
+
+
+class RFIUpdatePayload(BaseModel):
+    status: Optional[str] = None
+    response: Optional[str] = None
+    response_date: Optional[str] = None
+    updated_by: str = "field"
+
+
+@router.patch("/field/rfi/{rfi_id}")
+def field_update_rfi(rfi_id: int, req: RFIUpdatePayload):
+    """
+    Updates an existing RFI's status/response. Added 2026-07-09/10 - this
+    did not exist before (POST /field/rfi only created new RFIs), which was
+    the exact gap Field GPT correctly reported ("cannot update the RFI
+    tracker") in the 2026-07-10 capability audit.
+    """
+    t0 = time.time()
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
+        import rfi_workflow
+        result = rfi_workflow.update_rfi(rfi_id, status=req.status, response=req.response,
+                                          response_date=req.response_date, updated_by=req.updated_by)
+        if "error" in result:
+            return _response(f"/field/rfi/{rfi_id}", {}, errors=[result["error"]], start=t0)
+        _log(f"/field/rfi/{rfi_id}", req.updated_by, "", "rfi_updated", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        return _response(f"/field/rfi/{rfi_id}", {"updated": True, "rfi": result}, start=t0)
+    except Exception as e:
+        return _response(f"/field/rfi/{rfi_id}", {}, errors=[str(e)], start=t0)
+
+
+class RFIProcessPayload(BaseModel):
+    to_email: Optional[str] = None
+    to_name: Optional[str] = None
+
+
+@router.post("/field/rfi/{rfi_id}/process")
+def field_process_rfi(rfi_id: int, req: RFIProcessPayload):
+    """
+    Full RFI workflow: generate the Hendrickson RFI Word document, save it
+    into the project's real RFIs Drive folder, append a row to that
+    project's real RFI Log tracker, and (if a recipient is given) create an
+    Outlook draft with the document attached. Added 2026-07-09/10 to close
+    the gap Field GPT correctly reported in its 2026-07-10 capability audit
+    - none of this existed before (see memory: project_rfi_capability_gap_2026-07-10).
+    Returns per-step evidence, not just a single pass/fail flag, per GBT's
+    evidence-first acceptance requirement.
+    """
+    t0 = time.time()
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
+        import rfi_workflow
+        result = rfi_workflow.run_rfi_workflow(rfi_id, to_email=req.to_email, to_name=req.to_name)
+        if "error" in result:
+            return _response(f"/field/rfi/{rfi_id}/process", {}, errors=[result["error"]], start=t0)
+        _log(f"/field/rfi/{rfi_id}/process", "field", "", "rfi_processed", round((time.time()-t0)*1000),
+             str(uuid.uuid4())[:8], f"all_ok={result.get('all_steps_ok')}")
+        return _response(f"/field/rfi/{rfi_id}/process", result, start=t0)
+    except Exception as e:
+        return _response(f"/field/rfi/{rfi_id}/process", {}, errors=[str(e)], start=t0)
 
 
 class PlanReviewPayload(BaseModel):
@@ -8559,6 +8949,28 @@ def ai_warm_start():
                     )
                     _unread = cur.fetchone()["c"]
                     out.setdefault("telegram_unread_by_agent", {})[_agent_key] = _unread
+
+                # AI Team Document Bus (2026-07-10) - unread HCI AI Master
+                # coordination-doc counts per agent, same shape as
+                # telegram_unread_by_agent above. Doesn't call the sync (that
+                # hits the Drive API); a warm-start should stay fast and cheap,
+                # so this reads the registry as of the last /coordination/documents
+                # LIST call by any agent rather than re-scanning Drive itself.
+                # Uses "CODE"/"GBT"/"BC" - the literal agent strings the
+                # /coordination/documents/{id}/acknowledge endpoint's own
+                # acceptance test sends - not the claude_code/chatgpt/
+                # browser_claude convention used by telegram_unread_by_agent.
+                cur.execute("SELECT COUNT(*) AS c FROM coordination_documents")
+                if cur.fetchone()["c"] > 0:
+                    for _agent_key in _COORD_DOC_ROSTER:
+                        cur.execute("""
+                            SELECT COUNT(*) AS c FROM coordination_documents cd
+                            WHERE NOT EXISTS (
+                                SELECT 1 FROM coordination_document_acks a
+                                WHERE a.file_id = cd.file_id AND a.agent = %s
+                            )
+                        """, (_agent_key,))
+                        out.setdefault("unread_coordination_docs_by_agent", {})[_agent_key] = cur.fetchone()["c"]
 
                 cur.execute("""
                     SELECT mission_id, title, status, priority FROM missions

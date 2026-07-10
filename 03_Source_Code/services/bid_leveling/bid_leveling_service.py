@@ -7,7 +7,7 @@ Works for ALL projects with gsheet_bid_tracker + drive_folder_id configured.
 All Drive writes are queued via approval queue during pilot phase.
 ChatGPT / GBT and other AI agents can call the API endpoints for full read/write access.
 """
-import sys, os, io, json, uuid, ssl, urllib.parse, urllib.request
+import sys, os, io, json, re, uuid, ssl, urllib.parse, urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "approval_queue"))
 
@@ -797,6 +797,78 @@ class BidLevelingService:
         folder_id = _drive_create_folder(project_drive_folder_id, folder_name, token)
         return {"folder_id": folder_id, "created": True, "action": f"created: '{folder_name}'"}
 
+    @staticmethod
+    def _division_folder_match_rank(name: str, div_num: str) -> int:
+        """
+        Returns a specificity rank (higher = more explicit/preferred) if `name`
+        is an existing top-level division folder for div_num, under ANY of the
+        naming conventions actually in use across active projects; 0 if it
+        doesn't match at all. Leading zeros are normalized so "5" and "05"
+        match the same division.
+
+        This exists because the old exact-name / bare-prefix match only
+        recognized "{div_num}_" or "{div_num} " and silently fell through to
+        creating a brand-new folder whenever a project used a different
+        convention - which is how 1355 Riverside ended up with a second,
+        parallel, empty "0N_Name" folder tree sitting next to its real
+        "Division N - Name" folders (found + fixed 2026-07-09). The rank
+        exists because some projects have BOTH an old empty shell folder and
+        the real one still present - matching must deterministically prefer
+        the explicit "Division N - Name" convention over a bare "N_" or "N -"
+        prefix, not just whichever Drive happens to list first.
+        """
+        n = str(int(div_num))  # normalize "05" / "5" -> "5"
+        name = name.strip()
+        ranked_patterns = [
+            (3, rf'^division\s+0*{n}\s*-\s*'),   # "Division 13 - Insulation" (most explicit)
+            (3, rf'^division\s+0*{n}$'),         # "Division 13" (no suffix)
+            (2, rf'^0*{n}\s*-\s*'),              # "03 - Concrete...", "05-Metals"
+            (1, rf'^0*{n}_'),                    # "13_Insulation", "05_Metals" (bare old-style)
+        ]
+        for rank, pattern in ranked_patterns:
+            if re.match(pattern, name, re.IGNORECASE):
+                return rank
+        return 0
+
+    @staticmethod
+    def _folder_description(name: str, div_num: str) -> str:
+        """Strips the leading division-number/convention prefix off a folder
+        name, leaving just the descriptive part (e.g. "13_Insulation" ->
+        "Insulation"). Used to sanity-check that a numerically-matched folder
+        is actually semantically the same division before trusting it."""
+        n = str(int(div_num))
+        name = name.strip()
+        for pattern in (rf'^division\s+0*{n}\s*-\s*', rf'^division\s+0*{n}$',
+                        rf'^0*{n}\s*-\s*', rf'^0*{n}_'):
+            m = re.match(pattern, name, re.IGNORECASE)
+            if m:
+                return name[m.end():].strip()
+        return name
+
+    @staticmethod
+    def _division_names_agree(candidate_desc: str, expected_name: str) -> bool:
+        """
+        True if two division names plausibly refer to the same trade, based
+        on shared significant words. Exists because a numeric-prefix match
+        alone is NOT sufficient proof two folders are the same division: on
+        1355 Riverside, division 13 means "Insulation" under the real
+        (35-division) numbering the system actually uses (confirmed against
+        real scanned vendor bids in the `drive_bids` table), but a
+        DIFFERENT, older folder tree also has a "Division 13" that means
+        "Special Construction" under old 16-division CSI numbering. Those
+        are genuinely different divisions that happen to share a number -
+        matching on number alone would silently misroute one division's
+        leveling summary into a folder that actually belongs to another. If
+        either name is empty/generic this returns True (nothing to check
+        against, don't block a real match on missing data).
+        """
+        def sig_words(s: str) -> set:
+            return {w.lower() for w in re.findall(r"[a-zA-Z]+", s) if len(w) > 3}
+        c_words, e_words = sig_words(candidate_desc), sig_words(expected_name)
+        if not c_words or not e_words:
+            return True
+        return bool(c_words & e_words)
+
     @classmethod
     def ensure_division_folders(cls, bids_folder_id: str, divisions: dict,
                                   token: str, dry_run: bool) -> dict:
@@ -815,16 +887,53 @@ class BidLevelingService:
         for div_num, div_data in divisions.items():
             div_name = div_data.get("name") or CSI_DIVISIONS.get(div_num, f"Division {div_num}")
             folder_name = f"{div_num}_{div_name}"
-            # Try exact match first, then prefix match
-            folder_id = existing_map.get(folder_name)
-            if not folder_id:
-                for name, fid in existing_map.items():
-                    if name.startswith(div_num + "_") or name.startswith(div_num + " "):
-                        folder_id = fid
-                        break
+            # Collect every existing folder that could plausibly BE this
+            # division's folder, ranked by how explicit/canonical its naming
+            # convention is - and pick the single best one. Deliberately NOT
+            # special-casing an exact string match to `folder_name` as
+            # automatically "best": folder_name is itself constructed in the
+            # old "{div_num}_{div_name}" shape, so an exact match only proves
+            # a folder follows the OLD convention, not that it's the real or
+            # current one. On 1355 Riverside the old empty "0N_Name" shell
+            # folder happened to equal that constructed string byte-for-byte
+            # and was silently winning over the real "Division N - Name"
+            # folder purely because of that coincidence - exactly the bug
+            # being fixed here.
+            candidates = []
+            for name, fid in existing_map.items():
+                rank = cls._division_folder_match_rank(name, div_num)
+                if rank == 0:
+                    continue
+                desc = cls._folder_description(name, div_num)
+                agrees = cls._division_names_agree(desc, div_name)
+                candidates.append((agrees, rank, name, fid))
+
+            folder_id = None
+            if candidates:
+                # Semantic agreement is a TIEBREAKER between multiple
+                # numeric-matching candidates, not an absolute filter - a
+                # lone candidate is used even if worded differently than
+                # expected (e.g. 64EW's real division-07 folder is "07 -
+                # Insulation, Waterproofing, Roofing & Siding" but the
+                # computed div_name is "Thermal & Moisture Protection" -
+                # same division, different wording, and there's no
+                # alternative folder to prefer instead). Only when TWO OR
+                # MORE candidates share a division number does a semantic
+                # mismatch mean "this is probably a different division under
+                # another numbering scheme" (1355R's div 13 = Insulation vs.
+                # a leftover "Division 13 - Special Construction" folder).
+                candidates.sort(key=lambda c: (c[0], c[1]), reverse=True)
+                folder_id = candidates[0][3]
 
             if folder_id:
-                result[div_num] = {"folder_id": folder_id, "action": "found_existing"}
+                action = "found_existing"
+                if len(candidates) > 1:
+                    other_names = [c[2] for c in candidates[1:]]
+                    action = (f"found_existing (WARNING: {len(candidates)} candidate folders "
+                              f"matched div {div_num} - picked '{candidates[0][2]}', "
+                              f"ignored {other_names} - possible duplicate folder tree or "
+                              f"conflicting numbering scheme, flag for cleanup)")
+                result[div_num] = {"folder_id": folder_id, "action": action}
             elif dry_run:
                 result[div_num] = {"folder_id": None,
                                     "action": f"would_create: '{folder_name}'"}

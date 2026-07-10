@@ -117,15 +117,103 @@ def move_message(msg_id: str, folder_id: str) -> tuple:
     return _request("POST", f"/me/messages/{eid}/move", body={"destinationId": folder_id})
 
 
-def create_reply_draft(msg_id: str, html_body: str) -> dict:
-    """Create a reply draft in the same email thread."""
+def add_attachment_bytes(msg_id: str, name: str, content_type: str, content: bytes) -> tuple:
+    """
+    Attach a small file (<3MB - Graph's simple-upload limit) to a message by
+    base64-encoding its bytes into a fileAttachment resource. Files at or
+    above that limit need Graph's chunked upload-session API instead, which
+    this does not implement - callers must treat failure/oversize as "could
+    not carry forward automatically" and surface that to the user rather
+    than silently dropping the attachment.
+    """
+    import base64
     eid = urllib.parse.quote(msg_id, safe="")
-    r, err = _request("POST", f"/me/messages/{eid}/createReply", body={
-        "message": {"body": {"contentType": "HTML", "content": html_body}},
+    return _request("POST", f"/me/messages/{eid}/attachments", body={
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        "name": name,
+        "contentType": content_type,
+        "contentBytes": base64.b64encode(content).decode("ascii"),
     })
+
+
+# Graph's simple attachment upload only supports files under this size;
+# anything larger needs a chunked upload session (not implemented here) and
+# must be flagged to the user instead of silently skipped.
+_ATTACHMENT_SIMPLE_UPLOAD_LIMIT = 3 * 1024 * 1024
+
+
+def create_reply_draft(msg_id: str, html_body: str) -> dict:
+    """
+    Create a reply draft in the same email thread, with the original message
+    (and its attachments) still visible/attached so the draft can be
+    verified against the source before sending.
+
+    Graph's createReply auto-populates the new draft's body with the quoted
+    original thread. Passing `message.body.content` directly in that same
+    call REPLACES that auto-generated body wholesale, silently dropping the
+    quoted original - the draft then shows only the new AI text with no way
+    to see what's being replied to. Fixed 2026-07-09 per Buck/GBT report.
+    Correct sequence: create the reply bare (no body override) so Graph
+    includes the quoted thread, then fetch that body and PREPEND the new
+    text to it, preserving the quote instead of overwriting it.
+
+    Separately: Graph's createReply does NOT carry forward the original
+    message's attachments onto the reply draft (this is standard email
+    client behavior - a reply isn't a forward). Per Buck/GBT follow-up
+    report, callers need those attachments to remain visible/available on
+    the draft, not silently absent. Each original attachment is downloaded
+    and re-uploaded onto the new draft; any that fails (e.g. over the
+    simple-upload size limit, or a download/upload error) is NOT silently
+    dropped - a warning listing exactly which attachment(s) need manual
+    re-attachment is prepended to the draft body instead.
+    """
+    eid = urllib.parse.quote(msg_id, safe="")
+    r, err = _request("POST", f"/me/messages/{eid}/createReply", body={})
     if err:
         raise RuntimeError(err)
-    return r
+
+    draft_id = r["id"]
+    draft_eid = urllib.parse.quote(draft_id, safe="")
+    draft, err = _request("GET", f"/me/messages/{draft_eid}", params={"$select": "body"})
+    if err:
+        raise RuntimeError(err)
+    quoted_original = draft.get("body", {}).get("content", "")
+
+    # Carry forward original attachments; collect anything that can't be
+    # copied automatically so it can be surfaced explicitly, not dropped.
+    failed_attachments = []
+    original = get_message(msg_id)
+    if original and original.get("hasAttachments"):
+        for att in list_attachments(msg_id):
+            att_name = att.get("name", "attachment")
+            att_size = att.get("size", 0)
+            if att_size >= _ATTACHMENT_SIMPLE_UPLOAD_LIMIT:
+                failed_attachments.append(f"{att_name} (too large to auto-attach, {att_size} bytes)")
+                continue
+            try:
+                content = download_attachment_bytes(msg_id, att["id"])
+                _, up_err = add_attachment_bytes(draft_id, att_name,
+                                                  att.get("contentType", "application/octet-stream"), content)
+                if up_err:
+                    failed_attachments.append(f"{att_name} (upload failed: {up_err})")
+            except Exception as e:
+                failed_attachments.append(f"{att_name} (error: {e})")
+
+    warning_html = ""
+    if failed_attachments:
+        items = "".join(f"<li>{name}</li>" for name in failed_attachments)
+        warning_html = (
+            '<p style="color:#b00;"><b>WARNING: could not auto-attach the following '
+            f'original attachment(s) - review and attach manually before sending:</b><ul>{items}</ul></p>'
+        )
+
+    combined_body = warning_html + html_body + "<br><br>" + quoted_original
+    r2, err2 = _request("PATCH", f"/me/messages/{draft_eid}", body={
+        "body": {"contentType": "HTML", "content": combined_body},
+    })
+    if err2:
+        raise RuntimeError(err2)
+    return r2
 
 
 def mark_as_read(msg_id: str) -> tuple:

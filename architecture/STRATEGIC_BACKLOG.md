@@ -1838,3 +1838,759 @@ Registry requirements remain:
 - One durable source for HCI project folder template, 00_Bids structure, HubSpot mapping, naming rules, canonical Bid Tracker schema, Bid Summary schema, validation rules, and source-of-truth rules.
 - All Drive/tracker/bid-leveling/HubSpot workflows must read from it or fail safely.
 - Add regression tests to prevent old duplicate-folder beh
+
+
+### Progress Review: Continue production recovery until HCI standards are fully met
+*Source: ChatGPT | 2026-07-09*
+
+Progress review after Buck's latest updates.
+
+Positive progress acknowledged:
+- Root cause for stale bid regeneration identified and patched.
+- Duplicate Excel generation bug identified and patched.
+- Duplicate output files reportedly cleaned.
+- Verification method improved by checking actual Drive files instead of relying on API responses.
+
+However, the production recovery mission is NOT complete. The objective is restoring the HCI operating model, not only eliminating a regression.
+
+Next required work:
+
+1. Shared Drive Compliance
+- Audit 64EW, 101F, 1355R against Buck's approved project folder standard.
+- Report folder compliance by project.
+- List remaining duplicate/noncanonical folders.
+- Confirm naming standards.
+
+2. 00_Bids Compliance
+- Confirm every division/subtrade matches Buck's canonical structure.
+- Confirm vendor folders are organized correctly.
+- Confirm SOW, invitation, bids, leveling, award/history structure.
+
+3. Canonical Bid Tracker
+- Compare live trackers against Bu
+
+
+### EXECUTE BC 100% BID LEVELING DIRECTIVE — no clarifications, live-tested completion required
+*Source: ChatGPT | 2026-07-09*
+
+Buck approved sending out Browser Claude's execution directive. Treat `BC_TO_CODE_SESSION_DIRECTIVE_BID_LEVELING_100PCT.md` in HCI AI Master as the operative execution checklist.
+
+Execute start-to-finish with no ambiguity and no partial completion claims.
+
+BC's required steps:
+
+1. Cleanup
+- Delete/remove the 18 broken CSV Google Sheets by ID per BC directive.
+- Delete Code's auto-generated XLSX files from 2026-07-08.
+- Delete/remove the deprecated z- tracker.
+- Preserve audit trail; do not permanently delete anything outside the directive without governance approval.
+
+2. 64EW
+- Copy canonical tracker template.
+- Populate with all 9 bids and correct amounts/notes.
+- Build Summary tab with all flags.
+
+3. 101F
+- Copy canonical tracker template.
+- Populate with 4 received bids.
+- Mark all remaining packages not sent where applicable.
+- Build Summary tab.
+- Flag MEP urgent.
+
+4. 1355R
+- Update existing tracker; do not rebuild.
+- Fix header timestamp using Mountain Time.
+- Clarify Kubed fire 
+
+
+### GO DIRECTIVE: Deeper Project Status Reporting for Live + Monitored Jobs, with 246GW/83SB status correction
+*Source: ChatGPT | 2026-07-09*
+
+Buck approved the deeper Project Status GPT reporting directive. Build this into the reporting model.
+
+IMPORTANT STATUS CORRECTIONS:
+- LIVE ACTIVE JOBS: 64EW, 101F, 1355R only.
+- 246GW is NOT a live active job and we do NOT currently have real Shared Drive access for it. Any report must clearly mark it as MONITORED / LIMITED ACCESS / NOT FULLY VERIFIED. Do not treat its folder status, bid folders, or procurement data as real unless there is verified source access.
+- 83SB is NOT a deal yet. Mark as MONITORED / NO HUBSPOT DEAL / NOT ACTIVE. Do not report it as active procurement or live project.
+
+REPORTING ARCHITECTURE:
+Create two report types:
+
+1. LIVE PROJECT DEEP REPORT — for 64EW, 101F, 1355R
+Must include:
+- Executive health
+- Procurement readiness
+- Bid quality and bid-leveling status
+- Folder standards compliance
+- HubSpot ↔ Shared Drive ↔ Bid Tracker ↔ Bid Summary reconciliation
+- AI workflow/system health for that project
+- Evidence inspected with Mountain Time timestamps
+- Actio
+
+
+### Revision: Monitored Project Reports must use available operational sources, not just historical/reference data
+*Source: ChatGPT | 2026-07-09*
+
+Buck clarified the Monitored Project Report scope.
+
+For monitored jobs, do not reduce the report to historical/source-confidence only. Where HCI has access, the monitored report must actively read available operational data, including:
+
+- Daily logs
+- Schedule
+- Budget
+- Look-ahead schedules
+- Drawings/plans/specs where available
+- RFIs/submittals where available
+- Change orders where available
+- Photos where available
+- Contracts/subcontracts where available
+- HubSpot/Houzz data where available
+- Shared Drive source files where access exists
+
+REPORT BEHAVIOR:
+- If access exists, report the operational status.
+- If access is partial, clearly label what was inspected and what was missing.
+- If access does not exist, do not infer or fabricate. Report missing access and source confidence.
+- Monitored jobs are still READ-ONLY unless Buck explicitly activates them.
+- Do not mix monitored-job findings into live production metrics for 64EW/101F/1355R.
+
+Monitored Project Report should include:
+
+
+### BUILD REQUEST: Adam Email GPT / Draft-Only Project Communication Assistant
+*Source: ChatGPT | 2026-07-09*
+
+Buck approved moving forward with a separate Adam-facing Email GPT.
+
+Build/design objective:
+Create a separate Adam Email GPT / project communication assistant that helps Adam draft, organize, and respond to project emails, but does NOT send emails autonomously.
+
+Phase 1 scope — draft-only:
+- Summarize inbound emails and threads.
+- Draft replies to owners, architects, engineers, subs, and vendors.
+- Pull project context from approved sources: Shared Drive, HubSpot, project brain, Bid Tracker/Bid Summary, RFIs/submittals/schedule where available.
+- Suggest next actions and identify missing information.
+- Create Outlook drafts only when appropriate.
+- Clearly label draft status and required human review.
+- Require Adam or Buck to manually review and send.
+
+Explicit prohibitions:
+- No autonomous email sending.
+- No contract commitments.
+- No budget approvals.
+- No schedule commitments without human review.
+- No Shared Drive writes unless governed by existing approval rules.
+- No HubSpot/H
+
+
+### Chief Architect Direction: Continue 35-division standardization using canonical mapping layer
+*Source: ChatGPT | 2026-07-09*
+
+Direction from Chief Architect:
+
+Good work identifying this as a data-model issue rather than a simple rename.
+
+Do not block waiting for a global mapping decision. Continue the work using these rules:
+
+1. Never split vendor information by guesswork.
+- If a legacy folder clearly belongs to one new CSI division, map it.
+- If it legitimately spans multiple new divisions, preserve it and record the relationship instead of forcing a split.
+
+2. Build a canonical mapping layer rather than only changing folders.
+Create a mapping table:
+Legacy Folder -> One or More CSI 35 Divisions
+Include confidence: HIGH, MEDIUM, or REVIEW REQUIRED.
+
+3. Do not move original documents solely to satisfy the new hierarchy.
+Preserve originals, create mappings, and let the system resolve relationships.
+
+4. Generate a manifest for every project listing: expected, present, missing, ambiguous, duplicate, stale, and needs human review.
+
+5. Treat SOWs and email templates as canonical project assets. Every division shou
+
+
+### URGENT: Plan-sourced SOW + email template completeness audit/fix for 64EW, 101F, 1355R
+*Source: ChatGPT | 2026-07-09*
+
+Buck asked whether we can be sure all SOWs are correct from reading the plans and contain all needed information per division/sub, and whether all email templates are correct for each division and include links to the needed information before sending. This must become part of the full system scope.
+
+Browser/Claude reported current findings:
+
+64EW — PARTIALLY COMPLETE:
+- Good: master SOW template exists; master email template covers BP-01 through BP-10 with Drive links; individual SOWs exist for BP-03 Concrete, BP-04 Masonry, BP-05 Metals, BP-06 Carpentry, BP-07 Waterproofing and are plan-sourced/structured; individual email templates exist for BP-03/BP-04/BP-05/BP-06 with links to drawings/structural/landscape/survey/permit.
+- Issues: BP-02 Demo/Excavation lacks standalone email template in Div 02 folder; BP-07 Waterproofing template links architectural plans but not structural drawings needed for retaining wall waterproofing details; BP-08 Windows/Doors SOW is nearly empty and needs 
+
+
+### URGENT: Preserve original email context in response drafts
+*Source: ChatGPT | 2026-07-09*
+
+Buck identified a workflow issue: when generating response email drafts, the original email being replied to is not visible, making it difficult to verify the draft against the source message. Investigate and implement a durable fix.
+
+Requirements:
+1. Preserve the complete original email thread while drafting replies.
+2. Ensure the drafting UI/workflow always lets the user view or reference the original email without losing it.
+3. Do not overwrite, replace, or hide the original message when generating a draft.
+4. Maintain provenance so the draft is explicitly linked to the source email.
+5. Add a regression test to verify reply generation always retains access to the original email/thread.
+6. Report the root cause, implementation, and evidence that the behavior is fixed.
+
+Goal: users must always be able to compare the generated draft against the original email before sending.
+
+
+### URGENT: Reply drafts must preserve and surface original attachments
+*Source: ChatGPT | 2026-07-09*
+
+Buck identified a higher-priority email workflow issue. The original email thread is visible, but AI-generated reply drafts are not picking up or surfacing the original attachments. Investigate and fix the reply workflow so attachments remain associated with the draft.
+
+Requirements:
+1. When drafting a reply, detect and preserve all original attachments.
+2. Make attachment presence explicit in the draft workflow so users can verify what is attached.
+3. Preserve links between the draft and the source email plus its attachments.
+4. If an attachment cannot be carried forward automatically, clearly warn the user instead of silently omitting it.
+5. Add regression tests covering replies with plans, PDFs, spreadsheets, and multiple attachments.
+6. Report root cause, implementation, and evidence from an end-to-end test.
+
+
+### CRITICAL: Field GPT capability exposure audit — backend exists but tools not exposed
+*Source: ChatGPT | 2026-07-10*
+
+Buck performed a live Field GPT test on 1355R RFI generation. This is not primarily an AI reasoning issue; it appears to be a capability exposure/configuration issue.
+
+Evidence from Field GPT screenshots:
+- Field GPT says it can search/read HCI Shared Drive.
+- Field GPT says it can read project information, generate RFI text, and create live RFIs in the HCI system.
+- Field GPT says it cannot update the RFI tracker, populate a Word template, save files to Drive, or create Outlook/Gmail drafts with attachments.
+- It explicitly says: "If those capabilities are wired into your HCI gateway, they're not exposed through the tools I have in this conversation."
+
+Required investigation:
+Do not assume backend implementation equals GPT capability. Verify Field GPT specifically.
+
+Produce a capability matrix:
+Capability | Backend exists | Action exposed to Field GPT | Working
+- Read Shared Drive
+- Read plans
+- Read RFI template
+- Update RFI tracker
+- Generate/populate Word RFI
+- Save RFI docs to Sha
+
+
+### Priority for tomorrow: 1355R production-ready RFI workflow
+*Source: ChatGPT | 2026-07-10*
+
+Chief Architect direction:
+
+Keep pushing toward production readiness with one primary objective: the 1355R RFI workflow must work end-to-end under real conditions tomorrow.
+
+Priority order:
+1. Complete an end-to-end 1355R RFI workflow:
+- Read questions.
+- Read canonical plans/specifications.
+- Generate evidence-backed RFIs.
+- Update the RFI tracker.
+- Generate RFI documents.
+- Save them in the correct project location.
+- Create the draft email with required attachments.
+- Verify every step against source documents.
+
+2. Finish Field GPT capability exposure work.
+- Verify all required write capabilities are exposed in the published Field GPT.
+- Remove generic fallback responses where gateway capabilities should exist.
+- If a capability is unavailable, report the exact missing endpoint/tool.
+
+3. Continue SOW/template completion.
+- Every active package should have a plan-sourced SOW, package-specific email template, validated links, provenance, and clear PRELIMINARY/FINAL status.
+
+4. Evide
+
+
+### ARCHITECTURE: Convert today's fixes into permanent system gates
+*Source: ChatGPT | 2026-07-10*
+
+Chief Architect directive: Today's work exposed recurring failure modes. Convert them into permanent architecture, not one-off fixes.
+
+Implement permanent gates:
+1. Capability Verification Gate: Before any workflow (RFI, bid leveling, email drafting, plan review, etc.), verify every required capability is actually available. If missing, report the exact missing capability instead of falling back to generic ChatGPT behavior.
+2. Source-of-Truth Gate: Verify every workflow reads only from the canonical project source. Reject stale, duplicate, or non-canonical sources. Record provenance for every output.
+3. Completeness Gate: No workflow reports COMPLETE until every required artifact exists and is verified (tracker, generated docs, email draft, attachments, links, metadata, provenance).
+4. Evidence Manifest: Every major workflow automatically records files read, plans used, documents created, records updated, warnings, and unresolved items.
+5. Regression Suite: Maintain end-to-end tests fo
+
+
+### URGENT 64EW Tracker Correction: Remove stale Kroschel ghost row and verify both production trackers
+*Source: ChatGPT | 2026-07-10*
+
+Browser Claude completed a live verification and identified a remaining production issue.
+
+Required correction:
+
+1. Inspect `64 Eastwood - Bid Tracking 2026-07-09.xlsx` (File ID: 1v04E96EcsNUwnMEWqENHTsjGr1uLjyHc).
+2. Remove the stale combined Kroschel row showing `$418,500` for Earthwork/Site Utilities.
+3. Apply the allocation from Kroschel allocation document (File ID: 19RV81t95WXHLD9qLz8I60oNsW403yYPu):
+- Division 2 Site Work: $79,500 + traffic TBD (Demo scope)
+- Division 31 Earthwork: $131,200 + TBDs (Backfill/lower wall excavation)
+- Division 33 Site Utilities: TBD (Gas service not yet priced)
+4. Also inspect `64 Eastwood - Bid Tracking.xlsx` (File ID: 1q6QmP2b5nk38IINrhiobDiLLWUsPqiAc). If this is the production tracker used by Adam/team, apply the identical correction.
+5. Before reporting complete, open BOTH tracker files and verify:
+- The $418,500 ghost row is gone.
+- The three allocation rows exist and reconcile.
+- Dashboard totals, formulas, Bid Summary, and downstream report
+
+
+### ARCHITECTURE DECISION (APPROVED): Physical Project Folders vs Canonical HCI Division Model
+*Source: ChatGPT | 2026-07-10*
+
+Buck approved Browser Claude's recommendation. This is now the governing architecture for all current and future projects.
+
+DECISION:
+Do NOT force every project's physical Shared Drive into the full HCI 35-division folder tree.
+
+1. Physical Shared Drive
+- Keep project folders organized around the real bid packages and how the PM/Superintendent execute the work.
+- Preserve existing package structures when they accurately represent the project scope.
+- Do not create empty folders simply to satisfy the HCI division model.
+
+2. HCI Standards Registry
+- The Standards Registry is the translation layer.
+- Every physical package maps to one or more canonical HCI divisions.
+- Combined scopes are explicitly mapped.
+- Non-applicable divisions are marked N/A.
+
+3. Canonical Bid Tracker
+- Always use the HCI canonical division model.
+- Divisions may be Active, Combined, or N/A.
+- Do not require matching physical folders.
+
+4. Bid Summary
+- Generate from the canonical model using the same underlying dat
+
+
+### BUILD: Adam Email GPT in HCI AI architecture
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized moving forward with Adam's email-specific GPT while other code work continues. Build this as a governed HCI role interface, not a standalone generic chatbot.
+
+Purpose:
+Adam Email GPT should help Adam Malmgren manage project email for HCI, especially 246GW and any projects Buck assigns, using the same source-of-truth, provenance, and approval architecture as the rest of HCI AI OS.
+
+Core requirements:
+1. Identity and role
+- User: Adam Malmgren (PM role).
+- Scope: project email triage, summaries, draft replies, follow-up extraction, attachment awareness, and project-context lookup.
+- Never represent Buck Adams as PM for 246GW; use Adam Malmgren in logs and project context.
+
+2. Source-of-truth rules
+- Project facts come from HCI Shared Drive, HubSpot, Houzz, approved project state, and email thread content.
+- HCI AI Master/My Drive is system/coordination only, never project source-of-truth.
+- Every factual draft should retain provenance to the source email/thread and projec
+
+
+### Add rollout step: Share Adam Email GPT with Adam after acceptance
+*Source: ChatGPT | 2026-07-10*
+
+Chief Architect rollout requirement: once Adam Email GPT has passed acceptance testing, include a deployment step to share it with Adam Malmgren.
+
+Before sharing:
+- Verify acceptance tests pass.
+- Confirm governance and permissions are correct.
+- Confirm draft-only email behavior and no direct-send capability.
+- Confirm project context and source-of-truth behavior.
+
+After sharing:
+- Provide Adam with a short onboarding guide covering capabilities, limitations, workflow, and how to report issues.
+- Record the rollout in the project documentation.
+
+Do not share before acceptance criteria are met.
+
+
+### Adam Email GPT discovery + investigate draft emails landing in Junk
+*Source: ChatGPT | 2026-07-10*
+
+Chief Architect follow-up.
+
+1) Adam Email GPT discovery session:
+Before finalizing the build, meet with Adam and treat him as the product owner for his workflow. Walk him through how to describe:
+- His ideal inbox organization.
+- Daily email workflow from start to finish.
+- Triage views.
+- Follow-up workflow.
+- Project organization.
+- Vendor/client communication preferences.
+- Draft review flow.
+- Attachments and plan handling.
+- Task extraction.
+- Search and recall.
+- Dashboards and summaries.
+- Any repetitive work he wants automated.
+Capture his desired screens, flows, naming, organization, and pain points. Feed that into the design before locking the GPT.
+
+2) Investigate Junk mail issue:
+Buck reports AI-created draft emails are still ending up in Junk. Investigate root cause rather than treating symptoms.
+Determine whether this is due to Outlook/Microsoft Graph draft creation, sender metadata, MIME construction, headers, categories, automation path, or another issue.
+Provide evidenc
+
+
+### BUILD NOW: AI Team Document Bus + warm-start integration
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized this fix. Build the AI Team Document Bus as core infrastructure now.
+
+Scope:
+HCI AI Master coordination documents only (ADRs, audits, directives, peer reviews, team messages). This is not a generic project Drive reader and must not blur the boundary with project source-of-truth in Shared Drive.
+
+Required endpoints:
+1. LIST — return new/unread coordination documents for an agent, with file_id, filename, author/source, created/modified timestamp, document type, and acknowledgment state.
+2. READ — read a coordination document by Drive file ID or filename.
+3. ACKNOWLEDGE — record that a specific agent processed the document, with timestamp.
+4. STATUS — show which agents have acknowledged a specific document.
+
+Warm-start integration:
+- getWarmStart should include unread coordination documents (or references) for the requesting agent.
+- After acknowledgment, the document should no longer appear as unread for that agent.
+
+Permissions and safety:
+- Restrict to the HCI AI Master
+
+
+### Operational resilience: planned OS reboot handling and automatic recovery
+*Source: ChatGPT | 2026-07-10*
+
+Buck advises this workstation will be shutting down for an operating system update. Treat this as an opportunity to improve resilience.
+
+Requirements:
+1. Before planned shutdowns, ensure active work is checkpointed and recoverable.
+2. On restart, automatically restore monitoring, scheduled polling, and agent state where platform capabilities allow.
+3. Ensure warm-start is the first recovery step so pending directives, reviews, and messages are reloaded.
+4. Design a restart SOP covering: checkpoint, shutdown, startup, warm-start, Telegram catch-up, heartbeat verification, and resumption of active work.
+5. Where technically possible, automate recovery so long-running monitors resume without manual intervention. If platform limitations prevent this, document exactly what must be restarted manually.
+6. Add a regression test simulating a restart to verify no active work, directives, or monitoring loops are lost.
+
+Goal: planned OS updates should not disrupt operations or require Buck to manu
+
+
+### START NOW: Build Adam Email GPT end-to-end
+*Source: ChatGPT | 2026-07-10*
+
+Buck has now authorized active build of Adam Email GPT. Begin implementation now using the previously issued architecture and rollout requirements.
+
+Build sequence:
+1. Draft the final system instructions for Adam Email GPT.
+2. Define the minimal Actions schema and capability matrix.
+3. Verify gateway endpoints for email read, thread summary, project match, attachment inspection/carry-forward, task extraction, and draft creation.
+4. Enforce draft-only behavior; no direct send.
+5. Enforce source-of-truth and provenance rules.
+6. Build Adam onboarding/discovery flow so he can describe how he wants inbox organization, triage, follow-ups, project grouping, draft review, attachments, dashboards, and automation.
+7. Use Browser Claude for GPT Builder/browser configuration and live publishing verification where needed.
+8. Run a fresh-chat end-to-end test with a real project email containing attachments.
+9. Confirm original thread preserved, attachments surfaced/carried forward, project context 
+
+
+### Adam Email GPT role update: Daily Command Center for Senior PM + Executive
+*Source: ChatGPT | 2026-07-10*
+
+Buck selected Option C — Daily Command Center — and clarified Adam Malmgren's role.
+
+Update the Adam Email GPT architecture accordingly:
+
+Identity/authority:
+- Adam Malmgren is a Senior Project Manager and an Executive of Hendrickson Construction.
+- He has visibility into every job and touches every project in some capacity.
+- Do not scope him to only 246GW.
+
+Primary home experience:
+- Daily Command Center across the portfolio, with drill-down into project and inbox views.
+
+Default sections:
+1. Needs My Attention
+2. Waiting on Me
+3. Waiting on Others
+4. Drafts Ready for Review
+5. Follow-ups Due
+6. Project Risks / Decisions
+7. RFIs / Submittals / Bid Issues
+8. Executive Cross-Project View
+9. Recent Attachments Requiring Review
+10. Commitments and Deadlines
+
+Access model:
+- Read access across all HCI projects, subject to system source-of-truth and confidentiality rules.
+- Active projects may support authorized operational workflows.
+- Monitored/historical jobs remain read-only unless Buc
+
+
+### BUILD: HCI Role Onboarding System + permanent outbound messaging safety rule
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized building the reusable HCI Role Onboarding System. Include this permanent safety rule in the architecture:
+
+OUTBOUND MESSAGING RULE (NON-NEGOTIABLE)
+- The system must never send an outgoing message to anyone outside Hendrickson Construction.
+- For external recipients, the system may only create a draft in the authorized user's own email Drafts folder.
+- No direct send endpoint may be exposed to any GPT, workflow, n8n process, or agent.
+- Internal notifications to approved HCI channels/users may be allowed only through explicitly approved internal messaging paths.
+- Every email workflow must default to DRAFT ONLY.
+- The created draft must remain linked to the source thread, retain required attachments, preserve provenance, and clearly show intended recipients.
+- If the draft cannot be created in the correct user's mailbox, the workflow must fail safely and report the exact problem; it must never reroute or send elsewhere.
+
+Build the HCI Role Onboarding System as a reusabl
+
+
+### PERMANENT RULE: 10-minute agent alerting + shared coordination state
+*Source: ChatGPT | 2026-07-10*
+
+Buck has updated the alerting requirement. Implement this as a permanent cross-agent rule for Claude Code, GBT/Chief Architect, and Browser Claude.
+
+Alert threshold:
+- Every 10 minutes maximum.
+- If any agent is idle waiting on Buck for a decision, pending approval, blocked mission, ambiguous judgment call, or has completed a milestone, that agent must push a Telegram message to Buck within 10 minutes.
+- Do not wait for Buck to check in manually.
+
+Shared-state requirement:
+- All three agents must read from the same coordination history and stay aligned.
+- No agent should continue working from stale or partial context if another agent has newer information.
+- Use the AI Team Document Bus / canonical message drop as the shared coordination record.
+- On each loop, agents should check: Telegram, unread coordination docs, active handoffs, blocked missions, and pending approvals.
+- Acknowledge or mark processed items so the next loop has an accurate shared state.
+
+Implementation requirements
+
+
+### BUILD + PILOT: Multi-hat HCI onboarding with Buck as first test user
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized building the HCI multi-hat onboarding/profile system and using Buck as the first pilot user.
+
+Core model:
+- Do not rely on a single job title. Capture the hats each person wears (e.g., Executive, PM, Superintendent, Accounting, Estimating, Field, Business Development, AI Development).
+- Capabilities are composed from hats; permissions remain governed separately.
+- Generate a tailored welcome/introduction for each user based on identity, hats, projects, responsibilities, enabled capabilities, and restrictions.
+
+Immediate security rule:
+- AI-building / AI-system-development capabilities must be restricted to Buck only for now.
+- No other user may access architecture/build/admin capabilities unless Buck explicitly approves later.
+- Enforce this in the role/capability registry and test it.
+
+Pilot user profile:
+- Buck Adams
+- Hats: PM, Superintendent, Executive/Operations, HCI-AI Owner/Builder
+- Active project responsibilities: 101F and 1355R
+- Company role: PM/Superintenden
+
+
+### BUILD NOW: Team broadcast replies with agent identity + evidence-based RFI peer review
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized two permanent capabilities and wants work resumed immediately.
+
+PART A — TEAM BROADCAST / IDENTITY-TAGGED RESPONSES
+Build a shared question-broadcast workflow so Buck can send one question to all AI team members and receive separate responses identified by agent.
+
+Required behavior:
+1. Buck sends one team question through Telegram or the AI Team Document Bus.
+2. The system distributes it to:
+   - GBT / Chief Architect
+   - Browser Claude (BC)
+   - Claude Code
+3. Every reply must begin with an explicit identity label:
+   - [GBT — Chief Architect]
+   - [BC — Browser Claude]
+   - [CODE — Claude Code]
+4. Responses must be written into the same shared coordination thread/history so all agents can see one another's answers.
+5. The system should show who has responded and who is still pending.
+6. Responses must use the 10-minute alert rule and deduplicate unchanged reminders.
+7. Add an optional consensus summary after all three respond, clearly distinguishing agreement, disagr
+
+
+### STANDARDIZE: Historical-project intelligence as mandatory quality gate across HCI workflows
+*Source: ChatGPT | 2026-07-10*
+
+Buck confirms this was the original intent of HCI AI: do not build workflows from scratch when HCI already has mature project data. Make historical/monitored-project intelligence a permanent standard across the board.
+
+Apply this to at least:
+- RFIs
+- Change Orders
+- Submittals
+- Bid leveling
+- SOWs
+- Email templates
+- Schedule risk reviews
+- Procurement/long-lead reviews
+- Vendor evaluations
+- Meeting agendas/minutes
+- Daily logs
+- Closeout/lessons learned
+
+Permanent rule:
+Before a workflow output is marked ready, the system should compare it against relevant mature/historical HCI examples, recurring standards, and lessons learned, while keeping monitored/historical jobs read-only.
+
+Required architecture:
+1. Build a reusable Historical Practice Review layer that can retrieve comparable examples by project type, document type, division, vendor, issue type, and workflow stage.
+2. Separate HCI-wide recurring standards from project-specific quirks.
+3. Preserve provenance: every learned pa
+
+
+### Add BC RFI compliance findings into fb70b16b RFI audit
+*Source: ChatGPT | 2026-07-10*
+
+Fold the following verified findings into the existing evidence-based RFI audit (fb70b16b) and treat them as actionable defects until disproven.
+
+1. 1355R RFI #3 (system ID 917): the generated document '2026-07-10_1355_Riverside_Unknown.pdf' landed in the 00_Bids folder instead of the canonical '06 RFI & Submittals/RFIs' location. Filename contains 'Unknown' where the subject/title should be.
+Actions: determine root cause, relocate to the canonical RFI location, rename using the correct subject, verify links/tracker references.
+
+2. Duplicate trackers: two different '1355 Riverside RFI - Log.xlsx' files exist (MGMT Tools and RFIs folder).
+Actions: identify the canonical tracker, reconcile content, eliminate split-tracker drift, and ensure future workflows update only the canonical tracker.
+
+3. Delivery gap: neither RFI 915 (test) nor 917 (real) has reached an external recipient. Both stopped before email drafting because no recipient email was available.
+Actions: close the missing-recip
+
+
+### PERMANENT STORAGE ARCHITECTURE: HCI AI My Drive = system; Shared Drives = project source of truth
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized making this storage architecture permanent and enforced system-wide.
+
+NON-NEGOTIABLE ARCHITECTURE
+1. HCI AI My Drive / HCI AI Master is SYSTEM SPACE ONLY.
+Allowed content includes: ADRs, Standards Registry, Operating Book, AI Team Document Bus, message drop, session logs, prompts, tests, regression reports, configuration, capability registry, role registry, workflow definitions, development notes, and system coordination artifacts.
+
+2. HCI Shared Drives are PROJECT SOURCE OF TRUTH.
+All actual project records must live in the proper project Shared Drive: drawings, specs, RFIs, submittals, bids, SOWs, email templates, trackers, change orders, meeting minutes, daily logs, closeout docs, historical project records, and other project deliverables.
+
+3. No project files may be duplicated into HCI AI My Drive as canonical or operational project records.
+The AI may read from Shared Drives and store extracted standards/lessons/metadata in the AI OS, but must not move, mirror, or 
+
+
+### Policy clarification for fd6bb469: legacy monitored projects are read-only references
+*Source: ChatGPT | 2026-07-10*
+
+Attach this policy clarification to the existing fd6bb469 RFI compliance/audit work.
+
+Buck's permanent guidance:
+
+Legacy/monitored projects (e.g. 813 McSkimming, 212 Cleveland and similar) predate our current standards. Different division orders, folder layouts, and naming schemes are expected and are NOT errors that should be 'corrected.' Treat them as historical context.
+
+Permanent rules:
+1. Never touch, reorganize, rename, or modify files/folders in legacy or monitored projects. They are read-only reference material.
+2. Never use their folder structure or naming conventions as templates for new or active projects. The current canonical standards (including the 06 RFI & Submittals structure and current HCI standards) govern all active work.
+3. Do use their content—RFIs, trackers, correspondence, lessons learned, document quality, workflows, and historical decisions—as reference material to improve HCI AI, Field GPT, Chief Architect, and workflow quality.
+4. Historical projects are ev
+
+
+### CLEANUP: HCI AI My Drive as system-only with monitored-project preservation
+*Source: ChatGPT | 2026-07-10*
+
+Buck authorized a controlled cleanup of HCI AI My Drive to align with the permanent storage architecture.
+
+Objectives:
+1. HCI AI My Drive/HCI AI Master should contain only AI operating-system artifacts (coordination, ADRs, standards, prompts, tests, logs, registries, etc.).
+2. Verify that no canonical project files are being stored there if they belong in a project Shared Drive.
+
+Rules:
+- DO NOT modify monitored or historical project Shared Drives.
+- DO NOT duplicate monitored-project files.
+- If project files from monitored jobs were copied into HCI AI My Drive, identify them and recommend replacing them with references to the canonical Shared Drive location rather than maintaining duplicates.
+- If active-project artifacts are found in HCI AI My Drive, inventory them, identify their canonical Shared Drive location, and recommend move/archive actions. Do not delete automatically.
+- Preserve system artifacts that legitimately belong in HCI AI Master.
+
+Deliverables:
+- Inventory of suspec
+
+
+### PERMANENT RULE: Self-healing restart, agent role recovery, and pick-up-where-left-off
+*Source: ChatGPT | 2026-07-10*
+
+Buck directed this as a permanent system rule, consistent with the HCI AI Operating Book principles (learning system, governance-first, evidence over claims, resilience, role-based operating model, 100/100 standard).
+
+Build a full shutdown/restart recovery system for planned OS updates and unplanned restarts.
+
+Required behavior:
+1. Pre-shutdown checkpoint
+- Persist active missions, current task, project context, pending approvals, blocked decisions, open browser/GPT work, current evidence, and next action for each agent (GBT, BC, Claude Code, n8n).
+- Persist last-read Telegram message ID and last-acknowledged Document Bus item per agent.
+- Record whether work is safe to resume automatically or requires human approval.
+
+2. Automatic startup sequence
+On workstation boot/restart, automatically start required local services/containers/tunnels/workflows where technically possible.
+Each agent/session must begin with:
+- gateway health check,
+- project state,
+- Telegram catch-up,
+- warm-start,
+
+
+### BOOK V3 PROGRAM: verify canonical edition and draft architecture updates
+*Source: ChatGPT | 2026-07-10*
+
+Buck requests a formal Book V3 effort.
+
+1. First verify the canonical Operating Book.
+- Confirm all published-ready chapters.
+- Verify no agent is reading an older edition.
+- Produce an edition inventory (chapter number, version, date, canonical file ID).
+- Flag duplicate/superseded chapters.
+
+2. If newer canonical chapters exist than those available through the gateway reads, use the canonical versions for all future work.
+
+3. Draft proposed V3 additions based on production learning:
+- Learning Operating System
+- Operational Resilience & Restart Recovery
+- Institutional Knowledge Layer
+- Historical Practice Review
+- AI Team Document Bus / shared state
+- Role Factory & onboarding
+- Standards Registry as first-class subsystem
+- Operational Memory / decision provenance
+- Self-healing lifecycle
+- 10-minute alerting
+- Storage architecture (Shared Drives vs HCI AI Master)
+
+4. Every proposed addition must include:
+- Why it exists
+- User benefit
+- Operational benefit
+- Governance impact
+- Acc
+
+
+### Verify complete Operating Book archive and recover any missing chapters
+*Source: ChatGPT | 2026-07-10*
+
+Buck believes the Operating Book previously contained more chapters than are currently being surfaced. Coordinate with Browser Claude and perform a full search of the HCI AI Master/archives for the canonical and archived editions.
+
+Tasks:
+1. Inventory every Operating Book chapter and edition found (active and archived).
+2. Identify superseded, duplicate, draft, and canonical versions.
+3. Verify whether Chapters 4, 6, 8, and any later chapters exist in published-ready or archived form.
+4. If multiple editions exist, build a version lineage showing which file supersedes which.
+5. Compare the currently referenced edition against the latest canonical edition and identify any missing content.
+6. Coordinate findings with Browser Claude so both teams are working from the same book.
+7. Do not modify the book yet—return an evidence-backed inventory and recommendation for the canonical V3 baseline.
+
+Goal: ensure all future architectural work is based on the complete, correct Operating Book rathe
+
+
+### Browser cleanup request with verification caveat
+*Source: ChatGPT | 2026-07-10*
+
+Buck requests a targeted browser tab cleanup. Use exact URLs (titles are not unique).
+
+Close ONLY these tabs if they are visible/controllable by your browser automation:
+1. https://chatgpt.com/g/g-6a3f1a8dc0a88191bcfd559035aef935-hci-chief-architect/c/6a511d32-a334-83e8-8f95-0b42301f491f (duplicate old Chief Architect thread)
+2. https://chatgpt.com/gpts/editor/g-6a4127df601481919bcee1c8de3fe4a2 (Field GPT editor)
+3. https://claude.ai/chat/acd08cc3-daff-4d6a-be89-6852a5f90e0f (old Claude audit chat)
+4. http://localhost:5678/workflow/P4fOHS47k2RrkZJn (n8n workflow tab)
+5. https://chatgpt.com/g/g-6a4127df601481919bcee1c8de3fe4a2-hci-field-gpt/c/6a511287-64d0-83e8-9e48-7e9f8c9d5d0e (duplicate Field GPT 1355R RFI)
+6. https://chatgpt.com/g/g-6a4127df601481919bcee1c8de3fe4a2-hci-field-gpt/c/6a51150b-13c8-83e8-8a57-0e2b83d04f3c (duplicate Field GPT near-empty test)
+7. https://chatgpt.com/g/g-6a4127df601481919bcee1c8de3fe4a2-hci-field-gpt/c/6a51285b-cf54-83e8-8db7-cfcbf91eb500 (duplicate Field 
+
+
+### Role Onboarding System architecture review consensus
+*Source: ChatGPT | 2026-07-10*
+
+Architecture review from Chief Architect: Recommend building the Role Onboarding System on top of the existing tenant-agnostic RBAC/identity service (identity_service.py + platform_users/platform_permissions) rather than maintaining the Build 1 hardcoded _HCI_TEAM_ROSTER. Key recommendations: (1) migrate roster into platform_users as the canonical identity source; (2) keep identity/RBAC separate from onboarding state; (3) model onboarding independently (is_onboarded, onboarded_at, project assignments); (4) preserve current rollout rule that all operational routing defaults to Buck until formal onboarding regardless of user records; (5) consider normalized user-project relationships rather than a projects list if multi-project assignments are expected. This aligns with future config-driven multi-tenant productization.
+
+
+### Request implementation feedback: Role Onboarding on existing RBAC
+*Source: ChatGPT | 2026-07-10*
+
+Please review the proposed Role Onboarding architecture and respond with implementation recommendations. Context: existing tenant-agnostic identity_service.py with platform_users/platform_permissions should become the canonical identity layer. Proposal is to migrate the Build 1 hardcoded _HCI_TEAM_ROSTER into platform_users, add onboarding state (e.g. is_onboarded, onboarded_at, project assignment model), preserve current routing rule that all drafts default to Buck until users are formally onboarded, and evaluate the best schema for project assignments. Please identify any implementation risks, migration strategy, and recommended data model.
