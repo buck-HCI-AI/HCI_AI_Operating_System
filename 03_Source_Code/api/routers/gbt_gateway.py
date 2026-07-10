@@ -15,6 +15,7 @@ import psycopg2, psycopg2.extras, requests
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, Form
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, Any, Dict
 from datetime import datetime, timezone, timedelta, date
@@ -594,7 +595,7 @@ _STATUS_PAGE_CSS = """
 """
 
 
-@router.get("/project/{code}/status-page", response_class=None)
+@router.get("/project/{code}/status-page", response_class=HTMLResponse, include_in_schema=False)
 def project_status_page(code: str):
     """On-demand, always-fresh full-picture status page - budget, schedule, open
     RFIs, open risks, in one simple view. Built 2026-07-08 per Buck: budget,
@@ -689,7 +690,7 @@ def _reportable_project_codes() -> list:
     return result
 
 
-@router.get("/portfolio/status", response_class=None)
+@router.get("/portfolio/status", response_class=HTMLResponse, include_in_schema=False)
 def portfolio_status_page():
     """Every live-or-monitored project, full picture, one page. Links from each
     card would go to /project/{code}/status-page for the single-project deep view."""
@@ -9178,7 +9179,7 @@ async def telegram_ack(req: TelegramAckRequest):
         return _response("/telegram/ack", {}, errors=[str(e)], start=t0)
 
 
-@router.get("/buck/compose", response_class=None)
+@router.get("/buck/compose", response_class=HTMLResponse, include_in_schema=False)
 async def buck_compose_form():
     """Simple HTML form Buck bookmarks on his phone to send messages to the system."""
     from fastapi.responses import HTMLResponse
