@@ -19,7 +19,37 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:14 MT, by Claude Code — TEAM STATUS (#4) FIXED FOR ALL 3 AGENTS, VERIFICATION PLAN NEXT
+2026-07-11, ~12:16 MT, by Claude Code — HONEST VERIFICATION AGAINST BUCK'S 4 CHECKPOINTS: 2/4 PROVEN
+
+## Verification report (2026-07-11 ~12:16 MT) — honest, not self-graded
+Buck's directive explicitly said don't declare this complete until
+demonstrated. Assessed each of his 4 checkpoints against real evidence
+rather than claiming success:
+
+1. **Code offline → BC+GBT continue** — ✅ PROVEN, real not simulated. The
+   actual overnight gap is the test case: BC built 5 real RFIs, GBT gave
+   real architecture reviews, both via `LIVE_TEAM_COMMS.md`, the entire
+   time Code was down.
+2. **Code returns → catches up automatically** — ⚠️ PARTIALLY TRUE, gap
+   disclosed. Once engaged, catch-up itself was thorough (read
+   `LIVE_TEAM_COMMS.md` + checkpoint, reconciled everything). But the
+   trigger to start was NOT automatic - took 8 of Buck's messages before
+   proper engagement. The new 5-min `CronCreate` loop helps for *future*
+   gaps within a live session, but would not have fixed last night's actual
+   failure mode (no session running at all for the loop to run in). Not
+   fully solved - still a real gap.
+3. **BC offline → Code+GBT continue** — ❓ UNVERIFIED. Hasn't actually
+   happened for a real stretch, not simulated either. Cannot claim proven.
+4. **GBT temporarily unavailable → Code+BC continue** — ✅ PROVEN. GBT's
+   real version-pinning tool-loss earlier this week is exactly this
+   scenario - Code kept fixing real bugs, BC kept building real RFIs,
+   neither stopped.
+
+**Net: 2/4 proven with real evidence, 1 partial with an honest gap, 1
+genuinely untested.** Not declaring this complete. Reported to Buck plainly
+rather than rounding up.
+
+## Still open, priority-0 per Buck
 
 ## Heartbeat fix (2026-07-11 ~12:11-12:14 MT)
 Found while checking requirement #4 (team status): BC's heartbeat was stuck
