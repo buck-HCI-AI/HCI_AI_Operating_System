@@ -76,6 +76,7 @@ SERVICE_REGISTRY = [
     {"name": "weekly-digest",        "path": "/gateway/project/{code}/weekly-digest",  "description": "PM weekly digest — last 7 days + next week priorities"},
     {"name": "client-comms",         "path": "/gateway/project/{code}/client-comms",   "description": "Outstanding items needing client/owner communication"},
     {"name": "action-list",          "path": "/gateway/project/{code}/action-list",    "description": "AI-ranked top 10 PM actions for the day"},
+    {"name": "project-view",        "path": "/gateway/project/{code}/view",           "description": "GET ?view=brain|schedule|bids|pm|deep-dive|cost-forecast|action-list - single parameterized endpoint, dispatches to the exact same 7 functions above. Added 2026-07-11 to free ChatGPT Actions schema slots (30-op platform cap); the 7 individual routes above stay live for backward compatibility, this is what GBT's schema now calls instead"},
     {"name": "project-state",       "path": "/gateway/project-state",             "description": "Full live system state (all projects, health, AI team)"},
     {"name": "executive-report",    "path": "/gateway/executive/report",          "description": "Executive morning brief across all projects"},
     {"name": "knowledge-graph",     "path": "/gateway/knowledge/vendor",         "description": "Vendor cross-project lookup by name"},
@@ -1451,6 +1452,31 @@ def project_action_list(code: str):
         return _response(f"/project/{code}/action-list", data, start=t0)
     except HTTPException as e:
         return _response(f"/project/{code}/action-list", {}, errors=[str(e.detail)], start=t0)
+
+
+_PROJECT_VIEW_DISPATCH = {
+    "brain": project_brain,
+    "schedule": project_schedule,
+    "bids": project_bids,
+    "pm": project_pm,
+    "deep-dive": project_deep_dive,
+    "cost-forecast": project_cost_forecast,
+    "action-list": project_action_list,
+}
+
+
+@router.get("/project/{code}/view")
+def project_view(code: str, view: str = Query(..., description="One of: brain, schedule, bids, pm, deep-dive, cost-forecast, action-list")):
+    """Single parameterized entry point for the 7 GET /project/{code}/X views above.
+    Added 2026-07-11 to free ChatGPT Actions schema slots (30-operation platform
+    cap) without losing any capability - dispatches to the exact same functions
+    the 7 individual routes call, so behavior is identical. The 7 individual
+    routes stay live (backward compatible); only GBT's Actions schema switches
+    to calling this one instead."""
+    fn = _PROJECT_VIEW_DISPATCH.get(view)
+    if fn is None:
+        return _response(f"/project/{code}/view", {}, errors=[f"unknown view '{view}', must be one of {sorted(_PROJECT_VIEW_DISPATCH)}"])
+    return fn(code)
 
 
 @router.get("/project/{code}/timeline")
