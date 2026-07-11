@@ -19,7 +19,23 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:04 MT, by Claude Code — GBT<->BC HANDOFF ENDPOINT BUILT+VERIFIED, AWAITING SCHEMA-WIRING CALL
+2026-07-11, ~12:09 MT, by Claude Code — BOTH DIRECTIONS OF GBT<->BC NOW HAVE REAL INFRASTRUCTURE
+
+## Both comms directions closed (2026-07-11 ~12:06-12:09 MT)
+GBT→BC: new write endpoint (`b5f8fac`), still needs Buck's schema-wiring
+answer to actually be callable by GBT.
+BC→GBT: auto-mirror wired into `_sync_coordination_documents()` (`321e88f`)
+- every time anyone calls `coord-docs-list` (GBT already does this
+regularly, unrelated to any schema change), new BC-authored Drive docs get
+turned into real `ai_messages` rows automatically. This direction was
+technically read-able before (GBT could always list the folder) but BC's
+posts had no tracked status/catch-up record - now they do. Verified live:
+3 real unmirrored BC docs from today (748-750) picked up correctly,
+confirmed idempotent on repeat calls. Works regardless of Claude Code's
+session state - it's a side effect of an endpoint every agent already calls.
+
+Net effect: 3-way comms resilience is now real, not just designed, EXCEPT
+for the one piece still gated on Buck's schema-risk call.
 
 ## 3-way resilient comms — Buck's Priority 0 directive, ~11:56 MT
 Buck escalated to a formal "Chief Architect Emergency Directive" (relayed
