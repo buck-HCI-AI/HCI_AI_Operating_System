@@ -19,7 +19,37 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~16:43 MT, by Claude Code — 1355R bid integrity re-verification found a real, pre-existing gap (61 packages marked bid_received with zero actual bid data)
+2026-07-11, ~17:39 MT, by Claude Code — deep verification pass: RFI clean, Identity Platform confirmed working, Role Onboarding clean, second n8n/ntfy quota issue found
+
+## Deep verification pass, continued (2026-07-11 ~16:48-17:39 MT)
+Per Buck's explicit "deep test, don't trust the system, everything read,
+everything aligns" directive, used quiet comms cycles productively rather
+than idling:
+- **RFI re-verification (1355R):** clean. 11 real open RFIs, each with a
+  matching drafted Word doc in Drive from yesterday. One placeholder RFI
+  from 2026-06-29 correctly already marked void, not lingering as live.
+- **Identity Platform:** core capability confirmed working end-to-end
+  (already proven via today's Field GPT fix). `role_on_project`/
+  `assigned_by` columns exist but are unused across all 6 rows - known
+  partial scope, not touched further without being asked.
+- **Role Onboarding:** clean. Confirmed no leftover hardcoded roster
+  competing with `platform_users` (`_HCI_TEAM_ROSTER` only exists in a
+  comment now, fully migrated). Tested `/users/onboard` with a fake name -
+  correctly rejected, no false-success.
+- **Fresh drift-check found a second, distinct n8n/ntfy issue:**
+  `AUTO-CONTINUOUS-DISCOVERY` (HubSpot hourly + Houzz nightly sync) failing
+  every run for the last 5 hours - same root cause as the earlier-fixed
+  `AUTO-HANDOFF-PROCESSOR` (shared `ntfy.sh` free-tier daily quota
+  exhausted), but this one's actual notification content looked legitimate
+  (real HubSpot record counts), not noise. Confirmed this can't be
+  code-fixed today - the quota is spent for the day regardless, won't reset
+  until midnight. Real infrastructure decision for Buck: upgrade ntfy.sh's
+  tier, or accept this as a periodic known limitation. 57 active workflows
+  share the one notification channel.
+
+**Net this pass: RFI/Identity Platform/Role Onboarding all confirmed clean.
+Two real open items remain: the 1355R bid integrity gap (61 packages) and
+the ntfy.sh quota decision.** Continuing.
 
 ## 1355R bid integrity re-verification - real gap found (2026-07-11 ~16:37-16:43 MT)
 Picked up the next roadmap item during a quiet comms cycle rather than
