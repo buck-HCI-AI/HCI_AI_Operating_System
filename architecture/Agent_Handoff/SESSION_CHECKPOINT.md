@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:14 MT, by Claude Code — provenance tracking (created_by/created_via) built for bid_packages per GBT's release-blocker directive; Adam/Trafford finding retracted as stale
+2026-07-11, ~15:22 MT, by Claude Code — Field GPT readiness check found a real live bug: Trafford Melville's role/project assignment resolved to Adam's data
+
+## Field GPT readiness check - real bug found (2026-07-11 ~15:15-15:22 MT)
+Fresh chat with HCI Field GPT (g-6a4127df601481919bcee1c8de3fe4a2). Startup
+self-check showed all 7 capabilities green (Read Shared Drive, Read Plans,
+Create RFI, Update RFI tracker, Generate Word RFI, Save to Drive, Draft email
+w/ attachment) and it correctly refused to assume identity, asking who it
+was working with instead of guessing - good behavior.
+
+Identified as "Trafford Melville" - **it responded with Role: Superintendent,
+Projects: 64EW/101F.** Checked the real DB and the live `/gateway/users`
+endpoint directly: Trafford's actual role is `pm`, actual project is
+`['1355R']` only. **64EW/101F belongs to Adam Malmgren, not Trafford** - Field
+GPT resolved Trafford's identity to Adam's data. Correctly surfaced the
+onboarding-state constraint though ("RFI drafts will still route to Buck
+unless additional team members are onboarded") - that part is accurate,
+not a bug.
+
+Checked whether this was a stale hardcoded instructions issue (like the
+existing "246GW: PM is Adam Malmgren" note in the Instructions field) -
+confirmed via direct textarea inspection that "Trafford" does not appear
+anywhere in the Instructions at all, so this is a **live data/tool
+resolution bug**, not stale copy. Root cause not yet isolated (didn't touch
+the schema/backend this cycle - investigation only).
+
+**Real, concrete finding for Buck's onboarding test: a superintendent could
+currently be shown a PM's project assignments under their own name.** Worth
+fixing before the live onboarding test with Buck. Not yet root-caused or
+fixed - next step.
 
 ## Provenance tracking built (2026-07-11 ~15:09-15:14 MT)
 Buck/GBT reviewed ADR-021, agreed with both classifications (574J closed,
