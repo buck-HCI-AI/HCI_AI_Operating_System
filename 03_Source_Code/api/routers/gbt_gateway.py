@@ -86,6 +86,7 @@ SERVICE_REGISTRY = [
     {"name": "coord-docs-read",      "path": "/gateway/coordination/documents/{file_id}", "description": "AI Team Document Bus - GET read a coordination doc's content"},
     {"name": "coord-docs-ack",       "path": "/gateway/coordination/documents/{file_id}/acknowledge", "description": "AI Team Document Bus - POST record an agent acknowledged a doc"},
     {"name": "coord-docs-status",    "path": "/gateway/coordination/documents/{file_id}/status", "description": "AI Team Document Bus - GET which agents have/haven't acknowledged a doc"},
+    {"name": "coord-docs-create",    "path": "/gateway/coordination/documents",           "description": "AI Team Document Bus - POST create a durable message + real Drive doc from one agent to another (from_agent, to_agent, subject, content, priority) - this is how GBT reaches Browser Claude (or BC reaches GBT) without Buck relaying, since BC can only read Drive, not call this gateway directly"},
     {"name": "agent-handoff",       "path": "/gateway/agent/handoff",            "description": "POST a platform intelligence document"},
     {"name": "field-note",          "path": "/gateway/field/note",               "description": "POST quick field note from SS/PM (direct write, no approval)"},
     {"name": "field-rfi",           "path": "/gateway/field/rfi",                "description": "POST new RFI from field (Gap11)"},
@@ -3062,6 +3063,69 @@ def coordination_documents_status(file_id: str):
         }, start=t0)
     except Exception as e:
         return _response("/coordination/documents/status", {}, errors=[str(e)], start=t0)
+
+
+class CoordDocCreatePayload(BaseModel):
+    from_agent: str
+    to_agent: str
+    subject: str
+    content: str
+    priority: str = "normal"
+
+
+@router.post("/coordination/documents")
+def coordination_documents_create(req: CoordDocCreatePayload, request: Request):
+    """
+    AI Team Document Bus — CREATE. Closes the real gap found 2026-07-11:
+    GBT had Drive read (search, coord-docs-list/read) but no way to WRITE a
+    Drive doc BC would see - the only channel that reaches BC, since BC
+    cannot call this gateway directly (its own constraint, documented in
+    BC's ADR-002 handoff-endpoint proposal). This is that endpoint - GBT's
+    "send to BC" (or BC's "send to GBT," or either sending to the other)
+    without Buck relaying. Writes a durable ai_messages row (survives even
+    if this write fails downstream) AND a real Drive doc in HCI AI Master
+    that BC's normal Drive-reading behavior will pick up. Does not require
+    Claude Code's session to be running - this is a plain API endpoint on
+    the always-on api-server, same as every other gateway route.
+    """
+    _require_key(request)
+    t0 = time.time()
+    try:
+        msg_id = _create_ai_message(req.from_agent, req.to_agent, "team_message",
+                                     req.subject, req.content, None, False, None,
+                                     None, None, None, req.priority, None)
+
+        from integrations.credentials import get_google_token
+        token = get_google_token("drive")
+        ts = _buck_local_str()
+        filename = f"{req.from_agent.upper()}_TO_{req.to_agent.upper()}_{req.subject[:60].replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.md"
+        body_text = f"{req.from_agent.upper()} -> {req.to_agent.upper()} | {ts}\nmessage_id: {msg_id}\npriority: {req.priority}\n\n{req.subject}\n{'=' * len(req.subject)}\n\n{req.content}\n"
+        metadata = {"name": filename, "parents": [HCI_MASTER_FOLDER_ID], "mimeType": "text/plain"}
+        boundary = "hcicoorddoc"
+        upload_body = (
+            f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{json.dumps(metadata)}\r\n"
+            f"--{boundary}\r\nContent-Type: text/plain\r\n\r\n{body_text}\r\n--{boundary}--"
+        )
+        r = requests.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": f"multipart/related; boundary={boundary}"},
+            data=upload_body.encode("utf-8"), timeout=30)
+        if r.status_code != 200:
+            return _response("/coordination/documents", {"message_id": msg_id},
+                              errors=[f"ai_messages row created (id {msg_id}) but Drive write failed: {r.status_code} {r.text[:200]}"], start=t0)
+        drive_file = r.json()
+
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE ai_messages SET related_file = %s WHERE id = %s", (drive_file["id"], msg_id))
+        _touch_heartbeat(req.from_agent, f"sent doc to {req.to_agent}: {req.subject[:60]}")
+        _log("/coordination/documents", req.from_agent, "coordination_documents", "created",
+             round((time.time() - t0) * 1000), str(msg_id), req.subject[:60])
+        return _response("/coordination/documents", {
+            "message_id": msg_id, "drive_file_id": drive_file["id"], "filename": filename,
+        }, start=t0)
+    except Exception as e:
+        return _response("/coordination/documents", {}, errors=[str(e)], start=t0)
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────
