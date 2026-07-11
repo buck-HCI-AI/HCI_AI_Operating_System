@@ -88,6 +88,8 @@ SERVICE_REGISTRY = [
     {"name": "coord-docs-status",    "path": "/gateway/coordination/documents/{file_id}/status", "description": "AI Team Document Bus - GET which agents have/haven't acknowledged a doc"},
     {"name": "coord-docs-create",    "path": "/gateway/coordination/documents",           "description": "AI Team Document Bus - POST create a durable message + real Drive doc from one agent to another (from_agent, to_agent, subject, content, priority) - this is how GBT reaches Browser Claude (or BC reaches GBT) without Buck relaying, since BC can only read Drive, not call this gateway directly"},
     {"name": "agent-handoff",       "path": "/gateway/agent/handoff",            "description": "POST a platform intelligence document"},
+    {"name": "agent-unread",        "path": "/gateway/agent/unread",             "description": "GET ?agent=X - single-call catch-up: everything in ai_messages waiting for this agent (status ISSUED or NEEDS_BUCK_APPROVAL), oldest first"},
+    {"name": "agent-heartbeat",     "path": "/gateway/agent/heartbeat",          "description": "POST explicit self-report {agent, mission?, session_id?} - marks this agent ONLINE right now with what it's working on"},
     {"name": "field-note",          "path": "/gateway/field/note",               "description": "POST quick field note from SS/PM (direct write, no approval)"},
     {"name": "field-rfi",           "path": "/gateway/field/rfi",                "description": "POST new RFI from field (Gap11)"},
     {"name": "email-draft",         "path": "/gateway/email/draft",              "description": "POST general-purpose Outlook draft (subject, body_html, to_email?, to_name?) - for bid solicitations and other non-RFI outbound email; gates on is_onboarded and self-BCCs Buck, draft-only, never auto-sent"},
@@ -8766,6 +8768,59 @@ def ai_message_get(msg_id: int):
         return _response(f"/ai/messages/{msg_id}", row, start=t0)
     except Exception as e:
         return _response(f"/ai/messages/{msg_id}", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/agent/unread")
+def agent_unread(agent: str = Query(..., description="chatgpt|browser_claude|claude_code|n8n")):
+    """
+    Single-call catch-up for any agent on session start: everything targeted
+    at it that hasn't been picked up yet (status ISSUED or NEEDS_BUCK_APPROVAL).
+    Identified as a real, missing convenience wrapper 2026-07-11 while
+    reviewing BC's ADR-003 proposal - the underlying data (ai_messages) and
+    filtering already existed via other endpoints, but nothing gave a single
+    "what's waiting for me" answer the way BC's proposed GET /agent/messages/
+    unread did. This is that endpoint, built on the existing table rather
+    than a new one.
+    """
+    t0 = time.time()
+    key = _AGENT_ALIASES.get((agent or "").strip().lower(), agent)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, source_agent, message_type, title, body, priority,
+                           status, related_file, created_at
+                    FROM ai_messages
+                    WHERE target_agent = %s AND status IN ('ISSUED', 'NEEDS_BUCK_APPROVAL')
+                    ORDER BY created_at ASC
+                """, (key,))
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            r["created_at"] = r["created_at"].isoformat()
+        return _response("/agent/unread", {"agent": key, "count": len(rows), "messages": rows}, start=t0)
+    except Exception as e:
+        return _response("/agent/unread", {}, errors=[str(e)], start=t0)
+
+
+class AgentHeartbeatPayload(BaseModel):
+    agent: str
+    mission: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+@router.post("/agent/heartbeat")
+def agent_heartbeat_selfreport(req: AgentHeartbeatPayload):
+    """
+    Explicit "I'm alive" self-report, separate from the implicit heartbeat
+    touch that happens as a side effect of other calls. BC's ADR-003 asked
+    for this directly - today heartbeat only updates incidentally, there was
+    no dedicated endpoint an agent could call just to say "I'm here, this is
+    what I'm working on."
+    """
+    t0 = time.time()
+    _touch_heartbeat(req.agent, "explicit heartbeat", current_task=req.mission,
+                      metadata={"session_id": req.session_id} if req.session_id else None)
+    return _response("/agent/heartbeat", {"agent": req.agent, "status": "ONLINE"}, start=t0)
 
 
 class AIMessageAcknowledge(BaseModel):
