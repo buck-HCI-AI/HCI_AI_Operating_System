@@ -19,7 +19,25 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~13:05 MT, by Claude Code — SCHEMA QUESTION RESOLVED CLEANLY, DEC-001-004 SEEDED
+2026-07-11, ~13:11 MT, by Claude Code — FOUND A CLEAN CONSOLIDATION PATH FOR THE 30-OP CAP
+
+## Consolidation analysis (2026-07-11 ~13:09-13:11 MT, read-only, nothing changed)
+Buck asked why the 30-op cap exists and whether more room could be made.
+Answered honestly (hard OpenAI platform limit, not something fixable from
+our side) and went looking for a real solution rather than just "cut
+something." Read GBT's full 30-operation list (read-only JS extraction,
+no schema edits, tab closed after) and found a clean win: **7 of the 30
+are narrow single-purpose variants of the same underlying call** -
+`getProjectBrain`, `getProjectSchedule`, `getProjectPM`, `getProjectDeepDive`,
+`getProjectCostForecast`, `getProjectBids`, `getProjectActionList` - all
+just `GET /gateway/project/{code}/X` for a different view. Consolidating
+into one parameterized endpoint (`view=brain|schedule|...`) frees 6 slots
+with zero real capability lost - covers the 7 unique new ADR-003 paths
+without cutting anything GBT actually uses.
+
+Reported to Buck. Not executing this yet - holding per GBT's own
+sequencing (verify the 4 resilience scenarios first, one controlled
+schema update later, not now).
 
 ## Schema question resolved (2026-07-11 ~13:03 MT)
 GBT (relayed via Buck) gave a clear, well-sequenced answer, ending the
