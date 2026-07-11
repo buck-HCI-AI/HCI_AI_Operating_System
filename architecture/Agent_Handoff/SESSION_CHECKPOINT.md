@@ -19,7 +19,36 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:07 MT, by Claude Code — Field GPT onboarding-test dry run against Buck's own (already-onboarded) account: 5/5 checks pass
+2026-07-11, ~15:14 MT, by Claude Code — provenance tracking (created_by/created_via) built for bid_packages per GBT's release-blocker directive; Adam/Trafford finding retracted as stale
+
+## Provenance tracking built (2026-07-11 ~15:09-15:14 MT)
+Buck/GBT reviewed ADR-021, agreed with both classifications (574J closed,
+275SS = "likely incomplete human initialization, pending final provenance" -
+logged as a `decision_log` entry), and named the real platform gap a
+**release blocker**: no table can currently prove who/what created a row.
+Built the first real instance rather than just filing it as a TODO:
+- `bid_packages` gets `created_by`/`created_via` columns (commit `196107b`).
+- Wired into both live creation paths: `/plan-review/generate-packages`
+  (AI-driven, now tags `ai_plan_review` + the reviewing PM) and
+  `drive_bid_reader.py`'s auto-create-on-scan path (tags `drive_bid_scan`).
+- Caught and fixed a real tuple-ordering bug in my own first edit to the
+  plan-review INSERT before it shipped (columns and placeholders had drifted
+  out of alignment) - caught on re-read, not by a live test.
+- Backfilled the two ADR-021 batches with what was actually proven: 574J's 9
+  rows -> `direct_sql_verified`, 275SS's 14 rows ->
+  `direct_sql_unverified_likely_incomplete_init`.
+Scoped to `bid_packages` only (where the real incident happened) - extending
+the same `created_by`/`created_via` pattern to other operational tables
+(risks, submittals, RFIs) is real follow-up work, explicitly not done in
+this pass.
+
+**Also retracted:** Buck said the earlier Adam/Trafford onboarding-state
+finding is stale/already-resolved info, days old - dropping it, not a real
+current gap. The 5/5 dry-run against Buck's own account from the last cycle
+still stands as a valid baseline.
+
+**Next (Buck's stated order):** check Field GPT and Project Status GPT
+readiness, then onboarding, then a live review session with Buck.
 
 ## Onboarding-test dry run against a real onboarded user (2026-07-11 ~15:07 MT)
 While waiting on Buck's 275SS/Adam/Trafford decisions, ran GBT's onboarding
