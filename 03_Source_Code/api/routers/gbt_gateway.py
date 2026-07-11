@@ -3043,7 +3043,7 @@ def _sync_coordination_documents() -> list:
     # every LIST call (this function), not tied to any one agent's session -
     # whichever agent calls coord-docs-list next does the mirroring.
     try:
-        bc_files = [f["id"] for f in files if f["name"].upper().startswith("BC")]
+        bc_files = [f["id"] for f in files if f["name"].upper().startswith(("BC", "BROWSER_CLAUDE"))]
         if bc_files:
             with _pg() as conn:
                 with conn.cursor() as cur:
@@ -3078,7 +3078,7 @@ def _sync_coordination_documents() -> list:
     # coordination_log_folded tracks what's already been merged so re-runs (this
     # function fires on every coord-docs-list call) don't re-append the same file.
     try:
-        bc_files_to_fold = [f for f in files if f["name"].upper().startswith("BC")
+        bc_files_to_fold = [f for f in files if f["name"].upper().startswith(("BC", "BROWSER_CLAUDE"))
                              and f["id"] != _LIVE_TEAM_COMMS_FILE_ID]
         if bc_files_to_fold:
             with _pg() as conn:
