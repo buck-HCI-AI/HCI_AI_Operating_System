@@ -19,7 +19,24 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~14:47 MT, by Claude Code — n8n fix CONFIRMED working (execution 9988 succeeded); resolved Buck's trust-critical "did the system write to a monitored job" question with direct evidence
+2026-07-11, ~14:49 MT, by Claude Code — started Field GPT onboarding-test prep, found a real concrete gap (Adam/Trafford stuck at onboarding_state='pending')
+
+## Field GPT onboarding prep - started, one real gap found (2026-07-11 ~14:49 MT)
+Checked `GET /gateway/users` (the real Field GPT identity-flow endpoint) against
+`platform_users`. Only Buck shows `onboarding_state='onboarded'`. Adam Malmgren
+and Trafford Melville both show `pending` / `is_onboarded=false` - despite
+Field GPT reportedly already being shared with Adam and usable by him
+(`project_build1_identity_flow_live_verified` memory). This matters for GBT's
+onboarding-test criteria (identity recognition, permissions, RFI workflow,
+email drafting) since `_resolve_recipient_gate` in `rfi_workflow.py` reads
+`is_onboarded` to decide real email routing behavior - Adam being "pending"
+could mean his RFI/email flows aren't behaving the way a fully onboarded PM's
+would, even though he can chat with the GPT at all.
+
+**Next action:** figure out why Adam/Trafford never progressed past `pending`
+in the 7-state machine (`pending -> identity_set -> email_active -> gpt_access
+-> projects_set -> onboarded`) - likely just needs the `/users/onboard` flow
+actually run for them, not a bug. Confirm before flipping their state.
 
 ## n8n fix confirmed (2026-07-11 ~14:40 MT)
 Execution 9988 (20:40:08 UTC trigger) succeeded - `Build Notification`'s
