@@ -4926,12 +4926,12 @@ def list_users():
                 # which missed cases like actor_name='AI' vs role='ai_agent'.
                 # Excluded here, not deleted from the table.
                 cur.execute("""
-                    SELECT u.actor_name AS name, u.email, u.role, u.title, u.is_onboarded,
+                    SELECT u.actor_name AS name, u.email, u.role, u.title, u.is_onboarded, u.onboarding_state,
                            COALESCE(array_agg(p.project_code) FILTER (WHERE p.project_code IS NOT NULL), '{}') AS projects
                     FROM platform_users u
                     LEFT JOIN platform_user_projects p ON p.user_id = u.id
                     WHERE u.active = TRUE AND u.email IS NOT NULL
-                    GROUP BY u.id, u.actor_name, u.email, u.role, u.title, u.is_onboarded
+                    GROUP BY u.id, u.actor_name, u.email, u.role, u.title, u.is_onboarded, u.onboarding_state
                     ORDER BY u.role, u.actor_name
                 """)
                 users = [dict(r) for r in cur.fetchall()]
@@ -4948,12 +4948,21 @@ class OnboardUserPayload(BaseModel):
 @router.post("/users/onboard")
 def onboard_user(req: OnboardUserPayload):
     """
-    Flips a real team member from is_onboarded=false to true - the actual
+    Flips a real team member's onboarding_state to 'onboarded' - the actual
     go-live switch for their own email routing (see BC_TO_CODE_FIELD_GPT_
     EMAIL_FINAL_SPEC_2026-07-10.md: TO-team-member routing only activates
     once someone is formally onboarded). This is a real operational decision,
     not something Field GPT or GBT should trigger on their own judgment -
     only call this when Buck has explicitly said to onboard someone by name.
+
+    is_onboarded is a generated column (`onboarding_state = 'onboarded'`) as
+    of 2026-07-11 - migrated from a plain boolean to a 7-state machine (BC's
+    proposal, reviewed and agreed by 3-agent consensus) since a boolean
+    can't distinguish "never started" from "halfway through." This endpoint
+    only handles the final pending->onboarded transition for now; the
+    intermediate states (identity_set/email_active/gpt_access/projects_set)
+    aren't wired to any caller yet - added for the schema to support them
+    later, not built out end-to-end today.
     """
     t0 = time.time()
     try:
@@ -4962,15 +4971,15 @@ def onboard_user(req: OnboardUserPayload):
             with conn.cursor() as cur:
                 cur.execute("""
                     UPDATE platform_users
-                    SET is_onboarded = TRUE, onboarded_at = NOW(), updated_at = NOW()
+                    SET onboarding_state = 'onboarded', onboarded_at = NOW(), updated_at = NOW()
                     WHERE actor_name = %s AND active = TRUE
-                    RETURNING id, actor_name, role, email, is_onboarded, onboarded_at
+                    RETURNING id, actor_name, role, email, is_onboarded, onboarding_state, onboarded_at
                 """, (req.actor_name,))
                 row = cur.fetchone()
                 if row:
                     cur.execute("""
                         INSERT INTO user_audit_log (user_id, field_changed, old_value, new_value, changed_by, reason)
-                        VALUES (%s, 'is_onboarded', 'false', 'true', %s, %s)
+                        VALUES (%s, 'onboarding_state', 'pending', 'onboarded', %s, %s)
                     """, (row["id"], req.onboarded_by, f"formal onboarding via /users/onboard"))
         if not row:
             return _response("/users/onboard", {}, errors=[f"no active user found named '{req.actor_name}'"], start=t0)
