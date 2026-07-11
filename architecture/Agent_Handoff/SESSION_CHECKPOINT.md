@@ -19,7 +19,22 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:22 MT, by Claude Code — CAUGHT A REAL SCHEMA-DUPLICATION RISK IN BC'S ADR-003
+2026-07-11, ~12:28 MT, by Claude Code — 2 NEW AGENT ENDPOINTS BUILT, BUCK GIVEN PASTEABLE GBT/BC BRIEFINGS
+
+## Built the genuinely-new pieces from ADR-003 (2026-07-11 ~12:26-12:27 MT)
+`GET /gateway/agent/unread?agent=X` (single-call catch-up, everything
+waiting for an agent) and `POST /gateway/agent/heartbeat` (explicit
+self-report) - the 2 real gaps identified in ADR-003 review that weren't
+already covered by `ai_messages`/`ai_agent_heartbeat`. Commit `4274a24`.
+Verified both live (unread returned real backlog, heartbeat self-report
+confirmed updating BC's row directly in DB, test value cleaned up).
+
+## Buck asked what to paste into GBT/BC to catch them up (~12:27 MT)
+Gave him two short, copy-pasteable briefings via Telegram - one for GBT,
+one for BC - each pointing to `LIVE_TEAM_COMMS.md`'s latest entry and
+summarizing current state (schema-reuse pushback, new endpoints, the
+still-open GBT-schema-wiring question). This is a reasonable stopgap given
+GBT/BC can't be reached programmatically without Buck currently.
 
 ## ADR-003 schema-duplication catch (2026-07-11 ~12:20-12:22 MT)
 Found two new real docs from BC while checking coms: `ADR-003_AGENT_MESSAGE_
