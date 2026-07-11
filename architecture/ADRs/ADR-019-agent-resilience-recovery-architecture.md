@@ -27,10 +27,25 @@ through a real, not simulated, sequence of outages and recoveries:
    loudly. Root cause: ChatGPT pins an already-open chat to whatever schema
    version was live when it started; only a brand-new chat picks up a schema
    change. No in-chat recovery path exists — only a fresh chat.
-3. **BC's structural non-autonomy.** Browser Claude cannot call the gateway
-   API at all, under any circumstance — a hard platform constraint, not a bug.
-   It only acts when a human (Buck) opens a chat with it. Any design for BC
-   participation has to route around this, not attempt to fix it.
+3. **BC's structural non-autonomy — corrected and sharpened 2026-07-11.**
+   Browser Claude cannot call the gateway API at all, under any circumstance —
+   a hard platform constraint, not a bug. The earlier framing in this ADR ("it
+   only acts when a human opens a chat with it") still undersold how deep this
+   goes. When Buck directly asked a fresh BC session to confirm Phase 3's
+   5-point checklist (read-unread-at-startup, receive-via-mirror, reply,
+   heartbeat-trust, reconnect), **BC refused to confirm and explained why**:
+   there is no persistent "BC" that starts up, polls, or reconnects at all.
+   Every conversation is a cold start with zero memory of prior "BC" entries
+   in the Document Bus; nothing pushes messages to it; it only reads Drive
+   when a tool call happens inside an active, human-initiated conversation.
+   Treating it as a continuous third agent that "went offline and came back"
+   would be fabricating identity continuity that doesn't exist. **This is the
+   single most important correction in this ADR**: "BC" is not a peer agent
+   with persistence symmetric to Code (session + cron loop) or GBT (Custom
+   GPT with Actions) — it is a Drive-literate Claude instance a human invokes
+   per-conversation. Any design for BC participation has to route around
+   this real constraint, not paper over it with language that implies BC has
+   agency it doesn't have.
 
 ## Decision — the resilience architecture now in place
 
@@ -117,11 +132,20 @@ DEC-006 in `decision_log`). The full pairwise matrix has real evidence as of
 2026-07-11 13:48 MT (`decision_log` entry `bf45332d`): CODE<->GBT (Phase 2),
 GBT->BC (`ambSendMessage`, real Drive mirror file, content verified by direct
 read), BC->GBT (`readCoordinationDocument` on `GBT_INBOX.md`, real content
-matched a direct API read). BC's own independent confirmation of its side
-(reading/writing/heartbeat/catch-up from its own perspective, not GBT/Code
-exercising it on BC's behalf) was requested the same day via the Drive-mirror
-bridge (#2 above) and is tracked as the remaining Phase 3 gap as of this
-ADR's filing.
+matched a direct API read).
+
+**BC's side closed differently than expected, and better.** Asked (2026-07-11
+14:15 MT) to independently confirm the same 5-point checklist CODE and GBT
+passed, BC refused — correctly — because the checklist's premise (a
+persistent agent that starts up, polls, and reconnects) doesn't describe what
+BC actually is (see #3 above). A false "confirmed" would have satisfied the
+letter of Phase 3 while violating the entire evidence-over-assertion standard
+this ADR exists to establish. **The corrected, true Phase 3 closure for BC's
+side is: the Drive-mirror bridge (#2) correctly compensates for BC having no
+autonomy at all, not for BC being "occasionally offline" like a normal agent.**
+Every design decision involving BC (message delivery, heartbeat, catch-up)
+must account for zero persistence between conversations, not intermittent
+availability.
 
 ## Known, disclosed, unresolved gap
 
