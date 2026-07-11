@@ -2970,6 +2970,33 @@ def _sync_coordination_documents() -> list:
             if row.get("drive_created_at") else None
         )
         row["acknowledged_by"] = acks_by_file.get(row["file_id"], [])
+
+    # Mirror BC-authored docs into ai_messages so BC's contributions land in the
+    # same durable, catch-up-able store as GBT/Code's, not just as Drive files
+    # only discoverable by manually browsing the folder. Found 2026-07-11: GBT
+    # and Code coordinate via ai_messages already, but nothing auto-created a
+    # record for BC's side of that same conversation - it existed only as a
+    # Drive file with no tracked status/read state. Runs as a side effect of
+    # every LIST call (this function), not tied to any one agent's session -
+    # whichever agent calls coord-docs-list next does the mirroring.
+    try:
+        bc_files = [f["id"] for f in files if f["name"].upper().startswith("BC")]
+        if bc_files:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT DISTINCT related_file FROM ai_messages WHERE related_file = ANY(%s)", (bc_files,))
+                    already_mirrored = {r["related_file"] for r in cur.fetchall()}
+                    for f in files:
+                        if f["id"] in already_mirrored or f["id"] not in bc_files:
+                            continue
+                        _create_ai_message(
+                            "browser_claude", "chatgpt", _classify_coord_doc(f["name"]),
+                            f["name"], f"New Document Bus post from BC - read via GET /gateway/coordination/documents/{f['id']}",
+                            None, False, None, f["id"], None, None, "medium", None,
+                        )
+    except Exception:
+        pass  # mirroring is best-effort - never let it break the list call itself
+
     return rows
 
 
