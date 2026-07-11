@@ -3053,11 +3053,27 @@ def _sync_coordination_documents() -> list:
                     for f in files:
                         if f["id"] in already_mirrored or f["id"] not in bc_files:
                             continue
-                        _create_ai_message(
+                        mirror_mid = _create_ai_message(
                             "browser_claude", "chatgpt", _classify_coord_doc(f["name"]),
                             f["name"], f"New Document Bus post from BC - read via GET /gateway/coordination/documents/{f['id']}",
                             None, False, None, f["id"], None, None, "medium", None,
                         )
+                        # 2026-07-11 fix: this row is a discovery notice, not an
+                        # action item - it existed to make BC's file findable via
+                        # the old ai_messages/warm-start system before ADR-003's
+                        # agent_messages exists. Leaving it ISSUED forever created
+                        # an ever-growing, never-closeable backlog (75+ items,
+                        # flagged live by Buck) since nothing in the old system
+                        # ever marks these complete. Auto-close immediately - the
+                        # real actionable channel is agent_messages now.
+                        try:
+                            with conn.cursor() as _cur2:
+                                _cur2.execute(
+                                    "UPDATE ai_messages SET status='COMPLETE', completed_at=NOW() WHERE id=%s",
+                                    (mirror_mid,))
+                            conn.commit()
+                        except Exception:
+                            pass
                         mod = f.get("modifiedTime")
                         if mod and (newest_seen_at is None or mod > newest_seen_at):
                             newest_seen_at = mod
