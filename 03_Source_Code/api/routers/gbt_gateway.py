@@ -90,6 +90,14 @@ SERVICE_REGISTRY = [
     {"name": "agent-handoff",       "path": "/gateway/agent/handoff",            "description": "POST a platform intelligence document"},
     {"name": "agent-unread",        "path": "/gateway/agent/unread",             "description": "GET ?agent=X - single-call catch-up: everything in ai_messages waiting for this agent (status ISSUED or NEEDS_BUCK_APPROVAL), oldest first"},
     {"name": "agent-heartbeat",     "path": "/gateway/agent/heartbeat",          "description": "POST explicit self-report {agent, mission?, session_id?} - marks this agent ONLINE right now with what it's working on"},
+    {"name": "amb-send",            "path": "/gateway/agent/messages",           "description": "ADR-003 Agent Message Bus - POST send a message {from_agent, to_agent, subject, body, priority?, thread_id?, requires_response?} to BC/GBT/CODE/ALL"},
+    {"name": "amb-unread",          "path": "/gateway/agent/messages/unread",    "description": "ADR-003 Agent Message Bus - GET ?agent=BC|GBT|CODE, everything pending for that agent, oldest first"},
+    {"name": "amb-read",            "path": "/gateway/agent/messages/{message_id}/read", "description": "ADR-003 Agent Message Bus - POST {agent} mark a message read"},
+    {"name": "amb-reply",           "path": "/gateway/agent/messages/{message_id}/reply", "description": "ADR-003 Agent Message Bus - POST {from_agent, body} reply in-thread, auto-closes the original if it required a response"},
+    {"name": "amb-status",          "path": "/gateway/agent/status",             "description": "ADR-003 Agent Message Bus - GET current status (online/offline/stale) + mission for all 3 agents"},
+    {"name": "amb-decision-create", "path": "/gateway/agent/decisions",          "description": "ADR-003 Agent Message Bus - POST {decision, rationale, evidence?, proposed_by} log a proposed architecture decision"},
+    {"name": "amb-decision-list",   "path": "/gateway/agent/decisions",          "description": "ADR-003 Agent Message Bus - GET ?status=pending|approved|rejected|implemented"},
+    {"name": "amb-decision-approve","path": "/gateway/agent/decisions/{decision_id}/approve", "description": "ADR-003 Agent Message Bus - POST {agent} approve a decision, needs 2 of 3 agents to flip to approved"},
     {"name": "field-note",          "path": "/gateway/field/note",               "description": "POST quick field note from SS/PM (direct write, no approval)"},
     {"name": "field-rfi",           "path": "/gateway/field/rfi",                "description": "POST new RFI from field (Gap11)"},
     {"name": "email-draft",         "path": "/gateway/email/draft",              "description": "POST general-purpose Outlook draft (subject, body_html, to_email?, to_name?) - for bid solicitations and other non-RFI outbound email; gates on is_onboarded and self-BCCs Buck, draft-only, never auto-sent"},
@@ -8817,19 +8825,282 @@ class AgentHeartbeatPayload(BaseModel):
     session_id: Optional[str] = None
 
 
+_ADR003_AGENT_ID = {"chatgpt": "GBT", "gbt": "GBT", "browser_claude": "BC", "bc": "BC",
+                     "claude_code": "CODE", "code": "CODE"}
+
+
 @router.post("/agent/heartbeat")
 def agent_heartbeat_selfreport(req: AgentHeartbeatPayload):
     """
-    Explicit "I'm alive" self-report, separate from the implicit heartbeat
-    touch that happens as a side effect of other calls. BC's ADR-003 asked
-    for this directly - today heartbeat only updates incidentally, there was
-    no dedicated endpoint an agent could call just to say "I'm here, this is
-    what I'm working on."
+    Explicit "I'm alive" self-report - Buck's Priority-0 ADR-003 directive
+    (2026-07-11), built on the new agent_heartbeats table. Dual-writes to
+    the pre-existing ai_agent_heartbeat too (same call, no extra work for
+    callers) so drift-check/mission-control/warm-start's existing readers
+    of that table don't regress while agent_heartbeats becomes the primary
+    source of truth for the new agent-comms system.
     """
     t0 = time.time()
     _touch_heartbeat(req.agent, "explicit heartbeat", current_task=req.mission,
                       metadata={"session_id": req.session_id} if req.session_id else None)
+    adr_id = _ADR003_AGENT_ID.get((req.agent or "").strip().lower())
+    if adr_id:
+        try:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO agent_heartbeats (agent_id, status, last_heartbeat_mt, current_mission, session_id)
+                        VALUES (%s, 'online', NOW(), %s, %s)
+                        ON CONFLICT (agent_id) DO UPDATE
+                            SET status = 'online', last_heartbeat_mt = NOW(),
+                                current_mission = COALESCE(EXCLUDED.current_mission, agent_heartbeats.current_mission),
+                                session_id = COALESCE(EXCLUDED.session_id, agent_heartbeats.session_id)
+                    """, (adr_id, req.mission, req.session_id))
+        except Exception:
+            pass
     return _response("/agent/heartbeat", {"agent": req.agent, "status": "ONLINE"}, start=t0)
+
+
+# ── Agent Message Bus (ADR-003, Buck's Priority-0 directive, 2026-07-11) ──────
+# Full spec build: agent_messages / agent_heartbeats / decision_log, all 9
+# endpoints from BC's proposal (doc says "eight," body lists 9 - built all).
+# Distinct from ai_messages/ai_agent_heartbeat (Code's earlier extension of
+# the pre-existing tables) - Buck explicitly directed building the literal
+# new-table spec despite the overlap; both systems now exist, this one is
+# the BC/GBT/CODE-facing one, ai_messages remains Buck-facing/Telegram-tied.
+
+class AgentMessageCreate(BaseModel):
+    from_agent: str
+    to_agent: str
+    subject: str
+    body: str
+    priority: str = "P2"
+    thread_id: Optional[str] = None
+    requires_response: bool = False
+    response_deadline_mt: Optional[str] = None
+    drive_file_id: Optional[str] = None
+
+
+@router.post("/agent/messages")
+def agent_messages_send(req: AgentMessageCreate):
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                if req.thread_id:
+                    cur.execute("""
+                        INSERT INTO agent_messages
+                            (thread_id, from_agent, to_agent, priority, subject, body,
+                             requires_response, response_deadline_mt, drive_file_id)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        RETURNING message_id, thread_id, timestamp_mt
+                    """, (req.thread_id, req.from_agent, req.to_agent, req.priority, req.subject,
+                          req.body, req.requires_response, req.response_deadline_mt, req.drive_file_id))
+                else:
+                    cur.execute("""
+                        INSERT INTO agent_messages
+                            (from_agent, to_agent, priority, subject, body,
+                             requires_response, response_deadline_mt, drive_file_id)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                        RETURNING message_id, thread_id, timestamp_mt
+                    """, (req.from_agent, req.to_agent, req.priority, req.subject,
+                          req.body, req.requires_response, req.response_deadline_mt, req.drive_file_id))
+                row = cur.fetchone()
+        _touch_heartbeat(req.from_agent, f"sent agent_message to {req.to_agent}: {req.subject[:60]}")
+        return _response("/agent/messages", {
+            "message_id": str(row["message_id"]), "thread_id": str(row["thread_id"]),
+            "timestamp_mt": row["timestamp_mt"].isoformat(),
+        }, start=t0)
+    except Exception as e:
+        return _response("/agent/messages", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/agent/messages/unread")
+def agent_messages_unread(agent: str = Query(..., description="BC|GBT|CODE")):
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT message_id, thread_id, from_agent, subject, body,
+                           timestamp_mt, priority, drive_file_id, requires_response
+                    FROM agent_messages
+                    WHERE to_agent IN (%s, 'ALL') AND status = 'pending'
+                    ORDER BY timestamp_mt ASC
+                """, (agent,))
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            r["message_id"] = str(r["message_id"])
+            r["thread_id"] = str(r["thread_id"])
+            r["timestamp_mt"] = r["timestamp_mt"].isoformat()
+        return _response("/agent/messages/unread", {"agent": agent, "count": len(rows), "messages": rows}, start=t0)
+    except Exception as e:
+        return _response("/agent/messages/unread", {}, errors=[str(e)], start=t0)
+
+
+class AgentMessageReadPayload(BaseModel):
+    agent: str
+
+
+@router.post("/agent/messages/{message_id}/read")
+def agent_messages_mark_read(message_id: str, req: AgentMessageReadPayload):
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE agent_messages SET status = 'read', read_at_mt = NOW()
+                    WHERE message_id = %s AND status = 'pending'
+                    RETURNING message_id
+                """, (message_id,))
+                row = cur.fetchone()
+        _touch_heartbeat(req.agent, f"read agent_message {message_id}")
+        return _response(f"/agent/messages/{message_id}/read",
+                          {"updated": bool(row)}, start=t0)
+    except Exception as e:
+        return _response(f"/agent/messages/{message_id}/read", {}, errors=[str(e)], start=t0)
+
+
+class AgentMessageReplyPayload(BaseModel):
+    from_agent: str
+    body: str
+    drive_file_id: Optional[str] = None
+
+
+@router.post("/agent/messages/{message_id}/reply")
+def agent_messages_reply(message_id: str, req: AgentMessageReplyPayload):
+    """Replies within the same thread as a new agent_messages row, and closes
+    the original if it required a response - matching ADR-003's spec."""
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT thread_id, from_agent, requires_response FROM agent_messages WHERE message_id = %s", (message_id,))
+                orig = cur.fetchone()
+                if not orig:
+                    return _response(f"/agent/messages/{message_id}/reply", {}, errors=["original message not found"], start=t0)
+                cur.execute("""
+                    INSERT INTO agent_messages (thread_id, from_agent, to_agent, subject, body, drive_file_id, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'pending')
+                    RETURNING message_id, timestamp_mt
+                """, (orig["thread_id"], req.from_agent, orig["from_agent"], "Re:", req.body, req.drive_file_id))
+                reply_row = cur.fetchone()
+                if orig["requires_response"]:
+                    cur.execute("""
+                        UPDATE agent_messages SET status = 'closed', replied_at_mt = NOW(), closed_at_mt = NOW()
+                        WHERE message_id = %s
+                    """, (message_id,))
+        _touch_heartbeat(req.from_agent, f"replied to agent_message {message_id}")
+        return _response(f"/agent/messages/{message_id}/reply", {
+            "reply_message_id": str(reply_row["message_id"]),
+            "timestamp_mt": reply_row["timestamp_mt"].isoformat(),
+            "original_closed": bool(orig["requires_response"]),
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/agent/messages/{message_id}/reply", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/agent/status")
+def agent_status_all():
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT agent_id, status, last_heartbeat_mt, current_mission, session_id, announced_at_mt FROM agent_heartbeats")
+                rows = {r["agent_id"]: dict(r) for r in cur.fetchall()}
+        out = {}
+        for agent_id in ("BC", "GBT", "CODE"):
+            r = rows.get(agent_id, {"agent_id": agent_id, "status": "offline", "last_heartbeat_mt": None,
+                                     "current_mission": None, "session_id": None, "announced_at_mt": None})
+            status = r["status"]
+            if r["last_heartbeat_mt"]:
+                age_min = (datetime.now(timezone.utc) - r["last_heartbeat_mt"]).total_seconds() / 60
+                if status != "offline" and age_min > HEARTBEAT_STALE_MINUTES:
+                    status = "stale"
+                r["last_heartbeat_mt"] = r["last_heartbeat_mt"].isoformat()
+            if r.get("announced_at_mt"):
+                r["announced_at_mt"] = r["announced_at_mt"].isoformat()
+            out[agent_id] = {"status": status, "last_heartbeat_mt": r["last_heartbeat_mt"],
+                              "current_mission": r["current_mission"], "session_id": r["session_id"]}
+        return _response("/agent/status", out, start=t0)
+    except Exception as e:
+        return _response("/agent/status", {}, errors=[str(e)], start=t0)
+
+
+class AgentDecisionCreate(BaseModel):
+    decision: str
+    rationale: str
+    evidence: Optional[str] = None
+    proposed_by: str
+    thread_id: Optional[str] = None
+
+
+@router.post("/agent/decisions")
+def agent_decisions_create(req: AgentDecisionCreate):
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO decision_log (thread_id, decision, rationale, evidence, proposed_by)
+                    VALUES (%s,%s,%s,%s,%s)
+                    RETURNING decision_id, created_at_mt
+                """, (req.thread_id, req.decision, req.rationale, req.evidence, req.proposed_by))
+                row = cur.fetchone()
+        return _response("/agent/decisions", {
+            "decision_id": str(row["decision_id"]), "created_at_mt": row["created_at_mt"].isoformat(),
+        }, start=t0)
+    except Exception as e:
+        return _response("/agent/decisions", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/agent/decisions")
+def agent_decisions_list(status: str = Query("pending", description="proposed|approved|rejected|implemented|pending(=proposed)")):
+    t0 = time.time()
+    real_status = "proposed" if status == "pending" else status
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT decision_id, thread_id, decision, rationale, evidence, proposed_by,
+                           approved_by, status, created_at_mt
+                    FROM decision_log WHERE status = %s ORDER BY created_at_mt DESC
+                """, (real_status,))
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            r["decision_id"] = str(r["decision_id"])
+            r["thread_id"] = str(r["thread_id"]) if r["thread_id"] else None
+            r["created_at_mt"] = r["created_at_mt"].isoformat()
+        return _response("/agent/decisions", {"count": len(rows), "decisions": rows}, start=t0)
+    except Exception as e:
+        return _response("/agent/decisions", {}, errors=[str(e)], start=t0)
+
+
+class AgentDecisionApprovePayload(BaseModel):
+    agent: str
+
+
+@router.post("/agent/decisions/{decision_id}/approve")
+def agent_decisions_approve(decision_id: str, req: AgentDecisionApprovePayload):
+    t0 = time.time()
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE decision_log
+                    SET approved_by = array_append(approved_by, %s),
+                        status = CASE WHEN cardinality(array_append(approved_by, %s)) >= 2 THEN 'approved' ELSE status END,
+                        approved_at_mt = CASE WHEN cardinality(array_append(approved_by, %s)) >= 2 THEN NOW() ELSE approved_at_mt END
+                    WHERE decision_id = %s AND NOT (%s = ANY(approved_by))
+                    RETURNING decision_id, approved_by, status
+                """, (req.agent, req.agent, req.agent, decision_id, req.agent))
+                row = cur.fetchone()
+        if not row:
+            return _response(f"/agent/decisions/{decision_id}/approve", {}, errors=["not found or already approved by this agent"], start=t0)
+        return _response(f"/agent/decisions/{decision_id}/approve", {
+            "decision_id": str(row["decision_id"]), "approved_by": row["approved_by"], "status": row["status"],
+        }, start=t0)
+    except Exception as e:
+        return _response(f"/agent/decisions/{decision_id}/approve", {}, errors=[str(e)], start=t0)
 
 
 class AIMessageAcknowledge(BaseModel):
