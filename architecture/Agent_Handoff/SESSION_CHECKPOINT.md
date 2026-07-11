@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~16:20 MT, by Claude Code — Project Status GPT check complete: backend verified for all 3 live projects, live GBT call confirmed after a real tool-binding hiccup
+2026-07-11, ~16:43 MT, by Claude Code — 1355R bid integrity re-verification found a real, pre-existing gap (61 packages marked bid_received with zero actual bid data)
+
+## 1355R bid integrity re-verification - real gap found (2026-07-11 ~16:37-16:43 MT)
+Picked up the next roadmap item during a quiet comms cycle rather than
+idling. `procurement-risk` for 1355R shows `risk_score: red`, 35.2% bid
+coverage, 128 total packages. Checked deeper rather than accepting the
+summary number: **61 of 78 packages marked `status='bid_received'` have
+zero `bid_entries` rows** - no vendor, no dollar amount, nothing backing
+the status. The status field says a bid came in; the data says it didn't.
+
+This isn't from today's session - 52 of the 61 were created 2026-07-09,
+tied to that date's bid-folder repair work (`feedback_bid_leveling_quality_
+drift` memory), not a new problem. It's a real, pre-existing gap in 1355R's
+live procurement tracking that nothing caught until this specific check.
+Package names for several of these look like vendor names ("Ellis Design",
+"Accurate Insulation", "Mountain Peak Insulation") rather than scope
+descriptions - possibly one-package-per-vendor-solicited, or possibly a
+naming/tracking artifact from the 2026-07-09 repair - not conclusively
+determined which.
+
+**Not fixed - correcting real bid statuses on an active project needs PM
+knowledge of which packages actually have bids in hand, not something
+inferable from the database alone.** Reported plainly to Buck: 1355R bid
+integrity is not actually verified-clean the way it was assumed to be
+going into today. Offered to pull the full 61-package list for review.
+
+**This directly affects "1355R bid integrity" and "RFI verification" in
+Buck's stated roadmap order - both need genuine re-verification, not
+carried-forward assumption that days-old confirmation still holds.**
 
 ## Project Status GPT check (2026-07-11 ~16:13-16:20 MT)
 Backend: all 18 combinations (3 live projects x 6 views: brain/schedule/pm/
