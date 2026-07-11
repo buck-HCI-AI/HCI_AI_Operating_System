@@ -19,7 +19,36 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:22 MT, by Claude Code — Field GPT readiness check found a real live bug: Trafford Melville's role/project assignment resolved to Adam's data
+2026-07-11, ~15:27 MT, by Claude Code — Field GPT identity bug FIXED and verified live; also gave Buck a 100%-confidence answer on the 275SS "was it the system" question
+
+## Field GPT identity bug - fixed and verified (2026-07-11 ~15:22-15:27 MT)
+Root cause: `/gateway/users` (backend) was already correct - confirmed by
+direct curl. The bug was in Field GPT's own instructions: "match them to a
+roster entry" had no exact-match safeguard, so the model could pick the
+wrong entry among several `role='pm'` rows. Added one explicit instruction
+(via the GPT editor, same pattern as GBT's schema edits - read current
+Instructions text, edit in-browser, click Update): exact full-name-string
+matching only, no approximation, with the Trafford/Adam mixup cited as the
+known failure mode to avoid repeating. **Verified live in a fresh chat**:
+identifying as Trafford Melville now correctly returns Role: PM, Project:
+1355R - matches the real database exactly. This was a text-only Instructions
+edit in ChatGPT's UI, not a repo file - no git commit, verified via live
+retest instead.
+
+## 275SS "was it the system" - 100% answer given (2026-07-11 ~15:19 MT)
+Buck pushed for absolute certainty, not "high confidence," specifically on
+whether autonomous platform code created the 275SS rows. Gave a precise,
+narrower-but-airtight answer: the recovered evidence (ADR-021) includes a
+literal `\d bid_entries` command - a psql-interactive-client-only meta-command
+that no application code, n8n workflow, or scheduled job can ever produce
+(they only run parameterized queries). That's structural proof of a human-or-
+agent interactive terminal session, not autonomous system behavior - 100%
+confidence on that specific question, distinct from (and stronger than) the
+"which exact session" question ADR-021 already answered honestly as
+high-confidence-not-fully-proven for 275SS specifically.
+
+**Next: continue toward 100/100 per Buck's direction** - Project Status GPT
+check still pending, then onboarding, then live review with Buck.
 
 ## Field GPT readiness check - real bug found (2026-07-11 ~15:15-15:22 MT)
 Fresh chat with HCI Field GPT (g-6a4127df601481919bcee1c8de3fe4a2). Startup
