@@ -2179,6 +2179,28 @@ def _drive_token() -> str:
         return ""
 
 
+def _drive_get_content(file_id: str) -> str:
+    token = _drive_token()
+    r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                      headers={"Authorization": f"Bearer {token}"},
+                      params={"alt": "media"}, timeout=20)
+    r.raise_for_status()
+    return r.text
+
+
+def _drive_overwrite_content(file_id: str, content: str, mime: str = "text/plain") -> None:
+    """PATCHes an existing file's content in place by known file_id - no name search,
+    no create-new-file branch. Used for append-only canonical docs where the file_id
+    is already known and must never fork into a duplicate."""
+    token = _drive_token()
+    requests.patch(
+        f"https://www.googleapis.com/upload/drive/v3/files/{file_id}",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": mime},
+        params={"uploadType": "media"},
+        data=content.encode("utf-8"), timeout=20,
+    ).raise_for_status()
+
+
 # ── BTW-5: Schedule Variance Alerts ──────────────────────────────────────────
 
 @router.get("/schedule/variance")
@@ -2925,6 +2947,11 @@ def drive_folder_files(folder_id: str):
 
 HCI_MASTER_FOLDER_ID = "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI"
 _COORD_DOC_MIME_TYPES = {"text/plain", "text/markdown", "application/vnd.google-apps.document"}
+# The single canonical coordination log (Chief Architect directive, 2026-07-11 msg
+# 1515: "one coordination log... no duplicate current documents"). BC-authored
+# per-message files get auto-folded into this file rather than left as scattered
+# duplicates - see the fold-in block in _sync_coordination_documents().
+_LIVE_TEAM_COMMS_FILE_ID = "1Ya_cRlfOH2eAM5gtsk_bZmgx73ZLvn7q"
 
 
 def _classify_coord_doc(filename: str) -> str:
@@ -3042,6 +3069,48 @@ def _sync_coordination_documents() -> list:
                                          seen_at=datetime.fromisoformat(newest_seen_at.replace("Z", "+00:00")))
     except Exception:
         pass  # mirroring is best-effort - never let it break the list call itself
+
+    # Fold new BC-authored files into the canonical LIVE_TEAM_COMMS.md log.
+    # Per Chief Architect directive 2026-07-11 (msg 1515): one coordination log,
+    # no duplicate "current" documents. BC's own Drive MCP toolset has create/read/
+    # search/copy but no update/append operation, so BC physically cannot avoid
+    # creating a new file per message - the fold-in has to happen here instead.
+    # coordination_log_folded tracks what's already been merged so re-runs (this
+    # function fires on every coord-docs-list call) don't re-append the same file.
+    try:
+        bc_files_to_fold = [f for f in files if f["name"].upper().startswith("BC")
+                             and f["id"] != _LIVE_TEAM_COMMS_FILE_ID]
+        if bc_files_to_fold:
+            with _pg() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT file_id FROM coordination_log_folded")
+                    already_folded = {r["file_id"] for r in cur.fetchall()}
+            unfolded = [f for f in bc_files_to_fold if f["id"] not in already_folded]
+            if unfolded:
+                unfolded.sort(key=lambda f: f.get("modifiedTime") or "")
+                current = _drive_get_content(_LIVE_TEAM_COMMS_FILE_ID)
+                appended_ids = []
+                for f in unfolded:
+                    try:
+                        body = _drive_get_content(f["id"])
+                    except Exception:
+                        continue
+                    current += (
+                        f"\n\n==================================================\n\n"
+                        f"## [auto-folded from Drive file: {f['name']}]\n\n{body}\n"
+                    )
+                    appended_ids.append(f["id"])
+                if appended_ids:
+                    _drive_overwrite_content(_LIVE_TEAM_COMMS_FILE_ID, current)
+                    with _pg() as conn:
+                        with conn.cursor() as cur:
+                            for fid in appended_ids:
+                                cur.execute(
+                                    "INSERT INTO coordination_log_folded (file_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                                    (fid,))
+                        conn.commit()
+    except Exception:
+        pass  # fold-in is best-effort - never let it break the list call itself
 
     return rows
 
