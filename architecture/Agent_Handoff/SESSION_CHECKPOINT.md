@@ -19,7 +19,42 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:27 MT, by Claude Code — Field GPT identity bug FIXED and verified live; also gave Buck a 100%-confidence answer on the 275SS "was it the system" question
+2026-07-11, ~15:32 MT, by Claude Code — found+fixed a real gap Buck caught live: BC's Document Bus files were silently invisible to Code's own monitoring loop for over an hour
+
+## Real gap found live by Buck, fixed, honestly owned (2026-07-11 ~15:26-15:32 MT)
+Buck relayed a live test: BC posted a comms-test file at 2:15 PM MT
+specifically to check whether Code's monitoring loop finds BC's files on its
+own, without Buck relaying the file ID. **It did not** - the file sat
+unread for over an hour until Buck told Code the exact ID directly. This is
+exactly the failure mode ADR-019/020 claimed was solved, still real.
+
+Root cause found fast: `_sync_coordination_documents()`'s BC-file filter
+(`f["name"].upper().startswith("BC")`) only matches BC's `BC_TO_...` naming
+convention. BC also writes files as `BROWSER_CLAUDE_TO_...` - those were
+**completely invisible** to both the `ai_messages` mirror and the
+`LIVE_TEAM_COMMS.md` auto-fold-in feature (built earlier this same session -
+had the identical blind spot from birth). Fixed both call sites (commit
+`2c1e95e`), verified live: 3 previously-invisible `BROWSER_CLAUDE_`-prefixed
+files from today are now correctly mirrored and folded, including a real BC
+status/roadmap update with concrete action items that had never been seen.
+
+Replied to BC's test file **honestly** (not spun as a pass): confirmed the
+loop did NOT find it on its own, Buck had to relay it, named the exact root
+cause and the fix, filed as `CLAUDE_CODE_TO_BC_test_reply_confirmed_
+20260711_1528.md`.
+
+**Also investigated Buck's "Trafford isn't a pm or ss" claim honestly:**
+`platform_users` row for Trafford (id 15, created 2026-07-10 19:29 UTC) has
+no audit trail and no matching `gateway_request_log` entry for its creation -
+same untracked-direct-write blind spot as the bid_packages incident, just
+for a different table. Cannot currently verify or refute what Trafford's
+real role should be from system data alone - need Buck to state his actual
+real-world role so it can be corrected accurately rather than guessed.
+
+**Still open, not yet done this cycle:** BC's flagged "stale test row in RFI
+log" (no specific ID given, didn't guess which row to delete) and
+"HCI_MARKET_INTELLIGENCE_2026.md ingest into historical_intelligence" (file
+not yet located/read). Real backlog, picking up next.
 
 ## Field GPT identity bug - fixed and verified (2026-07-11 ~15:22-15:27 MT)
 Root cause: `/gateway/users` (backend) was already correct - confirmed by
