@@ -8906,9 +8906,39 @@ def agent_messages_send(req: AgentMessageCreate):
                           req.body, req.requires_response, req.response_deadline_mt, req.drive_file_id))
                 row = cur.fetchone()
         _touch_heartbeat(req.from_agent, f"sent agent_message to {req.to_agent}: {req.subject[:60]}")
+
+        # BC has no way to call this gateway (its own documented constraint) -
+        # its only real "session startup" is reading Drive. Mirror any message
+        # addressed to it (or ALL) into a real Drive file so BC actually sees
+        # it, same new-file-per-message pattern already proven safe today.
+        drive_file_id = None
+        if req.to_agent in ("BC", "ALL"):
+            try:
+                token = _drive_token()
+                fname = f"{req.from_agent}_TO_BC_{req.subject[:50].replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.md"
+                body_text = f"{req.from_agent} -> BC | {_buck_local_str()}\nmessage_id: {row['message_id']}\npriority: {req.priority}\n\n{req.subject}\n{'=' * len(req.subject)}\n\n{req.body}\n"
+                boundary = "hciamb"
+                metadata = json.dumps({"name": fname, "parents": [HCI_MASTER_FOLDER_ID]})
+                upload_body = (
+                    f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{metadata}\r\n"
+                    f"--{boundary}\r\nContent-Type: text/plain\r\n\r\n{body_text}\r\n--{boundary}--"
+                )
+                r = requests.post(
+                    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": f"multipart/related; boundary={boundary}"},
+                    data=upload_body.encode("utf-8"), timeout=20)
+                if r.status_code == 200:
+                    drive_file_id = r.json().get("id")
+                    with _pg() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute("UPDATE agent_messages SET drive_file_id = %s WHERE message_id = %s",
+                                        (drive_file_id, row["message_id"]))
+            except Exception:
+                pass  # DB row is still the source of truth even if the Drive mirror fails
+
         return _response("/agent/messages", {
             "message_id": str(row["message_id"]), "thread_id": str(row["thread_id"]),
-            "timestamp_mt": row["timestamp_mt"].isoformat(),
+            "timestamp_mt": row["timestamp_mt"].isoformat(), "drive_file_id": drive_file_id,
         }, start=t0)
     except Exception as e:
         return _response("/agent/messages", {}, errors=[str(e)], start=t0)
