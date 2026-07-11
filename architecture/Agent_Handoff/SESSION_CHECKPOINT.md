@@ -19,7 +19,36 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:46 MT, by Claude Code — GBT->BC DIRECT WRITE VERIFIED LIVE, NO SCHEMA EDIT NEEDED
+2026-07-11, ~12:57 MT, by Claude Code — ADR-003 BUILT+VERIFIED, GBT SCHEMA HIT A HARD 30-OP CAP
+
+## ADR-003 Agent Message Bus: built, per Buck's explicit P0 override (2026-07-11 ~12:47-12:57 MT)
+Buck explicitly overrode the earlier "reuse existing tables" recommendation
+(which both BC and GBT had agreed with) - "non-negotiable... do not work on
+anything else until the 4 verification scenarios pass." Built the literal
+spec:
+- 3 tables (`agent_messages`, `agent_heartbeats`, `decision_log`) exactly
+  as specified, coexisting with `ai_messages`/`ai_agent_heartbeat` rather
+  than replacing them.
+- All 9 endpoints, commit `c1302d1`. Verified live: full message lifecycle
+  (send → unread → read → reply-with-auto-close), heartbeat dual-write,
+  status, decision create/list, 2-of-3-agent approval threshold. All test
+  data deleted after.
+- Wired into BC's session startup (`b796606`): any message to BC/ALL
+  auto-creates a real Drive file (BC's only real channel), verified live.
+- Sent real (non-test) proof messages to both BC and GBT via the new
+  system, per Buck's explicit ask.
+
+**Hit a hard platform wall on the last piece (adding to GBT's Actions
+schema):** ChatGPT caps a GPT's Actions at 30 operations total, and GBT's
+current schema is already at exactly 30/30 (trimmed to the limit by a
+prior session). Built the full 9-operation addition in the browser, saw
+the cap error, **reverted immediately** back to the original working
+schema before saving anything - GBT is fully untouched and still working.
+Not a decision I should make solo (which of 30 existing actions to cut) -
+reported the real numbers to Buck with two options: (a) he picks what to
+cut, or (b) skip the schema edit entirely and have GBT relay through
+`driveWrite` (already confirmed working) + Code, which gets most of the
+value with zero schema risk. Awaiting his call.
 
 ## GBT→BC direct write: resolved for real, not a schema edit (2026-07-11 ~12:38-12:46 MT)
 Buck explicitly overrode GBT's earlier "wait" recommendation ("go do it now,
