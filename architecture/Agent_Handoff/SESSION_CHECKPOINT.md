@@ -19,7 +19,40 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~14:38 MT, by Claude Code — full system health check per Buck's "test everything" ask: 1 real bug fixed (n8n ntfy quota), 1 false positive fixed (drift-check), 1 real open finding surfaced (275SS)
+2026-07-11, ~14:47 MT, by Claude Code — n8n fix CONFIRMED working (execution 9988 succeeded); resolved Buck's trust-critical "did the system write to a monitored job" question with direct evidence
+
+## n8n fix confirmed (2026-07-11 ~14:40 MT)
+Execution 9988 (20:40:08 UTC trigger) succeeded - `Build Notification`'s
+corrected guard (`processed===0 && failed===0`, not the first attempt's
+`lines.length===0` which never triggered since the backend always includes
+one informational line) is working. AUTO-HANDOFF-PROCESSOR should stop
+false-failing on every empty-inbox cycle now.
+
+## Buck's trust-critical question, answered with direct evidence (2026-07-11 ~14:41-14:47 MT)
+Buck saw the 275SS finding and asked point-blank: "How were files written to
+monitored only jobs? ... It will kill us before we start with trust with the
+exec team." Checked directly rather than reassuring without evidence:
+- Searched every logged Drive write in `gateway_request_log` for any
+  reference to 275SS/Sunnyside Lane, ever - zero results. No file was ever
+  written to 275 Sunnyside's actual Shared Drive.
+- Found a real coincidence that could have looked alarming: a 2026-06-28
+  synthetic test literally named "SunnySide" (proxy ID SSS-001) exists in
+  Drive history. Read its actual directive (`HCI_AI_OS_SunnySide_DummyJob_
+  Directive.md`) - it's a Buck-authorized dummy-job test that explicitly
+  proxies through real *pilot* projects (246GW/64EW/101F/1355R) for read
+  data and writes its results only to HCI AI Master (system folder). Never
+  touches 275SS. Name similarity only, not the same thing - confirmed before
+  reporting, not assumed.
+- The 275SS `bid_packages` rows themselves (pure DB rows, not Drive files)
+  have zero `gateway_request_log` entries and zero git commits in their
+  creation window (2026-06-28 16:00-16:10 UTC) - created by an untracked
+  direct database write, the same blind-spot pattern as the original 246GW
+  fabrication. Reported this plainly to Buck rather than guessing at a
+  source; recommended the same verify-then-delete-repair treatment 246GW
+  got, explicitly not deleting anything without his go-ahead first.
+
+**Still open: Buck's answer on how to handle 275SS's rows.** Not blocking -
+continuing toward Field GPT onboarding prep while this sits.
 
 ## Full system test per Buck's request (2026-07-11 ~14:31-14:38 MT)
 Buck: "Test everything for AI to make sure we are working properly. Then
