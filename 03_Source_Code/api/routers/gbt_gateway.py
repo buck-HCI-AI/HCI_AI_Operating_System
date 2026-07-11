@@ -2986,6 +2986,7 @@ def _sync_coordination_documents() -> list:
                 with conn.cursor() as cur:
                     cur.execute("SELECT DISTINCT related_file FROM ai_messages WHERE related_file = ANY(%s)", (bc_files,))
                     already_mirrored = {r["related_file"] for r in cur.fetchall()}
+                    newest_seen_at = None
                     for f in files:
                         if f["id"] in already_mirrored or f["id"] not in bc_files:
                             continue
@@ -2994,6 +2995,15 @@ def _sync_coordination_documents() -> list:
                             f["name"], f"New Document Bus post from BC - read via GET /gateway/coordination/documents/{f['id']}",
                             None, False, None, f["id"], None, None, "medium", None,
                         )
+                        mod = f.get("modifiedTime")
+                        if mod and (newest_seen_at is None or mod > newest_seen_at):
+                            newest_seen_at = mod
+                    if newest_seen_at:
+                        # Real evidence of BC being alive at that moment (it wrote this file) -
+                        # use the file's own timestamp, not "now", so a backfill of old posts
+                        # doesn't make BC look freshly active when it wasn't.
+                        _touch_heartbeat("browser_claude", "posted to Document Bus",
+                                         seen_at=datetime.fromisoformat(newest_seen_at.replace("Z", "+00:00")))
     except Exception:
         pass  # mirroring is best-effort - never let it break the list call itself
 
@@ -8402,7 +8412,11 @@ _AGENT_ALIASES = {
 
 def _touch_heartbeat(agent: str, action: str = "", role: str = None,
                       current_task: str = None, last_directive_id: int = None,
-                      metadata: dict = None) -> Optional[str]:
+                      metadata: dict = None, seen_at=None) -> Optional[str]:
+    """seen_at: pass an explicit timestamp when the evidence of activity has its
+    own real timestamp (e.g. a Drive file's modifiedTime) rather than "right now"
+    - matters for backfilling BC's heartbeat from historical Document Bus posts,
+    where NOW() would make a day-old post look like it just happened."""
     key = _AGENT_ALIASES.get((agent or "").strip().lower())
     if key not in AI_HEARTBEAT_AGENTS:
         return None
@@ -8413,16 +8427,17 @@ def _touch_heartbeat(agent: str, action: str = "", role: str = None,
                     INSERT INTO ai_agent_heartbeat
                         (agent, last_seen_at, last_action, status, role, current_task,
                          last_directive_id, metadata)
-                    VALUES (%s, NOW(), %s, 'ONLINE', %s, %s, %s, COALESCE(%s, '{}'::jsonb))
+                    VALUES (%s, COALESCE(%s, NOW()), %s, 'ONLINE', %s, %s, %s, COALESCE(%s, '{}'::jsonb))
                     ON CONFLICT (agent) DO UPDATE
-                        SET last_seen_at = NOW(), last_action = EXCLUDED.last_action, status = 'ONLINE',
+                        SET last_seen_at = GREATEST(COALESCE(%s, NOW()), ai_agent_heartbeat.last_seen_at),
+                            last_action = EXCLUDED.last_action, status = 'ONLINE',
                             role = COALESCE(EXCLUDED.role, ai_agent_heartbeat.role),
                             current_task = COALESCE(EXCLUDED.current_task, ai_agent_heartbeat.current_task),
                             last_directive_id = COALESCE(EXCLUDED.last_directive_id, ai_agent_heartbeat.last_directive_id),
                             metadata = CASE WHEN EXCLUDED.metadata = '{}'::jsonb THEN ai_agent_heartbeat.metadata
                                             ELSE EXCLUDED.metadata END
-                """, (key, (action or "")[:200], role, current_task, last_directive_id,
-                      json.dumps(metadata) if metadata else None))
+                """, (key, seen_at, (action or "")[:200], role, current_task, last_directive_id,
+                      json.dumps(metadata) if metadata else None, seen_at))
             conn.commit()
     except Exception:
         pass
