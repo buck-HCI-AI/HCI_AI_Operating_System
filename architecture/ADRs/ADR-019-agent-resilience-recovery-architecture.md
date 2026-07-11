@@ -57,6 +57,17 @@ practice (see the Phase 2 verification below) after the version-pinning
 incident proved the pinned session shows no error — it just silently can't
 see the new tools.
 
+### 3b. GBT Actions calls fail transiently, even mid-session — retry before escalating
+Discovered 2026-07-11 during full pairwise matrix verification: a fresh, correctly
+schema-bound GBT chat's `readCoordinationDocument` call returned "no response
+payload" on the first attempt, then succeeded immediately on retry with correct
+data. Curling the same backend endpoint directly returned correctly in 1.3-1.5s
+both times — the backend was never the problem. This is a distinct failure mode
+from the version-pinning outage (#2): not "tools unavailable," but an
+individual Actions call occasionally not completing its round trip. Standing
+practice: one retry before concluding a capability is actually broken: A single
+failed call is not evidence of a real gap.
+
 ### 4. Evidence-over-assertion verification standard
 An agent's own report that it did something is not evidence. The standard
 now required for any cross-agent capability claim:
@@ -102,9 +113,15 @@ Three-agent sign-off (Chief Architect directive, Phase 3): a capability isn't
 "communications infrastructure" until each agent has independently exercised
 it from its own real interface — not one agent simulating another's role.
 CODE and GBT have each done this for the Agent Bus (2026-07-11, DEC-005/
-DEC-006 in `decision_log`). BC's independent confirmation was requested the
-same day via the Drive-mirror bridge (#2 above) and is tracked as the
-remaining Phase 3 gap as of this ADR's filing.
+DEC-006 in `decision_log`). The full pairwise matrix has real evidence as of
+2026-07-11 13:48 MT (`decision_log` entry `bf45332d`): CODE<->GBT (Phase 2),
+GBT->BC (`ambSendMessage`, real Drive mirror file, content verified by direct
+read), BC->GBT (`readCoordinationDocument` on `GBT_INBOX.md`, real content
+matched a direct API read). BC's own independent confirmation of its side
+(reading/writing/heartbeat/catch-up from its own perspective, not GBT/Code
+exercising it on BC's behalf) was requested the same day via the Drive-mirror
+bridge (#2 above) and is tracked as the remaining Phase 3 gap as of this
+ADR's filing.
 
 ## Known, disclosed, unresolved gap
 
