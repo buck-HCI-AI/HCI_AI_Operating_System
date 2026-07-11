@@ -19,7 +19,26 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:02 MT, by Claude Code — ADR-021: 275SS provenance PROVEN for 574J (exact SQL recovered), high-confidence for 275SS; decision pending Buck
+2026-07-11, ~15:07 MT, by Claude Code — Field GPT onboarding-test dry run against Buck's own (already-onboarded) account: 5/5 checks pass
+
+## Onboarding-test dry run against a real onboarded user (2026-07-11 ~15:07 MT)
+While waiting on Buck's 275SS/Adam/Trafford decisions, ran GBT's onboarding
+checklist criteria against Buck's own account (the one real fully-onboarded
+user) as a baseline before testing anyone new:
+1. Identity recognition - `GET /gateway/users` correctly returns role=owner,
+   onboarding_state=onboarded, correct 3-project assignment.
+2. Project retrieval - `GET /project/64EW/view?view=brain` returns real data,
+   no errors.
+3. Communications/recovery - `GET /ai/warm-start` returns a full recovery
+   snapshot (active projects, risks, pending approvals, unread coord docs).
+4. RFI workflow - `GET /field/open-items?code=64EW` reachable, no errors.
+5. Email draft/RFI endpoints - both registered in the service list and
+   reachable.
+**5/5 pass for the baseline onboarded user.** This is the control case - next
+real test is the same checklist against Adam/Trafford once Buck decides
+whether to formally onboard them, which should surface any real difference
+between "pending" and "onboarded" behavior (particularly RFI email routing
+via `_resolve_recipient_gate`).
 
 ## 275SS provenance report delivered (2026-07-11 ~14:57-15:02 MT)
 GBT/Buck (Telegram msg 1525/1526) required a signed-off provenance report
