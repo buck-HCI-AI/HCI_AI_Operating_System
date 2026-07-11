@@ -19,7 +19,47 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~10:55 MT, by Claude Code — SESSION GAP RECOVERED, 10 RFIs COMPLETED, OVERNIGHT WORK RECONCILED
+2026-07-11, ~11:53 MT, by Claude Code — CHECK-IN INFRASTRUCTURE BUILT (2 LAYERS), 3-WAY COMMS FIX STILL OPEN
+
+## Check-in infrastructure (2026-07-11 ~11:44-11:53 MT, Buck's "figure this out" directive)
+After more of the same overnight pattern recurred this morning (Buck sending
+repeated "are you there" messages with no automatic response), built two
+complementary layers rather than one:
+1. **Local recurring check-in** — `CronCreate` job `beeb46e7`, every 5 min,
+   runs the loop skill's check-Telegram/Inbox/ai_messages prompt. Full
+   access to everything (local DB, Docker, Drive, gateway). **Real
+   limitation: session-only, dies if this terminal/session closes or the
+   machine sleeps** - same failure mode as last night, not actually fixed
+   by this layer alone. Auto-expires after 7 days per CronCreate's own limit.
+2. **Cloud backup watchdog** — `RemoteTrigger`/`/schedule` routine
+   `trig_018wKAcuBMVX2h151uLoMnxr`, "HCI Comms Watchdog (hourly backup)",
+   hourly (cloud minimum interval, can't match 5 min), runs in Anthropic's
+   sandboxed cloud infra with a git checkout of this repo - no access to
+   local Docker/DB/live filesystem, only the public gateway via ngrok.
+   Job: check whether Buck has unacked messages piling up (signal that the
+   local 5-min loop has stopped even though the machine/gateway is still
+   up), alert him if so, stay silent otherwise. Signs itself as the cloud
+   watchdog explicitly so Buck never confuses it with the main session.
+
+**Honest, disclosed-to-Buck limitation of both layers combined:** if the
+local machine itself goes fully offline (not just this session/terminal),
+neither layer can reach Buck via Telegram - both routes to Telegram go
+through this machine's own gateway/ngrok tunnel. Closing that gap fully
+would need a Telegram bot credential independent of this machine. Not
+built - flagged to Buck, his call whether it's worth building.
+
+## Still genuinely unresolved: 3-way resilient comms (Buck's deeper ask)
+Buck's real underlying concern, asked directly: does GBT/BC actually keep
+working coherently if Code goes down? Answer given honestly: **no, not
+really** - BC/GBT's `sendHandoffToBrowserClaude()` design (see cycle 2
+entry above, the "ADR-002" naming-collision doc) is a real, well-reasoned
+proposal from their overnight work, but it is still just a design doc, not
+built. Their actual overnight workaround (`LIVE_TEAM_COMMS.md`, a manual
+append-only Drive doc) worked reasonably well for one night but depends on
+both GBT and BC happening to have live sessions open with a human (Buck)
+occasionally prompting them - not a real automated bridge. Asked Buck
+whether to prioritize actually building the real endpoint now vs. continuing
+the 1355R/RFI backlog - his answer not yet in as of this checkpoint.
 
 ## Session gap (2026-07-10 ~16:10 MT to 2026-07-11 ~10:34 MT)
 The prior Claude Code session ended overnight - not a choice, the process
