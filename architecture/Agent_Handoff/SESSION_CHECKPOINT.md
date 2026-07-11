@@ -19,7 +19,37 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:28 MT, by Claude Code — 2 NEW AGENT ENDPOINTS BUILT, BUCK GIVEN PASTEABLE GBT/BC BRIEFINGS
+2026-07-11, ~12:31 MT, by Claude Code — SCHEMA QUESTION RESOLVED (HOLD), COMMS DIRECTIVE SUBSTANTIALLY DONE
+
+## Resolution: GBT schema question (2026-07-11 ~12:29-12:31 MT)
+BC independently converged on the same diagnosis (GBT has no Drive write,
+needs a gateway endpoint GBT can call) via a new `BC_TO_CODE_COMMS_FIX_NOW`
+doc - answered its 4 questions directly in `GBT_INBOX.md` with evidence
+already in hand, no re-testing needed.
+
+Then GBT itself weighed in (relayed by Buck, since GBT's own handoff tool
+wasn't working in that reply): **approved the schema-reuse direction**
+(existing tables over ADR-003's new ones), and **explicitly recommended
+holding the Actions-schema edit** - version-pinning risk from this week is
+too recent, wants platform stability first, defer to a controlled
+maintenance window later. This resolves the open question definitively:
+not blocked, correctly parked by the affected party's own risk call, not
+by indecision. Recorded as a decision in `LIVE_TEAM_COMMS.md` and
+`GBT_INBOX.md`.
+
+**Buck's Priority-0 comms resilience directive is now substantially done:**
+GBT→BC write path built+verified, BC→GBT auto-mirror built+verified, team
+status/heartbeats accurate for all 3 agents, catch-up endpoint built,
+explicit heartbeat self-report built, restart sequence updated in
+CLAUDE.md, schema-duplication risk caught and resolved via real 3-way
+consensus (Code proposed reuse, BC and GBT both explicitly agreed). The
+one piece not done (GBT actually calling the new endpoint) is a deliberate
+hold, not a gap - by GBT's own request.
+
+GBT's stated next-priority order: comms (this, substantially done) →
+1355R bid integrity (done) → RFI verification (done) → People & Identity
+Platform → Field GPT → Project Status GPT → Buck onboarding readiness.
+Moving to People & Identity Platform review next.
 
 ## Built the genuinely-new pieces from ADR-003 (2026-07-11 ~12:26-12:27 MT)
 `GET /gateway/agent/unread?agent=X` (single-call catch-up, everything
