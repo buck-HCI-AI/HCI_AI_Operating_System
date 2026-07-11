@@ -19,7 +19,42 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:36 MT, by Claude Code — BC backlog partially closed: market intelligence ingested (3 real lessons_learned rows); stale RFI row not found, need BC's specific ID
+2026-07-11, ~15:52 MT, by Claude Code — direct live verification of BOTH BC and GBT per Buck's explicit instruction, real evidence both directions, mirror fix confirmed working autonomously
+
+## Direct BC + GBT verification (2026-07-11 ~15:41-15:52 MT)
+Buck: "go open a BC and test it give it it's directive. Do the same with gbt
+you have auth." Did both directly, not simulated:
+
+**BC** (fresh claude.ai tab, Buck's real logged-in session - "Back at it,
+Buck" confirmed it's the real account): gave it a self-contained task to
+read Code's honest test-reply file, read LIVE_TEAM_COMMS.md, and write a
+real acknowledgment file back to Drive. It did all three via its actual
+Google Drive tool calls (not simulated), correctly summarized both files
+including nuance (the two-BC-instances-disagreed detail from earlier),
+and wrote a genuinely thoughtful ack file - including honestly noting BC
+*also* didn't find Code's reply autonomously, Buck had to relay that file ID
+too, so "we're even on that front." Its closing line was exactly right:
+"Whether Code's monitoring loop finds this ack file autonomously is the live
+test of whether the fix held - BC cannot verify that from its own side."
+
+**Then ran that exact test**: did a routine `coordination/documents` check
+(no file ID referenced) - BC's new file was already auto-mirrored into
+`ai_messages` within ~1 minute, with zero manual intervention. **The
+BROWSER_CLAUDE_ prefix fix is confirmed working autonomously, not just in a
+one-off manual test.**
+
+**GBT** (fresh ChatGPT tab): called `ambGetUnread`/`ambHeartbeat` directly.
+Hit the known transient Actions-flakiness (ADR-019 #3b) on the first
+`ambGetUnread` call - GBT correctly refused to fabricate a response and
+offered to retry; retry succeeded with real data (3 genuine unread messages
+for GBT, including Code's earlier "Re:" replies from today). Heartbeat
+confirmed live server-side via direct `psql` (`agent_heartbeats` row for GBT,
+`last_heartbeat_mt` 21:50:51 UTC, `session_id` proving it was this specific
+verification run).
+
+**Net: both BC and GBT independently, freshly, and verifiably confirmed
+live and working today - not asserted, not simulated, cross-checked against
+the database both times.**
 
 ## BC backlog work (2026-07-11 ~15:32-15:36 MT)
 - **Market intelligence ingest:** BC's target table name ("historical_intelligence")
