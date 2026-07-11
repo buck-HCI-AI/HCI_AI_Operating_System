@@ -19,7 +19,20 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:57 MT, by Claude Code — ADR-003 BUILT+VERIFIED, GBT SCHEMA HIT A HARD 30-OP CAP
+2026-07-11, ~12:59 MT, by Claude Code — HONEST NOTE: NEW agent_heartbeats TABLE NOT YET REAL EVIDENCE
+
+## Note on premature verification (2026-07-11 ~12:59 MT)
+Checked `GET /agent/status` intending to formally verify the 4 resilience
+scenarios against the new table. Result: BC and GBT both show "offline" -
+but that's only because neither has actually self-reported into this
+brand-new table yet (BC still can't call the gateway at all; GBT's schema
+doesn't have the new endpoint, per the 30-op cap issue above). This isn't
+real evidence of either agent actually being down, just an empty table.
+Not claiming this as verification - the older `ai_agent_heartbeat` table
+(with BC's activity-based fix from earlier today) remains the more
+meaningful signal until BC/GBT actually start using the new system.
+Continuing to hold on formal scenario verification until there's genuine
+activity to observe, not manufacturing a claim from an empty table.
 
 ## ADR-003 Agent Message Bus: built, per Buck's explicit P0 override (2026-07-11 ~12:47-12:57 MT)
 Buck explicitly overrode the earlier "reuse existing tables" recommendation
