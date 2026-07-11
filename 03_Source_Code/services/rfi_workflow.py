@@ -359,24 +359,27 @@ def _resolve_recipient_gate(to_email: str | None) -> dict:
 
 def create_rfi_email_draft(rfi: dict, docx_bytes: bytes, to_email: str, to_name: str) -> dict:
     """Creates an Outlook draft (never auto-sent) with the generated RFI
-    document attached, addressed to the concerned party. BCCs Buck whenever
-    the primary recipient isn't Buck himself, so he has direct visibility on
-    every outbound draft regardless of who else gets formally onboarded with
-    their own routing later - see BC's onboarding-test Step 3 spec,
-    2026-07-10."""
+    document attached. Buck's explicit routing correction, 2026-07-11: every
+    draft goes To: Buck, CC: the real intended recipient (when known) - not
+    To: the recipient with Buck BCC'd, and not To: Buck alone with the
+    recipient buried only in body prose. He reviews the draft, sees exactly
+    who it's headed to via the CC line, and sends it on himself. This
+    replaces the BCC approach from 2026-07-10 - that one didn't give Buck
+    structural visibility into who a "defaulted" draft was actually for."""
     from microsoft_graph import create_draft, add_attachment_bytes
 
     subject = f"RFI {rfi['rfi_number']} - {rfi['subject']} - {rfi.get('project_name', '')}"
+    greet_name = to_name if (to_email and to_email.lower() != BUCK_EMAIL) else "Buck"
     body_html = (
-        f"<p>Hi {to_name},</p>"
+        f"<p>Hi {greet_name},</p>"
         f"<p>Please see the attached Request for Information ({rfi['rfi_number']}) "
         f"for {rfi.get('project_name', '')}.</p>"
         f"<p>{rfi.get('question', '')}</p>"
         f"<p>Please respond by replying to this email or returning the attached form.</p>"
         f"<p>Thanks,<br>Buck Adams<br>Hendrickson Construction</p>"
     )
-    bcc = None if to_email.lower() == BUCK_EMAIL else [("Buck Adams", BUCK_EMAIL)]
-    draft = create_draft(subject, body_html, [(to_name, to_email)], bcc=bcc)
+    cc = None if (not to_email or to_email.lower() == BUCK_EMAIL) else [(to_name, to_email)]
+    draft = create_draft(subject, body_html, [("Buck Adams", BUCK_EMAIL)], cc=cc)
     draft_id = draft["id"]
     filename = f"{rfi['rfi_number']} - {rfi['subject']}.docx"
     _, err = add_attachment_bytes(draft_id, filename,
@@ -414,23 +417,23 @@ def run_rfi_workflow(rfi_id: int, to_email: str = None, to_name: str = None) -> 
     )
 
     # Buck, 2026-07-10: "I am the only email. I will read and swap out the
-    # email and copy who it needs to go to. This should be how the system
-    # works." - when the field agent doesn't have a real recipient address,
-    # default the draft to Buck rather than skipping the step. He reviews and
-    # redirects/CCs the actual concerned party before sending (drafts never
-    # auto-send regardless of recipient - see feedback_emails_land_in_drafts_not_autosend).
-    # Also gate on is_onboarded: if to_email resolves to a known internal team
-    # member who isn't onboarded yet, redirect to Buck the same way (closed
-    # 2026-07-10 - this was previously a documented-but-unenforced behavior).
+    # email and copy who it needs to go to." Buck, 2026-07-11 (correcting the
+    # first version of this): "the draft goes to me and I put the person it
+    # is directed and gets cc'd to in my draft" - every draft goes To: Buck,
+    # CC: the real intended recipient when one is known (create_rfi_email_draft
+    # handles this), not the To:recipient/BCC:Buck shape this used to build.
+    # is_onboarded gate still runs and is recorded as evidence - it doesn't
+    # change the CC-routing behavior below since Buck is the only onboarded
+    # user right now, but keeps the audit trail of who's a known-not-yet-
+    # onboarded team member vs. a genuine external party.
     gate = _resolve_recipient_gate(to_email)
     defaulted_to_buck = not to_email or gate["redirected"]
-    draft_to_email = gate["email"]
-    draft_to_name = "Buck Adams" if defaulted_to_buck else (to_name or to_email)
 
-    email_result = create_rfi_email_draft(rfi, docx_bytes, draft_to_email, draft_to_name)
+    email_result = create_rfi_email_draft(rfi, docx_bytes, to_email, to_name or to_email)
     evidence["steps"]["create_email_draft"] = (
         {"ok": True, "draft_id": email_result["draft"]["id"], "attached": email_result.get("attached"),
-         "defaulted_to_buck": defaulted_to_buck, "redirect_reason": gate["reason"]}
+         "defaulted_to_buck": defaulted_to_buck, "redirect_reason": gate["reason"],
+         "cc": to_email if (to_email and to_email.lower() != BUCK_EMAIL) else None}
         if "draft" in email_result else {"ok": False, "error": str(email_result)}
     )
 

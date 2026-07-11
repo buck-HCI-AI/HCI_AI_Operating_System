@@ -5001,10 +5001,13 @@ def create_email_draft(req: EmailDraftPayload):
     generate bid-solicitation email text but had no way to actually land it
     in Buck's real Outlook Drafts folder, only /field/rfi/{id}/process
     existed and that's RFI-specific (generates+attaches the RFI Word doc,
-    which a bid-solicitation email doesn't need). Same safety rules as the
-    RFI path: is_onboarded gate on the recipient, self-BCC to Buck when the
-    recipient isn't him, draft-only (never auto-sent) per the permanent
-    outbound-messaging rule.
+    which a bid-solicitation email doesn't need).
+
+    Routing per Buck's 2026-07-11 correction: every draft goes To: Buck,
+    CC: the real intended recipient when one is known - not To:recipient
+    with Buck BCC'd (the 2026-07-10 version of this). is_onboarded gate
+    still runs and is recorded as evidence, draft-only (never auto-sent)
+    per the permanent outbound-messaging rule.
     """
     t0 = time.time()
     try:
@@ -5015,13 +5018,13 @@ def create_email_draft(req: EmailDraftPayload):
 
         gate = rfi_workflow._resolve_recipient_gate(req.to_email)
         defaulted_to_buck = not req.to_email or gate["redirected"]
-        draft_to_email = gate["email"]
-        draft_to_name = "Buck Adams" if defaulted_to_buck else (req.to_name or req.to_email)
-        bcc = None if draft_to_email.lower() == rfi_workflow.BUCK_EMAIL else [("Buck Adams", rfi_workflow.BUCK_EMAIL)]
+        has_real_recipient = bool(req.to_email) and req.to_email.lower() != rfi_workflow.BUCK_EMAIL
+        cc = [(req.to_name or req.to_email, req.to_email)] if has_real_recipient else None
 
-        draft = create_draft(req.subject, req.body_html, [(draft_to_name, draft_to_email)], bcc=bcc)
+        draft = create_draft(req.subject, req.body_html, [("Buck Adams", rfi_workflow.BUCK_EMAIL)], cc=cc)
         result = {
-            "draft_id": draft["id"], "to": draft_to_email, "bcc_buck": bcc is not None,
+            "draft_id": draft["id"], "to": rfi_workflow.BUCK_EMAIL,
+            "cc": req.to_email if has_real_recipient else None,
             "defaulted_to_buck": defaulted_to_buck, "redirect_reason": gate["reason"],
         }
         _log("/email/draft", "field", req.project_code or "", "draft_created",
