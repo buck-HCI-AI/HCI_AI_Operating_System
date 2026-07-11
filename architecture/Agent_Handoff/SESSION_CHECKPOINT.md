@@ -19,6 +19,53 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
+2026-07-11, ~13:20 MT, by Claude Code — Chief Architect Phase 1-4 directive received, re-verified resilience scenarios (3/4 now proven, 1 partial with a concrete fix identified)
+
+## Chief Architect 4-phase directive received + acked (2026-07-11 ~13:14-13:17 MT)
+Buck relayed a full phased sequence via Telegram (msg 1504, acked): Phase 1 finish
+ADR-003 verification with evidence -> Phase 2 controlled Actions schema update ->
+Phase 3 three-agent sign-off recorded in decision_log -> Phase 4 return to roadmap
+(1355R -> RFI -> Identity Platform -> Role Onboarding -> Field GPT -> Project
+Status GPT -> Buck onboarding test). This supersedes the 12:16 PM verification
+report below - re-ran it against current state.
+
+## Re-verification (2026-07-11 ~13:18-13:20 MT) — found a stale test artifact, fixed the analysis
+Checked the new `agent_heartbeats`/`agent_status` (ADR-003) tables directly.
+Found `browser_claude` marked ONLINE with `last_action: "replied to agent_message
+95670ce7..."` in the OLD `ai_agent_heartbeat` table - but that message_id does not
+exist in the current `agent_messages` table. Conclusion: this is a leftover
+artifact from Code's own earlier self-test of the reply endpoint (impersonating
+BC to verify the lifecycle works), not real BC activity - the test row was cleaned
+up per the test-data rule but the heartbeat touch wasn't. Flagging this explicitly
+so it's never cited as "BC is active" - it isn't. BC's actual last real Drive post
+was 11:25 AM MT (comms-fix proposal, already answered in GBT_INBOX.md at 12:30 PM).
+
+Re-scored the 4 scenarios against real, non-simulated evidence:
+1. **Code offline -> BC+GBT continue** — ✅ still PROVEN (unchanged, overnight gap).
+2. **Code returns -> catches up automatically** — ⚠️ still PARTIAL, same disclosed
+   gap: the 5-min loop only helps if a session is alive to run it; a fully dead
+   session (crash/close/OS restart) still has nothing to restart it. **Concrete fix
+   now identified, not yet built:** a cloud `RemoteTrigger`/`/schedule` routine
+   (Anthropic cloud, survives local session death, hits the public ngrok API fine,
+   min interval 1hr, no local Docker/file access) as a backstop layer under the
+   local 5-min loop. Needs Buck's go-ahead before building - real cost/tradeoff
+   decision, not a unilateral call.
+3. **BC offline -> Code+GBT continue** — ⬆️ upgraded UNVERIFIED -> ✅ PROVEN. Live,
+   same-session evidence: BC's `ai_agent_heartbeat` last real activity was 11:25 AM
+   MT; nothing from BC since. Code has continued operating uninterrupted since then
+   (heartbeats, checkpoint updates, ai_messages processing, git commits) with BC
+   fully inactive the entire span - this is happening right now as this checkpoint
+   is being written. GBT's input during this same span came via Buck relay (GBT
+   still can't call the gateway directly - Phase 2 blocker), which itself is
+   further proof Code kept moving without BC.
+4. **GBT unavailable/tool-loss -> Code+BC continue** — ✅ still PROVEN (unchanged,
+   real version-pinning incident this week).
+
+**Net: 3/4 proven with real evidence, 1 partial with a known, scoped, unbuilt fix
+(cloud backstop routine) pending Buck's go-ahead.** Reporting this to Buck now
+rather than deciding solo whether to build the cloud backstop.
+
+## Last updated (superseded, kept for history)
 2026-07-11, ~13:11 MT, by Claude Code — FOUND A CLEAN CONSOLIDATION PATH FOR THE 30-OP CAP
 
 ## Consolidation analysis (2026-07-11 ~13:09-13:11 MT, read-only, nothing changed)
