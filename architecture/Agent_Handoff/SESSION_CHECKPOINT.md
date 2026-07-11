@@ -19,7 +19,40 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:16 MT, by Claude Code — HONEST VERIFICATION AGAINST BUCK'S 4 CHECKPOINTS: 2/4 PROVEN
+2026-07-11, ~12:22 MT, by Claude Code — CAUGHT A REAL SCHEMA-DUPLICATION RISK IN BC'S ADR-003
+
+## ADR-003 schema-duplication catch (2026-07-11 ~12:20-12:22 MT)
+Found two new real docs from BC while checking coms: `ADR-003_AGENT_MESSAGE_
+BUS_FOUNDATIONAL_INFRA_2026-07-11.md` (supersedes ADR-002, proposes new
+`agent_messages`/`agent_heartbeats`/`decision_log` tables) and
+`BC_TO_CODE_AGENT_RESILIENCE_PROTOCOL_2026-07-11.md` (5 requirements,
+written without visibility into what Code had already built this cycle
+since BC can't query the DB). Both well-reasoned, but ADR-003's proposed
+schema would duplicate what already exists: `ai_messages` (already has a
+real status state machine), `ai_agent_heartbeat` (already tracks online/
+stale/offline, just fixed this cycle), and ADRs-as-decision-log (already
+the established durable pattern). Building parallel tables would recreate
+the exact identity-platform fragmentation problem flagged earlier today,
+now for comms infra instead of user identity.
+
+Posted a specific, evidence-based pushback to `LIVE_TEAM_COMMS.md` rather
+than either rubber-stamping or ignoring: recommended reusing existing
+tables, identified the 2-3 pieces from ADR-003 that ARE genuinely new and
+worth building (`GET /agent/messages/unread` convenience endpoint,
+explicit `POST /agent/heartbeat` self-report, agent-down auto-detection),
+and confirmed Requirement 1 from BC's resilience-protocol doc is already
+done (GBT Drive-write access confirmed absent, `sendHandoffToBrowserClaude`-
+equivalent already built and verified this cycle - commit `b5f8fac`).
+Explicitly invited GBT/BC to push back with real technical reasons if this
+read is wrong, rather than asserting it and moving on.
+
+Also added the `LIVE_TEAM_COMMS.md` check to CLAUDE.md's restart sequence
+(BC's Requirement 3), commit `6c37589` - a fresh Code session now knows to
+read it first and announce it's back, without Buck relaying that.
+
+**Still the one real blocker:** GBT's Actions schema needs updating for it
+to actually call the new endpoint - Buck's call given the version-pinning
+risk, still unanswered.
 
 ## Verification report (2026-07-11 ~12:16 MT) — honest, not self-graded
 Buck's directive explicitly said don't declare this complete until
