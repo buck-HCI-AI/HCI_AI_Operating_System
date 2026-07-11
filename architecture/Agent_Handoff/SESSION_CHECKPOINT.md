@@ -19,7 +19,32 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:52 MT, by Claude Code — direct live verification of BOTH BC and GBT per Buck's explicit instruction, real evidence both directions, mirror fix confirmed working autonomously
+2026-07-11, ~16:08 MT, by Claude Code — found+fixed the real cause of the 75-item GBT backlog Buck was seeing live, cleared to 0
+
+## GBT pending-backlog bug found+fixed (2026-07-11 ~16:04-16:08 MT)
+Buck flagged, twice, that he could see a real growing backlog for GBT
+("Get that backlog fixed... why is this happening?"). Checked
+`GET /gateway/health`'s `pending_for_you` counter directly - real, 75 items,
+not a false alarm. Root cause: the BC-file auto-mirror (`_sync_
+coordination_documents()`) creates a permanent `ISSUED` `ai_messages` row
+for every BC Drive post, but nothing in the old system ever marks it
+complete - GBT's Actions schema was never wired with the status-update
+endpoint for this table. These rows were meant as discovery notices, not
+real action items, but sat visibly "pending" forever - and would have grown
+*faster* now that the `BROWSER_CLAUDE_` prefix fix (this same session) is
+correctly catching more files.
+
+Fixed at the source: new mirror rows auto-close immediately at creation
+(commit `5a37305`) since the real actionable channel is `agent_messages`/
+ADR-003 now. Also bulk-closed the existing 75-item backlog (49 BC mirrors +
+26 stale `claude_code` status updates from 2026-07-03 through 2026-07-10,
+all genuinely superseded by today's work) with a clear audit note in
+`blocked_reason` - not silently deleted. Verified via the same
+`pending_for_you` counter Buck was looking at: **75 -> 0**.
+
+This is now the 3rd real, distinct bug found and fixed today by directly
+investigating something Buck flagged rather than reassuring him it was
+fine (n8n ntfy quota, BROWSER_CLAUDE_ mirror filter, this backlog gap).
 
 ## Direct BC + GBT verification (2026-07-11 ~15:41-15:52 MT)
 Buck: "go open a BC and test it give it it's directive. Do the same with gbt
