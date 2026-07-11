@@ -19,7 +19,32 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~16:12 MT, by Claude Code — full scope-compliance check done (clean) + honest 100/100 status (not yet complete, comms/resilience is)
+2026-07-11, ~16:20 MT, by Claude Code — Project Status GPT check complete: backend verified for all 3 live projects, live GBT call confirmed after a real tool-binding hiccup
+
+## Project Status GPT check (2026-07-11 ~16:13-16:20 MT)
+Backend: all 18 combinations (3 live projects x 6 views: brain/schedule/pm/
+deep-dive/cost-forecast/action-list) via the consolidated `getProjectView`
+endpoint returned `ok` with zero errors - confirmed via direct curl, not
+assumed from the Phase 2 build alone.
+
+Live GBT call: first attempt (in the same-day chat used earlier for the
+comms backlog investigation) hit a genuine tool-binding failure - not the
+usual single-call flakiness (ADR-019 #3b), but the *whole* HCI gateway
+toolset unavailable in that chat, falling back to web search only. Per
+ADR-019's fresh-chat rule, closed it and opened an entirely new chat - tools
+bound correctly, `getProjectView(1355R, deep-dive)` returned real, detailed
+data (400 schedule activities, 0% complete, no daily logs in 14 days,
+$3.54M contract value, $0 committed). Confirms the earlier failure was
+chat-specific, not systemic - and confirms the fresh-chat-required practice
+is still the correct fix for it.
+
+**Project Status GPT check: passed**, both backend and live GBT-side.
+
+**Noted but not chased further this cycle:** 1355R's schedule shows 0%
+complete with no daily logs in 14 days despite an active status - could be
+a real project-management flag worth Buck's attention, or could just mean
+field data hasn't been logged into the system yet. Flagging for awareness,
+not investigating further without being asked - not what this check was for.
 
 ## Scope-compliance + 100/100 status check (2026-07-11 ~16:11-16:12 MT)
 Buck: "no files written or outside coms sent beyond our directive coms."
