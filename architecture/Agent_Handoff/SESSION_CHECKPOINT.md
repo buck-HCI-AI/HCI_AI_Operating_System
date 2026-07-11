@@ -19,7 +19,28 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~15:32 MT, by Claude Code — found+fixed a real gap Buck caught live: BC's Document Bus files were silently invisible to Code's own monitoring loop for over an hour
+2026-07-11, ~15:36 MT, by Claude Code — BC backlog partially closed: market intelligence ingested (3 real lessons_learned rows); stale RFI row not found, need BC's specific ID
+
+## BC backlog work (2026-07-11 ~15:32-15:36 MT)
+- **Market intelligence ingest:** BC's target table name ("historical_intelligence")
+  doesn't exist in the schema. Read the actual file
+  (`HCI_MARKET_INTELLIGENCE_2026.md`, real cross-project RFI pattern analysis
+  from 655 Garmisch) and ingested the 3 concrete, actionable insights into
+  `lessons_learned` (ids 51-53, `category='market_intelligence'`, properly
+  attributed to `browser_claude` with `source_reference` back to the Drive
+  file) rather than the whole document verbatim - RFI phase-volume pattern,
+  response-time benchmarks, and the waterproofing-RFI language pattern that
+  got faster real responses.
+- **Stale RFI test row:** BC's note gave no specific ID. Searched for
+  anything obviously test/dummy-labeled - nothing found (the two "test"
+  matches are real construction terms - moisture testing, hazmat testing,
+  not synthetic data). Not guessing and deleting a real RFI row on a vague
+  description - need BC or Buck to point at the specific ID.
+
+Also answered Buck's direct "is the team communicating" check with real-time
+evidence (GBT heartbeat current and real, all 3 of GBT's P0 threads closed
+with replies, BC's honest test-reply sent 2 min prior - too soon to expect
+a response, which is expected given BC's real execution model, not a gap).
 
 ## Real gap found live by Buck, fixed, honestly owned (2026-07-11 ~15:26-15:32 MT)
 Buck relayed a live test: BC posted a comms-test file at 2:15 PM MT
