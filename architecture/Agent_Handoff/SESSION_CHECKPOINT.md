@@ -19,7 +19,46 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~11:53 MT, by Claude Code — CHECK-IN INFRASTRUCTURE BUILT (2 LAYERS), 3-WAY COMMS FIX STILL OPEN
+2026-07-11, ~12:04 MT, by Claude Code — GBT<->BC HANDOFF ENDPOINT BUILT+VERIFIED, AWAITING SCHEMA-WIRING CALL
+
+## 3-way resilient comms — Buck's Priority 0 directive, ~11:56 MT
+Buck escalated to a formal "Chief Architect Emergency Directive" (relayed
+via Telegram) after repeated Code-offline incidents forced him to be the
+manual relay between GBT and BC. Full 7-point spec: GBT<->BC direct path,
+durable store, catch-up, team status, decision log, graceful degradation,
+verification (simulate each agent going down, confirm the other two
+continue). Told to build this BEFORE returning to the backlog.
+
+**Root cause identified and fixed (not yet fully wired):** checked GBT's
+actual endpoint list - it has Drive READ (`drive-search`,
+`coord-docs-list/read`) but had **no Drive WRITE action at all**. That's
+the entire gap - GBT literally could not create a Drive doc, the one
+channel BC reads (BC can't call this gateway directly, its own documented
+constraint). Built `POST /gateway/coordination/documents`
+(commit `b5f8fac`): creates a durable `ai_messages` row + a real Drive doc
+from either agent to the other. Verified live end-to-end (real test doc
+created in HCI AI Master with correct content/folder/MT-timestamp, cleaned
+up immediately after). Runs on the always-on api-server - not tied to
+Claude Code's CLI session being alive.
+
+**What was already there, not rebuilt:** durable message store
+(`ai_messages`, pre-existing, already has status state machine/priority/
+timestamps), heartbeats (`ai_agent_heartbeat`, pre-existing, tracks
+online/offline/stale per agent already), decision log (ADRs in the repo -
+durable, git-tracked, already the right shape for decision+rationale+
+evidence+approval+status if kept disciplined, no new table needed).
+
+**Blocking gap, needs Buck's call:** GBT cannot actually call the new
+endpoint until its ChatGPT Actions schema is updated to include it - a
+GPT-builder-UI edit with real version-pinning risk (the same failure mode
+that took a GBT session offline earlier this week). Asked Buck directly:
+do this now via browser (needs his explicit go-ahead given today's
+sensitivity around browser tools), let him do it himself, or hold.
+Everything else in the spec (catch-up flow, the 4-way verification test)
+is scoped and ready once this is answered - not starting the verification
+test against a schema GBT can't actually use yet.
+
+## Check-in infrastructure (2026-07-11 ~11:44-11:53 MT, Buck's "figure this out" directive)
 
 ## Check-in infrastructure (2026-07-11 ~11:44-11:53 MT, Buck's "figure this out" directive)
 After more of the same overnight pattern recurred this morning (Buck sending
