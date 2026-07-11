@@ -19,7 +19,43 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~14:29 MT, by Claude Code — ADR-020 (Agent Contracts & Operating Model) delivered, GBT's P0 verification/gap-closure threads answered with evidence
+2026-07-11, ~14:38 MT, by Claude Code — full system health check per Buck's "test everything" ask: 1 real bug fixed (n8n ntfy quota), 1 false positive fixed (drift-check), 1 real open finding surfaced (275SS)
+
+## Full system test per Buck's request (2026-07-11 ~14:31-14:38 MT)
+Buck: "Test everything for AI to make sure we are working properly. Then
+move on." Ran `/gateway/admin/drift-check` - not clean, 4 findings. Investigated
+all 4 rather than reporting the raw list:
+
+1. **n8n AUTO-HANDOFF-PROCESSOR failing 100% of runs (5/5) - real bug, fixed.**
+   Root cause: the workflow sends an ntfy push every 5 minutes even when the
+   inbox is empty (the common case now that Code processes it fast). That
+   volume exhausted ntfy.sh's free daily quota; every push past the quota
+   errored, which is what surfaced as "100% failing." Fixed `Build
+   Notification`'s code node (2 iterations - first fix checked the wrong
+   field, corrected to check `processed===0 && failed===0`) so it only
+   emits a notification when there's real content to report. Verifying on
+   the next scheduled run (~14:40 MT) since it fires every 5 min.
+2. **`unbacked_bulk_bid_packages` flagged 574J - false positive, fixed the
+   detector.** Investigated the actual rows: 9 packages with real vendor
+   names, dollar amounts, and multi-bid comparison notes
+   (`source='drive_mine_574_johnson_bid_tracker'`), from the authorized
+   Drive-mining work done earlier this session. The detector only recognized
+   `hubspot_deal_id`/`drive_bids` as valid backing - added `bid_entries` with
+   a `drive_mine_%` source as a third legitimate signal. Commit `2ed227b`.
+3. **275SS's 14 packages - still flagged, real open finding, NOT touched.**
+   Zero `bid_entries`, `status='not_started'`, no dollar figures attached
+   (lower risk than 246GW's fake-awarded-contracts pattern), created in one
+   batch 2026-06-28. Per prior-session memory, 275S Drive-mining "not
+   started" as of that note - so there's no known legitimate source for
+   these rows yet, unlike 574J. Not deleting or asserting either way -
+   flagging for Buck since it's ambiguous, not unambiguous test data.
+4. **20 Houzz connector rows stale 24-398h.** Lower priority, noted not
+   acted on this cycle - would need Houzz credential/sync investigation,
+   separate task.
+
+**Next: verify the n8n fix actually lands clean on the next scheduled run,
+then move to Field GPT/Project Status GPT onboarding-test prep** (queued
+before this health-check detour, per GBT's third P0 thread).
 
 ## ADR-020 delivered: Agent Contracts & Operating Model (2026-07-11 ~14:26-14:29 MT)
 GBT pushed back hard (agent message `a608fb1e`, correctly) on two things after
