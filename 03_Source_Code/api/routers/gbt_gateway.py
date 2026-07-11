@@ -4671,6 +4671,17 @@ def system_drift_check():
                     WHERE bp.hubspot_deal_id IS NULL
                       AND p.project_code NOT IN %s
                       AND NOT EXISTS (SELECT 1 FROM drive_bids db WHERE db.project_id = bp.project_id)
+                      -- 2026-07-11 fix: a package backed by real bid_entries sourced from an
+                      -- authorized Drive-mining run (source LIKE 'drive_mine_%%') is not
+                      -- unbacked - confirmed on 574J (9 packages, real vendor names/dollar
+                      -- amounts/multi-bid comparison notes, source='drive_mine_574_johnson_
+                      -- bid_tracker') which this check was flagging as a false positive
+                      -- identical-looking to the real 246GW fabrication. hubspot_deal_id and
+                      -- drive_bids are not the only legitimate provenance signals.
+                      AND NOT EXISTS (
+                          SELECT 1 FROM bid_entries be
+                          WHERE be.bid_package_id = bp.id AND be.source LIKE 'drive_mine_%%'
+                      )
                     GROUP BY p.project_code, p.name, bp.created_at::date
                     HAVING count(*) >= 5
                 """, (_SYNTHETIC_TEMPLATE_CODES,))
