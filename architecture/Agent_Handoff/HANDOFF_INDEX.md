@@ -208,3 +208,7 @@
 | 2026-07-10 21:55 | GBT_HANDOFF_2026-07-10_Include_RFI_verification_and_Browser_Cla_eeb54df5.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-10 15:53 | GBT_HANDOFF_2026-07-10_Include_RFI_verification_and_Browser_Cla_eeb54df5.md | implementation_request | ChatGPT | PROCESSED | → RFI 917 verified against live data, found+fixed real corruption, evidence in STRATEGIC_BACKLOG.md |
 | 2026-07-10 22:00 | GBT_HANDOFF_2026-07-10_Continue_toward_onboarding_readiness_and_d05906dc.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-11 15:35 | GBT_HANDOFF_2026-07-11_Offline_backlog__pick_up_on_reconnect_1ddeb18d.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-11 16:05 | GBT_HANDOFF_2026-07-11_Future_stabilization__unified_AI_communi_dfcc4c59.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-11 16:40 | GBT_HANDOFF_2026-07-11_Priority__Restore_team_communications_an_6838826f.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-11 16:45 | GBT_HANDOFF_2026-07-11_Architectural_requirement__resilient_tea_3a402672.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |

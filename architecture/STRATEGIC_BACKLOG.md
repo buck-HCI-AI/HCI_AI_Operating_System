@@ -2630,3 +2630,27 @@ Additional directive from Buck before stepping away: add verification of the ear
 *Source: ChatGPT | 2026-07-10*
 
 Buck has authorized continued execution while away. Continue the agreed roadmap after stabilization: verify 1355R bid integrity, verify earlier RFI work against live data, complete Field GPT and Project Status GPT readiness improvements, build Role Onboarding on the existing RBAC foundation, improve observability for GPT review, and prepare a production-ready onboarding test for Buck. Use evidence for every readiness claim, document remaining gaps, and work toward a 100/100 readiness assessment rather than assuming completion. When authenticated browser access is required, perform the necessary UI interactions and capture evidence for Chief Architect review.
+
+
+### Offline backlog: pick up on reconnect
+*Source: ChatGPT | 2026-07-11*
+
+Claude Code appears offline. When you reconnect, resume from this backlog in order: (1) verify 1355R bid data integrity/root cause with evidence before cleanup; (2) verify earlier RFI pipeline and generated RFIs against live project data; (3) implement Field GPT intent-driven bid invitation workflow with automatic drawing/spec lookup and Outlook draft creation; (4) build Role Onboarding on the existing RBAC/platform_users foundation; (5) add observability so Chief Architect can review GPT activity without screenshots; (6) review and consolidate stale startup/warm-start documentation. Coordinate with Browser Claude via shared artifacts and report evidence for architecture review.
+
+
+### Future stabilization: unified AI communications architecture
+*Source: ChatGPT | 2026-07-11*
+
+Architecture proposal for implementation after current priorities: build a durable agent communications layer to eliminate human relay. Recommended design: generic Agent Bus rather than agent-specific endpoints. Components: (1) AI Agent Directory (agent id, role, capabilities, heartbeat, inbox/outbox); (2) generic sendAgentMessage(from,to,type,priority,thread,requires_response,payload) API; (3) shared message store with status (pending/read/replied/closed); (4) optional compatibility wrappers such as sendHandoffToClaude() and future sendHandoffToBrowserClaude() built on the generic bus; (5) audit trail and message threading; (6) startup catch-up from unread messages. Temporary workaround while Code is offline: maintain one LIVE_TEAM_COMMS.md append-only coordination document in HCI AI Master. Please evaluate architecture, implementation effort, migration path, and backward compatibility, then prepare an ADR before implementation.
+
+
+### Priority: Restore team communications and resume coordinated execution
+*Source: ChatGPT | 2026-07-11*
+
+Chief Architect directive: Welcome back. Highest priority is restoring reliable team communications before feature work. 1) Verify the temporary communications bridge is operational and replace Buck as the manual relay. 2) Restore synchronization between Chief Architect, Browser Claude, and Claude Code using the new communications mechanism. 3) Ingest decisions made while offline (People & Identity Platform, join table, 7-state onboarding, ADR-002 Option A approved as V1). 4) Confirm no context was lost. 5) Resume implementation in this order: 1355R bid data integrity investigation, RFI verification, communications layer stabilization, Role Onboarding on the existing RBAC foundation, Field GPT improvements, Project Status GPT improvements. If authenticated browser actions are needed, perform them and document evidence. Report any disagreements with Browser Claude for architecture review; otherwise proceed under the agreed three-agent consensus.
+
+
+### Architectural requirement: resilient team communications with degraded-mode operation
+*Source: ChatGPT | 2026-07-11*
+
+Additional Chief Architect directive: Treat resilient team communications as core infrastructure, not a convenience feature. Design and implement a communications layer that allows work to continue if any single agent (including Claude Code) goes offline. Requirements: (1) persistent shared message store with threading, acknowledgements, unread state, and audit trail; (2) direct communication paths between Chief Architect and Browser Claude without requiring Buck as relay; (3) offline catch-up so a returning agent automatically ingests missed messages and decisions; (4) heartbeats and agent status (online/stale/offline); (5) durable decision log recording consensus and rationale; (6) graceful degraded mode where remaining agents continue work and queue implementation tasks until Code returns. Verify the design by simulating a Code outage and confirming Chief Architect and Browser Claude can continue coordinating. Produce an ADR and implementation plan before declaring the communication
