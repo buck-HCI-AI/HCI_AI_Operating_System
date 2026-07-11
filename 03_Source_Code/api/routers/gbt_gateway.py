@@ -4861,9 +4861,14 @@ def onboard_user(req: OnboardUserPayload):
                     UPDATE platform_users
                     SET is_onboarded = TRUE, onboarded_at = NOW(), updated_at = NOW()
                     WHERE actor_name = %s AND active = TRUE
-                    RETURNING actor_name, role, email, is_onboarded, onboarded_at
+                    RETURNING id, actor_name, role, email, is_onboarded, onboarded_at
                 """, (req.actor_name,))
                 row = cur.fetchone()
+                if row:
+                    cur.execute("""
+                        INSERT INTO user_audit_log (user_id, field_changed, old_value, new_value, changed_by, reason)
+                        VALUES (%s, 'is_onboarded', 'false', 'true', %s, %s)
+                    """, (row["id"], req.onboarded_by, f"formal onboarding via /users/onboard"))
         if not row:
             return _response("/users/onboard", {}, errors=[f"no active user found named '{req.actor_name}'"], start=t0)
         result = dict(row)
