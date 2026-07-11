@@ -212,3 +212,5 @@
 | 2026-07-11 16:05 | GBT_HANDOFF_2026-07-11_Future_stabilization__unified_AI_communi_dfcc4c59.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-11 16:40 | GBT_HANDOFF_2026-07-11_Priority__Restore_team_communications_an_6838826f.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
 | 2026-07-11 16:45 | GBT_HANDOFF_2026-07-11_Architectural_requirement__resilient_tea_3a402672.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-11 17:05 | GBT_HANDOFF_2026-07-11_Communications_verification_then_resume__50df488c.md | implementation_request | ChatGPT | PROCESSED | → Appended to STRATEGIC_BACKLOG.md |
+| 2026-07-11 13:00 | GBT_HANDOFF_2026-07-11_P0_Build_ADR-003_Agent_Message_Bus_now_fc88f0c8.md | implementation_request | ChatGPT | PROCESSED | → ADR-003 built+verified, DEC-001-004 seeded+approved, GBT schema blocked on 30-op cap, escalated to Buck |
