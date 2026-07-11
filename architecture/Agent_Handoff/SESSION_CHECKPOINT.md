@@ -19,7 +19,23 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:09 MT, by Claude Code — BOTH DIRECTIONS OF GBT<->BC NOW HAVE REAL INFRASTRUCTURE
+2026-07-11, ~12:14 MT, by Claude Code — TEAM STATUS (#4) FIXED FOR ALL 3 AGENTS, VERIFICATION PLAN NEXT
+
+## Heartbeat fix (2026-07-11 ~12:11-12:14 MT)
+Found while checking requirement #4 (team status): BC's heartbeat was stuck
+on a manual ping from the day before, showing misleadingly stale/fresh
+depending on when checked, because BC has no way to touch its own
+heartbeat. Wired heartbeat updates into the same BC-doc mirror - uses the
+Drive file's own `modifiedTime` as the heartbeat timestamp (not "now"),
+with `GREATEST()` so it can never regress backward from a stale backfill.
+Added `seen_at` param to `_touch_heartbeat()`. Verified via direct SQL test
+(newer timestamp applies, older one correctly ignored) and live check (BC
+now correctly shows STALE with its real ~2.5h-old last-activity time, not
+a day-old one). Commit `15484a0`.
+
+Requirement #4 (online/offline/stale/last-heartbeat/current-mission) is
+now accurate for all 3 agents - this piece of Buck's spec is genuinely
+done, not just designed.
 
 ## Both comms directions closed (2026-07-11 ~12:06-12:09 MT)
 GBT→BC: new write endpoint (`b5f8fac`), still needs Buck's schema-wiring
