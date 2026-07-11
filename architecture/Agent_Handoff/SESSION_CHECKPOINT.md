@@ -19,7 +19,32 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~13:30 MT, by Claude Code — PHASE 2 COMPLETE: GBT Actions schema updated live, verified via a fresh chat with real cross-checked evidence
+2026-07-11, ~14:25 MT, by Claude Code — Phase 3 closed correctly (via BC's honest refusal, not a false confirm); built auto-fold-in so BC's files stop duplicating the canonical log
+
+## Phase 3 real closure + duplicate-document fix (2026-07-11 ~14:15-14:25 MT)
+Two different BC conversation instances gave inconsistent answers to the same
+Phase 3 checklist (1:55 PM MT: confident "all 5 confirmed" with real reasoning;
+2:15 PM MT: refused to confirm any of it, correctly explaining BC has no
+persistent identity across conversations). Reconciled both honestly into
+`LIVE_TEAM_COMMS.md` rather than picking one - the inconsistency itself is the
+proof of the underlying finding. Corrected ADR-019's BC model (commit 7b8e5a0):
+BC is not a third peer agent with intermittent availability like Code/GBT, it's
+a Drive-literate Claude instance invoked per-conversation with zero continuity.
+
+Chief Architect directive (Telegram msg 1515, approved): one canonical
+coordination log, no duplicates. Built the actual fix rather than just
+appending manually each time: `_sync_coordination_documents()` now auto-folds
+new BC-authored Drive files into `LIVE_TEAM_COMMS.md` automatically (BC's own
+Drive MCP toolset has no update/append op, only create - so BC can't stop
+creating new files, the fold-in has to happen on Code's side). New
+`coordination_log_folded` table tracks what's merged; pre-seeded with the 44
+pre-existing BC files so this only applies going forward. Verified live with a
+real test file (auto-folded correctly on the next `coord-docs-list` call, test
+file then deleted). Commit `79c7b11`.
+
+**Next: reply to Buck's "we need to fix this" / "GBT and Claud still having
+problems" confirming this is now fixed**, then continue watching for a genuine
+3-agent decision-log entry closing Phase 3, then move to Phase 4.
 
 ## Phase 2 complete: controlled Actions schema update, done and verified (2026-07-11 ~13:22-13:30 MT)
 Buck removed the approval gate (Telegram msg 1505: "proceed... don't wait for
