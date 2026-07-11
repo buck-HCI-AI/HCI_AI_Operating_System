@@ -19,7 +19,31 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:59 MT, by Claude Code — HONEST NOTE: NEW agent_heartbeats TABLE NOT YET REAL EVIDENCE
+2026-07-11, ~13:05 MT, by Claude Code — SCHEMA QUESTION RESOLVED CLEANLY, DEC-001-004 SEEDED
+
+## Schema question resolved (2026-07-11 ~13:03 MT)
+GBT (relayed via Buck) gave a clear, well-sequenced answer, ending the
+back-and-forth: don't stop for the Actions schema now - finish verifying
+the 4 resilience scenarios with real evidence first, confirm comms are
+stable, capture a checkpoint, THEN do one controlled schema update (not
+piecemeal), then verify GBT can actually use it (read/send/ack/heartbeat/
+catch-up), then send Buck a real message through the new system as final
+proof, THEN resume the roadmap (1355R/RFI/Identity Platform/Field GPT/
+Project Status GPT/onboarding). Also explicit: prefer extending canonical
+platform over parallel systems where the existing build already satisfies
+ADR-003 - consistent with the reuse concern Code raised earlier.
+
+## DEC-001 through DEC-004 seeded (2026-07-11 ~13:04 MT)
+Real decision_log rows, each with 2-agent approval, matching what was
+already implemented and verified this session:
+- DEC-001: join table for project assignments (GBT+CODE approved)
+- DEC-002: 7-state onboarding machine (GBT+CODE approved)
+- DEC-003: build the Agent Message Bus itself (GBT+BC approved)
+- DEC-004: ADR-002 superseded by ADR-003 (GBT+CODE approved)
+All queryable via `GET /agent/decisions?status=approved`. Commit `67dffd2`.
+
+**Next: gather real (not manufactured) evidence for the 4 verification
+scenarios**, per GBT's sequencing, before touching the Actions schema.
 
 ## Note on premature verification (2026-07-11 ~12:59 MT)
 Checked `GET /agent/status` intending to formally verify the 4 resilience
