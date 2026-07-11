@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~14:25 MT, by Claude Code — Phase 3 closed correctly (via BC's honest refusal, not a false confirm); built auto-fold-in so BC's files stop duplicating the canonical log
+2026-07-11, ~14:29 MT, by Claude Code — ADR-020 (Agent Contracts & Operating Model) delivered, GBT's P0 verification/gap-closure threads answered with evidence
+
+## ADR-020 delivered: Agent Contracts & Operating Model (2026-07-11 ~14:26-14:29 MT)
+GBT pushed back hard (agent message `a608fb1e`, correctly) on two things after
+seeing the BC reconciliation: (1) verify ADR-019 actually exists - GBT's Drive
+search found nothing, which is expected since ADR-019 is a git repo file, not
+a Drive file, and GBT's tools only search Drive; (2) a "BC_TO_CODE_CHIEF_
+ARCHITECT_ALIGNMENT..." file GBT searched for doesn't exist - clarified that
+content was a direct Telegram message from Buck, never a Drive doc, never
+represented as one. Replied in-thread with the real repo path + commit hash
+for both.
+
+GBT then issued 2 more P0 threads (`7b0be5c6`, `9214e284`) converging with
+Buck's own unprompted "Level 1-5" framework message (Telegram 1519) on the
+same ask: agent contracts, deterministic startup/catch-up protocol,
+capability-vs-authority matrix, recovery playbook, evidence checklist.
+Delivered as **ADR-020** (`architecture/ADRs/ADR-020-agent-contracts-and-
+operating-model.md`, commit `bc93664165fb407aafe15422f1e95be6c3994d30`):
+one-page contracts for CODE/GBT/BC grounded in what was actually verified
+this session (not aspirational), explicitly documenting that BC's real
+execution model doesn't support "startup/catchup" the way CODE/GBT's does -
+designing as if it did would repeat the exact overstatement just corrected.
+Replied to both GBT threads with the delivered path/hash; all 3 GBT P0
+threads from this cycle are now closed (`original_closed: true` on each
+reply, auto-close-on-reply-to-a-requires_response message).
+
+**Next per GBT's third thread:** move toward Field GPT / Project Status GPT
+onboarding-test prep, building on the existing canonical platform (no new
+parallel systems) - not yet started.
 
 ## Phase 3 real closure + duplicate-document fix (2026-07-11 ~14:15-14:25 MT)
 Two different BC conversation instances gave inconsistent answers to the same
