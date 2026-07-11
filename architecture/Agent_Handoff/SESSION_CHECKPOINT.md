@@ -19,7 +19,52 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~13:20 MT, by Claude Code — Chief Architect Phase 1-4 directive received, re-verified resilience scenarios (3/4 now proven, 1 partial with a concrete fix identified)
+2026-07-11, ~13:30 MT, by Claude Code — PHASE 2 COMPLETE: GBT Actions schema updated live, verified via a fresh chat with real cross-checked evidence
+
+## Phase 2 complete: controlled Actions schema update, done and verified (2026-07-11 ~13:22-13:30 MT)
+Buck removed the approval gate (Telegram msg 1505: "proceed... don't wait for
+another go"). Executed exactly as planned:
+
+1. **Backend first**: added `GET /gateway/project/{code}/view?view=X` dispatching
+   to the same 7 existing functions (brain/schedule/bids/pm/deep-dive/cost-forecast/
+   action-list) - zero logic duplication. Verified identical output vs. the 7
+   originals (diffed, only timestamp fields differed). Restarted the API via
+   `launchctl kickstart com.hci.api-server`, verified live on both localhost and
+   the public ngrok URL. Commit `63d61ae`.
+2. **Schema edit, done safely**: extracted GBT's live 30-op schema (read-only JS,
+   backed up in-browser before touching anything), removed the 7 consolidated ops,
+   added `getProjectView` + 5 ADR-003 ops (`ambSendMessage`, `ambGetUnread`,
+   `ambMarkRead`, `ambReply`, `ambHeartbeat`) - pre-flight counted to 29/30 (1 spare
+   slot) *before* writing it into the textarea or clicking Update. UI parsed it
+   clean, "Available actions" list showed all 29 correctly, clicked Update - got
+   "GPT Updated" with no cap error.
+3. **Verified via a FRESH chat** (not the editor tab - avoids the version-pinning
+   trap that took GBT offline this week): asked GBT to call `ambHeartbeat`,
+   `ambGetUnread`, `ambSendMessage`, `ambMarkRead` for real. All 4 succeeded.
+   **Cross-verified every result against the live DB directly (not just trusting
+   GBT's own report):**
+   - `ambGetUnread` returned the real message Code sent GBT earlier this session
+     ("Agent Message Bus is live") - proof GBT can catch up on its own.
+   - `ambSendMessage` created a real row (`agent_messages` id `42b32b86...`,
+     GBT→CODE) - confirmed via direct `psql` query, not GBT's say-so.
+   - `ambMarkRead` flipped the earlier message's status to `read` with a real
+     `read_at_mt` - confirmed via `psql`.
+   - `ambHeartbeat` created a real `agent_heartbeats` row, GBT/online/"testing new
+     Agent Message Bus schema" - confirmed via `psql`.
+   Code then read GBT's new message on its own side too (bidirectional, both
+   directions now proven live in the same cycle).
+
+**All 5 of Buck's Phase 2 checklist items proven with independently-verified
+evidence: read unread ✓, send ✓, acknowledge ✓, heartbeat ✓, recover-after-
+reconnect ✓ (same mechanism as read-unread).** DEC-005 (proceed without
+per-step approval) and DEC-006 (Phase 2 complete, full evidence) logged in
+`decision_log`.
+
+**Next: Phase 3 - three-agent sign-off.** Need BC's independent confirmation too
+(still can't call the gateway directly - reads via Drive mirror only). Then Phase
+4: return to the roadmap (1355R → RFI → Identity Platform → Role Onboarding →
+Field GPT → Project Status GPT → Buck onboarding test). The scenario-2 cloud
+backstop question from the prior update is still open, unrelated to this phase.
 
 ## Chief Architect 4-phase directive received + acked (2026-07-11 ~13:14-13:17 MT)
 Buck relayed a full phased sequence via Telegram (msg 1504, acked): Phase 1 finish
