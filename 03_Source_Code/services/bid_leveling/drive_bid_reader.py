@@ -603,8 +603,8 @@ def _sync_bid_package(cur, row: dict) -> None:
             """, (existing["id"],))
     else:
         cur.execute("""
-            INSERT INTO bid_packages (project_id, csi_division, package_name, status, notes)
-            VALUES (%s, %s, %s, 'bid_received', 'Auto-created from Drive bid scan - no matching HubSpot-sourced package found')
+            INSERT INTO bid_packages (project_id, csi_division, package_name, status, notes, created_by, created_via)
+            VALUES (%s, %s, %s, 'bid_received', 'Auto-created from Drive bid scan - no matching HubSpot-sourced package found', 'system', 'drive_bid_scan')
         """, (row["project_id"], f"{row['division_num']} — {row['division_name']}", row["vendor_name"]))
 
 

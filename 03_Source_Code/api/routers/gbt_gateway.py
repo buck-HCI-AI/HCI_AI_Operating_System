@@ -5653,11 +5653,11 @@ Respond with a JSON object only, no other text, in this exact format:
                     continue
                 notes = f"Confidence: {pkg.get('confidence','?')} — generated from plan-review, not yet reviewed by PM"
                 cur.execute("""
-                    INSERT INTO bid_packages (project_id, csi_division, package_name, scope_description, status, notes)
-                    VALUES (%s, %s, %s, %s, 'not_started', %s)
+                    INSERT INTO bid_packages (project_id, csi_division, package_name, scope_description, status, notes, created_by, created_via)
+                    VALUES (%s, %s, %s, %s, 'not_started', %s, %s, 'ai_plan_review')
                     RETURNING id, csi_division, package_name, status
                 """, (pid, pkg.get("csi_division", ""), pkg.get("package_name", ""),
-                      pkg.get("scope_description", ""), notes))
+                      pkg.get("scope_description", ""), notes, req.reviewed_by))
                 row = dict(cur.fetchone())
                 row["confidence"] = pkg.get("confidence", "low")
                 created.append(row)
