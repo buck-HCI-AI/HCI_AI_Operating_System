@@ -19,7 +19,40 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~14:49 MT, by Claude Code — started Field GPT onboarding-test prep, found a real concrete gap (Adam/Trafford stuck at onboarding_state='pending')
+2026-07-11, ~15:02 MT, by Claude Code — ADR-021: 275SS provenance PROVEN for 574J (exact SQL recovered), high-confidence for 275SS; decision pending Buck
+
+## 275SS provenance report delivered (2026-07-11 ~14:57-15:02 MT)
+GBT/Buck (Telegram msg 1525/1526) required a signed-off provenance report
+before any cleanup - "prove exactly who or what created these rows," not
+"probably." Gateway logs and git history had already come up empty (checked
+prior cycle). Went one layer deeper: Postgres's own error log
+(`docker logs hci_postgres`) retains the full failing SQL text on any error
+even with `log_statement=none` - found a column-name typo that errored at
+16:02:56 UTC, one statement before the real 574J insert succeeded, which
+recovered the exact deliberately-commented script ("Import 574 Johnson Drive
+2026 market bids... real Aspen subcontractor bids... insert package stubs").
+**574J: proven, Outcome A, exact SQL in the report.** 275SS's insert
+succeeded without error so no statement text exists to recover - reported
+that limitation honestly rather than overclaiming, but built a real
+high-confidence case from session timing, coherent CSI codes, and (the key
+differentiator from the real 246GW fabrication) zero dollar figures anywhere
+in the 275SS rows. Filed as **ADR-021** (`architecture/ADRs/ADR-021-275ss-
+bid-package-provenance-report.md`, commit `637337a0e3e08ea3198227e66f55268a
+9c27b505`). Recommended completing the scaffolding (real Drive-mine pass for
+275SS) over deleting it, decision left to Buck. Also flagged a real platform
+gap the investigation exposed: no `created_by` column anywhere, Postgres not
+logging successful statements - a future case without a lucky typo would be
+unanswerable. Not fixing Postgres logging config unilaterally (real
+disk/perf tradeoff).
+
+Also addressed Buck's "fix the damn coms" message (1527) with current real
+status rather than assuming something's broken: CODE<->GBT verified live and
+bidirectionally multiple times today via the Agent Bus; BC's Drive-bridge
+constraint is documented architecture (ADR-020), not a bug. Asked Buck to
+name anything specific still failing if he's seeing something.
+
+**Still open:** Buck's decision on 275SS (mine real data vs. leave as empty
+scaffolding), and Adam/Trafford onboarding decision from the prior cycle.
 
 ## Field GPT onboarding prep - started, one real gap found (2026-07-11 ~14:49 MT)
 Checked `GET /gateway/users` (the real Field GPT identity-flow endpoint) against
