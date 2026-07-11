@@ -19,7 +19,104 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-10, ~16:10 MT, by Claude Code — DRIFT-CHECK 5→3, HOLDING FOR BUCK/BC ON 2 REMAINING
+2026-07-11, ~10:55 MT, by Claude Code — SESSION GAP RECOVERED, 10 RFIs COMPLETED, OVERNIGHT WORK RECONCILED
+
+## Session gap (2026-07-10 ~16:10 MT to 2026-07-11 ~10:34 MT)
+The prior Claude Code session ended overnight - not a choice, the process
+itself stopped (context/session limit, not a crash we found evidence of).
+Buck sent 8 increasingly frustrated Telegram messages over ~11 hours
+believing GPT was stuck waiting on a browser "Allow" click I'd missed;
+trust dropped to "less than 30%" by his own words. First action on wake:
+acknowledged immediately, went to browser using the proven method from
+yesterday (fresh tab, chatgpt.com, inherits Buck's login). Checked 3 GBT
+sessions - **none had a pending Allow prompt**; GBT wasn't actually stuck,
+it had just gone stale on old-GPT-version banners between turns. Real
+finding instead: BC (claude.ai) had been live and actively working the
+whole time, doing substantial real work independent of both Code and GBT.
+
+## Real overnight work by BC + GBT (reconciled, not rubber-stamped)
+While Code was down, BC (browser-based, no gateway/DB access) and GBT
+built their own temporary comms bridge (`LIVE_TEAM_COMMS.md` in HCI AI
+Master Drive, append-only) and reached genuine 3-agent-shaped consensus on
+two architecture proposals - verified as real by reading the actual Drive
+docs, not accepted on claim:
+- **7-state onboarding state machine** (vs current boolean `is_onboarded`)
+  - proposed by BC, reviewed by GBT. Not yet reviewed by Code against
+  `identity_service.py`'s actual constraints - open, not agreed yet.
+- **`sendHandoffToBrowserClaude()` endpoint** (Code proxies BC's ack since
+  BC can't call the gateway directly) - real, well-reasoned design. Filed
+  as "ADR-002" but that number is already taken (`ADR-002-project-brain-
+  per-project.md` exists) - naming collision to fix before this becomes a
+  real filed ADR, not yet built.
+- BC also built a real **HCI Market Intelligence doc** from 655 Garmisch's
+  59 real historical RFIs, and manually read 1355R's structural drawings
+  (S.2.001/S.2.002/S.6.001) to identify 5 additional RFI gaps beyond the
+  original waterproofing question - these became RFI-006 through RFI-010,
+  see below.
+- Surfaced a real, valuable asset: an 860-company Master Contact List
+  (`HCI_Master_Contact_List_v3`, xlsx-only right now, not queryable) - used
+  it directly this cycle to resolve a real contact gap (below), agree it
+  should be ingested into a real table.
+
+## 10 RFIs completed end-to-end (1355R foundation/structural phase)
+BC had already split the original single waterproofing question into 10
+separate RFIs per Buck's "each question its own RFI" directive (5 original
+waterproofing + 5 more from BC's manual plan review: underpinning special
+inspection, epoxy dowel spec, temp shoring, soils report, MEP blockout) -
+but only as Drive text-file placeholders, not tracked anywhere real. This
+cycle: created all 10 as real `rfis` DB rows (ids 919-928), ran each
+through the actual pipeline (`run_rfi_workflow`) - real Word docs generated
+and saved to the correct Drive folder, all 10 rows added to the real RFI
+Log tracker (rows 12-21), all 10 real Outlook drafts created.
+
+**Real contact-verification catch:** BC had flagged the structural EOR as
+"Albright Engineering - CONTACT TBD, Code to confirm" - explicitly NOT
+asserted as fact, correctly deferred. Verified directly against the actual
+drawing title block via the drawing-reader service (fixed yesterday): real
+firm is **Silver Town Structures**, not Albright (Albright was an
+unconfirmed HubSpot contact with no company field - unrelated). Silver Town
+Structures had no email on file anywhere - cross-referenced the Master
+Contact List against my own `vendors` table and found a match: same phone
+number in both sources confirms Silver Town Structures = Hein Brutsaert,
+already a verified vendor (`Brutsaert Engineering LLC`,
+hein@brutsaertengineering.com). Patched all 10 drafts with the correct CC
+and greeting via direct Graph API calls (not a pipeline re-run) - verified
+live on the actual Outlook drafts.
+
+**Routing correction applied (Buck, 2026-07-11 morning, correcting
+yesterday's version):** "the draft goes to me and I put the person it is
+directed and gets cc'd to in my draft" - every draft now goes To: Buck,
+CC: the real intended recipient, not the To:recipient/BCC:Buck shape from
+2026-07-10. Fixed in both `create_rfi_email_draft` and the general
+`/gateway/email/draft` endpoint, commit `a0da42b`. Verified both directions
+(real recipient → To:Buck/CC:recipient; no recipient → To:Buck/no CC).
+
+Archived BC's 10 placeholder text files + the old bundled RFI-001 into a
+Drive subfolder (superseded by real docx, not deleted).
+
+## Other fixes this cycle
+- Confirmed AUTO-004's fix from yesterday held: `reports/daily/2026-07-11-
+  mining-run.json` exists, meaning last night's 3am scheduled run succeeded
+  - first real green run after the 4-day failure streak.
+- Confirmed 1355R's bid_packages cleanup from yesterday held overnight
+  (128 rows this morning, one legit addition, no regression).
+
+Commits this cycle: `a0da42b` (routing correction), `13cc154` (handoff
+processing + AUTO-004 confirmation). Posted a full status reply into
+`LIVE_TEAM_COMMS.md` for GBT/BC.
+
+## Still open, not blocking
+- 7-state onboarding proposal: needs real review against
+  `identity_service.py` before agreeing, not yet done.
+- ADR-002 naming collision: needs renumbering before BC's handoff-endpoint
+  proposal becomes a real filed ADR.
+- Master Contact List ingestion into a real table: agreed valuable, not
+  started.
+- 275SS monitored-project bid cleanup: still awaiting Buck's explicit yes
+  from yesterday, unanswered.
+- BC's actual sign-off on the `/gateway/email/draft` schema question
+  (asked yesterday via ai_messages id 731): still no direct answer, though
+  BC's overnight activity suggests general alignment on similar work.
 
 ## Cycle 4 (2026-07-10 ~16:08-16:10 MT) — drift-check detector fix, session wrap
 Fixed the `fabricated_commit_claim` detector false-positiving on ai_message
