@@ -93,6 +93,14 @@ The Gateway Bridge is how ChatGPT (GBT / Chief Architect) connects to the OS. Cl
 1. Verify the gateway is live: `curl -s https://speculate-armband-retinal.ngrok-free.dev/gateway/health`
 2. Check for pending GBT handoffs: `ls Architecture/Agent_Handoff/Inbox/`
 3. If handoffs exist, read and execute them before taking other work
+3.5. Check the AI Team Document Bus (`GET /gateway/coordination/documents`) for
+   anything posted while offline, especially `LIVE_TEAM_COMMS.md` (id
+   `1Ya_cRlfOH2eAM5gtsk_bZmgx73ZLvn7q`, HCI AI Master) — the append-only channel
+   GBT and BC use to keep coordinating directly when Code is down (ADR-003,
+   2026-07-11). Read it top to bottom before assuming nothing happened while
+   you were offline, then append a short "Code back online at [MT time],
+   resuming from [state]" entry so GBT/BC know you're back without Buck
+   relaying it.
 4. If ngrok is down, restart it: `ngrok http 8000` — the URL is static on the free plan
    (as of ADR-018, `scripts/monitor.sh` auto-detects and restarts a dead ngrok
    tunnel every 5 min, so this should be rare — check `~/Library/Logs/hci_monitor.log`
