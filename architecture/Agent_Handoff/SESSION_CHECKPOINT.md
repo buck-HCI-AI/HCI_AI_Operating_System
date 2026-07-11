@@ -19,7 +19,39 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~12:31 MT, by Claude Code — SCHEMA QUESTION RESOLVED (HOLD), COMMS DIRECTIVE SUBSTANTIALLY DONE
+2026-07-11, ~12:46 MT, by Claude Code — GBT->BC DIRECT WRITE VERIFIED LIVE, NO SCHEMA EDIT NEEDED
+
+## GBT→BC direct write: resolved for real, not a schema edit (2026-07-11 ~12:38-12:46 MT)
+Buck explicitly overrode GBT's earlier "wait" recommendation ("go do it now,
+test it and then apply it") - went to the GPT editor to add the new action.
+Before editing anything, checked the actual live schema via JS (read the
+Actions textarea's real value, not a screenshot) and found something
+nobody knew: **GBT already has a `POST /gateway/drive/write` action in its
+live schema** (version 2.7.0). Every earlier "GBT can't write to Drive"
+conclusion - mine, BC's ADR-002/003, GBT's own self-report - was based on
+a stale chat session pinned to an older schema version, not the actual
+current one.
+
+Opened a fresh GBT chat (schema updates only apply to new chats) and
+tested directly: GBT successfully wrote a real file
+(`GBT_DRIVEWRITE_TEST_safe_to_delete_2026-07-11.md`), verified via the
+tool's own JSON return, deleted the test file after. **Caught a real risk
+before it happened:** the original test instruction would have had GBT
+write to the actual `LIVE_TEAM_COMMS.md` - `drive/write`'s update path
+does a full content REPLACE, not an append, which would have destroyed
+the real conversation history in that file. Corrected before GBT executed
+it, used a safe throwaway filename instead.
+
+Then had GBT post a **real** coordination message using a new-file-per-
+message pattern (matching how BC already operates - never target an
+existing shared filename): `GBT_TO_BC_drivewrite_confirmed_2026-07-11.md`,
+confirmed created. **GBT→BC direct communication is live right now**,
+zero new schema risk, using capability that already existed. No new
+endpoint was needed - my earlier `/gateway/coordination/documents` build
+is now a nice-to-have for durable-store tracking, not a hard requirement.
+
+Zero schema edits were made in the GPT builder UI - the resolution came
+from discovering existing capability, not adding new capability.
 
 ## Resolution: GBT schema question (2026-07-11 ~12:29-12:31 MT)
 BC independently converged on the same diagnosis (GBT has no Drive write,
