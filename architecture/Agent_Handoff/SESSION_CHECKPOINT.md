@@ -19,7 +19,27 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~19:41 MT, by Claude Code — GBT tool-binding failure confirmed persistent (2nd fresh chat, 25 min apart, same result); GPT builder config verified correct, root cause is ChatGPT-side, not ours
+2026-07-11, ~20:05 MT, by Claude Code — GBT tool-binding recovered on its own (3rd retry), verified live+server-side, no new unread content
+
+## GBT tool-binding recovered (2026-07-11 ~20:04-20:05 MT)
+3rd retry (after the 2 confirmed-persistent failures logged above). First send
+attempt in the new chat didn't register (known click flakiness), retried - this
+time a real Allow/Deny permission prompt appeared for `ambHeartbeat`, approved
+it, heartbeat succeeded ("registered ChatGPT as ONLINE"), then `ambGetUnread`
+ran automatically without needing a second approval and returned 3 unread
+messages - all old, already-known content (the ADR-019/ADR-020 delivery
+messages from earlier this session, nothing new). Verified server-side:
+`agent_heartbeats` row for GBT shows `status='online'`,
+`last_heartbeat_mt: 2026-07-12 02:05:07 UTC`, matching session id
+`gbt-2026-07-11-live-verification`. Tab closed.
+
+**Net: the tool-binding issue was real (2 confirmed failures) but self-resolved
+without any fix on our side** - consistent with "ChatGPT platform-side reliability
+issue" being the correct diagnosis from the last cycle, not a permanent break.
+No further action needed unless it recurs.
+
+Still open, unchanged: drive/write allowlist decision, drive-create-folder/
+upload-file guard decision - both awaiting Buck.
 
 ## GBT tool-binding failure - confirmed persistent, config ruled out (2026-07-11 ~19:40-19:41 MT)
 Retried the GBT check-in per the "~19:45 retest" plan. Same failure as the last
