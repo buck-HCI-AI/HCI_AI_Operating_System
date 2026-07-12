@@ -19,7 +19,23 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~18:02 MT, by Claude Code — Field GPT full capability walkthrough complete, all 5 core functions verified real
+2026-07-11, ~18:06 MT, by Claude Code — Project Status GPT executive-level walkthrough complete, one minor data gap noted (64EW contract value blank)
+
+## Project Status GPT walkthrough complete (2026-07-11 ~18:04-18:06 MT)
+Tested the executive-level endpoints (not just per-project deep-dives,
+already verified earlier): `executive/report`, `executive/mission-control`,
+`role/owner` - all working, all returning real substantive data (real
+health scores, risk flags, procurement percentages per project).
+
+**Minor finding, not chased further:** 64EW's `contract_value` is genuinely
+NULL in `projects` table (confirmed via direct query, not a report bug) -
+executive report shows it as $0. Could be legitimate (contract not
+finalized) or a real data gap. Flagged to Buck, not investigated further -
+low urgency, not blocking.
+
+**Both Field GPT and Project Status GPT now genuinely walked through
+end-to-end, not just spot-checked.** Next GBT/BC proactive check-in due
+~18:20 MT.
 
 ## Field GPT walkthrough complete (2026-07-11 ~18:00-18:02 MT)
 Tested every core capability directly against the backend, not just assumed
