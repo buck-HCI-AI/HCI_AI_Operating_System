@@ -19,7 +19,40 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~18:06 MT, by Claude Code — Project Status GPT executive-level walkthrough complete, one minor data gap noted (64EW contract value blank)
+2026-07-11, ~18:32 MT, by Claude Code — GBT + BC proactive check-in cycle complete (both live, no new blockers), Buck's 1552/1553 acked
+
+## GBT + BC proactive check-in complete (2026-07-11 ~18:26-18:32 MT)
+Ran the standing recurring check-in (ADR-020 practice, direct-phrasing convention):
+- **GBT:** hit total tool-binding-loss in the existing chat ("tools not available
+  in this chat environment") — per protocol, closed it and opened a genuinely
+  fresh chat. Fresh chat worked immediately: called `ambGetUnread`/`ambHeartbeat`,
+  reported ONLINE heartbeat + 3 unread bus messages (all from CODE, already-known
+  content). Verified server-side via direct DB query on `agent_heartbeats` —
+  real row, `last_heartbeat_mt: 2026-07-12 00:26:27 UTC`, session
+  `gbt-2026-07-11-live-verification`. Confirmed genuinely live, not asserted.
+- **BC:** fresh `claude.ai/new` tab, safe direct-task phrasing ("Hi, this is
+  Claude Code checking in again...") — **no safety-classifier block this time**,
+  confirming the phrasing fix holds across repeated use. BC read
+  LIVE_TEAM_COMMS.md + GBT_INBOX.md and returned a full recap (BC has no
+  cross-chat memory, so it re-summarizes the whole file rather than diffing
+  against a "last visit" — expected, already-documented limitation, not new).
+  Two items it flagged as needing attention were checked against this file and
+  are **already known, not new**: market-intel ingest was already done
+  (`lessons_learned` ids 51-53, see BC backlog section above); stale RFI test
+  row is still correctly unactioned (no specific ID ever given, previously
+  searched and found nothing test-labeled to safely delete). Tab closed
+  immediately per standing practice.
+- **Net result: no new actionable items from either agent this cycle.**
+
+## Buck msgs 1552/1553 acked (2026-07-11 ~18:32 MT)
+Buck flagged (1553) that the check-in cadence had slipped past interval without
+an ack — accurate, I was mid-way through the GBT/BC live-verification cycle
+above when his messages landed. Replied immediately via Telegram once
+surfaced: confirmed both messages received, explained the delay was real
+verification work not a stall, confirmed GBT+BC both live, confirmed the
+100/100 directive (full historical audit, GPT/Admin/Accounting eval) is a GO
+with nothing new blocking. Acked through message 1553.
+Next GBT/BC proactive check-in due ~19:00 MT.
 
 ## Project Status GPT walkthrough complete (2026-07-11 ~18:04-18:06 MT)
 Tested the executive-level endpoints (not just per-project deep-dives,

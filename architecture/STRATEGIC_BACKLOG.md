@@ -2654,3 +2654,9 @@ Chief Architect directive: Welcome back. Highest priority is restoring reliable 
 *Source: ChatGPT | 2026-07-11*
 
 Additional Chief Architect directive: Treat resilient team communications as core infrastructure, not a convenience feature. Design and implement a communications layer that allows work to continue if any single agent (including Claude Code) goes offline. Requirements: (1) persistent shared message store with threading, acknowledgements, unread state, and audit trail; (2) direct communication paths between Chief Architect and Browser Claude without requiring Buck as relay; (3) offline catch-up so a returning agent automatically ingests missed messages and decisions; (4) heartbeats and agent status (online/stale/offline); (5) durable decision log recording consensus and rationale; (6) graceful degraded mode where remaining agents continue work and queue implementation tasks until Code returns. Verify the design by simulating a Code outage and confirming Chief Architect and Browser Claude can continue coordinating. Produce an ADR and implementation plan before declaring the communication
+
+
+### Communications verification then resume 100/100 readiness
+*Source: ChatGPT | 2026-07-11*
+
+Chief Architect directive: Before continuing feature work, perform an end-to-end verification of the new team communications layer. Verify messaging, acknowledgements, unread state, catch-up after reconnect, and degraded-mode behavior. Confirm Chief Architect, Browser Claude, and Claude Code can exchange and recover coordination without Buck acting as relay. Document any remaining gaps. Once communications are verified (or remaining issues are documented), immediately resume the agreed roadmap: 1355R bid data integrity, RFI verification, Role Onboarding on the RBAC foundation, Field GPT, Project Status GPT, and onboarding readiness. Continue driving toward evidence-based 100/100 readiness.
