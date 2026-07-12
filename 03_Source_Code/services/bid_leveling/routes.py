@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "approval_queue
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from bid_leveling_service import BidLevelingService
+from bid_leveling_service import BidLevelingService, reject_if_monitored_folder, MonitoredFolderWriteError
 from hubspot_bid_sync import sync_project_hubspot_bids
 
 router = APIRouter()
@@ -186,7 +186,10 @@ def create_drive_folder(req: CreateFolderRequest):
     For use by ChatGPT/GBT and AI agents with full write access.
     """
     try:
+        reject_if_monitored_folder(req.parent_folder_id)
         return BidLevelingService.create_folder(req.parent_folder_id, req.folder_name)
+    except MonitoredFolderWriteError as e:
+        raise HTTPException(403, str(e))
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -199,9 +202,12 @@ def upload_drive_file(req: UploadFileRequest):
     For use by ChatGPT/GBT and AI agents with full write access.
     """
     try:
+        reject_if_monitored_folder(req.folder_id)
         return BidLevelingService.upload_file(
             req.folder_id, req.filename, req.content_b64, req.mime_type or "application/octet-stream"
         )
+    except MonitoredFolderWriteError as e:
+        raise HTTPException(403, str(e))
     except Exception as e:
         raise HTTPException(500, str(e))
 

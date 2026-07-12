@@ -67,6 +67,33 @@ def _pg():
     return psycopg2.connect(**DB, cursor_factory=psycopg2.extras.RealDictCursor)
 
 
+class MonitoredFolderWriteError(Exception):
+    """Raised when a Drive write targets a monitored project's root folder."""
+    pass
+
+
+def reject_if_monitored_folder(folder_id: str) -> None:
+    """Buck's permanent directive: monitored jobs are read-only, never written to.
+    Exact-match guard against projects.drive_folder_id where status='monitoring'.
+    Known incomplete: only 246GW currently has drive_folder_id populated in the DB
+    (checked 2026-07-12) - the other 6 monitored projects (275SS, 574J, 606SW, 813MS,
+    83SB, 1395SV, LICHT) have no folder_id on record, so this guard can't yet protect
+    them. Populating those is a data task, not a code task - flagged, not silently
+    treated as complete coverage."""
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT project_code FROM projects WHERE status='monitoring' AND drive_folder_id=%s",
+                (folder_id,)
+            )
+            row = cur.fetchone()
+    if row:
+        raise MonitoredFolderWriteError(
+            f"Refused: {row['project_code']} is a monitored project - read-only per "
+            f"permanent directive, no writes to its Drive folder are permitted."
+        )
+
+
 def _log_roi(project_id, project_name, divisions, bids, files_generated):
     try:
         with _pg() as conn:
