@@ -19,7 +19,28 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~17:58 MT, by Claude Code — recurring GBT/BC proactive check-in cadence made a standing practice; comprehensive honest 100/100 status given to Buck
+2026-07-11, ~18:02 MT, by Claude Code — Field GPT full capability walkthrough complete, all 5 core functions verified real
+
+## Field GPT walkthrough complete (2026-07-11 ~18:00-18:02 MT)
+Tested every core capability directly against the backend, not just assumed
+from the earlier identity fix:
+- `getOpenItems`, `getDailyLogFormatted` (read) - both return real data, no
+  errors.
+- `submitFieldNote`, `submitDailyReport` (write) - real end-to-end test each:
+  submitted real data, verified the row landed correctly in the DB
+  (`project_events` id 1014, `daily_logs` id 164), then deleted the test
+  data immediately per the test-data-cleanup rule. Both correctly reject
+  incomplete submissions with clear 422 validation errors, no silent
+  failures.
+- RFI submission already proven earlier today (10 real RFIs, matching Drive
+  docs) - not re-tested, already solid evidence.
+
+**All 5 core Field GPT capabilities now genuinely verified, not assumed.**
+
+**Next: Project Status GPT full question-coverage walkthrough** (backend
+already verified for all views/projects, GBT live-call already verified once
+- what's not yet done is testing a range of realistic executive questions
+against it), then the next scheduled GBT/BC proactive check-in (due ~18:20 MT).
 
 ## Recurring GBT/BC proactive check-in - standing practice (2026-07-11 ~17:58 MT)
 Buck: "set your own timer to trigger them... whatever it takes." The
