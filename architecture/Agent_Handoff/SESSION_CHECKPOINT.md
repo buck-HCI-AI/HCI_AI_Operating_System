@@ -19,7 +19,30 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-12, ~10:42 MT, by Claude Code — bid-leveling monitored-folder guard shipped+verified (Buck approved), BC standing-authorization workaround built+live-verified working
+2026-07-12, ~10:56 MT, by Claude Code — monitored-folder guard coverage improved from 1/7 to 4/7 (275SS, 606SW, 574J folder IDs found+verified+recorded)
+
+## Bid-leveling guard coverage improved (2026-07-12 ~10:48-10:56 MT)
+Follow-up to the guard shipped earlier this cycle - it only protected 246GW since
+that was the only monitored project with `drive_folder_id` on record. Searched Drive
+for the other 6, found and verified 3 (confirmed `mime_type='application/vnd.google-
+apps.folder'` and exact name match before writing anything to the DB - not guessing):
+- 275SS -> `1-Kgb3tTLQEloAOn3j-mUU-xX18ANy8hG`
+- 606SW -> `1LDIm6UcYO7CDrnx8Z9BylgYq-8G3ib67`
+- 574J -> `1Nn8R7G2UP7F4IxITrj_RBhoqkz2Y8gfz`
+
+Updated `projects.drive_folder_id` for all 3 (a DB metadata write, not a Drive write -
+doesn't touch the monitored project's own Drive content, so it's within the allowed
+monitored-project scope). Live-tested: a write attempt against 275SS's folder is now
+correctly blocked (403), matching the same verified behavior as 246GW.
+
+**Guard coverage: 4/7 monitored projects now protected** (246GW, 275SS, 606SW, 574J).
+**Still unprotected, not guessed at:** 83SB, 813MS, 1395SV, LICHT - targeted Drive
+searches for each didn't surface a clear top-level project folder (search results
+were documents/files referencing the project, not an exact-name folder match).
+Didn't force a guess since a wrong folder ID recorded in the DB would be worse than
+none - either a false sense of protection, or accidentally matching/blocking an
+unrelated real folder. Real next step if this matters: check Shared Drives directly
+(not just the search index) or ask Buck for the folder links for these 4.
 
 ## Two items from Buck's authorization closed out (2026-07-12 ~10:35-10:42 MT)
 1. **Bid-leveling Drive-write guard (Buck approved, msg 1558 "yes, go").** Added
