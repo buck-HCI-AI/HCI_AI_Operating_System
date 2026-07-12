@@ -19,7 +19,20 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~19:19 MT, by Claude Code — new GBT tool-binding failure mode found (fresh chat no longer self-heals it); drive-write scope gaps found+partially fixed, two decisions pending Buck
+2026-07-11, ~19:23 MT, by Claude Code — minor n8n intermittent-failure finding (WF-010, low impact, not chased further); prior GBT/drive-write findings still open
+
+## WF-010 Outlook Email Router - minor intermittent finding (2026-07-11 ~19:21-19:23 MT)
+Noticed 2 fresh errors (00:50, 01:00 UTC) on the "Alert Buck — Unrouted Email" node,
+"Method not allowed" against `/gateway/field/note`. Tested directly (host curl +
+node http from inside the n8n container itself) - endpoint works correctly both
+ways, 200 OK. Checked execution history: mostly successes, sporadic errors
+scattered across days (2026-07-10 14:00, 2026-07-11 01:00 and 13:00, 2026-07-12
+00:50 and 01:00) clustering near the top of the hour - consistent with transient
+contention against something else running on the hour, not a sustained break.
+Workflow self-recovers on its own next run every time. Low impact (this alerts
+Buck about unrouted emails; a handful of missed pings during rare transient
+windows, not a full outage) - not chased to root cause this cycle, noting the
+pattern in case it worsens.
 
 ## Drive-write scope audit findings (2026-07-11 ~19:03-19:11 MT), two items pending Buck's decision
 Continued the "no files written where they shouldn't be" audit Buck asked for:
