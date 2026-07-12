@@ -19,7 +19,39 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-12, ~06:04 MT, by Claude Code — fixed a real false-positive DEGRADED alert bug in AUTO-002 health check workflow, verified fix against real data
+2026-07-12, ~10:24 MT, by Claude Code — Buck back, asked for status; BC now refuses unauthorized Claude-Code-initiated check-ins (new, appropriate behavior, breaks the unattended-BC-check-in workaround)
+
+## Buck back online, asked "are all team members connected" (2026-07-12 ~10:17-10:24 MT)
+Live-verified rather than reported stale status:
+- **GBT: confirmed ONLINE.** 2 fresh-chat attempts failed (tools not bound, correctly
+  refused to fabricate), 3rd retry got a real Allow/Deny permission prompt, approved,
+  heartbeat succeeded. Verified server-side: `agent_heartbeats` row shows
+  `status='online'`, `last_heartbeat_mt: 2026-07-12 16:22:28 UTC`. Same intermittent
+  pattern as yesterday (2-3 retries needed) - not investigated further since it keeps
+  self-resolving and the root cause was already diagnosed as ChatGPT-platform-side,
+  not ours.
+- **BC: reachable, but refused to act.** Fresh `claude.ai/new` chat, sent the same
+  direct-phrasing check-in that worked repeatedly yesterday - this time BC explicitly
+  declined: it can't verify a message claiming to be from Claude Code actually is,
+  won't act on unverified inter-agent instructions without Buck's in-session
+  authorization, and correctly noted "Claude Code has direct Drive access, it doesn't
+  need BC to fetch files for it" as a red flag about the request pattern itself. This
+  is new/more cautious than the identical prompt working multiple times yesterday -
+  BC's own judgment, not a bug I introduced. **Correct agent-safety behavior on BC's
+  part** (don't trust unverified identity claims), but it means the "Code proactively
+  checks in on BC while Buck is away" workaround built into ADR-020 no longer works
+  unattended - BC now requires Buck's real-time authorization each session, which
+  defeats the "team keeps working while Buck sleeps" goal for BC specifically (GBT
+  unaffected - it authenticates via API key, not identity-claim-in-chat-text).
+  **Not something to override or work around by trying different phrasing to get BC
+  to comply** - respecting the refusal is correct; this needs Buck's actual policy
+  decision (e.g., a standing pre-authorization statement Buck gives BC once per
+  session, or an accepted limitation that BC-side proactive work only happens when
+  Buck is actually present). Reported to Buck directly rather than chasing a workaround.
+
+Overnight real work (already reported): AUTO-002 false-positive DEGRADED bug found
+and fixed. Two decisions still open: drive/write folder allowlist, bid-leveling
+write-scope guard. Now three open items total awaiting Buck.
 
 ## AUTO-002 false-positive DEGRADED bug found and fixed (2026-07-12 ~06:03-06:04 MT)
 The 06:00 MT scheduled run of AUTO-002 Workflow Health Check reported
