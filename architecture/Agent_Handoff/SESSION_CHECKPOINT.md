@@ -19,7 +19,59 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~18:32 MT, by Claude Code — GBT + BC proactive check-in cycle complete (both live, no new blockers), Buck's 1552/1553 acked
+2026-07-11, ~19:19 MT, by Claude Code — new GBT tool-binding failure mode found (fresh chat no longer self-heals it); drive-write scope gaps found+partially fixed, two decisions pending Buck
+
+## Drive-write scope audit findings (2026-07-11 ~19:03-19:11 MT), two items pending Buck's decision
+Continued the "no files written where they shouldn't be" audit Buck asked for:
+- **Fixed (safe, shipped):** `_log()` silently dropped every call's payload (JSONB
+  column always got its `{}` default) - extended it additively (optional `payload`
+  param, backward-compatible) and wired it into `/gateway/drive/write` so folder_id
+  + whether it was explicitly overridden is now captured going forward. Tested live
+  (real write + DB verification), test file deleted after. API server restarted via
+  launchd (`com.hci.api-server`) to load it, ~3s downtime, self-healed clean.
+  Commit `59de398`.
+- **Found, held for Buck:** `/gateway/drive/write`'s `folder_id` has no allowlist -
+  defaults to HCI AI Master but a caller can override to anywhere. Behavior-changing
+  fix (could reject a legitimate GBT call), so held rather than shipped solo.
+- **Found, held for Buck:** `/bid-leveling/drive/create-folder` and `/drive/upload-file`
+  are raw, project-agnostic write primitives (take a bare folder_id, no project_id,
+  no status check) - docstring claims "full write access for GBT" but verified this
+  is stale: not in GBT's actual discoverable Actions catalog, zero call history ever
+  in `gateway_request_log`. Real exposure today is low, but no code enforces Buck's
+  monitored-jobs-read-only directive if anything ever calls this path directly.
+  Fix requires a design choice (exact-match root-folder guard vs. full Drive-ancestor
+  walk) - posed to Buck, not built without his steer since the endpoint's dormant so
+  there's no urgency forcing a unilateral call.
+Also verified clean this cycle (real evidence, not assumed): email send path only
+auto-sends when 100% of recipients are Buck's own address (strict equality, not
+allowlist), external recipients always draft-and-wait-for-approval; the actual
+send-execution endpoint isn't in GBT's Actions catalog at all, only reachable via
+Buck's own Telegram APPROVE tap; zero HubSpot write/create/patch calls exist
+anywhere in the codebase (only reads/search).
+
+## New GBT failure mode found (2026-07-11 ~19:17-19:19 MT) - capability verification, not fabricated
+Ran the proactive GBT check-in. Previously-reliable fix (close chat, open genuinely
+fresh one) did NOT work this time - a brand-new `HCI Chief Architect` chat still had
+*zero* gateway Actions bound (only web search/image-gen available), and it correctly
+refused to fabricate a heartbeat/unread-message result rather than guess, twice
+(initial ask + explicit retry). Verified independently that this is NOT a backend
+issue: `/gateway/health` returns healthy, `/openapi.json` still correctly lists
+`/gateway/agent/heartbeat`, `/gateway/agent/messages`, `/gateway/agent/messages/unread`
+etc. - the break is entirely on ChatGPT's Actions-binding side, not ours. This is
+meaningfully different from the known stale-session pattern (ADR-020) where a fresh
+chat reliably fixed it - here fresh-chat itself failed. Not yet diagnosed further
+(would need to check the GPT builder's live Actions config) - flagged to Buck,
+not chased further this cycle to stay in check-in cadence. BC not checked this
+cycle (different tool mechanism - Drive MCP, not Custom GPT Actions - unaffected
+by this finding, skipped to save time).
+
+**If this recurs next cycle:** check the GPT builder's Actions schema directly
+(browser, `chatgpt.com/gpts/editor/...`) for a broken/unreachable ngrok URL or
+schema validation error, rather than retrying fresh chats again - that diagnostic
+step hasn't been done yet.
+
+Next GBT/BC proactive check-in due ~19:45-20:00 MT (retry GBT specifically to see
+if transient).
 
 ## GBT + BC proactive check-in complete (2026-07-11 ~18:26-18:32 MT)
 Ran the standing recurring check-in (ADR-020 practice, direct-phrasing convention):
