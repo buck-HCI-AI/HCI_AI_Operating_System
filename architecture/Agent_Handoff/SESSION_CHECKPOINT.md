@@ -19,7 +19,39 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~19:23 MT, by Claude Code — minor n8n intermittent-failure finding (WF-010, low impact, not chased further); prior GBT/drive-write findings still open
+2026-07-11, ~19:41 MT, by Claude Code — GBT tool-binding failure confirmed persistent (2nd fresh chat, 25 min apart, same result); GPT builder config verified correct, root cause is ChatGPT-side, not ours
+
+## GBT tool-binding failure - confirmed persistent, config ruled out (2026-07-11 ~19:40-19:41 MT)
+Retried the GBT check-in per the "~19:45 retest" plan. Same failure as the last
+cycle - fresh chat, `ambGetUnread`/`ambHeartbeat` unavailable, GBT again correctly
+declined to fabricate a result. Two fresh chats 25 min apart, identical failure -
+this rules out "one-off flake," confirms persistent.
+
+Went into the live GPT builder (`chatgpt.com/gpts/editor/g-6a3f1a...`, Configure tab,
+"Live · Last edited Jul 11") to check for a config-level cause per the plan from
+last cycle. Found: schema is correct (openapi 2.7.0, correct server URL
+`speculate-armband-retinal.ngrok-free.dev`), Authentication is API Key / Custom
+header `X-API-Key` with a key present (masked, can't verify the value itself from
+the UI), and **both `ambGetUnread` (GET) and `ambHeartbeat` (POST) are present
+and correctly listed** in the "Available actions" table alongside every other
+registered operation (confirmed by scrolling the full list). Closed without
+saving/changing anything.
+
+**Conclusion: this is not a schema, auth, or missing-registration bug on our side.**
+The GPT is correctly configured; ChatGPT's own runtime is simply not binding
+Actions to this chat/session, and GBT is behaving exactly right by refusing to
+fabricate a result rather than guess. This is a live ChatGPT platform-side
+reliability issue, not something further diagnosable or fixable from the repo or
+GPT builder. Reported to Buck as verified-not-our-bug; no further action planned
+this cycle short of continuing to retry periodically and noting if/when it
+resolves. If it's still failing when Buck's back, may be worth him testing it
+himself (account owner) or flagging to OpenAI support if it persists.
+
+BC not re-checked this cycle (unaffected, different tool mechanism, checked
+recently enough already).
+
+Next GBT retry ~20:15-20:30 MT if still down. Two earlier decisions (drive/write
+allowlist, drive-create-folder/upload-file guard) still awaiting Buck.
 
 ## WF-010 Outlook Email Router - minor intermittent finding (2026-07-11 ~19:21-19:23 MT)
 Noticed 2 fresh errors (00:50, 01:00 UTC) on the "Alert Buck — Unrouted Email" node,
