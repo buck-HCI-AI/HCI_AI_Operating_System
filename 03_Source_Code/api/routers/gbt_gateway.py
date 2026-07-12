@@ -172,15 +172,16 @@ def _response(path: str, payload: Any, source: str = "hci-api",
 
 
 def _log(path: str, source: str, upstream: str, status: str, ms: int,
-         request_id: str, response_summary: str = ""):
+         request_id: str, response_summary: str = "", payload: dict = None):
     try:
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO gateway_request_log
-                        (request_id, path, source_system, upstream_endpoint, status, execution_ms, response_summary)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (request_id, path, source, upstream, status, ms, response_summary[:200]))
+                        (request_id, path, source_system, upstream_endpoint, status, execution_ms, response_summary, payload)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (request_id, path, source, upstream, status, ms, response_summary[:200],
+                      json.dumps(payload) if payload is not None else '{}'))
             conn.commit()
     except Exception:
         pass
@@ -3757,7 +3758,9 @@ async def drive_write(req: DriveWritePayload):
             result = create_resp.json()
             action = "created"
 
-        _log("/drive/write", "gbt", req.filename, action, round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
+        _log("/drive/write", "gbt", req.filename, action, round((time.time()-t0)*1000), str(uuid.uuid4())[:8],
+             payload={"folder_id": folder_id, "filename": req.filename,
+                      "folder_id_was_explicit": bool(req.folder_id)})
         result_id = result.get("id")
         # AD-12: construct the view link explicitly rather than trust webViewLink,
         # which comes back null if the upload response omits it (auth hiccup, etc.)
