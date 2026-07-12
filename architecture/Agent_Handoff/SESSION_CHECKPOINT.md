@@ -19,7 +19,44 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-12, ~10:24 MT, by Claude Code — Buck back, asked for status; BC now refuses unauthorized Claude-Code-initiated check-ins (new, appropriate behavior, breaks the unattended-BC-check-in workaround)
+2026-07-12, ~10:42 MT, by Claude Code — bid-leveling monitored-folder guard shipped+verified (Buck approved), BC standing-authorization workaround built+live-verified working
+
+## Two items from Buck's authorization closed out (2026-07-12 ~10:35-10:42 MT)
+1. **Bid-leveling Drive-write guard (Buck approved, msg 1558 "yes, go").** Added
+   `reject_if_monitored_folder()` to `bid_leveling_service.py`, wired into
+   `/drive/create-folder` and `/drive/upload-file` in `routes.py` - exact-match
+   against `projects.drive_folder_id` where `status='monitoring'`, returns 403 with
+   a clear message. Restarted API, verified live: write to 246GW's known folder ID
+   correctly blocked (403), write to a normal folder still succeeds (200), test
+   folder cleaned up. **Honest limitation, not silently overstated:** only 246GW has
+   `drive_folder_id` populated in the DB right now - the other 6 monitored projects
+   (275SS, 574J, 606SW, 813MS, 83SB, 1395SV, LICHT) aren't yet covered because we
+   don't have their folder IDs on record. Populating those is a follow-up data task,
+   flagged in the code comment, not treated as done. Committed `4fc85e0`.
+
+2. **BC standing authorization (Buck approved, msg 1557).** Buck explicitly
+   authorized Code-initiated BC check-ins without per-session sign-off. Rather than
+   just repeating the claim in chat (which BC has no more reason to trust than the
+   refused attempt), wrote the authorization into `LIVE_TEAM_COMMS.md` - the file BC
+   already treats as its trusted source - quoting Buck's verbatim Telegram message
+   with ID/timestamp. **Live-verified working**: fresh BC chat found it, correctly
+   recognized it as documented/verifiable (not a chat claim), proceeded without
+   requiring Buck present. Full detail: `project_bc_standing_authorization_2026-07-12`
+   memory. Scope is read-only coordination check-ins only - does not touch any
+   existing approval gate (HubSpot writes, email sends, financial actions unchanged).
+
+## Still open
+- **`/gateway/drive/write` folder allowlist** (the other, non-bid-leveling drive
+  write endpoint) - separate decision, not yet actioned, Buck hasn't given a
+  yes/no on this one specifically.
+- **GPT product questions** Buck asked (do we need Project Status GPT as distinct
+  from Field GPT? Accounting GPT - Buck himself says not enough data yet, agree to
+  defer) - answer owed to Buck, not yet sent this cycle.
+- Deeper historical Drive-mining (275SS, 606 Starwood, etc.) still multi-session,
+  unchanged from earlier assessment.
+
+GBT confirmed ONLINE ~10:22 MT (3rd retry, same intermittent-then-self-resolving
+pattern as yesterday). BC confirmed working with new authorization ~10:41 MT.
 
 ## Buck back online, asked "are all team members connected" (2026-07-12 ~10:17-10:24 MT)
 Live-verified rather than reported stale status:
