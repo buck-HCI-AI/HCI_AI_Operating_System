@@ -19,7 +19,36 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-11, ~20:05 MT, by Claude Code — GBT tool-binding recovered on its own (3rd retry), verified live+server-side, no new unread content
+2026-07-12, ~06:04 MT, by Claude Code — fixed a real false-positive DEGRADED alert bug in AUTO-002 health check workflow, verified fix against real data
+
+## AUTO-002 false-positive DEGRADED bug found and fixed (2026-07-12 ~06:03-06:04 MT)
+The 06:00 MT scheduled run of AUTO-002 Workflow Health Check reported
+`Overall Status: DEGRADED` with `postgres/qdrant/redis` all showing
+`❌ [object Object]` - but its own embedded "Raw Response" showed the true
+API result: `"status": "healthy"`, every service `"status": "ok"`. Root
+cause: the workflow's `Format Health Report` code node (n8n workflow
+`1EbteMeNL7WUoq5F`, node `c002f`) compared each service's *object*
+(`{"status":"ok","projects":23}`) directly against the string `'ok'`
+(`v === 'ok'`) instead of extracting `v.status` first - always false,
+so every run would report DEGRADED regardless of actual health, and
+`${v}` stringified the object to `[object Object]` in the rendered rows.
+This is exactly the kind of monitoring-itself-is-broken silent-failure
+pattern ADR-016 exists to catch - a false alarm nobody would question
+without opening the raw JSON, that trains people to ignore or distrust
+the alert (or worse, prompts unnecessary intervention on a healthy system).
+
+Fixed via n8n REST API (added `statusOf()`/`isHealthy()` helpers that
+unwrap the object before comparing), verified the saved node code
+persisted correctly, then independently re-ran the exact fixed logic in
+Node against the real captured API response - confirms `allHealthy: true`
+and all three services render `✅ ok`. Will self-verify for real on the
+next scheduled run (hourly per its Schedule Trigger). No new commit to
+the repo (n8n workflow definitions live in n8n's own DB, not source
+control) - documenting here per the "no silent fixes" standard.
+
+Two earlier drive-write decisions (folder allowlist, bid-leveling guard)
+still open, awaiting Buck. GBT/BC both last confirmed live 2026-07-11
+~20:05 MT.
 
 ## GBT tool-binding recovered (2026-07-11 ~20:04-20:05 MT)
 3rd retry (after the 2 confirmed-persistent failures logged above). First send
