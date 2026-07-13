@@ -478,8 +478,17 @@ def _is_outbound_not_a_bid(filename: str) -> bool:
     as 'SUBCONTRACTOR' rows in generated leveling sheets with bid_amount
     always null. Filename-pattern exclusion, not content-based, because
     these are outbound documents HCI authors - the filenames are the
-    reliable signal, not something that needs a PDF read to detect."""
-    return bool(_NON_BID_FILENAME_RE.search(filename))
+    reliable signal, not something that needs a PDF read to detect.
+
+    2026-07-13: _NON_BID_FILENAME_RE's phrases (e.g. "bid leveling") require
+    a literal space between words. The system's own auto-generated summary
+    file "1355_Riverside_Bid_Leveling_Insulation.xlsx" uses underscores, so
+    it silently slipped past this filter and got ingested as a fake "vendor"
+    bid ($985, matching nothing real) - found live via cross-project deep
+    testing. Normalize underscores/hyphens to spaces before matching so the
+    filter catches HCI's own underscore-delimited naming convention too."""
+    normalized = re.sub(r"[_\-]+", " ", filename)
+    return bool(_NON_BID_FILENAME_RE.search(filename) or _NON_BID_FILENAME_RE.search(normalized))
 
 
 def _walk_vendor_level(folder_id: str, token: str, division_num: str, division_name: str, depth: int) -> list:
@@ -1016,7 +1025,12 @@ def get_leveling_summary(project_id: int) -> dict:
         spread_pct = round((spread / low_bid) * 100, 1) if low_bid else None
         low_vendor = next((b["vendor"] for b in bids if b["amount"] == low_bid), "")
         leveling_reliable = not (spread_pct is not None and spread_pct > 300 and len(bids) >= 3)
-        inferred_subgroups = _infer_subgroups(div_data["division_num"], bids)
+        # Only surface inferred_subgroups when they reveal a real split (2+
+        # groups) - found live 2026-07-13 testing 64EW: a single-bid division
+        # still ran through the classifier and produced one lone subgroup,
+        # which is noise (nothing to compare) rather than useful grouping.
+        raw_subgroups = _infer_subgroups(div_data["division_num"], bids)
+        inferred_subgroups = raw_subgroups if len(raw_subgroups) > 1 else {}
         summary[div_num] = {
             "division_name": div_data["division_name"],
             "bid_count":     len(bids),

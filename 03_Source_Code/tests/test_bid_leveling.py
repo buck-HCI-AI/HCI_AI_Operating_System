@@ -411,9 +411,39 @@ def test_inference_does_not_alter_underlying_division_data():
             bad.append(f"{div}: division-level file_ids {all_file_ids} != subgroup file_ids {sub_file_ids}")
     return len(bad) == 0, "; ".join(bad) if bad else "subgroup bids are the same underlying rows, nothing fabricated or dropped"
 
+def test_inference_not_shown_for_single_bid_divisions():
+    """2026-07-13 defect found via cross-project deep-test (64EW): a
+    single-bid division still ran through the classifier and produced one
+    lone subgroup - noise, since there's nothing to compare against. Checked
+    across all 3 active projects, not just 1355R."""
+    bad = []
+    for pid in (1, 2, 3):
+        s, d = req("GET", f"/api/v1/services/bid-leveling/projects/{pid}/drive-bids?latest_only=true")
+        for k, v in d.get("leveling_summary", {}).items():
+            if v.get("bid_count") == 1 and v.get("inferred_subgroups"):
+                bad.append(f"project {pid} div {k}")
+    return len(bad) == 0, "; ".join(bad) if bad else "no single-bid division produced inferred_subgroups noise"
+
+def test_bid_leveling_summary_file_not_ingested_as_vendor():
+    """2026-07-13 defect found via cross-project deep-test (1355R division
+    07 Insulation showed an implausible 7907% spread): the system's own
+    auto-generated "*_Bid_Leveling" summary file was ingested as if it were
+    a real vendor bid (underscore-delimited filename slipped past the
+    space-only exclusion regex), producing a fake $985 line item. Fixed at
+    the filter level (_is_outbound_not_a_bid normalizes underscores/hyphens
+    before matching) and the one contaminated row was deleted from
+    drive_bids. Must never come back."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    contaminated = [b["vendor"] for v in summary.values() for b in v.get("bids", [])
+                    if "bid" in b["vendor"].lower() and "leveling" in b["vendor"].lower()]
+    return len(contaminated) == 0, "; ".join(contaminated) if contaminated else "no self-referential summary-file rows found"
+
 test("BL-INFER-01: inferred subgroups present + correctly marked '[inferred]'", test_inferred_subgroups_present_for_flagged_divisions)
 test("BL-INFER-02: inferred subgroup counts reconcile to division totals",      test_inferred_subgroups_sum_to_division_bid_count)
 test("BL-INFER-03: inference is additive only, same underlying bid rows",       test_inference_does_not_alter_underlying_division_data)
+test("BL-INFER-04: no inferred_subgroups noise on single-bid divisions",        test_inference_not_shown_for_single_bid_divisions)
+test("BL-DEFECT-01: auto-generated summary file never ingested as a vendor",    test_bid_leveling_summary_file_not_ingested_as_vendor)
 
 
 def test_cleanup_queued_bid_leveling_items():
