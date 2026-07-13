@@ -19,7 +19,44 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:17 MT, by Claude Code — found and fixed a real gap: monitor.sh (5-min self-heal watchdog) silently stopped firing ~10.5hrs ago due to a launchd StartInterval quirk. Separately confirmed the RFI submission failure Buck hit was NOT a backend issue (continuously healthy throughout) - almost certainly Field GPT/ChatGPT losing its Action connection client-side. Currently on 60-second check-in cadence, live back-and-forth with Buck.
+2026-07-13, ~11:20 MT, by Claude Code — fixed RFI auto-numbering bug (was counting void/test rows toward "next number"), renumbered the 2 real Field GPT RFIs to 001/002. Confirmed tracker/email-draft step hasn't run yet for them (expected, not broken). Told Buck honestly that a "self-answer from existing docs before drafting external email" capability doesn't exist yet - asked whether to build it now. Awaiting his answer plus detail on the Word-doc reading failure. 60-second cadence, live back-and-forth continues.
+
+## RFI auto-numbering bug fixed (2026-07-13 ~11:18-11:20 MT)
+Buck: real RFIs from the Field GPT retest should "start at RFI 001 and be
+numbered correctly." They were coming out as 011/012 instead. Root cause:
+the numbering query (`gbt_gateway.py` line ~5203, `field_submit_rfi`, and a
+duplicate pattern at ~5440 in `_create_rfis_from_gaps`) computed "next
+number" as MAX(rfi_number)+1 across ALL rows regardless of status - so the
+old voided RFI-3 and the test_pending_reverify 001-010 batch (set aside
+earlier this session) still counted toward the max, even though they're not
+real anymore. Fixed both queries to exclude `status NOT IN ('void',
+'test_pending_reverify')`. Renumbered the 2 real RFIs already created:
+id 929 (garage door) -> rfi_number '001', id 930 (gas fireplace) ->
+rfi_number '002'. Restarted API, live-tested with a diagnostic call -
+correctly returned '3' as next (not '13') - deleted the test row after.
+Commit `4eed6f5`.
+
+**Tracker/email-draft step**: confirmed via `gateway_request_log` that
+Field GPT has only called `/field/rfi` (creates the DB row) for 001/002, not
+`/field/rfi/{id}/process` (the separate step that generates the Word doc,
+saves to Drive, updates the RFI Log tracker, and creates an Outlook draft).
+So the tracker not showing these yet is expected, not a bug - nothing has
+been drafted or sent.
+
+**Self-answer-before-drafting, real gap, not yet built**: Buck asked
+whether the system can check if any of these RFIs can be answered from
+existing project documents before creating an external email draft.
+Checked - no such capability exists (`project_brain/intelligence.py` and
+`knowledge_graph/graph.py` have no search function; the only Drive search
+is filename/metadata-based, not content-based). Told him honestly rather
+than guessing at a fix, asked whether to scope/build it now. Since
+Field GPT hasn't triggered `/process` for 001/002 yet, nothing is at
+immediate risk of going out prematurely - some breathing room to decide.
+
+**Word doc reading failure - open, needs more detail**: Buck clarified he
+actually fed Field GPT a Word doc, not Excel (my earlier Code-Interpreter-
+toggle hypothesis was Excel-specific and may not apply). Asked him for the
+exact error/behavior before diagnosing further rather than guessing again.
 
 ## monitor.sh self-heal watchdog was silently dead ~10.5 hours, fixed (2026-07-13 ~11:14-11:17 MT)
 Buck: "you didn't follow your directive of checking and self-healing" after
