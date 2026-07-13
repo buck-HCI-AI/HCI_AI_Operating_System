@@ -19,7 +19,34 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:26 MT, by Claude Code — SE-name discrepancy resolved (Silver Town Structures confirmed correct via real PDF text extraction, "Albright" was BC's misread, self-corrected to Buck immediately). RFI tracker investigated: was already fully populated, not actually broken; own duplicate-row mistake made and fixed same cycle; added gsheet_rfi_tracker DB field for discoverability.
+2026-07-13, ~10:31 MT, by Claude Code — 1355R RFI-001-010 set aside as test data pending Buck's real-world Field GPT retest; team notified via LIVE_TEAM_COMMS.md. Buck opening a fresh GBT chat next.
+
+## 1355R RFI test-data reset, real-world retest incoming (2026-07-13 ~10:29-10:31 MT)
+Following the provenance trace (RFIs 001-005 traced to BC's document read,
+006-010 unexplained — see above), Buck decided to set the current RFI content
+aside and re-run the real pipeline himself: open Field GPT and feed it his
+actual original RFI questions, to compare against what the system produced.
+**Preserve, don't discard** — his words were "move into a test folder, we'll
+come back to those." Actioned:
+- Created Drive folder `TEST - Pending Field GPT Re-Verification 2026-07-13`
+  (id `1Ot4ahvC1tBqhF9HD29sSWpLhE1PXcBTX`) inside the 1355R RFI folder
+  (`1CIDWRz7_u6UmJrRB7PQlNTxx3cysnfAj`).
+- Moved all 12 RFI documents there: the 10 live `.docx` files (001-010) plus
+  the 2 older superseded drafts (the pre-final "3" doc and the old bundled
+  RFI-001). Nothing deleted.
+- `rfis` DB rows 919-928: `status` set to `test_pending_reverify` (was
+  `open`). Row 917 (already `void`) untouched.
+- RFI Log tracker (`1l47B4kQGMhfZLoJz6m3fy9EZFryGMyd4`) rows 12-21: Response
+  column now notes "TEST - PENDING RE-VERIFICATION."
+- Posted a full explanation to `LIVE_TEAM_COMMS.md` so GBT/BC don't treat the
+  old RFI-001-010 content as live if they encounter references to it.
+
+**What's next, not yet happened:** Buck is opening a fresh GBT (Chief
+Architect) chat, then opening Field GPT to re-feed his original RFI
+questions as a real-world test of the actual field-to-RFI pipeline. Watch
+for what Field GPT actually produces and compare it against the test-folder
+content to understand where the two diverged. This is the resolution path
+for the still-open "where did these RFIs really come from" question.
 
 ## RFI tracker: already worked, own mistake caught+fixed, DB field added (2026-07-13 ~10:24-10:26 MT)
 Buck said "build the tracker." Investigation found the real tracker
