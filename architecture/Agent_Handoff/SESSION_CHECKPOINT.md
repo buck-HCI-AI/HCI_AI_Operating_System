@@ -19,7 +19,37 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:15 MT, by Claude Code — found a real, unexplained draft-creation mystery (a real Outlook RFI draft exists with zero corresponding gateway_request_log entry - can't confirm how it was created, asked Buck for Field GPT's literal error text). Gave Buck an honest, non-inflated 100/100 status: real progress today was reactive not proactive, bid-leveling is only partially fixed (Division 09 still has the same root-cause bug), regression tests (the thing that would catch problems before Buck does) haven't been started. Buck gave real feedback: routine pings should say what's being actively worked on, not just "nothing new" - apply this going forward. 60-second cadence continues.
+2026-07-13, ~12:20 MT, by Claude Code — bid-leveling fixed system-wide, not just the one division-13 instance: get_leveling_summary() now flags any division with an implausible spread (>300%, 3+ vendors) as unreliable instead of silently showing it as a valid comparison. Live-tested against real 1355R data: 6 of 17 divisions flagged, 11 genuinely reliable. Posted to team channel for GBT/BC review since Buck wants "all 3 team members agree" on 100/100. Continuing through the list per Buck's instruction.
+
+## Bid-leveling fixed properly, not just the one instance (2026-07-13 ~12:18-12:20 MT)
+Buck: "fix the bid leveling front end and get it reading correctly, tested
+and updated to give accurate info as of today, then move on - keep moving
+through the list." Root cause was broader than the division-13 patch
+already shipped: Division 09 "Finishes" (18 vendors sharing one
+division_name, 36,610% spread) has the identical underlying problem -
+multiple genuinely different trades with no real data to auto-separate
+them - just without a division_name collision to key off, so the earlier
+fix didn't catch it.
+
+**Fix**: `get_leveling_summary()` in `drive_bid_reader.py` now computes a
+`leveling_reliable` flag (False when spread_pct > 300% AND bid_count >= 3)
+plus a `leveling_note` explaining why, instead of silently presenting an
+implausible spread as if it were a valid apples-to-apples comparison.
+Deliberately did NOT try to guess which vendors compete for which scope
+within a division - that would be fabricating structure the data doesn't
+support. Raw bids stay visible either way; only the "trust this spread"
+framing changes.
+
+**Live-tested against real 1355R data, not simulated**: 6 of 17 divisions
+now flagged (Metals 1334%, Woods/Plastics 592%, Windows/Doors 750%,
+Finishes 36,610%, Insulation 7907%, Electrical 1518%), 11 of 17 remain
+genuinely reliable comparisons (including the already-fixed division 13
+split). Commit `0a6a32e`.
+
+**Posted to `LIVE_TEAM_COMMS.md` for GBT/BC review** - Buck explicitly
+wants "100/100, all 3 team members agree," and this fix is currently
+only Claude-Code-verified. Flagged the >300%/3-vendor threshold choice for
+their input if/when they check in.
 
 ## Field GPT draft-creation mystery + honest status check (2026-07-13 ~12:11-12:15 MT)
 Buck: "Field GBT saying can't make the draft emails. But your seeing
