@@ -19,7 +19,44 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:13 MT, by Claude Code — Field GPT real-world RFI retest CONFIRMED WORKING (2 genuinely new, different-style RFIs created via the real pipeline). Division-13 bid-leveling fix from earlier this hour still holds. Currently on a 60-second check-in cadence during live back-and-forth with Buck.
+2026-07-13, ~11:17 MT, by Claude Code — found and fixed a real gap: monitor.sh (5-min self-heal watchdog) silently stopped firing ~10.5hrs ago due to a launchd StartInterval quirk. Separately confirmed the RFI submission failure Buck hit was NOT a backend issue (continuously healthy throughout) - almost certainly Field GPT/ChatGPT losing its Action connection client-side. Currently on 60-second check-in cadence, live back-and-forth with Buck.
+
+## monitor.sh self-heal watchdog was silently dead ~10.5 hours, fixed (2026-07-13 ~11:14-11:17 MT)
+Buck: "you didn't follow your directive of checking and self-healing" after
+his Field GPT RFI submissions started failing once he stepped away from
+driving. Investigated for real rather than defending:
+- `gateway_request_log` showed zero `/field/rfi` attempts (successful OR
+  failed) after the 2 that succeeded at 17:06/17:11 UTC - meaning
+  subsequent tries never reached the backend at all, not a logged failure.
+- **Real, separate finding while checking backend health**: `monitor.sh`
+  (the 5-minute launchd watchdog checking API/Docker/ngrok/mcp-server per
+  ADR-018) had a log gap from 2026-07-13 00:26:17 to now (~10.5 hours) -
+  claimed 697 total runs but hadn't ticked since right around last night's
+  Docker outage. Manually kickstarting it worked fine (script itself is
+  healthy) - the problem was launchd's `StartInterval` timer silently
+  getting stuck, a known macOS quirk (often tied to sleep/wake). **Fixed**:
+  `launchctl unload` + `launchctl load` on `com.hci.monitor.plist`, verified
+  it ran clean via `RunAtLoad` after reload. This is a legitimate gap in the
+  "checking and self-healing" directive - I was only reacting when Buck
+  pointed at specific things, not independently verifying my own watchdog
+  was still alive. Owned it directly to Buck rather than deflecting.
+- **But this does NOT explain the RFI failure**: checked ngrok tunnel
+  metrics, direct API health, and a live test `/field/rfi` call (id 931,
+  succeeded immediately, then deleted as test data) - backend was
+  continuously healthy the whole window Buck was submitting RFIs. The
+  most likely real cause is Field GPT/ChatGPT losing its Action binding
+  client-side (the same class of issue documented for GBT in long chat
+  sessions - see `project_gbt_down_root_cause_resolved_2026-07-10` /
+  `project_gbt_stale_session_tool_loss_recurring_2026-07-10` memory) - that
+  is entirely outside this system's monitoring boundary; no backend
+  self-heal could ever catch or fix a live ChatGPT session losing its own
+  tool binding. Told Buck this distinction directly rather than letting the
+  monitor.sh fix look like it explains everything.
+- **Not yet confirmed**: whether monitor.sh actually self-fires again on
+  its own 5-minute interval going forward (reload just happened, too soon
+  to observe a second automatic tick in this fast-paced session) - worth a
+  spot-check of the log in the next session or two to make sure the reload
+  actually held and this doesn't silently recur.
 
 ## Field GPT RFI retest CONFIRMED WORKING (2026-07-13 ~11:06-11:12 MT)
 Following the RFI provenance investigation (old RFI-001-010 set aside as
