@@ -19,7 +19,46 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:44 MT, by Claude Code — resolved Buck's "never-written-to RFI tracker" confusion (it was a blank duplicate in MGMT Tools, now clearly renamed); live-verified the monitored-folder write guard still works (real test write against 275SS correctly refused); 8 monitored projects total (was documented as 7), 4 protected. Still awaiting Buck's call on the division-13 bid-leveling bug and his Field GPT RFI retest results.
+2026-07-13, ~10:51 MT, by Claude Code — division-13 bid-leveling bug fixed and live-verified, new drift-check detector #24 added so future division-num collisions self-surface, team notified. Same root cause confirmed present but unfixed in Division 09 (36,610% spread, 18 different trades sharing one division_name with no sub-trade split). Awaiting Buck's clarification on a Field GPT/Excel issue he hit, and his Field GPT RFI retest results.
+
+## Division-13 bid-leveling bug fixed + drift-check detector added (2026-07-13 ~10:47-10:51 MT)
+Buck: "Fix that now! Why are we finding this now and the team didn't find
+this?" Both actioned honestly, not deflected:
+- **Fix**: `drive_bid_reader.read_drive_bids()` in
+  `services/bid_leveling/drive_bid_reader.py` now groups by
+  `division_num + "__" + division_name` whenever a bare division_num has
+  more than one distinct division_name in the data (computed via a
+  first-pass scan), instead of grouping by bare `division_num` alone. This
+  is a targeted fix - only changes behavior for genuinely colliding
+  divisions, doesn't touch the broader Sheet-based merge in
+  `bid_leveling_service.run_bid_leveling()` (deeper coupling, higher risk,
+  and the real long-term answer is the two-level division/sub-package
+  restructure already tracked as open). Restarted API (`launchctl kickstart`),
+  live-verified: division "13" for 1355R now returns two separate summary
+  entries (`13__Insulation`, `13__Special Construction`) instead of one
+  merged nonsense comparison. Commit `449a552`.
+- **Why drift-check didn't catch it, answered honestly**: it never had a
+  detector for this pattern - not a check that silently failed, one that
+  didn't exist. Added detector #24 (`bid_division_num_collision`) to
+  `/gateway/admin/drift-check` in `gbt_gateway.py`: flags any
+  project/division_num pair with 2+ distinct `division_name` values in
+  `drive_bids`. Live-tested immediately after adding it - correctly flags
+  1355R division 13 (the same case, now informational since the read-path
+  is fixed, but the underlying data-source ambiguity is still real and
+  worth tracking until the folder structure itself is fixed at the root).
+- **Confirmed NOT fixed, same root cause, different shape**: Division 09
+  "Finishes" shows a 36,610% spread across 18 vendors (tile, paint, carpet,
+  drywall, stone...) that are genuinely different sub-trades but all share
+  ONE `division_name` ("Finishes") - no name collision for the new detector
+  to key off, so this variant isn't caught by either the fix or the new
+  check. Told Buck directly this needs the bigger restructure, not another
+  quick patch. Posted full writeup to `LIVE_TEAM_COMMS.md` for GBT/BC.
+
+**Also outstanding**: Buck reported "field gbt can't open Excel" (msg 1580)
+with no further detail yet - asked him what exactly he asked it and what
+error came back before guessing at a fix. Likely cause if it's about a live
+Drive/Sheet fetch: no wired Action for that specific case, not a hard
+ChatGPT limitation. Not yet resolved, needs his reply.
 
 ## RFI tracker confusion resolved + monitored-guard re-verified (2026-07-13 ~10:42-10:44 MT)
 Buck said he saw an RFI tracker XLSX in 1355R he'd "never seen written to."
