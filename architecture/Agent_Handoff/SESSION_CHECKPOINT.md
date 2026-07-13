@@ -19,6 +19,9 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
+2026-07-13, ~15:48 MT, by Claude Code — BC gave real 3-way sign-off with an actual verification methodology (source-verification against known-correct totals, scope-completeness check, cross-bid union check) for the scope-matrix build - will apply once extraction completes. Corrected 3 stale items in BC's response (655G already resolved, ai_messages mirror already built+live, not pending). Held BC/GBT's new "FIX-0" (move 7 RFI docs out of bid folder) since it touches RFI-workflow territory Buck said he's handling himself. GBT flagged a real ADR-003 pagination bug (large-backlog retrieval failures) - acknowledged, queued behind current priority work. Extraction progress: 27/77 done, zero failures.
+
+## Last updated (superseded)
 2026-07-13, ~15:46 MT, by Claude Code — Buck confirmed 1355R-first sequencing and added: BC must independently double-check my bid-leveling work at each stage before moving to 101F then 64EW; team must review the 18 queued Excel files and reach consensus before he approves. Posted both asks to LIVE_TEAM_COMMS.md + sent BC a direct message (confirmed mirrored to a real Drive file). Extraction batch progressing (7/77 succeeded as of last check, none failed). Holding on 101F/64EW until 1355R is team-verified per Buck's explicit sequencing.
 
 ## Last updated (superseded)
