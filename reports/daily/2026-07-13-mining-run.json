@@ -1,0 +1,359 @@
+{
+  "orchestrator": "MiningOrchestrator",
+  "dry_run": false,
+  "started_at": "2026-07-13T09:00:00.076353+00:00",
+  "completed_at": "2026-07-13T09:00:24.710285+00:00",
+  "miners_run": 8,
+  "totals": {
+    "records_scanned": 3444,
+    "records_discovered": 417,
+    "intelligence_extracted": 448,
+    "items_queued_for_review": 123,
+    "items_auto_written": 235
+  },
+  "results": {
+    "hubspot_miner": {
+      "run_id": 151,
+      "miner": "hubspot_miner",
+      "status": "completed",
+      "records_scanned": 2875,
+      "records_discovered": 325,
+      "intelligence_extracted": 27,
+      "items_queued_for_review": 27,
+      "items_auto_written": 0,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "deals_scanned": 325,
+        "contacts_scanned": 1317,
+        "companies_scanned": 1185,
+        "tasks_scanned": 48
+      },
+      "error_message": null
+    },
+    "drive_miner": {
+      "run_id": 152,
+      "miner": "drive_miner",
+      "status": "completed",
+      "records_scanned": 89,
+      "records_discovered": 89,
+      "intelligence_extracted": 16,
+      "items_queued_for_review": 16,
+      "items_auto_written": 0,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "files_scanned": 89,
+        "high_value_queued": 16,
+        "doc_types": {}
+      },
+      "error_message": null
+    },
+    "houzz_miner": {
+      "run_id": 153,
+      "miner": "houzz_miner",
+      "status": "completed",
+      "records_scanned": 198,
+      "records_discovered": 0,
+      "intelligence_extracted": 188,
+      "items_queued_for_review": 56,
+      "items_auto_written": 0,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "houzz_projects": 10,
+        "daily_logs_scanned": 188,
+        "schedule_items_scanned": 0,
+        "status": "framework_active"
+      },
+      "error_message": null
+    },
+    "outlook_miner": {
+      "run_id": 154,
+      "miner": "outlook_miner",
+      "status": "completed",
+      "records_scanned": 23,
+      "records_discovered": 3,
+      "intelligence_extracted": 3,
+      "items_queued_for_review": 3,
+      "items_auto_written": 0,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "emails_scanned": 23,
+        "relevant_emails": 3,
+        "queued_for_review": 3
+      },
+      "error_message": null
+    },
+    "historical_cost_miner": {
+      "run_id": 155,
+      "miner": "historical_cost_miner",
+      "status": "completed",
+      "records_scanned": 45,
+      "records_discovered": 0,
+      "intelligence_extracted": 0,
+      "items_queued_for_review": 1,
+      "items_auto_written": 39,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "csi_benchmarks": 20,
+        "divisions_with_data": [
+          "01",
+          "02",
+          "02 Sitework",
+          "03",
+          "03 Concrete",
+          "04",
+          "05",
+          "06",
+          "07",
+          "08",
+          "09",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "22 Plumbing / 23 HVAC (MEP)",
+          "ALL"
+        ]
+      },
+      "error_message": null
+    },
+    "vendor_intelligence_miner": {
+      "run_id": 156,
+      "miner": "vendor_intelligence_miner",
+      "status": "completed",
+      "records_scanned": 194,
+      "records_discovered": 0,
+      "intelligence_extracted": 194,
+      "items_queued_for_review": 1,
+      "items_auto_written": 194,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "vendors_updated": 194,
+        "coverage_gaps": [
+          {
+            "division": "09 — Paint & Coatings",
+            "vendors": 0
+          },
+          {
+            "division": "11 — Equipment & Appliances",
+            "vendors": 0
+          },
+          {
+            "division": "09 — Exterior Painting / Staining / Sealing",
+            "vendors": 0
+          },
+          {
+            "division": "09 — Finishes",
+            "vendors": 0
+          },
+          {
+            "division": "09 — Tile & Stone",
+            "vendors": 0
+          },
+          {
+            "division": "10 — Specialties",
+            "vendors": 0
+          },
+          {
+            "division": "02 — Existing Conditions & Removal",
+            "vendors": 0
+          },
+          {
+            "division": "09 - Finishes",
+            "vendors": 0
+          },
+          {
+            "division": "06 — Wood, Plastics & Carpentry",
+            "vendors": 0
+          },
+          {
+            "division": "03 — Concrete, Foundation & Flatwork",
+            "vendors": 0
+          },
+          {
+            "division": "01 — General Requirements",
+            "vendors": 0
+          },
+          {
+            "division": "07 — Roofing (Metal Standing Seam)",
+            "vendors": 0
+          },
+          {
+            "division": "07 — Waterproofing & Drainage Protection",
+            "vendors": 0
+          },
+          {
+            "division": "05 - Metals",
+            "vendors": 0
+          },
+          {
+            "division": "05 — Metals & Guard Rails",
+            "vendors": 0
+          },
+          {
+            "division": "08 — Door & Windows",
+            "vendors": 0
+          },
+          {
+            "division": "08 — Doors (Pella)",
+            "vendors": 0
+          },
+          {
+            "division": "06 — Deck / Wood Stair & Exterior Carpentry",
+            "vendors": 0
+          },
+          {
+            "division": "08 — Shower Glass & Mirrors",
+            "vendors": 0
+          },
+          {
+            "division": "11 — Equipment / Appliances",
+            "vendors": 0
+          }
+        ],
+        "top_performers": [
+          {
+            "vendor": "TJ Concrete",
+            "win_rate": 66.7,
+            "bids": 3
+          },
+          {
+            "vendor": "Aspen deconstruct",
+            "win_rate": 66.7,
+            "bids": 3
+          },
+          {
+            "vendor": "Aspen Craftwork LLC",
+            "win_rate": 60,
+            "bids": 5
+          },
+          {
+            "vendor": "Mountain Peak Insulation",
+            "win_rate": 50,
+            "bids": 4
+          },
+          {
+            "vendor": "R & H Mechanical",
+            "win_rate": 50,
+            "bids": 4
+          },
+          {
+            "vendor": "Loft Financial Advisory Group, LLC",
+            "win_rate": 33.3,
+            "bids": 3
+          },
+          {
+            "vendor": "M&I Bank",
+            "win_rate": 33.3,
+            "bids": 3
+          },
+          {
+            "vendor": "Unique Homes",
+            "win_rate": 33.3,
+            "bids": 3
+          },
+          {
+            "vendor": "Delta Millwork",
+            "win_rate": 33.3,
+            "bids": 3
+          },
+          {
+            "vendor": "CK Stone LLC",
+            "win_rate": 33.3,
+            "bids": 3
+          }
+        ]
+      },
+      "error_message": null
+    },
+    "lessons_learned_miner": {
+      "run_id": 157,
+      "miner": "lessons_learned_miner",
+      "status": "completed",
+      "records_scanned": 20,
+      "records_discovered": 0,
+      "intelligence_extracted": 19,
+      "items_queued_for_review": 19,
+      "items_auto_written": 0,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "total_lessons": 53,
+        "by_category": {
+          "other": 12,
+          "Cost Control": 4,
+          "market_intelligence": 3,
+          "Procurement": 3,
+          "Electrical": 2,
+          "Code Compliance": 2,
+          "Safety": 2,
+          "automation": 2,
+          "test_hygiene": 2,
+          "infrastructure": 2,
+          "Structural": 2,
+          "data_integrity": 2,
+          "system_governance": 2,
+          "Mechanical Coordination": 1,
+          "Schedule": 1,
+          "General Conditions": 1,
+          "Site Work": 1,
+          "Waterproofing": 1,
+          "field": 1,
+          "Site": 1,
+          "communication": 1,
+          "data_quality": 1,
+          "Environmental / Site Conditions": 1,
+          "Drywall Sequencing": 1,
+          "technical_debt": 1,
+          "security_governance": 1
+        }
+      },
+      "error_message": null
+    },
+    "executive_aggregator": {
+      "run_id": 158,
+      "miner": "executive_aggregator",
+      "status": "completed",
+      "records_scanned": 0,
+      "records_discovered": 0,
+      "intelligence_extracted": 1,
+      "items_queued_for_review": 0,
+      "items_auto_written": 2,
+      "rows_skipped": 0,
+      "rows_duplicate": 0,
+      "summary": {
+        "timestamp": "2026-07-13T09:00:24.599507+00:00",
+        "active_projects": 3,
+        "project_names": [
+          "64 Eastwood",
+          "101 Francis",
+          "1355 Riverside"
+        ],
+        "total_roi_minutes": 27069,
+        "pending_approvals": 294,
+        "open_risks": 17,
+        "vendor_count": 1256,
+        "lessons_learned_count": 53,
+        "historical_cost_records": 366,
+        "background_learning_records": 483,
+        "last_mining_run": "2026-07-13 09:00:24.496519+00:00"
+      },
+      "error_message": null
+    }
+  },
+  "classification": {
+    "Extracted": 0,
+    "Candidate Created": 0,
+    "Human Review Needed": 0,
+    "errors": 0,
+    "processed": 0
+  }
+}

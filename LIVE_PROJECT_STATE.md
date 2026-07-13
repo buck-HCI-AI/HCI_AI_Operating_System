@@ -3,7 +3,7 @@
 
 **Organization:** Hendrickson Construction, Inc. (owned by Chris Hendrickson)
 **Owner:** @buck-HCI-AI (Buck Adams) — PM & Superintendent at Hendrickson Construction; owner/operator of HCI-AI, this repository
-**Last Updated:** 2026-07-09T05:10 UTC (2026-07-08 11:10 PM MT)
+**Last Updated:** 2026-07-13T13:00 MST
 **Updated By:** Claude Code — SYSTEM WIDE DIRECTIVE filed permanently, n8n governance fix, systemic fabricated-data cleanup (246GW + 5 other projects), analyzePlanReview verified end-to-end from live GBT, approval-queue/project-table refresh below. See handoff block below.
 **Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
@@ -320,10 +320,9 @@ No one asks "what's the status?" — it's committed to GitHub every day automati
 ### Live Production Projects
 | ID | Code | Project | Scope | HubSpot Deal | Health | Bid Pkgs | Open Risks | Schedule Var |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 35 | 2 | 0 days |
-| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 41 | 1 | 0 days |
-| 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🔴 RED | 73 | 4 | 0 days |
-| 8 | 246GW | 246 Gallo Way | New Construction — Chaparral Lot 7 | 321358358216 | 🟢 GREEN | 44 | 0 | 0 days |
+| 1 | 64EW | 64 Eastwood | Exterior & Site | 331240861419 | 🟡 YELLOW | 24 | 1 | 0 days |
+| 2 | 101F | 101 Francis | Full Interior Remodel | 321401932527 | 🟡 YELLOW | 42 | 1 | 0 days |
+| 3 | 1355R | 1355 Riverside | Full Remodel | 321351275210 | 🔴 RED | 128 | 4 | 0 days |
 
 ### Monitored / Staged
 | ID | Code | Project | Scope | HubSpot Deal | Health | Notes |

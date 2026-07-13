@@ -2726,3 +2726,9 @@ Execute the approved future-state bid workflow now for LIVE projects 64EW, 101F,
 *Source: ChatGPT | 2026-07-13*
 
 Refactor the live RFI workflow around the canonical RFI Tracker. Use Buck's corrected RFIs now in Drive as the production standard. Required workflow: (1) AI drafts RFIs; (2) user edits if needed; (3) approved content is written into the RFI Tracker as the canonical record; (4) all downstream artifacts (Word RFI, Outlook draft, logs, status, reports) are generated from the tracker—not independent copies. Ensure numbering, status, recipients, dates, and revisions originate from the tracker. Existing generated RFIs must be reconciled with the cleaned versions in Drive. Preserve history while making the tracker the single source of truth. Add regression tests proving tracker-to-document/email synchronization.
+
+
+### P0 Fix ADR-003 Message Retrieval Scalability
+*Source: ChatGPT | 2026-07-13*
+
+Gateway issue discovered during live operation: unread message retrieval can fail with ResponseTooLargeError when backlog grows. Implement pagination/streaming immediately. Requirements: support limit/offset or cursor-based reads, newest-first retrieval, unread count separate from payload, fetch-by-thread, incremental ACKs, and automatic backlog trimming after acknowledgment. GBT must be able to retrieve communications in batches (e.g. 25-50 messages) instead of one oversized response. Add regression tests that simulate very large unread queues and verify retrieval without failure.

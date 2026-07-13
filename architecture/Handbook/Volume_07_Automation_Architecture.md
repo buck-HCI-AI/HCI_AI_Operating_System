@@ -56,9 +56,9 @@ The objective is not to automate everything. The objective is to automate repeti
 
 ## 7.2 n8n Workflows (✅ Active)
 
-*Auto-generated from live n8n state by `POST /architecture-sync/refresh-automation-library` — 2026-07-08T00:33:45.676393+00:00. Do not hand-edit this table; it will be overwritten on the next refresh.*
+*Auto-generated from live n8n state by `POST /architecture-sync/refresh-automation-library` — 2026-07-13T11:00:00.093811+00:00. Do not hand-edit this table; it will be overwritten on the next refresh.*
 
-**56 active, 12 inactive/archived, 68 total.**
+**57 active, 12 inactive/archived, 69 total.**
 
 ### Automation Schedule
 
@@ -83,6 +83,7 @@ The objective is not to automate everything. The objective is to automate repeti
 | AUTO-AGENT-CHECKIN — 30min Team Backlog Ping | unknown |
 | AUTO-AI-DEAL-SUMMARIZATION — Daily Active Deal Briefings via Claude API | cron `0 6 * * 1-5` |
 | AUTO-BID-INVITATION-TASKS — Sent Out Stage → Auto-Task Creation | cron `0 8,12,16 * * 1-5` |
+| AUTO-BOOK-REFRESH — Weekly Handbook Auto-Sync | cron `0 5 * * 1` |
 | AUTO-COI-COMPLIANCE-ENGINE — Daily 07:00 COI Status Refresh | cron `0 7 * * *` |
 | AUTO-CONTINUOUS-DISCOVERY — HubSpot Hourly + Houzz Nightly | cron `0 * * * *` |
 | AUTO-DAILY-PROJECT-SUMMARY | unknown |
