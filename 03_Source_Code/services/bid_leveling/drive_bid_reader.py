@@ -829,6 +829,22 @@ def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
 def get_leveling_summary(project_id: int) -> dict:
     """
     Return leveling summary per division: low bid, spread, vendor count.
+
+    2026-07-13 fix: the division-13 bug (Insulation vs Fire Suppression
+    merged under one bare number) is fixed at the grouping level in
+    read_drive_bids(), but that only helps when two scopes have different
+    division_names to key off. Division 09 "Finishes" showed the same root
+    problem in a different shape - 18 genuinely different trades (tile,
+    paint, carpet, drywall...) all share ONE division_name, so there's no
+    name collision to disambiguate and a naive low/high/spread comparison
+    across all of them is meaningless (a real case showed 36,610% spread).
+    Without real per-vendor scope categorization data, guessing which
+    vendors compete for the same work would be fabricating structure that
+    isn't there. Instead: flag any division where the spread is implausible
+    for genuine competing bids (>300% with 3+ vendors) as "not reliably
+    comparable" rather than silently presenting a number that looks like a
+    real apples-to-apples comparison but isn't. The raw bids stay visible -
+    nothing is hidden, just not falsely presented as a clean comparison.
     """
     divisions = read_drive_bids(project_id, latest_only=True)
     summary   = {}
@@ -840,7 +856,9 @@ def get_leveling_summary(project_id: int) -> dict:
         low_bid  = amounts[0]
         high_bid = amounts[-1]
         spread   = high_bid - low_bid
+        spread_pct = round((spread / low_bid) * 100, 1) if low_bid else None
         low_vendor = next((b["vendor"] for b in bids if b["amount"] == low_bid), "")
+        leveling_reliable = not (spread_pct is not None and spread_pct > 300 and len(bids) >= 3)
         summary[div_num] = {
             "division_name": div_data["division_name"],
             "bid_count":     len(bids),
@@ -848,7 +866,13 @@ def get_leveling_summary(project_id: int) -> dict:
             "low_vendor":    low_vendor,
             "high_bid":      high_bid,
             "spread":        spread,
-            "spread_pct":    round((spread / low_bid) * 100, 1) if low_bid else None,
+            "spread_pct":    spread_pct,
+            "leveling_reliable": leveling_reliable,
+            "leveling_note": None if leveling_reliable else
+                (f"Spread of {spread_pct}% across {len(bids)} vendors is too wide to be genuine "
+                 f"competing bids for the same scope - likely multiple distinct trades sharing "
+                 f"this division. Review individual bid scopes below before trusting low/high as "
+                 f"a real comparison."),
             "bids":          sorted(bids, key=lambda b: b["amount"] or 0),
         }
     return summary
