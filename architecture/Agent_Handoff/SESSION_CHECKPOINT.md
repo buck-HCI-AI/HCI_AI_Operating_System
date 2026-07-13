@@ -19,15 +19,45 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~09:56 MT, by Claude Code — Buck woke up, asked for RFI verification + inbox/drafts cleanup, then a status update; drafts cleanup executed and approved items closed out. Check-in cadence now hourly per his explicit request (msg 1568), up from the prior ~270s.
+2026-07-13, ~10:10 MT, by Claude Code — mailbox folder duplication fixed, 275SS placeholder-data question answered, one duplicate RFI voided, RFI tracker gap surfaced as an open decision. Cadence corrected to checks-every-4.5min/report-hourly per Buck's clarification (msg 1570).
 
-## Check-in cadence: now hourly (2026-07-13 ~09:56 MT, Buck msg 1568: "cut your check-in to every hour")
-Supersedes the ~270s/4.5min standing cadence noted elsewhere in this file and in
-memory `feedback_checkin_cadence_4_5min` for the duration this instruction holds.
-Still checking Telegram/Inbox/ai_messages every cycle: just spacing the cycles
-out to 1hr instead of 4.5min. If something genuinely needs him, still escalate
-immediately regardless of the cadence — this only changes the routine "nothing
-new" ping interval.
+## Check-in cadence: checks every 4.5min, Telegram reports hourly (2026-07-13 ~10:10 MT, Buck msg 1570 clarifying msg 1568)
+Buck's actual intent, clarified: "I still want you checking the system every
+4.5 minutes, but I only want to report to me every hour." So: keep the
+underlying Telegram/Inbox/ai_messages check on the normal ~270s cadence
+(ScheduleWakeup delay), but suppress the routine "still here, nothing new"
+Telegram ping unless ~1hr has passed since the last one OR something genuinely
+actionable/needing him came up. This corrects an earlier misread of msg 1568
+as "check hourly" — it was always "report hourly," checks stay frequent.
+
+## Mailbox cleanup round 2 (2026-07-13 ~10:03-10:11 MT)
+Buck flagged 3 things after seeing his own mailbox; all investigated and
+confirmed real (not false alarms):
+1. **Duplicate project mail folders — fixed.** Two separate sets of
+   101 Francis / 1355 Riverside / 64 Eastwood folders existed: one at mailbox
+   root (siblings of Inbox), one correctly nested under Inbox. Moved all 21
+   real messages from the root-level set into the correct Inbox subfolders via
+   `move_message()` (nothing deleted). Left the now-empty root folders for
+   Buck to remove himself — folder deletion felt like his call. Also noted:
+   the 3 correct Inbox subfolders have a trailing space in their display names
+   ("101 Francis " vs "101 Francis") — cosmetic, not touched, flagged to him.
+2. **275SS "those numbers" — resolved, not a bug.** The 14 unbacked
+   `bid_packages` rows (same batch flagged by the weekly drift-check) are
+   tagged `created_via = 'direct_sql_unverified_likely_incomplete_init'` and
+   have no `awarded_amount` set and zero linked `bid_entries` — i.e. they're
+   self-flagged placeholder scope-section stubs, not human-entered real bids
+   and not stray test junk. Reported this distinction to Buck directly.
+3. **Duplicate RFI — confirmed and fixed.** `rfis.id=917` ("RFI 3 - Foundation
+   wall to slab transition...", created 2026-07-10, old pre-final numbering)
+   duplicated what became the real RFI-003 (`id=921`) in the next day's
+   properly-formatted 001-010 batch. Marked `id=917` `status='void'` with a
+   note pointing to the superseding row. The 10 real RFIs (919-928) have no
+   duplicates among themselves.
+4. **RFI tracker — genuine gap, not yet fixed.** Bids have a dedicated Google
+   Sheet tracker (`projects.gsheet_bid_tracker`); RFIs never got an equivalent
+   — they only live in the `rfis` DB table, no sheet. Surfaced to Buck as an
+   open decision: build an RFI tracker sheet matching the bid-tracker pattern,
+   or is DB-only sufficient. **Awaiting his answer — do not build without it.**
 
 ## Morning session — RFIs verified, inbox/drafts cleaned, 3 approvals actioned (2026-07-13 ~09:44-09:56 MT)
 Buck woke up (msg 1566), asked to triple-check RFIs + clean inbox/drafts, then
