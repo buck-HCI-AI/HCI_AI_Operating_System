@@ -2696,3 +2696,15 @@ Proceed with the agreed communications architecture. Make ai_messages (ADR-003) 
 *Source: ChatGPT | 2026-07-13*
 
 Highest priority. Buck requires bid leveling cleaned up and production-ready today. Implement Option B immediately for remaining unclassified divisions: infer display grouping from scope_summary, label '[inferred]', preserve underlying data. Then deep-test against real monitored projects, verify no duplicate/misclassified divisions, improve UI clarity, add regression tests, and report evidence with before/after results. Do not stop at analysis. Fix any defects discovered during testing before reporting complete.
+
+
+### P0 Full Bid System Reconstruction
+*Source: ChatGPT | 2026-07-13*
+
+Immediate priority shift. Treat the current bid leveling/tracking platform as requiring comprehensive reconstruction, not incremental fixes. Execute a full audit across every monitored project and every bid package. Read every bid PDF, extract complete scope/inclusions/exclusions/allowances/qualifications, rebuild leveling from source documents, identify missing or incorrect scope comparisons, validate division mapping against the HCI folder structure, repair bid tracking, and regenerate leveling outputs using the new gold-standard scope-equivalency methodology. Build regression tests from every defect found. No feature expansion until the bid platform produces production-quality results. Coordinate with Browser Claude on documentation and evidence. Report completion only with verified before/after evidence.
+
+
+### P0 Future-State Bid Platform Rebuild
+*Source: ChatGPT | 2026-07-13*
+
+Execute immediately. Rebuild the live bid platform to match the approved future operating model. For all ACTIVE live bid projects: reread every source bid PDF, rebuild bid tracking and leveling from source evidence, implement gold-standard scope-equivalency analysis (scope matrix, inclusions, exclusions, allowances, qualifications, finishes, risk, clarification RFIs, award recommendation), align all bid packages to the HCI 16-division and subdivision structure, generate SOWs and email templates from that canonical structure, eliminate reliance on HubSpot as the operational model, correct all identified defects, and add regression tests so every future bid follows this workflow automatically. Coordinate with Browser Claude on documentation and architecture. Do not stop at partial fixes; deliver a production-ready platform.
