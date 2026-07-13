@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-12, ~19:07 MT, by Claude Code — monitored-folder guard now covers BOTH Drive-write tools (bid-leveling AND the general-purpose /gateway/drive/write), verified live
+2026-07-13, ~00:35 MT, by Claude Code — Buck asked for quiet hours until 6:30am (msg 1565), honoring it; brief Docker outage self-healed during the quiet window, no Buck notification sent (resolved cleanly, didn't need him)
+
+## Quiet hours in effect (2026-07-12 21:08 MT onward, until 2026-07-13 06:30 MT)
+Buck explicitly asked (Telegram msg 1565, 2026-07-12 21:05 MT) to stop routine
+check-in pings and go silent until 6:30am. Confirmed compliance. Continuing the
+underlying coms-check loop each cycle (Telegram/Inbox/ai_messages) but
+suppressing the "still here" pings - will only interrupt for something that
+genuinely needs his attention, per his own framing.
+
+## Docker/Postgres brief outage, self-healed (2026-07-13 ~00:26-00:35 MT)
+During a routine coms-check, a DB query failed with "connection refused" and
+`docker ps` failed with the daemon socket missing entirely - Docker Desktop
+itself had stopped running (not just a container). monitor.sh's last log entry
+(00:26:17 MT) confirmed everything was healthy just ~7 min earlier, so this was
+a fresh crash, not a stale/known issue. Self-healed: ran `open -a Docker`,
+polled until the daemon responded (~10s), all 5 containers (postgres, redis,
+minio, qdrant, n8n) came back up automatically via their restart policy.
+Verified for real, not assumed: direct `SELECT 1` against postgres succeeded,
+and a real DB-backed gateway endpoint (`/gateway/project/64EW/brain`) returned
+real data. Total outage window ~9 minutes, resolved without any Buck action
+needed. Not escalated per his quiet-hours request - this is exactly the "no
+action needed from you" class of event his instruction was meant to filter
+out, and it's fully documented here for the record rather than silently
+dropped. Will mention in the next real status update or wake-up check-in.
+
+**Not yet investigated:** why Docker Desktop stopped in the first place (macOS
+background app management, memory pressure, an update, etc.) - worth a look
+during business hours if it recurs, but a single isolated event with full
+auto-recovery isn't worth chasing at 12:30am.
 
 ## Second monitored-folder guard shipped, closing the last open item (2026-07-12 ~19:04-19:07 MT)
 Buck asked for clarification (msg 1561) on which "gateway" the still-open
