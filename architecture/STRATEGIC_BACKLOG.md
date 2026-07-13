@@ -2672,3 +2672,27 @@ Begin implementation immediately. Focus on: (1) reproduce Field GPT Excel workbo
 *Source: ChatGPT | 2026-07-13*
 
 Buck reports the team went down after CODE found a communications break, and CODE did not execute the standing self-test/self-heal directive. Treat as P0 reliability failure. Immediately: 1) reconstruct the failure timeline and exact break; 2) restore live CODE/GBT/BC communications; 3) implement watchdogs that detect stale heartbeats, unread bus backlogs, failed handoffs, and dead automation; 4) auto-recover or escalate without waiting for Buck; 5) add continuous 60-second comms checks while active; 6) add regression tests proving agent outage detection and recovery; 7) re-baseline the 100/100 initiative against real end-to-end behavior, not test counts; 8) report completed fixes with commit IDs, live verification, and remaining blockers. Current evidence: BC heartbeat stale since 2026-07-11, 103 unread coordination docs per agent, 459 unread Telegram messages for GBT, 148 for BC, and no pending-code-task visibility despite active P1 work. Do not merely diagnose—fix and verify.
+
+
+### P0 Reliability Blitz - Fix All Live Defects
+*Source: ChatGPT | 2026-07-13*
+
+Begin implementation immediately with Browser Claude coordination. Treat all defects discovered during Buck's live testing as one reliability program, not separate bugs. Priorities: Field GPT workflow execution, persistent project context, RFI numbering, Excel ingestion validation, Shared Drive mining, bid tracking, bid leveling, Graph 504 resilience, self-test/self-heal, watchdogs, regression suite, and end-to-end production validation. Fix defects, add automated tests, verify against real monitored projects, and report evidence with commits. Do not stop at diagnosis.
+
+
+### P0 Unify Team Communications
+*Source: ChatGPT | 2026-07-13*
+
+Implement a single canonical communications layer. Current state is fragmented across ADR-003 bus, Drive coordination files, Telegram, and handoff inboxes, causing GBT and other agents to miss active work. Build automatic synchronization so every coordination message is visible through one canonical interface. Requirements: mirror Drive coordination into ADR-003 (or vice versa), acknowledge P0/P1 messages automatically, detect stale/unanswered directives, include daily brief generation, and add regression tests proving all agents see identical communication state. This is a P0 blocker for the 100/100 initiative.
+
+
+### P0 ADR-003 Mirror Implementation
+*Source: ChatGPT | 2026-07-13*
+
+Proceed with the agreed communications architecture. Make ai_messages (ADR-003) the canonical machine bus. Implement automatic mirroring: when Browser Claude Drive coordination files are detected and folded into LIVE_TEAM_COMMS.md, also insert corresponding ai_messages records so GBT immediately receives them via unread polling. LIVE_TEAM_COMMS.md becomes a human-readable projection of the bus. Telegram remains Buck-only alerts. Also proceed with Bid Leveling Option B: infer unclassified divisions from scope_summary for display only, mark '[inferred]', do not modify underlying project data. Provide regression tests proving BC->CODE->GBT message visibility and Option B behavior.
+
+
+### P0 Deliver Bid Leveling Production-Ready Today
+*Source: ChatGPT | 2026-07-13*
+
+Highest priority. Buck requires bid leveling cleaned up and production-ready today. Implement Option B immediately for remaining unclassified divisions: infer display grouping from scope_summary, label '[inferred]', preserve underlying data. Then deep-test against real monitored projects, verify no duplicate/misclassified divisions, improve UI clarity, add regression tests, and report evidence with before/after results. Do not stop at analysis. Fix any defects discovered during testing before reporting complete.
