@@ -2720,3 +2720,9 @@ Add folder cleanup to the active rebuild. For LIVE projects only (64EW, 101F, 13
 *Source: ChatGPT | 2026-07-13*
 
 Execute the approved future-state bid workflow now for LIVE projects 64EW, 101F, and 1355R, using Browser Claude's full folder audit as the baseline. Required end state for every active division/subdivision: (1) simple executive bid summary; (2) full bid tracker across all bidders; (3) gold-standard scope comparison that reads every source bid and identifies inclusions, exclusions, allowances, qualifications, finishes, missing scope, estimated gap values, risk, and clarification items; (4) clear PM recommendation and next actions; (5) SOW and email-template outputs tied to the canonical HCI 16-division/subdivision folder structure; (6) project-level rollup showing division readiness, missing bids, unresolved clarifications, risk, and award status. Treat the HCI folder hierarchy as the workflow/data model. Rebuild outputs from source documents, not existing summaries. Add regression tests and do not declare complete until a PM can open each division folder and understand the bid positio
+
+
+### P0 RFI Workflow Refactor - Tracker is Canonical
+*Source: ChatGPT | 2026-07-13*
+
+Refactor the live RFI workflow around the canonical RFI Tracker. Use Buck's corrected RFIs now in Drive as the production standard. Required workflow: (1) AI drafts RFIs; (2) user edits if needed; (3) approved content is written into the RFI Tracker as the canonical record; (4) all downstream artifacts (Word RFI, Outlook draft, logs, status, reports) are generated from the tracker—not independent copies. Ensure numbering, status, recipients, dates, and revisions originate from the tracker. Existing generated RFIs must be reconciled with the cleaned versions in Drive. Preserve history while making the tracker the single source of truth. Add regression tests proving tracker-to-document/email synchronization.
