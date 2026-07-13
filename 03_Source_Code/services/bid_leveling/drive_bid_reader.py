@@ -838,6 +838,82 @@ def reclassify_existing_divisions(project_id: int, dry_run: bool = True) -> dict
     }
 
 
+def _dedup_cross_division_bids(rows: list) -> list:
+    """
+    2026-07-13, per Buck's explicit directive after a live report ("full
+    touch every bid... this is a huge mistake"): the same vendor bid was
+    found filed under 2+ different division folders (e.g. a cabinetry
+    estimate legitimately spans the "06 Woods and Plastics" and "09
+    Finishes" folder conventions), causing it to be double-counted as if it
+    were 2 separate competing bids - inflating vendor counts and corrupting
+    low/high/spread math in both divisions. Confirmed live: 4 real vendor
+    bids on 1355R duplicated this way, one of which (Long Beach Enterprise)
+    was ALSO loose-filed a 3rd time under the wrong division entirely (10
+    Specialties - Furnishings) with a garbled auto-derived vendor name,
+    making that division falsely show "1 uncontested bid" when there are
+    actually zero real furnishings bids for this project.
+
+    Groups by (file_name, bid_amount) - a genuine copy of the same document
+    - and keeps exactly one canonical row per group, in priority order: a
+    real vendor folder over a loose/unfoldered file, a properly resolved
+    sub-package division_name over a bare generic one, then lower
+    division_num as a deterministic tiebreak (which also happens to match
+    the canonical HCI division for shared trades like cabinetry - Division
+    06 Wood & Plastic, not 09 Finishes, per the documented 16-division
+    structure). Excluded duplicates are dropped entirely from the leveling
+    view, not just hidden - they were never a second competing bid.
+    """
+    def _norm(s):
+        return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+    # Two rows are the same real bid if the amount matches exactly AND
+    # either their file_names match exactly, or one's normalized vendor
+    # name is a substring of the other's normalized vendor name or
+    # file_name. The second clause exists specifically for the loose/
+    # unfoldered case: a copy saved with a filename-derived vendor name
+    # like "Estimate_1186_from_Long_beach_enterprisellc" won't file-name-
+    # match its sibling "Long Beach Enterprise - 1355 Riverside - Estimate
+    # 1186.pdf" exactly, but "longbeach" is a clean substring of both its
+    # own normalized name and the garbled one - catching it without a
+    # blind fuzzy-match that could wrongly merge unrelated vendors.
+    def _same_bid(a, b):
+        if a.get("bid_amount") != b.get("bid_amount"):
+            return False
+        if a.get("file_name") and a.get("file_name") == b.get("file_name"):
+            return True
+        na, nb = _norm(a.get("vendor_name")), _norm(b.get("vendor_name"))
+        nfa, nfb = _norm(a.get("file_name")), _norm(b.get("file_name"))
+        return bool(na and nb and (na in nb or nb in na)) or \
+               bool(na and nfb and na in nfb) or bool(nb and nfa and nb in nfa)
+
+    by_amount: dict = {}
+    for row in rows:
+        by_amount.setdefault(row.get("bid_amount"), []).append(row)
+
+    def _rank(r):
+        has_folder = 0 if r.get("vendor_folder_id") else 1
+        is_subpackaged = 0 if "—" in (r.get("division_name") or "") else 1
+        digits = re.sub(r"\D", "", r.get("division_num") or "")
+        div_num_sort = int(digits) if digits else 999
+        return (has_folder, is_subpackaged, div_num_sort)
+
+    kept = []
+    for amount, candidates in by_amount.items():
+        groups = []
+        for row in candidates:
+            placed = False
+            for g in groups:
+                if any(_same_bid(row, member) for member in g):
+                    g.append(row)
+                    placed = True
+                    break
+            if not placed:
+                groups.append([row])
+        for g in groups:
+            kept.append(g[0] if len(g) == 1 else sorted(g, key=_rank)[0])
+    return kept
+
+
 def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
     """
     Read drive_bids from DB for a project.
@@ -851,6 +927,9 @@ def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
     merged into one "leveling" comparison. Found 2026-07-13: division 13 was
     silently mixing Insulation bids ($56-79K) with Fire Suppression bids
     ($31-108K) into a single nonsensical low/high/spread - this is the fix.
+
+    Also drops cross-division duplicate filings (see _dedup_cross_division_bids)
+    before any grouping happens, so the same real bid is never counted twice.
     """
     with _pg() as conn:
         with conn.cursor() as cur:
@@ -860,6 +939,8 @@ def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
             q += " ORDER BY division_num, vendor_name, bid_date DESC"
             cur.execute(q, (project_id,))
             rows = [dict(r) for r in cur.fetchall()]
+
+    rows = _dedup_cross_division_bids(rows)
 
     names_by_div = {}
     for row in rows:

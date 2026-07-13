@@ -467,6 +467,56 @@ def test_outlier_labels_never_double_marked():
     bad = [l for v in summary.values() for l in (v.get("inferred_subgroups") or {}) if l.count("[inferred]") > 1]
     return len(bad) == 0, "; ".join(bad) if bad else "no double-marked labels found"
 
+def test_cross_division_duplicate_bid_not_double_counted():
+    """2026-07-13, per Buck's full-team escalation ("this is a huge
+    mistake" - go clean and fix everything): the same vendor bid was found
+    filed under 2+ division folders (cabinetry genuinely spans "06 Woods
+    and Plastics" and "09 Finishes"), inflating vendor counts and
+    corrupting spread math in both. Confirmed real cases on 1355R: Basalt
+    Kitchen & Bath ($595,287.55), Ellis Design ($288,118.64), and Long
+    Beach Enterprise ($86,000) each appeared in both divisions. After the
+    fix, each must appear in exactly ONE division (06, its canonical HCI
+    division per the documented Wood & Plastic/Cabinets sub-package) and
+    be fully absent from 09."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    s2, d2 = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    div06_vendors = {b["vendor"].strip() for b in d.get("leveling_summary", {}).get("06", {}).get("bids", [])}
+    div09_vendors = {b["vendor"].strip() for b in d.get("leveling_summary", {}).get("09", {}).get("bids", [])}
+    dupes_that_should_be_06_only = {"Basalt Kitchen & Bath", "Ellis Design", "Long Beach Enterprise"}
+    still_in_both = dupes_that_should_be_06_only & div06_vendors & div09_vendors
+    missing_from_06 = dupes_that_should_be_06_only - div06_vendors
+    return (not still_in_both and not missing_from_06), \
+           f"still_in_both={still_in_both}, missing_from_06={missing_from_06}"
+
+def test_misfiled_furnishings_duplicate_removed():
+    """2026-07-13: division 10 "Specialties - Furnishings" on 1355R had
+    exactly one bid - a loose, unfoldered, garbled-filename copy of the
+    Long Beach Enterprise cabinetry estimate that does not belong there at
+    all. It showed "1 uncontested bid" when there are actually zero real
+    furnishings bids for this project - misleading. After the dedup fix,
+    the Furnishings key must not appear in the summary at all (empty, not
+    fabricated)."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    furnishings_keys = [k for k in summary if "Furnishings" in k]
+    return len(furnishings_keys) == 0, \
+           f"Furnishings still present: {furnishings_keys}" if furnishings_keys else "no fabricated Furnishings bucket"
+
+def test_same_division_duplicate_submission_also_caught():
+    """Bonus case caught by the same fix, not originally reported: "S&S"
+    and "S&S Construction Services" on 1355R division 07 Roofing are the
+    same vendor's bid submitted as two separate documents at the identical
+    dollar amount ($191,482.72) - a same-division duplicate, not just a
+    cross-division one. Must be collapsed to one entry."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    roofing = next((v for k, v in summary.items() if "Roofing" in k), None)
+    if not roofing:
+        return False, "Roofing division not found in summary"
+    vendors = [b["vendor"] for b in roofing.get("bids", [])]
+    ss_count = sum(1 for v in vendors if v.strip().upper().startswith("S&S"))
+    return ss_count == 1, f"expected 1 S&S entry, found {ss_count}: {vendors}"
+
 test("BL-INFER-01: inferred subgroups present + correctly marked '[inferred]'", test_inferred_subgroups_present_for_flagged_divisions)
 test("BL-INFER-02: inferred subgroup counts reconcile to division totals",      test_inferred_subgroups_sum_to_division_bid_count)
 test("BL-INFER-03: inference is additive only, same underlying bid rows",       test_inference_does_not_alter_underlying_division_data)
@@ -474,6 +524,9 @@ test("BL-INFER-04: no inferred_subgroups noise on single-bid divisions",        
 test("BL-INFER-05: magnitude outlier split out of trade bucket, spread fixed",  test_magnitude_outlier_split_from_trade_bucket)
 test("BL-INFER-06: outlier-split labels never double-marked '[inferred]'",      test_outlier_labels_never_double_marked)
 test("BL-DEFECT-01: auto-generated summary file never ingested as a vendor",    test_bid_leveling_summary_file_not_ingested_as_vendor)
+test("BL-DEFECT-02: cross-division duplicate bid not double-counted",           test_cross_division_duplicate_bid_not_double_counted)
+test("BL-DEFECT-03: misfiled Furnishings duplicate removed, not fabricated",    test_misfiled_furnishings_duplicate_removed)
+test("BL-DEFECT-04: same-division duplicate submission also caught",           test_same_division_duplicate_submission_also_caught)
 
 
 def test_cleanup_queued_bid_leveling_items():
