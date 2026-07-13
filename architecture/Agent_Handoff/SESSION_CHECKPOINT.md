@@ -19,7 +19,27 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:41 MT, by Claude Code — 1355R bid audit found a real, currently-live bug (division "13" merges Insulation and Fire Suppression bids into one nonsensical comparison) plus a sync gap between drive_bids (rich) and bid_packages/tracker Sheet (thin). Reported to Buck with a fix-now-vs-later choice, awaiting his call.
+2026-07-13, ~10:44 MT, by Claude Code — resolved Buck's "never-written-to RFI tracker" confusion (it was a blank duplicate in MGMT Tools, now clearly renamed); live-verified the monitored-folder write guard still works (real test write against 275SS correctly refused); 8 monitored projects total (was documented as 7), 4 protected. Still awaiting Buck's call on the division-13 bid-leveling bug and his Field GPT RFI retest results.
+
+## RFI tracker confusion resolved + monitored-guard re-verified (2026-07-13 ~10:42-10:44 MT)
+Buck said he saw an RFI tracker XLSX in 1355R he'd "never seen written to."
+Traced it: it's the blank template duplicate found earlier (id
+`1AAxJnWGqRDXchOCZzkOxTs-wBPPOwRkV`), sitting in the "MGMT Tools" folder -
+separate from the real, actively-maintained tracker in the RFI folder
+(`1l47B4kQGMhfZLoJz6m3fy9EZFryGMyd4`, all 11 rows logged). Renamed the blank
+one to `[UNUSED BLANK TEMPLATE - live tracker is in the RFI folder, not
+here] 1355 Riverside RFI - Log.xlsx` so the ambiguity can't recur - did not
+delete it (active-job rule: archive/rename is Code's call, deletion is
+Buck's).
+
+Also asked to re-check monitored-job handling: live-tested the write guard
+by attempting a real folder-create against 275SS's Drive folder - correctly
+refused with the expected error. Confirmed 8 monitored/reference projects
+on record now (1395SV, 246GW, 275SS, 574J, 606SW, 813MS, 83SB, LICHT) -
+previously documented as 7, one more than last counted, not otherwise
+investigated since it doesn't change anything actionable. 4 protected
+(246GW, 275SS, 574J, 606SW), 4 still lack a `drive_folder_id` so the guard
+can't cover them (83SB, 813MS, 1395SV, LICHT) - same known gap as before.
 
 ## 1355R bid audit: real division-13 bug found, tracker sync gap confirmed (2026-07-13 ~10:38-10:41 MT)
 Buck asked whether 1355R bids are "done to standard" — folders correct,
