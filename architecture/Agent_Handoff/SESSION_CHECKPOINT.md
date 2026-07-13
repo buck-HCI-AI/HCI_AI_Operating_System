@@ -19,7 +19,40 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:20 MT, by Claude Code — fixed RFI auto-numbering bug (was counting void/test rows toward "next number"), renumbered the 2 real Field GPT RFIs to 001/002. Confirmed tracker/email-draft step hasn't run yet for them (expected, not broken). Told Buck honestly that a "self-answer from existing docs before drafting external email" capability doesn't exist yet - asked whether to build it now. Awaiting his answer plus detail on the Word-doc reading failure. 60-second cadence, live back-and-forth continues.
+2026-07-13, ~11:31 MT, by Claude Code — found the real "something is missing" gap Buck asked about: a real GBT handoff (implementation_request, "Execute Reliability Sprint Immediately") landed 35 min ago but auto-routed to STRATEGIC_BACKLOG.md + ntfy (neither of which my check-in loop polls), never surfacing in Inbox/Telegram/ai_messages. Confirmed Excel-vs-Word RFI reading issue (Code Interpreter toggle is the real fix). Awaiting Buck's answer on whether to start the 2 new GBT-requested audits now. 60-second cadence, live back-and-forth continues.
+
+## Missed GBT handoff found - real blind spot in check-in loop coverage (2026-07-13 ~11:27-11:31 MT)
+Buck: "GBT said it tested it. Something is missing?" Investigated for real
+rather than assuming GBT was wrong:
+- `gateway_request_log` showed a genuine `POST /agent/handoff` call from
+  ChatGPT at 16:54:18 UTC (10:54 MT), status "queued" - GBT really did send
+  something 35 minutes before Buck asked.
+- Traced it: `agent_handoff()` in `gbt_gateway.py` (~line 3510) writes the
+  file to `Agent_Handoff/Inbox/`, then fires `handoff_processor.py`
+  asynchronously within ~60s. For `document_type: implementation_request`
+  specifically, `route_handoff()` in `handoff_processor.py` (~line 148)
+  appends the content to `Architecture/STRATEGIC_BACKLOG.md` and moves the
+  original file straight to `Processed/` - **by design, not a bug in that
+  code**. The file was sitting in `Processed/`
+  (`GBT_HANDOFF_2026-07-13_Execute_Reliability_Sprint_Immediately_f2768b1f.md`)
+  the whole time; I'd been checking `Inbox/` every single cycle and finding
+  it correctly empty, never realizing content had been auto-filed elsewhere.
+- The only notification for this routing path goes to `ntfy.sh` (a push
+  channel), not Telegram/`ai_messages` - neither of which is in my
+  check-in loop's polled set. **Real, confirmed blind spot**: my loop only
+  watches Telegram/Inbox/ai_messages; it never re-scans
+  `STRATEGIC_BACKLOG.md` for new GBT-appended entries mid-session. Told
+  Buck this directly and am folding a backlog-tail-check into the loop
+  going forward.
+- **Actual content of the missed handoff**: "Execute Reliability Sprint
+  Immediately" - (1) reproduce the Field GPT Excel ingestion failure using
+  a real workbook [already in progress live with Buck this session], (2)
+  audit the monitored Shared Drive mining pipeline, (3) identify every
+  break in retrieval/indexing, (4) fix what's fixable, (5) document
+  remaining blockers with evidence, coordinate with BC via ADR-003. Items
+  2 and 3 are genuinely new, not started - asked Buck whether to start them
+  now or stay focused on the live RFI/Excel work first. **Awaiting his
+  answer.**
 
 ## RFI auto-numbering bug fixed (2026-07-13 ~11:18-11:20 MT)
 Buck: real RFIs from the Field GPT retest should "start at RFI 001 and be
