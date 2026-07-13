@@ -777,7 +777,16 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
 def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
     """
     Read drive_bids from DB for a project.
-    Returns dict keyed by division_num → list of vendor bids.
+    Returns dict keyed by division_num, EXCEPT when the same bare division_num
+    is shared by genuinely different scopes (e.g. sub-package "13_Insulation"
+    under Division 07 vs sub-package "13_Special Construction" under Division
+    10 - both use the bare number 13, per the HCI canonical two-level
+    division/sub-package folder structure that this table doesn't fully
+    model yet). In that case each distinct division_name gets its own key
+    (division_num + "__" + division_name) so unrelated trades never get
+    merged into one "leveling" comparison. Found 2026-07-13: division 13 was
+    silently mixing Insulation bids ($56-79K) with Fire Suppression bids
+    ($31-108K) into a single nonsensical low/high/spread - this is the fix.
     """
     with _pg() as conn:
         with conn.cursor() as cur:
@@ -788,12 +797,19 @@ def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
             cur.execute(q, (project_id,))
             rows = [dict(r) for r in cur.fetchall()]
 
+    names_by_div = {}
+    for row in rows:
+        names_by_div.setdefault(row["division_num"], set()).add(row.get("division_name", ""))
+    ambiguous_divs = {d for d, names in names_by_div.items() if len(names) > 1}
+
     result = {}
     for row in rows:
-        div = row["division_num"]
+        div_num = row["division_num"]
+        div_name = row.get("division_name", "")
+        div = f"{div_num}__{div_name}" if div_num in ambiguous_divs else div_num
         result.setdefault(div, {
-            "division_num":  div,
-            "division_name": row.get("division_name", ""),
+            "division_num":  div_num,
+            "division_name": div_name,
             "bids": []
         })
         result[div]["bids"].append({

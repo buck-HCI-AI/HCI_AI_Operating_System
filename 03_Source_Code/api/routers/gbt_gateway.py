@@ -4794,6 +4794,39 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Platform-users-test-data check errored: {e}"})
 
+    # 24. drive_bids division_num collisions - found 2026-07-13 by Buck, not by any
+    #     prior check: division "13" was silently mixing Insulation bids ($56-79K)
+    #     with Fire Suppression bids ($31-108K) into one nonsensical leveling
+    #     comparison (10,906% spread), because HCI's canonical folder structure numbers
+    #     sub-packages independently of their parent division (13_Insulation lives
+    #     under Division 07, 13_Special Construction lives under Division 10 - both
+    #     share the bare number 13) and drive_bid_reader.read_drive_bids() grouped
+    #     purely by that bare number with no sub-package model. Fixed the grouping
+    #     that day (commit pending) for known collisions, but this check exists so any
+    #     NEW collision (a different bare number reused by two real division_names)
+    #     surfaces on its own instead of needing someone to notice a wrong number.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_code, db.division_num, array_agg(DISTINCT db.division_name) as names
+                    FROM drive_bids db
+                    JOIN projects p ON p.id = db.project_id
+                    WHERE db.is_latest = TRUE
+                    GROUP BY p.project_code, db.division_num
+                    HAVING count(DISTINCT db.division_name) > 1
+                """)
+                collisions = cur.fetchall()
+        if collisions:
+            findings.append({
+                "severity": "high",
+                "category": "bid_division_num_collision",
+                "detail": f"{len(collisions)} project/division_num pair(s) where the same bare CSI number is shared by genuinely different scopes - any leveling summary for these will mix unrelated trades' bids together unless read_drive_bids() has an explicit disambiguation for them.",
+                "items": [f"{r['project_code']} div {r['division_num']}: {r['names']}" for r in collisions],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Bid-division-collision check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
