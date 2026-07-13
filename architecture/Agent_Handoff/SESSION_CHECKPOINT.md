@@ -19,7 +19,7 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~13:20 MT, by Claude Code — 5 new GBT P0 handoffs landed 10:54-13:05 (Reliability Sprint, Restore 100/100, Reliability Blitz, Unify Comms, ADR-003 Mirror, Deliver Bid Leveling). Shipped and live-verified: bid-leveling Option B + 2 real cross-project defects fixed, the real ADR-003 mirror gap (BC content wasn't landing in the table GBT actually polls), and regression tests for agent-outage detection/recovery. Field GPT Excel-read investigation running in background. 60-second cadence continues.
+2026-07-13, ~13:26 MT, by Claude Code — Found a real gap in my own check-in loop: 9 substantive GBT messages (P0/P1 defects, oldest 2.5hrs old) were sitting unread in the agent_messages/ADR-003 channel, which the file-based Inbox check never covers. Read/processed all 9, marked read. Fixed the real Graph-504 defect GBT reported (RFI draft workflow aborted on timeout, no retry) with proper idempotency protection + 5 passing regression tests. Verified RFI numbering fix is actually correct in the live DB (GBT's "RFI #11" report doesn't match - reported back rather than re-fixing blind). Shipped this cycle: bid-leveling Option B + 2 real cross-project defects, ADR-003 BC->GBT mirror gap, outage-detection regression tests, Graph 504 resilience. Still waiting on Buck's Field GPT Excel repro detail. 60-second cadence continues - NEXT: also poll /gateway/agent/messages/unread?agent=CODE every cycle, not just the file Inbox.
 
 ## Both audit-flagged items closed out (2026-07-13 ~12:57-12:59 MT)
 Buck: "Get team consensus on 275. Ok on my email- Get coms up." Actioned
