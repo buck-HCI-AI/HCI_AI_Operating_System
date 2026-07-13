@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:51 MT, by Claude Code — division-13 bid-leveling bug fixed and live-verified, new drift-check detector #24 added so future division-num collisions self-surface, team notified. Same root cause confirmed present but unfixed in Division 09 (36,610% spread, 18 different trades sharing one division_name with no sub-trade split). Awaiting Buck's clarification on a Field GPT/Excel issue he hit, and his Field GPT RFI retest results.
+2026-07-13, ~11:13 MT, by Claude Code — Field GPT real-world RFI retest CONFIRMED WORKING (2 genuinely new, different-style RFIs created via the real pipeline). Division-13 bid-leveling fix from earlier this hour still holds. Currently on a 60-second check-in cadence during live back-and-forth with Buck.
+
+## Field GPT RFI retest CONFIRMED WORKING (2026-07-13 ~11:06-11:12 MT)
+Following the RFI provenance investigation (old RFI-001-010 set aside as
+test data - see below), Buck opened Field GPT and fed it his real original
+RFI questions from an uploaded Excel sheet. Confirmed via
+`gateway_request_log` and the `rfis` table directly (not assumed): two real
+`/field/rfi` POST calls succeeded, creating:
+- RFI 011 "Garage Door Rendering and Door Style Clarifications" (id 929) -
+  references real drawing sheet A.4.14, asks if garage door style is correct
+- RFI 012 "Gas Fireplace and Exterior Gas Appliance Specifications" (id 930)
+  - asks to confirm gas vs wood stove + who's specifying exterior fire
+  features/hot tub/grill
+
+Both `submitted_by = 'Buck'` (note: different format than the old
+`'Buck Adams'` on the test-folder RFIs - distinct submission path,
+consistent with this being the real field pipeline). Content is genuinely
+different in both topic AND style from the old test-folder set (concise,
+numbered field questions vs. the old elaborate formal-letter format) -
+strong evidence this is real content, not another self-generated batch.
+**This resolves the open "where did the RFIs really come from" question**:
+the real pipeline works and produces recognizably different, more authentic
+output when fed real field input, confirming the old set's provenance
+problem was real and specific to how it was created, not a fundamental
+pipeline flaw.
+
+**Next**: keep watching for more RFIs as Buck continues feeding Field GPT.
+Once he's done, compare the full real set against the old test-folder set
+and report a final reconciliation.
 
 ## Division-13 bid-leveling bug fixed + drift-check detector added (2026-07-13 ~10:47-10:51 MT)
 Buck: "Fix that now! Why are we finding this now and the team didn't find
