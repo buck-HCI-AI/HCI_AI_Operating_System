@@ -158,6 +158,22 @@ def route_handoff(file_path: Path, header: dict, payload: str, dry_run: bool) ->
         if not dry_run:
             with open(backlog, "a", encoding="utf-8") as f:
                 f.write(entry)
+            # 2026-07-13 fix: this routing path previously only pinged ntfy,
+            # which nothing in Claude Code's check-in loop polls. A real P0
+            # handoff from GBT ("Execute Reliability Sprint Immediately")
+            # sat unseen for 35 minutes because of exactly this gap - found
+            # only when Buck asked "something is missing." Telegram is the
+            # channel actually monitored every cycle, so alert there too.
+            try:
+                requests.post(
+                    "http://localhost:8000/gateway/telegram/send",
+                    headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
+                    json={"text": f"HANDOFF (auto-routed to STRATEGIC_BACKLOG.md, not Inbox): "
+                                  f"[{source}] {title} — {payload[:200]}"},
+                    timeout=5,
+                )
+            except Exception:
+                pass  # best-effort, same tolerance as the ntfy call above
         return "→ Appended to STRATEGIC_BACKLOG.md"
 
     if doc_type == "approval_request":
