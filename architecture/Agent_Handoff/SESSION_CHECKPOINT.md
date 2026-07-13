@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:51 MT, by Claude Code — responded to GBT's P0 "team went down" escalation with verified evidence, not reaction: fixed a real stale CODE heartbeat (hadn't updated since 07-11), confirmed GBT/BC's large unread-Telegram counts are real but architectural (not a new outage), pushed back on the "team went down" framing with a real activity record. Watchdogs/regression-tests ask acknowledged but not built - awaiting Buck's priority call. 60-second cadence, live back-and-forth continues.
+2026-07-13, ~11:56 MT, by Claude Code — Buck said "start with the most important, work through each one" on the P0 watchdog/regression-test list. Shipped #1 first: implementation_request handoffs now alert via Telegram when they auto-route to STRATEGIC_BACKLOG.md, closing the exact gap that caused today's missed-handoff confusion. Live-tested end to end with a real test handoff. 60-second cadence, live back-and-forth continues.
+
+## Handoff-routing Telegram alert shipped - fix #1 of the P0 list (2026-07-13 ~11:54-11:56 MT)
+Buck approved working through the P0 handoff's list, prioritized. Started
+with the highest-value, most concrete item: closing the exact gap that
+caused the "something is missing" / "team went down" confusion earlier this
+session (implementation_request handoffs silently auto-routing to
+STRATEGIC_BACKLOG.md with only an ntfy notification nobody polls).
+
+Fixed in `architecture/Agent_Handoff/handoff_processor.py`, inside
+`route_handoff()`'s `implementation_request` branch: after appending to the
+backlog file, now also POSTs to `/gateway/telegram/send` with the source,
+title, and a body excerpt. Best-effort (wrapped in try/except like the
+existing ntfy call), doesn't block the backlog write if Telegram fails.
+
+**Live-tested end to end, not just code-reviewed**: triggered a real test
+handoff via `POST /agent/handoff` (document_type=implementation_request),
+manually ran the processor (confirmed it also fires correctly via the async
+path GBT actually uses), verified via `gateway_request_log` that
+`/telegram/send` fired with the expected alert text, confirmed Buck would
+have received it. Cleaned up the test entry from `STRATEGIC_BACKLOG.md` and
+the test handoff file from `Processed/` afterward. Commit `e801720`. Also
+committed the 2 real GBT handoffs processed this session for the record
+(commit `3ac4f5f`).
+
+**Next on the P0 list, not yet started**: watchdogs for stale heartbeats
+(beyond the one-off manual fix to CODE's own heartbeat earlier) and unread
+backlogs, plus regression tests proving outage detection/recovery. Working
+through in priority order per Buck's instruction - this was item 1.
 
 ## GBT P0 escalation answered with verified evidence (2026-07-13 ~11:48-11:51 MT)
 A second, correctly-routed GBT handoff landed in Inbox (unlike the earlier
