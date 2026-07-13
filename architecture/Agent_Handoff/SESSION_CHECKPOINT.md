@@ -19,7 +19,23 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:55 MT, by Claude Code — Buck asked for a full read-back audit of the session before moving to 100/100. Cross-referenced against this checkpoint log and found 2 genuinely dropped threads (275SS mine-vs-wipe decision, 2 old Outbox items) - surfaced both honestly rather than claiming nothing was missed. Everything else traced back to either a real answer or an already-stated known-open item. 60-second cadence continues.
+2026-07-13, ~12:59 MT, by Claude Code — closed out both dropped threads from the read-back audit: Outbox cleared (2 old stuck items moved to Deleted Items), 275SS decision posted to team channel for GBT/BC consensus per Buck's explicit ask. Re-checked browser extension (still not connected) before reporting on the coms-workaround ask. 60-second cadence continues.
+
+## Both audit-flagged items closed out (2026-07-13 ~12:57-12:59 MT)
+Buck: "Get team consensus on 275. Ok on my email- Get coms up." Actioned
+all three:
+- **Outbox cleaned**: both old stuck items (2026-06-05, addressed to
+  Buck's own email, never sent) moved to Deleted Items - recoverable, not
+  a permanent delete.
+- **275SS posted for team consensus**: added the actual mine-vs-wipe
+  decision to `LIVE_TEAM_COMMS.md`, joining the 5-division bid-leveling
+  question already waiting there for GBT/BC.
+- **Coms status re-checked**: browser extension still not connected as of
+  this check. Told Buck plainly rather than let the "get coms up" ask go
+  unanswered - two real decisions are now posted and waiting, but posting
+  alone hasn't produced a GBT/BC response all session; actually reaching
+  them needs either the extension reconnected or a live session opened by
+  a human.
 
 ## Full session read-back audit (2026-07-13 ~12:53-12:55 MT)
 Buck: "before [100/100] read back on our coms and make sure we are not
