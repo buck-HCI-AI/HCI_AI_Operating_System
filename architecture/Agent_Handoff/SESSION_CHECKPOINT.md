@@ -19,7 +19,36 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:15 MT, by Claude Code — traced RFI 001-010 content origin with evidence (BC drawing analysis for 001-005, unexplained for 006-010), flagged an unresolved SE-name discrepancy (Albright Engineering vs Heini Brutsaert/Silver Town) that must be resolved before any RFI is sent externally.
+2026-07-13, ~10:26 MT, by Claude Code — SE-name discrepancy resolved (Silver Town Structures confirmed correct via real PDF text extraction, "Albright" was BC's misread, self-corrected to Buck immediately). RFI tracker investigated: was already fully populated, not actually broken; own duplicate-row mistake made and fixed same cycle; added gsheet_rfi_tracker DB field for discoverability.
+
+## RFI tracker: already worked, own mistake caught+fixed, DB field added (2026-07-13 ~10:24-10:26 MT)
+Buck said "build the tracker." Investigation found the real tracker
+(`1355 Riverside RFI - Log .xlsx`, id `1l47B4kQGMhfZLoJz6m3fy9EZFryGMyd4`)
+already had a fully-built, working sync function (`rfi_workflow.update_rfi_log_tracker()`)
+and, on inspection, **was already fully populated** with all 11 real rows
+(the voided old RFI-3 plus RFI-001 through 010) as of 2026-07-11 — my first
+read only showed rows 1-15 (missed 16-21) and I wrongly concluded 005-010
+were missing. Called `update_rfi_log_tracker()` for 923-928, which created 6
+duplicate rows (22-27) since the function appends-only with no existing-entry
+check. **Caught this myself before reporting anything to Buck as done**,
+verified the duplicate row numbers precisely, cleared them, verified back to
+the clean 11-row state. Own the mistake in the log rather than hide it -
+nothing wrong reached Buck.
+
+Real, useful work done on top of that: marked the voided old RFI-3 row with a
+VOID note in the tracker itself (previously the DB knew it was void, the
+tracker didn't reflect it), and added `projects.gsheet_rfi_tracker` column
+(mirrors `gsheet_bid_tracker`) populated for 1355R so this file is
+discoverable the same way the bid tracker is, instead of only findable via
+dynamic by-name Drive search (`_find_rfi_log_sheet()`).
+
+Also found (separately, same investigation): the SE-name discrepancy flagged
+earlier was resolved by downloading the real structural PDF and running
+`pdftotext` on it directly - "Silver Town Structures" appears 6 times with
+consistent address/phone across the title blocks, "Albright Engineering"
+appears nowhere in the text layer. BC's 07-11 claim of "Albright per plan
+stamps" was a misread (visual, not text-confirmed). Corrected this to Buck
+within ~10 minutes of the wrong flag going out rather than letting it stand.
 
 ## RFI content provenance traced (2026-07-13 ~10:12-10:15 MT)
 Buck asked "where did the RFI questions come from - not what I fed Field GPT."
