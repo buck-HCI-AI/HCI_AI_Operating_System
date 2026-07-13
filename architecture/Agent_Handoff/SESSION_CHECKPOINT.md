@@ -19,7 +19,30 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:10 MT, by Claude Code — mailbox folder duplication fixed, 275SS placeholder-data question answered, one duplicate RFI voided, RFI tracker gap surfaced as an open decision. Cadence corrected to checks-every-4.5min/report-hourly per Buck's clarification (msg 1570).
+2026-07-13, ~10:15 MT, by Claude Code — traced RFI 001-010 content origin with evidence (BC drawing analysis for 001-005, unexplained for 006-010), flagged an unresolved SE-name discrepancy (Albright Engineering vs Heini Brutsaert/Silver Town) that must be resolved before any RFI is sent externally.
+
+## RFI content provenance traced (2026-07-13 ~10:12-10:15 MT)
+Buck asked "where did the RFI questions come from - not what I fed Field GPT."
+Investigated with real evidence rather than reassuring him without checking:
+- **RFIs 001-005**: trace cleanly to Browser Claude. BC read the real structural
+  drawings PDF (`Structurals_5.18.26.pdf`, verified real Drive file) morning of
+  2026-07-11, initially bundled 5 questions into one RFI, Buck corrected it
+  live ("one question per RFI, no bundling" - now a standing rule, doc:
+  `BC_TO_CODE_RFI_STANDARD_ONE_PER_QUESTION_2026-07-11.md`), BC split into 5
+  separate specced questions, Claude Code built them per BC's spec.
+- **RFIs 006-010**: no handoff, spec, or instruction found anywhere for these
+  5 topics (special inspection, epoxy dowel, shoring, soils report, mech
+  blockout). Whatever session created them appears to have self-extended past
+  BC's 5-question spec with no documented request. Told Buck honestly this is
+  unconfirmed, not guessed at as fine.
+- **Unresolved SE-name discrepancy, flagged to Buck, blocks external send**:
+  BC's spec instructed Code to look up the real SE from the drawing title
+  block, expecting "Albright Engineering." The actual `rfis` rows list "Heini
+  Brutsaert / Silver Town Structures" instead - matching an older, different
+  2026-06-30 GBT handoff, not a fresh title-block read. Could not extract PDF
+  text to verify which name is real. **Do not let any of RFIs 001-010 go out
+  to an external recipient until Buck confirms the correct SE name/firm** -
+  sending to a wrong engineer name would be a real, visible error.
 
 ## Check-in cadence: checks every 4.5min, Telegram reports hourly (2026-07-13 ~10:10 MT, Buck msg 1570 clarifying msg 1568)
 Buck's actual intent, clarified: "I still want you checking the system every
