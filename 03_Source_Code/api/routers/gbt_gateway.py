@@ -9077,7 +9077,10 @@ def ai_message_get(msg_id: int):
 
 
 @router.get("/agent/unread")
-def agent_unread(agent: str = Query(..., description="chatgpt|browser_claude|claude_code|n8n")):
+def agent_unread(agent: str = Query(..., description="chatgpt|browser_claude|claude_code|n8n"),
+                  limit: int = Query(10, ge=1, le=100, description="Max messages per page - keeps the response under GBT Actions' size cap; default lowered to 10 2026-07-13 after measuring ~5-9KB per message live"),
+                  offset: int = Query(0, ge=0, description="Skip this many messages (for paging through a large backlog)"),
+                  newest_first: bool = Query(True, description="GBT's requested default - oldest_first via newest_first=false if a caller needs FIFO order")):
     """
     Single-call catch-up for any agent on session start: everything targeted
     at it that hasn't been picked up yet (status ISSUED or NEEDS_BUCK_APPROVAL).
@@ -9087,6 +9090,11 @@ def agent_unread(agent: str = Query(..., description="chatgpt|browser_claude|cla
     "what's waiting for me" answer the way BC's proposed GET /agent/messages/
     unread did. This is that endpoint, built on the existing table rather
     than a new one.
+
+    2026-07-13, per GBT's P0 "Fix ADR-003 Message Retrieval Scalability"
+    report: this had no LIMIT either, same failure mode as
+    /agent/messages/unread - fixed the same way (paginated, newest-first
+    default, true total_unread count returned separately from the page).
     """
     t0 = time.time()
     key = _AGENT_ALIASES.get((agent or "").strip().lower(), agent)
@@ -9094,16 +9102,28 @@ def agent_unread(agent: str = Query(..., description="chatgpt|browser_claude|cla
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
+                    SELECT COUNT(*) AS n FROM ai_messages
+                    WHERE target_agent = %s AND status IN ('ISSUED', 'NEEDS_BUCK_APPROVAL')
+                """, (key,))
+                total_unread = cur.fetchone()["n"]
+
+                order = "DESC" if newest_first else "ASC"
+                cur.execute(f"""
                     SELECT id, source_agent, message_type, title, body, priority,
                            status, related_file, created_at
                     FROM ai_messages
                     WHERE target_agent = %s AND status IN ('ISSUED', 'NEEDS_BUCK_APPROVAL')
-                    ORDER BY created_at ASC
-                """, (key,))
+                    ORDER BY created_at {order}
+                    LIMIT %s OFFSET %s
+                """, (key, limit, offset))
                 rows = [dict(r) for r in cur.fetchall()]
         for r in rows:
             r["created_at"] = r["created_at"].isoformat()
-        return _response("/agent/unread", {"agent": key, "count": len(rows), "messages": rows}, start=t0)
+        return _response("/agent/unread", {
+            "agent": key, "total_unread": total_unread, "returned": len(rows),
+            "limit": limit, "offset": offset, "has_more": offset + len(rows) < total_unread,
+            "messages": rows,
+        }, start=t0)
     except Exception as e:
         return _response("/agent/unread", {}, errors=[str(e)], start=t0)
 
@@ -9234,24 +9254,54 @@ def agent_messages_send(req: AgentMessageCreate):
 
 
 @router.get("/agent/messages/unread")
-def agent_messages_unread(agent: str = Query(..., description="BC|GBT|CODE")):
+def agent_messages_unread(agent: str = Query(..., description="BC|GBT|CODE"),
+                           limit: int = Query(10, ge=1, le=100, description="Max messages per page - keeps the response under GBT Actions' size cap; default lowered to 10 2026-07-13 after measuring ~5-9KB per message live"),
+                           offset: int = Query(0, ge=0, description="Skip this many messages (for paging through a large backlog)"),
+                           thread_id: Optional[str] = Query(None, description="Filter to a single thread's messages"),
+                           newest_first: bool = Query(True, description="GBT's requested default - oldest_first via newest_first=false if a caller needs FIFO order")):
+    """
+    2026-07-13, per GBT's P0 "Fix ADR-003 Message Retrieval Scalability"
+    report: this endpoint had no LIMIT at all - with GBT's real backlog
+    (400+ messages some days), the serialized response exceeded ChatGPT
+    Actions' response-size cap and failed outright with no partial data.
+    Now paginated (default page of 25, newest-first per GBT's ask), with
+    the true total_unread count always returned separately from the page
+    so a caller can tell how much backlog remains without fetching it all.
+    """
     t0 = time.time()
     try:
         with _pg() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
+                count_query = "SELECT COUNT(*) AS n FROM agent_messages WHERE to_agent IN (%s, 'ALL') AND status = 'pending'"
+                count_params = [agent]
+                if thread_id:
+                    count_query += " AND thread_id = %s"
+                    count_params.append(thread_id)
+                cur.execute(count_query, count_params)
+                total_unread = cur.fetchone()["n"]
+
+                order = "DESC" if newest_first else "ASC"
+                page_query = f"""
                     SELECT message_id, thread_id, from_agent, subject, body,
                            timestamp_mt, priority, drive_file_id, requires_response
                     FROM agent_messages
                     WHERE to_agent IN (%s, 'ALL') AND status = 'pending'
-                    ORDER BY timestamp_mt ASC
-                """, (agent,))
+                    {"AND thread_id = %s" if thread_id else ""}
+                    ORDER BY timestamp_mt {order}
+                    LIMIT %s OFFSET %s
+                """
+                page_params = [agent] + ([thread_id] if thread_id else []) + [limit, offset]
+                cur.execute(page_query, page_params)
                 rows = [dict(r) for r in cur.fetchall()]
         for r in rows:
             r["message_id"] = str(r["message_id"])
             r["thread_id"] = str(r["thread_id"])
             r["timestamp_mt"] = r["timestamp_mt"].isoformat()
-        return _response("/agent/messages/unread", {"agent": agent, "count": len(rows), "messages": rows}, start=t0)
+        return _response("/agent/messages/unread", {
+            "agent": agent, "total_unread": total_unread, "returned": len(rows),
+            "limit": limit, "offset": offset, "has_more": offset + len(rows) < total_unread,
+            "messages": rows,
+        }, start=t0)
     except Exception as e:
         return _response("/agent/messages/unread", {}, errors=[str(e)], start=t0)
 
