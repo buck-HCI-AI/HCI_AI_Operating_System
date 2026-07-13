@@ -3152,6 +3152,39 @@ def _sync_coordination_documents() -> list:
                                     "INSERT INTO coordination_log_folded (file_id) VALUES (%s) ON CONFLICT DO NOTHING",
                                     (fid,))
                         conn.commit()
+                    # 2026-07-13 fix, per GBT's P0 ADR-003 Mirror Implementation
+                    # handoff: folding BC content into LIVE_TEAM_COMMS.md alone
+                    # was never enough for GBT to actually see it. GBT's real
+                    # unread-polling endpoint (/gateway/agent/messages/unread)
+                    # reads the agent_messages table - a DIFFERENT table than
+                    # the one the older BC-mirror block above (line ~3083)
+                    # writes to (ai_messages, and that row gets auto-closed to
+                    # COMPLETE immediately anyway, see comment there). So BC's
+                    # content had two ways in - a legacy table GBT doesn't
+                    # poll, and a Drive doc GBT has to remember to browse - but
+                    # never the one live channel GBT actually checks. Insert a
+                    # real pending agent_messages row for each newly-folded BC
+                    # file so it shows up the next time GBT calls
+                    # /gateway/agent/messages/unread?agent=GBT, same as any
+                    # other agent-to-agent message.
+                    try:
+                        with _pg() as conn:
+                            with conn.cursor() as cur:
+                                for f in unfolded:
+                                    if f["id"] not in appended_ids:
+                                        continue
+                                    try:
+                                        body_text = _drive_get_content(f["id"])
+                                    except Exception:
+                                        body_text = f"(see Drive file {f['id']} - {f['name']})"
+                                    cur.execute("""
+                                        INSERT INTO agent_messages
+                                            (from_agent, to_agent, priority, subject, body, drive_file_id)
+                                        VALUES ('BC', 'GBT', 'P2', %s, %s, %s)
+                                    """, (f"BC coordination update: {f['name']}", body_text[:8000], f["id"]))
+                            conn.commit()
+                    except Exception:
+                        pass  # this mirror is additive - never let it break the fold-in itself
     except Exception:
         pass  # fold-in is best-effort - never let it break the list call itself
 
