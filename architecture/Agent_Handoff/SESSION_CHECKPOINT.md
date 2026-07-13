@@ -19,7 +19,7 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:45 MT, by Claude Code — RFI pipeline actually completed end-to-end for real: merged the over-split garage door RFI back per Buck's direct correction, then ran the full doc/Drive/tracker/draft process step (never actually run before) for all 4 real RFIs - verified 4 real drafts + 4 tracker rows landed. Caught and cleaned up own leftover stale draft/tracker row from the earlier void. 60-second cadence continues.
+2026-07-13, ~12:52 MT, by Claude Code — Buck asked for a real workaround to make GBT/BC coms actually work. Checked 2 genuine paths (browser automation, direct OpenAI API) - neither available (extension still not connected, no API creds configured). Reported honestly rather than fabricating a fix. Asked Buck to either reconnect the extension or make the bid-leveling Drive-reorg-vs-AI-infer call himself, since GBT/BC input is genuinely unavailable right now. 60-second cadence continues.
 
 ## RFI pipeline completed end-to-end, own splitting mistake corrected (2026-07-13 ~12:41-12:45 MT)
 Buck: "Those 2 garage door questions seem like 1 to me? Just asked
