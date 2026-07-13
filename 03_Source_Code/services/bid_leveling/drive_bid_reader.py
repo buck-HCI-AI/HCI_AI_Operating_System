@@ -774,6 +774,61 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
     }
 
 
+def reclassify_existing_divisions(project_id: int, dry_run: bool = True) -> dict:
+    """
+    Re-apply _sub_package_parent() to ALREADY-INGESTED drive_bids rows.
+
+    Found 2026-07-13: scan_project_bids() only classifies genuinely NEW
+    files (`f["file_id"] not in known_ids`) - once a file's division_num/
+    division_name is written, nothing ever re-derives it, even after
+    _SUB_PACKAGE_TO_PARENT_DIVISION gains new entries or a folder gets
+    correctly re-nested in Drive. Confirmed live: 1355R's "13_Insulation"
+    and "13_Special Construction" rows still showed the old flat "13"
+    collision even after a full rescan, because both files were already
+    "known" and got skipped. A fresh walk_bid_folders() call correctly
+    resolves "Special Construction" to its real parent (10, Specialties),
+    proving the classification logic itself works - it just never gets
+    re-applied to old data. This is a cheap, DB-only fix: no re-download,
+    no re-extraction (Gemini/Claude), just re-running the same name lookup
+    against what's already stored and updating rows where it disagrees.
+    """
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, division_num, division_name FROM drive_bids WHERE project_id=%s",
+                (project_id,)
+            )
+            rows = cur.fetchall()
+
+    changes = []
+    for row in rows:
+        new_num, new_name = _sub_package_parent(row["division_num"], row["division_num"], row["division_name"])
+        if new_num != row["division_num"] or new_name != row["division_name"]:
+            changes.append({
+                "id": row["id"],
+                "old": (row["division_num"], row["division_name"]),
+                "new": (new_num, new_name),
+            })
+
+    if not dry_run and changes:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                for c in changes:
+                    cur.execute(
+                        "UPDATE drive_bids SET division_num=%s, division_name=%s WHERE id=%s",
+                        (c["new"][0], c["new"][1], c["id"])
+                    )
+            conn.commit()
+
+    return {
+        "project_id": project_id,
+        "dry_run": dry_run,
+        "rows_checked": len(rows),
+        "rows_reclassified": len(changes),
+        "changes": changes,
+    }
+
+
 def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
     """
     Read drive_bids from DB for a project.

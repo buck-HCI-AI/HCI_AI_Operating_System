@@ -283,6 +283,69 @@ test("BL-QUEUE-01: live run for div 16 queues at least 1 upload item",    test_l
 test("BL-QUEUE-02: queued item visible in approval-queue pending list",    test_queued_item_visible_in_approval_queue)
 test("BL-QUEUE-03: execute without approval returns 400 (safety control)", test_execute_without_approval_fails)
 
+# ── BL-RELIABLE: Leveling-reliability flag (2026-07-13 regression coverage) ──
+# Covers 2 real bugs found and fixed live 2026-07-13:
+#  1. division "13" merged two unrelated trades (Insulation, Special
+#     Construction) sharing one bare CSI number into one nonsensical
+#     leveling comparison.
+#  2. division "09" (Finishes) showed a real 36,610% spread across 18
+#     genuinely different trades sharing one division_name, with no way to
+#     auto-separate them - fixed by flagging implausible spreads instead of
+#     silently presenting them as valid comparisons.
+print("\nGroup: BL-RELIABLE — Leveling-reliability flag (regression, 2026-07-13)")
+
+def test_division_13_no_longer_merged():
+    """The original bug: division 13 for 1355R (project_id=3) doesn't exist as
+    a real top-level division at all - "13_Insulation" and "13_Special
+    Construction" are sub-packages of Division 07 and Division 10
+    respectively (reclassify_existing_divisions() fixed this in the DB
+    2026-07-13, not just at the read layer). Must never come back as a bare
+    "13" bucket, and Insulation/Special Construction must be attributed to
+    their real parent divisions, never merged together."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    has_bare_13 = any(k == "13" or k.startswith("13__") for k in summary.keys())
+    insulation_key = next((k for k in summary if "Insulation" in summary[k].get("division_name", "")), None)
+    special_con_key = next((k for k in summary if "Special Construction" in summary[k].get("division_name", "")), None)
+    correctly_attributed = (insulation_key and insulation_key.startswith("07")
+                             and special_con_key and special_con_key.startswith("10"))
+    return (not has_bare_13 and correctly_attributed), \
+           f"bare '13' present={has_bare_13}, insulation_key={insulation_key}, special_con_key={special_con_key}"
+
+def test_implausible_spreads_flagged_not_hidden():
+    """Any division with an implausible spread (>300%, 3+ vendors) must be
+    marked leveling_reliable=False with a note - not silently shown as if
+    it were a real comparison. The underlying bids must still be present
+    (nothing hidden), only the reliability framing changes."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    bad = []
+    for k, v in summary.items():
+        spread_pct = v.get("spread_pct")
+        bid_count = v.get("bid_count", 0)
+        should_be_unreliable = spread_pct is not None and spread_pct > 300 and bid_count >= 3
+        if should_be_unreliable and v.get("leveling_reliable") is not False:
+            bad.append(f"{k}: spread={spread_pct}% count={bid_count} reliable={v.get('leveling_reliable')}")
+        if should_be_unreliable and not v.get("bids"):
+            bad.append(f"{k}: flagged unreliable but bids list is empty - data got hidden, not just flagged")
+    return len(bad) == 0, "; ".join(bad) if bad else f"checked {len(summary)} divisions, all correctly classified"
+
+def test_reliable_divisions_not_falsely_flagged():
+    """A division with a tight, plausible spread must NOT be marked
+    unreliable - the flag should only catch genuinely implausible cases,
+    not become noisy and flag everything."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    bad = [k for k, v in summary.items()
+           if v.get("spread_pct") is not None and v.get("spread_pct") <= 300
+           and v.get("leveling_reliable") is not True]
+    return len(bad) == 0, "; ".join(bad) if bad else "all low-spread divisions correctly marked reliable"
+
+test("BL-RELIABLE-01: division 13 collision stays split, never re-merges",       test_division_13_no_longer_merged)
+test("BL-RELIABLE-02: implausible spreads flagged with reason, data not hidden", test_implausible_spreads_flagged_not_hidden)
+test("BL-RELIABLE-03: plausible spreads not falsely flagged as unreliable",      test_reliable_divisions_not_falsely_flagged)
+
+
 def test_cleanup_queued_bid_leveling_items():
     """test_live_run_queues_items creates a real live approval-queue row every run
     and nothing above consumes it - found 2026-07-07 that repeated runs left 3
