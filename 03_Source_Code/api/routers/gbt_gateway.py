@@ -146,6 +146,29 @@ def _pg():
     return psycopg2.connect(**DB, cursor_factory=psycopg2.extras.RealDictCursor)
 
 
+class MonitoredFolderWriteError(Exception):
+    """Raised when a Drive write targets a monitored project's root folder."""
+    pass
+
+
+def _reject_if_monitored_folder(folder_id: str) -> None:
+    """Same permanent directive as bid_leveling_service.reject_if_monitored_folder -
+    monitored jobs are read-only. Applied here too (2026-07-12) for consistency
+    across every Drive-write tool, not just the bid-leveling ones."""
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT project_code FROM projects WHERE status='monitoring' AND drive_folder_id=%s",
+                (folder_id,)
+            )
+            row = cur.fetchone()
+    if row:
+        raise MonitoredFolderWriteError(
+            f"Refused: {row['project_code']} is a monitored project - read-only per "
+            f"permanent directive, no writes to its Drive folder are permitted."
+        )
+
+
 def _response(path: str, payload: Any, source: str = "hci-api",
               start: float = None, warnings: list = None, errors: list = None) -> dict:
     """Standard envelope. timestamp_mt added 2026-07-08: Buck flagged (repeatedly,
@@ -3705,6 +3728,7 @@ async def drive_write(req: DriveWritePayload):
 
         token = get_google_token("drive")
         folder_id = req.folder_id or os.environ.get("HCI_AI_DRIVE_FOLDER", "1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI")
+        _reject_if_monitored_folder(folder_id)
 
         # Gap14 FIX: explicit timeouts on all Google API calls prevent ERR_NGROK_3004
         DRIVE_TIMEOUT = 20
