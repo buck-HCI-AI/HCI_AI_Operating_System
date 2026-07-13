@@ -19,9 +19,54 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~00:35 MT, by Claude Code — Buck asked for quiet hours until 6:30am (msg 1565), honoring it; brief Docker outage self-healed during the quiet window, no Buck notification sent (resolved cleanly, didn't need him)
+2026-07-13, ~09:56 MT, by Claude Code — Buck woke up, asked for RFI verification + inbox/drafts cleanup, then a status update; drafts cleanup executed and approved items closed out. Check-in cadence now hourly per his explicit request (msg 1568), up from the prior ~270s.
 
-## Quiet hours in effect (2026-07-12 21:08 MT onward, until 2026-07-13 06:30 MT)
+## Check-in cadence: now hourly (2026-07-13 ~09:56 MT, Buck msg 1568: "cut your check-in to every hour")
+Supersedes the ~270s/4.5min standing cadence noted elsewhere in this file and in
+memory `feedback_checkin_cadence_4_5min` for the duration this instruction holds.
+Still checking Telegram/Inbox/ai_messages every cycle: just spacing the cycles
+out to 1hr instead of 4.5min. If something genuinely needs him, still escalate
+immediately regardless of the cadence — this only changes the routine "nothing
+new" ping interval.
+
+## Morning session — RFIs verified, inbox/drafts cleaned, 3 approvals actioned (2026-07-13 ~09:44-09:56 MT)
+Buck woke up (msg 1566), asked to triple-check RFIs + clean inbox/drafts, then
+signaled he'd be driving to work for "the onboard." Sequence:
+1. **RFIs verified**: all 10 (919-928, 1355 Riverside) confirmed in DB, status
+   open, matching the 10 real RFI drafts in Outlook (RFI 001-010, created
+   2026-07-11T16:46-16:48). No discrepancy.
+2. **Sent full status update** (msg 1567 asked "give me a summary... what I
+   need to approve") — 3 items surfaced: drafts cleanup, 275SS unbacked-bid
+   re-flag, stale GBT/BC backlog note.
+3. **Buck replied (msg 1569): "go to number one. Number two I do not
+   understand. Number three go do that."** Actioned:
+   - **#1 drafts cleanup — DONE.** Surveyed all 98 drafts, categorized by
+     subject-line pattern (recurring automated reports: Bid Follow-Up Engine,
+     Morning Brief, DRAFT BID LEVELING, Houzz reminder, Bid Received
+     notifications; plus explicit TEST/spam/broken-subject junk) vs. real
+     content (10 RFI drafts, 1 Onboarding email, 17 real vendor/business
+     correspondence threads). **Used `move_message()` to Deleted Items, NOT
+     `delete_message()`** — the latter does a genuine permanent hard-delete
+     per its own docstring, which is a hard-line prohibited action regardless
+     of user authorization. Moved 71 stale/junk drafts to Deleted Items
+     (recoverable). Verified after: exactly the intended 27 remained. Also
+     checked inbox (11 items) — all real, nothing to clean there.
+   - **#2 275SS — explained in plain language** (Telegram), re-surfaced as a
+     pending decision, not re-executed. Still open: mine real bid data from
+     275SS's Drive vs. wipe the 14 unbacked placeholder line items.
+   - **#3 GBT backlog session — COULD NOT DO.** Claude-in-Chrome browser
+     extension is not connected on this machine. Reported this honestly to
+     Buck rather than fabricating a "done" claim (`tabs_context_mcp` returned
+     "Browser extension is not connected"). Buck needs to either open a fresh
+     GBT chat himself (backlog should self-clear on a fresh session per known
+     pattern) or reconnect the extension so I can retry.
+
+**Still open, unchanged:** 275SS mining-vs-wipe decision (Buck's call);
+GBT backlog session (needs Buck or a reconnected browser extension);
+4/7 monitored projects still lack a `drive_folder_id` so the write-guard
+doesn't cover them (83SB, 813MS, 1395SV, LICHT).
+
+## Quiet hours (2026-07-12 21:08 MT to 2026-07-13 06:30 MT, ended)
 Buck explicitly asked (Telegram msg 1565, 2026-07-12 21:05 MT) to stop routine
 check-in pings and go silent until 6:30am. Confirmed compliance. Continuing the
 underlying coms-check loop each cycle (Telegram/Inbox/ai_messages) but
