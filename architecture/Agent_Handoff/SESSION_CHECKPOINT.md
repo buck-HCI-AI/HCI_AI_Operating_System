@@ -19,7 +19,28 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:38 MT, by Claude Code — built the REAL bid-leveling fix (not just the flag): found and ran reclassify_existing_divisions(), which corrected 18 real drive_bids rows in the DB, eliminating division 13's collision entirely (not just hiding it downstream). Posted the remaining 5-division gap to GBT/BC as a real decision needing 3-way input, per Buck's explicit ask. Also found and fixed Field GPT bundling 2 questions into single RFIs (violates the standing one-question-per-RFI rule) - split into 5 clean sequential RFIs. Regression tests re-verified for real after a stuck background run. Continuing through the list.
+2026-07-13, ~12:40 MT, by Claude Code — sent Buck's requested full team report: 12 real fixes shipped+verified this session, plus 5 honestly-stated open items (5-division Drive reorg decision awaiting GBT/BC, Field GPT bundling not yet fixed at the source, unexplained draft mystery, broader regression-test suite not built, GBT/BC still not actively engaging despite multiple direct asks). Posted in full to LIVE_TEAM_COMMS.md and summarized to Buck via Telegram. 60-second cadence continues.
+
+## Full team report sent per Buck's request (2026-07-13 ~12:39-12:40 MT)
+Buck: "You need to send out a full report to the team and get this fixed.
+Get it all fixed." Compiled and posted a genuinely comprehensive report to
+`LIVE_TEAM_COMMS.md` (not a rushed summary) covering all 12 real fixes
+shipped and verified this session (see prior entries for full detail on
+each), and explicitly did NOT claim "all fixed" - listed 5 honest
+remaining gaps instead of rounding up:
+1. The 5-division Drive-reorg decision (posted to GBT/BC, no response yet)
+2. Field GPT itself not told to stop bundling RFI questions
+3. The unexplained mystery draft (no log trail)
+4. Broader outage-detection regression-test suite not built
+5. GBT/BC still haven't actively engaged with anything posted today
+
+Sent Buck a concise Telegram version pointing to the full report, and was
+direct that item 5 specifically isn't something Code can fix alone - it
+needs Buck or GBT/BC to actually open a session and respond, not another
+automated post into a channel nobody's reading yet.
+
+## Real bid-leveling fix: reclassify_existing_divisions() (2026-07-13 ~12:24-12:33 MT)
+Buck pushed back on the earlier flag-only fix: "How do we fix that leveling
 
 ## Real bid-leveling fix: reclassify_existing_divisions() (2026-07-13 ~12:24-12:33 MT)
 Buck pushed back on the earlier flag-only fix: "How do we fix that leveling
