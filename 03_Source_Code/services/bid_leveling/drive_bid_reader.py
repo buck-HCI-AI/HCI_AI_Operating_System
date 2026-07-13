@@ -881,6 +881,108 @@ def read_drive_bids(project_id: int, latest_only: bool = True) -> dict:
     return result
 
 
+# 2026-07-13: Bid Leveling Option B, per GBT's explicit directive (3-way
+# team consensus, P0 ADR-003 handoff). These 5 divisions (05, 06, 08, 09, 16)
+# have vendor folders that were never organized into named sub-packages in
+# Drive, so read_drive_bids()/_sub_package_parent() can't separate their
+# distinct trades. Rather than physically reorganize Buck's Drive (Option A,
+# rejected), infer sub-trade groupings FOR DISPLAY ONLY from each vendor's
+# real scope_summary text. Keyword lists below were derived from and
+# verified against the actual 46 real vendor rows on project 3 (1355
+# Riverside) - not guessed. This never writes to drive_bids.division_num/
+# division_name; it only adds a display-only "inferred_subgroups" field to
+# get_leveling_summary()'s output. Order within each division's rule list
+# matters - first matching keyword wins, ordered from most to least specific
+# to avoid one vendor's incidental word choice (e.g. a framing vendor
+# mentioning "windows and doors" in passing) stealing it from its real trade.
+_DIVISION_INFERENCE_RULES = {
+    "05": [
+        ("Structural Steel — Fabrication & Erection [inferred]",
+         ["structural steel", "beam", "column", "erection", "detailing", "welding"]),
+        ("Metal Supply — Non-Structural [inferred]",
+         ["shelves", "supply and delivery"]),
+    ],
+    "06": [
+        ("Cabinetry [inferred]", ["cabinet", "vanit"]),
+        ("Material Supply [inferred]", ["lumber", "building materials"]),
+        ("Framing / Building Envelope [inferred]",
+         ["framing", "demolition", "siding", "envelope", "renovation"]),
+    ],
+    "08": [
+        ("Garage Doors [inferred]", ["garage door"]),
+        ("Door Hardware [inferred]", ["door hardware"]),
+        ("Glass / Shower Enclosures [inferred]", ["shower", "glass railing", "mirror"]),
+        ("Windows & Exterior Doors [inferred]",
+         ["window", "exterior door", "lift-and-slide", "reynaers"]),
+        ("Interior Doors [inferred]", ["interior door"]),
+    ],
+    "09": [
+        ("Stone / Countertops [inferred]", ["stone", "countertop", "quartzite", "granite"]),
+        ("Cabinetry [inferred]", ["cabinet", "vanit"]),
+        ("Flooring [inferred]", ["carpet", "flooring", "oak flooring"]),
+        ("Drywall [inferred]", ["drywall"]),
+        ("Tile [inferred]", ["tile"]),
+        ("Painting [inferred]", ["paint"]),
+        ("Framing / Building Envelope [inferred]",
+         ["framing", "demolition", "siding", "envelope", "renovation"]),
+    ],
+    "16": [
+        ("AV / Low Voltage [inferred]",
+         ["av integration", "audio", "video", "camera", "prewire", "pre-wire",
+          "low voltage", "network", "automation", "touch panel", "smart home"]),
+        ("Electrical Service [inferred]",
+         ["electrical", "power wiring", "distribution panel", "sub panel", "main service"]),
+    ],
+}
+_UNCLASSIFIED_LABEL = "Other / Unclassified [inferred]"
+
+
+def _infer_subgroups(division_num: str, bids: list) -> dict:
+    """
+    Group bids within one division into inferred sub-trades using
+    _DIVISION_INFERENCE_RULES, keyed off vendor name + scope_summary text.
+    Display-only - returns a fresh dict, never mutates the input bids or
+    touches the DB. Returns {} if this division has no ruleset defined.
+    """
+    rules = _DIVISION_INFERENCE_RULES.get(division_num)
+    if not rules:
+        return {}
+
+    buckets: dict = {}
+    for bid in bids:
+        haystack = f"{bid.get('vendor', '')} {bid.get('scope', '')}".lower()
+        label = _UNCLASSIFIED_LABEL
+        for rule_label, keywords in rules:
+            if any(kw in haystack for kw in keywords):
+                label = rule_label
+                break
+        buckets.setdefault(label, []).append(bid)
+
+    subgroups = {}
+    for label, group_bids in buckets.items():
+        priced = [b for b in group_bids if b.get("amount")]
+        if not priced:
+            subgroups[label] = {
+                "bid_count": len(group_bids), "low_bid": None, "low_vendor": None,
+                "high_bid": None, "spread": None, "spread_pct": None,
+                "bids": group_bids,
+            }
+            continue
+        amounts = sorted(b["amount"] for b in priced)
+        low_bid, high_bid = amounts[0], amounts[-1]
+        low_vendor = next((b["vendor"] for b in priced if b["amount"] == low_bid), "")
+        subgroups[label] = {
+            "bid_count":  len(priced),
+            "low_bid":    low_bid,
+            "low_vendor": low_vendor,
+            "high_bid":   high_bid,
+            "spread":     high_bid - low_bid,
+            "spread_pct": round(((high_bid - low_bid) / low_bid) * 100, 1) if low_bid else None,
+            "bids":       sorted(group_bids, key=lambda b: b.get("amount") or 0),
+        }
+    return subgroups
+
+
 def get_leveling_summary(project_id: int) -> dict:
     """
     Return leveling summary per division: low bid, spread, vendor count.
@@ -914,6 +1016,7 @@ def get_leveling_summary(project_id: int) -> dict:
         spread_pct = round((spread / low_bid) * 100, 1) if low_bid else None
         low_vendor = next((b["vendor"] for b in bids if b["amount"] == low_bid), "")
         leveling_reliable = not (spread_pct is not None and spread_pct > 300 and len(bids) >= 3)
+        inferred_subgroups = _infer_subgroups(div_data["division_num"], bids)
         summary[div_num] = {
             "division_name": div_data["division_name"],
             "bid_count":     len(bids),
@@ -927,7 +1030,11 @@ def get_leveling_summary(project_id: int) -> dict:
                 (f"Spread of {spread_pct}% across {len(bids)} vendors is too wide to be genuine "
                  f"competing bids for the same scope - likely multiple distinct trades sharing "
                  f"this division. Review individual bid scopes below before trusting low/high as "
-                 f"a real comparison."),
+                 f"a real comparison."
+                 + (" Inferred sub-trade groupings below (from scope text, display-only, source "
+                    "data unchanged) offer a more apples-to-apples comparison."
+                    if inferred_subgroups else "")),
+            "inferred_subgroups": inferred_subgroups or None,
             "bids":          sorted(bids, key=lambda b: b["amount"] or 0),
         }
     return summary

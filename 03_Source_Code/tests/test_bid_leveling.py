@@ -346,6 +346,76 @@ test("BL-RELIABLE-02: implausible spreads flagged with reason, data not hidden",
 test("BL-RELIABLE-03: plausible spreads not falsely flagged as unreliable",      test_reliable_divisions_not_falsely_flagged)
 
 
+# ── BL-INFER: Option B display-only sub-trade inference (2026-07-13) ──
+# Per GBT's P0 ADR-003 handoff: divisions 05/06/08/09/16 on 1355R have vendor
+# folders never organized into named Drive sub-packages, so the real fix
+# (reclassify_existing_divisions) can't separate their distinct trades. Option
+# B infers sub-trade groupings from real scope_summary text for DISPLAY ONLY -
+# must never write back to drive_bids.division_num/division_name.
+print("\nGroup: BL-INFER — Option B inferred sub-trade groupings (regression, 2026-07-13)")
+
+def test_inferred_subgroups_present_for_flagged_divisions():
+    """Divisions 05, 08, 16 (clean, unambiguous real vendor scopes) must each
+    produce inferred_subgroups with every label ending in the required
+    "[inferred]" marker, per GBT's explicit display-only spec."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    bad = []
+    for div in ("05", "08", "16"):
+        entry = summary.get(div)
+        if not entry:
+            bad.append(f"{div}: division missing from summary")
+            continue
+        sub = entry.get("inferred_subgroups")
+        if not sub:
+            bad.append(f"{div}: no inferred_subgroups present")
+            continue
+        unmarked = [label for label in sub if not label.endswith("[inferred]")]
+        if unmarked:
+            bad.append(f"{div}: labels missing '[inferred]' marker: {unmarked}")
+    return len(bad) == 0, "; ".join(bad) if bad else "05/08/16 all produced correctly-marked inferred_subgroups"
+
+def test_inferred_subgroups_sum_to_division_bid_count():
+    """Every bid in a division must land in exactly one inferred subgroup -
+    none dropped, none duplicated - proving this is a real regrouping of the
+    existing bids, not a fabricated or partial view."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    bad = []
+    for div in ("05", "06", "08", "09", "16"):
+        entry = summary.get(div)
+        if not entry or not entry.get("inferred_subgroups"):
+            continue
+        total = sum(g["bid_count"] for g in entry["inferred_subgroups"].values())
+        if total != entry["bid_count"]:
+            bad.append(f"{div}: division bid_count={entry['bid_count']} but subgroups sum to {total}")
+    return len(bad) == 0, "; ".join(bad) if bad else "all inferred subgroup counts reconcile to division totals"
+
+def test_inference_does_not_alter_underlying_division_data():
+    """Option B is explicitly display-only. The division_name and the raw
+    'bids' list at the division level (vendor, amount, scope, file_id - the
+    actual drive_bids row data) must be identical to what they'd be without
+    inference; inferred_subgroups must be a strictly additive field."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    bad = []
+    for div in ("05", "08", "16"):
+        entry = summary.get(div)
+        if not entry:
+            continue
+        all_file_ids = {b["file_id"] for b in entry["bids"]}
+        sub_file_ids = set()
+        for g in entry["inferred_subgroups"].values():
+            sub_file_ids.update(b["file_id"] for b in g["bids"])
+        if all_file_ids != sub_file_ids:
+            bad.append(f"{div}: division-level file_ids {all_file_ids} != subgroup file_ids {sub_file_ids}")
+    return len(bad) == 0, "; ".join(bad) if bad else "subgroup bids are the same underlying rows, nothing fabricated or dropped"
+
+test("BL-INFER-01: inferred subgroups present + correctly marked '[inferred]'", test_inferred_subgroups_present_for_flagged_divisions)
+test("BL-INFER-02: inferred subgroup counts reconcile to division totals",      test_inferred_subgroups_sum_to_division_bid_count)
+test("BL-INFER-03: inference is additive only, same underlying bid rows",       test_inference_does_not_alter_underlying_division_data)
+
+
 def test_cleanup_queued_bid_leveling_items():
     """test_live_run_queues_items creates a real live approval-queue row every run
     and nothing above consumes it - found 2026-07-07 that repeated runs left 3
