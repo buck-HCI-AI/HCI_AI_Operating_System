@@ -4830,6 +4830,45 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Bid-division-collision check errored: {e}"})
 
+    # 25. Stale agent heartbeats - found 2026-07-13 the CODE row in agent_heartbeats
+    #     hadn't updated since 2026-07-11 despite continuous real activity the whole
+    #     time, because nothing was calling POST /agent/heartbeat during normal work.
+    #     GBT sent a P0 "team went down" escalation partly built on this real gap, but
+    #     also partly on GBT/BC's Telegram backlogs (459/148 unread) which are NOT a
+    #     regression - GBT/BC are chat-based and only poll when a human opens a chat,
+    #     so their heartbeats going quiet for hours/days is normal, not an outage.
+    #     This check reflects that distinction instead of treating every agent the
+    #     same way: CODE is expected to be near-continuous (flag if stale > 30 min),
+    #     GBT/BC are expected to be intermittent (only flag as informational if stale
+    #     for multiple days, and never as high severity for that alone).
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT agent_id, status, last_heartbeat_mt,
+                           EXTRACT(EPOCH FROM (NOW() - last_heartbeat_mt))/60 AS stale_minutes
+                    FROM agent_heartbeats
+                """)
+                rows = cur.fetchall()
+        code_stale = [r for r in rows if r["agent_id"] == "CODE" and r["stale_minutes"] and r["stale_minutes"] > 30]
+        other_very_stale = [r for r in rows if r["agent_id"] != "CODE" and r["stale_minutes"] and r["stale_minutes"] > 4320]  # 3 days
+        if code_stale:
+            findings.append({
+                "severity": "high",
+                "category": "code_heartbeat_stale",
+                "detail": "Claude Code's own heartbeat hasn't updated in 30+ minutes despite the standing check-in directive - either the loop actually stopped, or something is active but not calling POST /agent/heartbeat.",
+                "items": [f"{r['agent_id']}: {round(r['stale_minutes'])} min stale, last seen {r['last_heartbeat_mt']}" for r in code_stale],
+            })
+        if other_very_stale:
+            findings.append({
+                "severity": "low",
+                "category": "chatbased_agent_heartbeat_quiet",
+                "detail": "GBT/BC heartbeat quiet for 3+ days - informational only, this is expected for chat-based agents that only report in when a human opens a session with them, not evidence of an outage.",
+                "items": [f"{r['agent_id']}: {round(r['stale_minutes']/60)} hrs stale, last seen {r['last_heartbeat_mt']}" for r in other_very_stale],
+            })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Stale-heartbeat check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
