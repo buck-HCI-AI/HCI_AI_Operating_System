@@ -19,7 +19,37 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:59 MT, by Claude Code — worked through 3 of 4 P0 watchdog items: handoff-routing Telegram alert (shipped), unread-backlog watchdog (confirmed already exists and works, no build needed), failed-handoffs watchdog (shipped, caught 6 real handoffs stale 14-16 days). Asked Buck whether to continue to regression tests or pause. 60-second cadence, live back-and-forth continues.
+2026-07-13, ~12:06 MT, by Claude Code — found the real cause of Buck's repeated "drafts folder is a mess" complaint: the 10 old test-RFI Outlook drafts were never cleaned up when the underlying DB/Drive test-folder move happened, and a genuinely new real RFI draft collided in naming with one of them ("RFI 001" meaning two different things). Fixed. 60-second cadence, live back-and-forth continues, moving to regression-tests item next.
+
+## Drafts-folder "mess" root cause finally found - own earlier gap (2026-07-13 ~12:03-12:06 MT)
+Buck repeated "my draft box is still a mess" a second time after I'd
+checked and said it was clean. Checked more thoroughly this time (all mail
+folders with item counts, not just Drafts) rather than repeating the same
+surface-level check:
+- The 10 OLD test-RFI drafts (waterproofing/foundation topics, RFI 001-010,
+  created 2026-07-11) were still sitting in the live Drafts folder. Earlier
+  this session I moved the underlying `rfis` DB rows to
+  `test_pending_reverify` and the Drive `.docx` files to a TEST folder, but
+  **never touched the actual Outlook drafts** - a real gap in that earlier
+  cleanup, not something new breaking.
+- Then Field GPT's real retest produced an actual new RFI draft
+  ("RFI 001 - Garage Door Rendering and Door Style Clarifications",
+  landed 18:01 UTC) which collided by number with the still-present old
+  fake "RFI 001 - Waterproofing Membrane Type" draft - two completely
+  different drafts both labeled "RFI 001" for 1355 Riverside. That
+  collision is what Buck was actually seeing as "a mess."
+- Fixed: moved all 10 old test-RFI drafts to Deleted Items (recoverable,
+  not hard-deleted, same pattern as the earlier bulk cleanup). Verified
+  final state: 15 drafts, all real (1 new garage-door RFI + 14 genuine
+  correspondence).
+- **Also found, not yet actioned**: 2 items sitting in Outbox since
+  2026-06-05 (queued to send, never sent, addressed to Buck's own
+  buckadams@mac.com - "1355_Riverside_Full_Story..." photo/story content).
+  Asked Buck whether to look at those too or leave them - not touched
+  without his answer.
+
+## Watchdog list: 3 of 4 items done (2026-07-13 ~11:56-11:59 MT)
+Continuing to work through Buck's prioritized P0 list after item #1
 
 ## Watchdog list: 3 of 4 items done (2026-07-13 ~11:56-11:59 MT)
 Continuing to work through Buck's prioritized P0 list after item #1
