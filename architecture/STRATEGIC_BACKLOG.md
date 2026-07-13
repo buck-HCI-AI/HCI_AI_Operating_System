@@ -2732,3 +2732,21 @@ Refactor the live RFI workflow around the canonical RFI Tracker. Use Buck's corr
 *Source: ChatGPT | 2026-07-13*
 
 Gateway issue discovered during live operation: unread message retrieval can fail with ResponseTooLargeError when backlog grows. Implement pagination/streaming immediately. Requirements: support limit/offset or cursor-based reads, newest-first retrieval, unread count separate from payload, fetch-by-thread, incremental ACKs, and automatic backlog trimming after acknowledgment. GBT must be able to retrieve communications in batches (e.g. 25-50 messages) instead of one oversized response. Add regression tests that simulate very large unread queues and verify retrieval without failure.
+
+
+### P0 Canonical Folder Cleanup - Do Not Stop Until Clean
+*Source: ChatGPT | 2026-07-13*
+
+Execution order: stop incremental edits and complete the cleanup. Browser Claude's audit becomes the punch list. CODE implements every correction. For 64EW, 101F, and 1355R active bid folders: remove misplaced divisions, eliminate duplicate content, archive superseded artifacts, regenerate missing Gold Standard Bid Summaries, verify every division against the HCI standard, and perform a final folder-by-folder QA pass. Acceptance is visual: Buck can open any active division and see one clean canonical working set with no legacy clutter, no duplicate files, no misplaced content, and PM-ready bid summaries. Require BC review and GBT architectural signoff before calling complete.
+
+
+### P0 Retrospective Full-System Audit — Day One to Present
+*Source: ChatGPT | 2026-07-13*
+
+Expand the Deep Verification Program into a full retrospective audit of the HCI AI Construction OS from day one through today. Scope includes all architecture decisions, workflows, integrations, automations, communications paths, bid systems, RFI systems, Shared Drive mining, Field GPT behavior, folder structures, trackers, generated artifacts, and test infrastructure. Required method: (1) inventory everything built and every active dependency; (2) read and reconcile source documents, configs, code, logs, Drive artifacts, ADRs, and prior test results; (3) execute end-to-end tests on real production-like data; (4) apply three-level verification—CODE implementation verification, Browser Claude independent audit, and GBT architectural/governance signoff; (5) log every defect, root cause, fix, regression test, and evidence; (6) retire superseded/duplicate artifacts and document canonical replacements; (7) produce a prioritized remediation backlog and completion matrix. No subsystem is cons
+
+
+### P0 Permanent Deep Verification Program
+*Source: ChatGPT | 2026-07-13*
+
+Implement a permanent Deep Verification Program as part of the 100/100 initiative. This is now a required operating discipline, not a one-time audit. For every workflow and every implementation: (1) validate against production source documents, (2) inspect active folder structure, (3) trace end-to-end workflow, (4) compare outputs across agents, (5) document root cause for every defect, (6) implement the fix, (7) create a regression test, (8) require peer review by another agent, and (9) require GBT architectural signoff before completion. Track verification coverage and defect escape rate as KPIs. The success metric is that the team consistently finds and fixes issues before Buck does. Apply this immediately to the active bid platform rebuild, RFI workflow, communications architecture, and 100/100 recovery.
