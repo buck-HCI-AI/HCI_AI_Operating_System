@@ -19,7 +19,70 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:20 MT, by Claude Code — bid-leveling fixed system-wide, not just the one division-13 instance: get_leveling_summary() now flags any division with an implausible spread (>300%, 3+ vendors) as unreliable instead of silently showing it as a valid comparison. Live-tested against real 1355R data: 6 of 17 divisions flagged, 11 genuinely reliable. Posted to team channel for GBT/BC review since Buck wants "all 3 team members agree" on 100/100. Continuing through the list per Buck's instruction.
+2026-07-13, ~12:38 MT, by Claude Code — built the REAL bid-leveling fix (not just the flag): found and ran reclassify_existing_divisions(), which corrected 18 real drive_bids rows in the DB, eliminating division 13's collision entirely (not just hiding it downstream). Posted the remaining 5-division gap to GBT/BC as a real decision needing 3-way input, per Buck's explicit ask. Also found and fixed Field GPT bundling 2 questions into single RFIs (violates the standing one-question-per-RFI rule) - split into 5 clean sequential RFIs. Regression tests re-verified for real after a stuck background run. Continuing through the list.
+
+## Real bid-leveling fix: reclassify_existing_divisions() (2026-07-13 ~12:24-12:33 MT)
+Buck pushed back on the earlier flag-only fix: "How do we fix that leveling
+to operate as intended? Not just flagged... What is the fix?" - correctly
+guessing at something close to a real sub-division/sub-package structure.
+Investigated rather than defending the flag-only approach:
+- Found `_SUB_PACKAGE_TO_PARENT_DIVISION` already existed in
+  `drive_bid_reader.py` (built 2026-07-08) - a name-keyed map that resolves
+  sub-package folders (e.g. "Insulation", "Special Construction") to their
+  real parent division, exactly matching Buck's canonical folder structure.
+  It works correctly on a fresh Drive walk (verified: `walk_bid_folders()`
+  correctly resolved "Special Construction" to Division 10 live).
+- **Real root cause of why it wasn't already fixed**: `scan_project_bids()`
+  only classifies genuinely NEW files (`file_id not in known_ids`) - it
+  never re-derives division_num/division_name for already-ingested rows,
+  so the existing "13_Insulation"/"13_Special Construction" collision in
+  the DB never got corrected even after the mapping logic improved.
+- **Fix**: added `reclassify_existing_divisions(project_id, dry_run)` to
+  `drive_bid_reader.py` - cheap, DB-only re-application of the same mapping
+  against already-stored rows, no re-download/re-extraction needed.
+  Dry-run first (18 proposed changes), then ran for real on 1355R.
+  **Verified in the DB directly**: division "13" no longer exists at all -
+  Insulation correctly moved to 07 (Thermal & Moisture), Special
+  Construction to 10 (Specialties), and the same pass also caught 3 other
+  pre-existing misclassifications (Roofing, Equipment & Appliances,
+  Furnishings) that had the identical hidden problem. Commit `b09d30c`.
+- **Honest remaining gap**: Divisions 05, 06, 08, 09, 16 still can't be
+  auto-classified - their vendor folders in Drive were never organized into
+  named sub-package subfolders at all, so there's no name for the mapping
+  to key off. This is a data-organization problem, not a code problem.
+  Buck said "work with GBT on that fix - 3 way validation" - posted the
+  actual decision (physically reorganize Drive folders vs. infer sub-trade
+  from bid scope text via AI) to `LIVE_TEAM_COMMS.md` as a direct question
+  for GBT/BC, not decided solo.
+- **Regression test re-verification**: the background test run
+  (`tests/test_bid_leveling.py`) hung on a slow live call; rather than
+  repeat an unverified "tests passing" claim to Buck, killed the stuck
+  process and directly re-ran just the 3 BL-RELIABLE assertions against the
+  live API - genuinely confirmed PASS before reporting anything further.
+
+## Field GPT RFI bundling violation found + fixed (2026-07-13 ~12:36-12:38 MT)
+Buck: "field GBT needs help it created RFIs but not to the standard we had
+discussed." Checked the actual question text of the 3 real Field-GPT-
+submitted RFIs (ids 929, 930, 933) - confirmed real: RFI 001 (garage door)
+and RFI 002 (gas fireplace) each bundled 2 separate questions into one RFI,
+violating the standing "one question per RFI, no bundling" rule Buck set
+2026-07-11 (documented in `BC_TO_CODE_RFI_STANDARD_ONE_PER_QUESTION_2026-
+07-11.md`). RFI 003 (fire pit) was correctly single-question.
+
+Fixed: voided 929 and 930 (status='void', reason noted in `response`),
+renumbered the fire pit RFI from 3 to 5, inserted 4 new properly-split
+RFIs (ids 934-937, numbered 1-4, one question each). Final clean set:
+1. Garage door rendering placeholder confirmation
+2. Garage door style confirmation
+3. Living room gas stove manufacturer spec
+4. Exterior fire feature/gas equipment responsibility
+5. Fire pit construction (unchanged, was already correct)
+
+Not yet done: no feedback loop back to Field GPT itself telling it to stop
+bundling going forward - this fixed the existing bad data, not the source
+of the bundling. Worth telling Buck to remind Field GPT of the rule
+directly, or building a validation check into `/field/rfi` that rejects/
+warns on a question containing multiple numbered sub-questions.
 
 ## Bid-leveling fixed properly, not just the one instance (2026-07-13 ~12:18-12:20 MT)
 Buck: "fix the bid leveling front end and get it reading correctly, tested
