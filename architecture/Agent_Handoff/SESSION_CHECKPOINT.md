@@ -19,6 +19,9 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
+2026-07-13, ~15:57 MT, by Claude Code — Buck: "Fix gbt - then proceed." Fixed the real ADR-003 message-retrieval scalability bug: both /gateway/agent/unread and /gateway/agent/messages/unread had NO LIMIT clause - fetched every matching row unconditionally, so GBT's real backlog (hundreds of messages) produced an oversized response that failed outright with zero partial data. Fixed both: real pagination (default 10/page, tuned against live ~5-9KB/message measurement), newest-first default ordering (GBT's explicit ask), true total_unread count independent of page size, thread_id filter added to agent_messages. Verified live against GBT's actual 28-message backlog. 5 new regression tests, all passing. Notified GBT directly the fix is live. Resuming bid-leveling extraction (60/77 done, zero failures) now that this is done, per Buck's "then proceed."
+
+## Last updated (superseded)
 2026-07-13, ~15:48 MT, by Claude Code — BC gave real 3-way sign-off with an actual verification methodology (source-verification against known-correct totals, scope-completeness check, cross-bid union check) for the scope-matrix build - will apply once extraction completes. Corrected 3 stale items in BC's response (655G already resolved, ai_messages mirror already built+live, not pending). Held BC/GBT's new "FIX-0" (move 7 RFI docs out of bid folder) since it touches RFI-workflow territory Buck said he's handling himself. GBT flagged a real ADR-003 pagination bug (large-backlog retrieval failures) - acknowledged, queued behind current priority work. Extraction progress: 27/77 done, zero failures.
 
 ## Last updated (superseded)
