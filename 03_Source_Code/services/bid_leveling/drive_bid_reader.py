@@ -184,6 +184,135 @@ def extract_bid_with_claude(pdf_bytes: bytes, vendor_name: str,
         return {"error": str(e)}
 
 
+def extract_bid_line_items_with_claude(pdf_bytes: bytes, vendor_name: str,
+                                        project_name: str, div_name: str) -> dict:
+    """
+    2026-07-13, per Buck's explicit directive ("full bid level summaries
+    that compare the bid... read every bid") and GBT's gold-standard
+    scope-equivalency proposal. extract_bid_with_claude()/_with_gemini()
+    above capture only a one-sentence scope_summary - enough to classify a
+    bid into a trade bucket (Option B), not enough to explain why two bids
+    for the same trade differ by 6x. This asks for the actual itemized
+    scope breakdown: what's included, what's explicitly excluded, what's
+    priced as an allowance vs. fixed price, and any qualifications - the
+    real apples-to-apples comparison data. Same dual-provider pattern as
+    the functions above (Claude here since Gemini's free tier is
+    unreliable, per extract_bid_with_claude's docstring), same JSON
+    contract style. NOT wired into any automatic scan path yet - this is
+    infrastructure built ahead of the team-consensus decision on rollout
+    scope/sequencing (see LIVE_TEAM_COMMS.md 2026-07-13 15:02 MT), not yet
+    invoked against real bid PDFs.
+    """
+    import base64
+    try:
+        import anthropic
+        from config import settings
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        prompt = (
+            f"This is a bid proposal PDF for the {div_name} division of {project_name}.\n"
+            f"Vendor: {vendor_name}\n\n"
+            "Extract a detailed line-item scope breakdown and return ONLY valid JSON "
+            "(no markdown, no explanation):\n"
+            '{"line_items": [{"category": "...", "description": "...", '
+            '"included": true, "is_allowance": false, "amount": null, '
+            '"qualification_notes": "..."}]}\n\n'
+            "Rules:\n"
+            "- category: short trade-specific label for each distinct scope item "
+            "(e.g. \"Cabinetry - Kitchen\", \"Countertops - Primary Bath\", "
+            "\"Flooring - Bedroom 2\")\n"
+            "- Extract EVERY distinct scope item/room/category mentioned in the "
+            "proposal, not a single overall summary\n"
+            "- included: true if this scope is part of the bid, false if the "
+            "proposal explicitly excludes or qualifies it out\n"
+            "- is_allowance: true if this item is priced as an allowance rather "
+            "than a fixed price\n"
+            "- amount: numeric line-item dollar amount if broken out separately in "
+            "the proposal, else null (covered under the lump-sum total)\n"
+            "- qualification_notes: any caveats, conditions, or exclusions noted "
+            "for this specific item, else null\n"
+            "- If the proposal has no itemized breakdown at all (pure lump sum, no "
+            "detail), return a single line_item with category \"Full Scope (lump "
+            "sum, no itemized breakdown available)\" and included=true"
+        )
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "document", "source": {
+                        "type": "base64", "media_type": "application/pdf",
+                        "data": base64.b64encode(pdf_bytes).decode(),
+                    }},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text").strip()
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+        return json.loads(text)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def ingest_bid_line_items(drive_bid_id: int, dry_run: bool = True) -> dict:
+    """
+    Runs extract_bid_line_items_with_claude() for one drive_bids row and
+    (if dry_run=False) inserts the results into bid_line_items. dry_run=True
+    (default) returns the extracted items without writing, matching the
+    dry-run-first convention used throughout this file (scan_project_bids,
+    reclassify_existing_divisions). Idempotent: re-running for the same
+    drive_bid_id with dry_run=False replaces that bid's existing line items
+    rather than accumulating duplicates.
+    """
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, project_id, vendor_name, division_name, file_id FROM drive_bids WHERE id=%s",
+                (drive_bid_id,)
+            )
+            row = cur.fetchone()
+    if not row:
+        return {"error": f"drive_bids row {drive_bid_id} not found"}
+
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT project_code FROM projects WHERE id=%s", (row["project_id"],))
+            proj = cur.fetchone()
+    project_name = proj["project_code"] if proj else str(row["project_id"])
+
+    token = get_google_token("drive")
+    pdf_bytes = _download_bytes(row["file_id"], token)
+    result = extract_bid_line_items_with_claude(
+        pdf_bytes, row["vendor_name"], project_name, row["division_name"]
+    )
+    if "error" in result:
+        return result
+
+    line_items = result.get("line_items", [])
+    if not dry_run and line_items:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM bid_line_items WHERE drive_bid_id=%s", (drive_bid_id,))
+                for item in line_items:
+                    cur.execute("""
+                        INSERT INTO bid_line_items
+                            (drive_bid_id, category, description, included, is_allowance,
+                             amount, qualification_notes, extraction_source)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                    """, (
+                        drive_bid_id, item.get("category", "Unclassified"),
+                        item.get("description"), item.get("included", True),
+                        item.get("is_allowance", False), item.get("amount"),
+                        item.get("qualification_notes"), "claude",
+                    ))
+            conn.commit()
+
+    return {"drive_bid_id": drive_bid_id, "dry_run": dry_run,
+            "line_items_found": len(line_items), "line_items": line_items}
+
+
 def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
     """
     Fallback: extract bid amount from text via regex.
