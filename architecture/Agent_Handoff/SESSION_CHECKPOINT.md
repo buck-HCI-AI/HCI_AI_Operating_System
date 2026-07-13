@@ -19,7 +19,46 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:40 MT, by Claude Code — sent Buck's requested full team report: 12 real fixes shipped+verified this session, plus 5 honestly-stated open items (5-division Drive reorg decision awaiting GBT/BC, Field GPT bundling not yet fixed at the source, unexplained draft mystery, broader regression-test suite not built, GBT/BC still not actively engaging despite multiple direct asks). Posted in full to LIVE_TEAM_COMMS.md and summarized to Buck via Telegram. 60-second cadence continues.
+2026-07-13, ~12:45 MT, by Claude Code — RFI pipeline actually completed end-to-end for real: merged the over-split garage door RFI back per Buck's direct correction, then ran the full doc/Drive/tracker/draft process step (never actually run before) for all 4 real RFIs - verified 4 real drafts + 4 tracker rows landed. Caught and cleaned up own leftover stale draft/tracker row from the earlier void. 60-second cadence continues.
+
+## RFI pipeline completed end-to-end, own splitting mistake corrected (2026-07-13 ~12:41-12:45 MT)
+Buck: "Those 2 garage door questions seem like 1 to me? Just asked
+directly. ... I still don't see the RFI tracker being updated? Or the RFIs
+in the folder like earlier?" Both correct, both fixed:
+- **Over-split garage door RFI**: agreed with Buck's read - "Is the
+  rendering a placeholder?" and "Is the door style correct?" are one
+  coherent design-clarification question, not two separate topics (unlike
+  the gas fireplace ones, which genuinely are two different asks - stove
+  spec vs. who's responsible for exterior fixtures). Voided the two
+  over-split RFIs (934, 935), created one merged replacement (938),
+  renumbered the sequence clean: 1 garage door, 2 gas stove, 3 exterior
+  fixtures, 4 fire pit.
+- **Tracker/Drive folder gap**: confirmed real - `/field/rfi` only creates
+  the DB row; the separate `/field/rfi/{id}/process` step (doc generation,
+  Drive save, tracker update, email draft) had never been run for ANY of
+  today's real RFIs, only Field GPT's initial submission call. Ran
+  `/process` for all 4 final RFIs - all succeeded on every step
+  (read_rfi/generate_docx/save_to_drive/update_tracker/create_email_draft
+  all `True`, zero errors). **Verified directly, not just trusted the
+  response**: 4 real Outlook drafts confirmed present, 4 real tracker rows
+  confirmed present.
+- **Caught own follow-on mistake before Buck had to**: the original
+  bundled garage-door draft (from voided RFI 929) and its stale tracker
+  row were still sitting there - same class of gap as the earlier
+  drafts-mess incident (voiding a DB row doesn't auto-clean the associated
+  Drive/Outlook artifacts). Moved the stale draft to Deleted Items, marked
+  the stale tracker row VOID with a note, before reporting anything to
+  Buck as complete.
+
+**This also resolves the earlier draft-creation mystery** (the unexplained
+garage-door draft with no log trail from ~12:01) in a roundabout way - that
+draft is now gone (was the stale one just cleaned up), and the REAL
+process pipeline is confirmed working end-to-end via direct testing. Still
+don't know how that original mystery draft was created, but it no longer
+matters since it's been superseded and removed.
+
+## Full team report sent per Buck's request (2026-07-13 ~12:39-12:40 MT)
+Buck: "You need to send out a full report to the team and get this fixed.
 
 ## Full team report sent per Buck's request (2026-07-13 ~12:39-12:40 MT)
 Buck: "You need to send out a full report to the team and get this fixed.
