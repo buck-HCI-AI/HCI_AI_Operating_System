@@ -4869,6 +4869,32 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Stale-heartbeat check errored: {e}"})
 
+    # 26. Failed handoffs sitting unmonitored - found 2026-07-13: handoff_processor.py
+    #     moves any handoff that fails validation into Agent_Handoff/Failed/, but
+    #     nothing ever checked that directory again. 6 files were sitting there from
+    #     2026-06-27 through 06-29 - over 2 weeks stale - with no alert ever raised.
+    try:
+        failed_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..",
+                                   "architecture", "Agent_Handoff", "Failed")
+        if os.path.isdir(failed_dir):
+            now_ts = datetime.now(timezone.utc).timestamp()
+            stale_failed = []
+            for fname in os.listdir(failed_dir):
+                fpath = os.path.join(failed_dir, fname)
+                if os.path.isfile(fpath):
+                    age_hours = (now_ts - os.path.getmtime(fpath)) / 3600
+                    if age_hours > 1:
+                        stale_failed.append((fname, age_hours))
+            if stale_failed:
+                findings.append({
+                    "severity": "medium",
+                    "category": "unaddressed_failed_handoffs",
+                    "detail": f"{len(stale_failed)} handoff(s) sitting in Agent_Handoff/Failed/ for 1+ hour with nothing having re-checked them - a failed handoff should be fixed and resubmitted or explicitly written off, not silently abandoned.",
+                    "items": [f"{n}: {round(a/24, 1)} days old" for n, a in sorted(stale_failed, key=lambda x: -x[1])],
+                })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Failed-handoffs check errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
