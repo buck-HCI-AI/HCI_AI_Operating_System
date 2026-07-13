@@ -19,7 +19,43 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:06 MT, by Claude Code — found the real cause of Buck's repeated "drafts folder is a mess" complaint: the 10 old test-RFI Outlook drafts were never cleaned up when the underlying DB/Drive test-folder move happened, and a genuinely new real RFI draft collided in naming with one of them ("RFI 001" meaning two different things). Fixed. 60-second cadence, live back-and-forth continues, moving to regression-tests item next.
+2026-07-13, ~12:15 MT, by Claude Code — found a real, unexplained draft-creation mystery (a real Outlook RFI draft exists with zero corresponding gateway_request_log entry - can't confirm how it was created, asked Buck for Field GPT's literal error text). Gave Buck an honest, non-inflated 100/100 status: real progress today was reactive not proactive, bid-leveling is only partially fixed (Division 09 still has the same root-cause bug), regression tests (the thing that would catch problems before Buck does) haven't been started. Buck gave real feedback: routine pings should say what's being actively worked on, not just "nothing new" - apply this going forward. 60-second cadence continues.
+
+## Field GPT draft-creation mystery + honest status check (2026-07-13 ~12:11-12:15 MT)
+Buck: "Field GBT saying can't make the draft emails. But your seeing
+different?" Checked `gateway_request_log` for any `/field/rfi/*/process` or
+`/email/draft` calls around when the "RFI 001 - Garage Door..." draft
+appeared (18:01 UTC) - **found none**. The draft is real and still exists
+in Outlook, but there is no record anywhere in our system of how it was
+created. This means Field GPT's "can't make draft emails" claim is
+plausible, not something to dismiss - told Buck this directly and asked
+for the literal error text Field GPT produces, since that's the fastest
+path to a real diagnosis rather than guessing. **Unresolved, awaiting his
+reply.**
+
+Buck then asked a real status question, three parts, answered honestly
+rather than reassuringly:
+- **100/100**: not there. Today's real fixes (numbering bug, division-13
+  bug, write-guard gap, orphaned records, dead monitor.sh, missed-handoff
+  routing, drafts mess) were each found reactively - by Buck or GBT
+  catching something, not by CODE finding it proactively first.
+- **"Team testing deeper" / why we keep finding problems reactively**: this
+  is literally GBT's P0 item 6 (regression tests proving outage
+  detection/recovery) - paused earlier awaiting Buck's go-ahead, never
+  actually started. Told him this directly: the infrastructure that would
+  catch problems before he does doesn't exist yet.
+- **Bid leveling "truly fixed"?**: No, only partially. Division 13's
+  specific collision is fixed and verified. Division 09 has the identical
+  root cause in a different shape (18 trades sharing one division_name,
+  36,610% spread) and is still broken - needs the bigger division/sub-
+  package restructure, not yet done.
+
+**Real feedback from Buck, apply going forward**: routine "still here,
+nothing new" pings should instead say what's actively being worked on or
+watched for (e.g. "continuing to monitor X"), not a contentless ping. Asked
+Buck whether to start the regression-test work now since it directly
+answers his "why do we keep finding this reactively" question - awaiting
+his answer.
 
 ## Drafts-folder "mess" root cause finally found - own earlier gap (2026-07-13 ~12:03-12:06 MT)
 Buck repeated "my draft box is still a mess" a second time after I'd
