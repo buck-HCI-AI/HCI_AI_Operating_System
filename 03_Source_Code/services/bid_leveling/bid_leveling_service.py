@@ -73,17 +73,22 @@ class MonitoredFolderWriteError(Exception):
 
 
 def reject_if_monitored_folder(folder_id: str) -> None:
-    """Buck's permanent directive: monitored jobs are read-only, never written to.
-    Exact-match guard against projects.drive_folder_id where status='monitoring'.
-    Known incomplete: only 246GW currently has drive_folder_id populated in the DB
-    (checked 2026-07-12) - the other 6 monitored projects (275SS, 574J, 606SW, 813MS,
-    83SB, 1395SV, LICHT) have no folder_id on record, so this guard can't yet protect
-    them. Populating those is a data task, not a code task - flagged, not silently
+    """Buck's permanent directive: monitored/reference jobs are read-only, never
+    written to - his directive names both categories explicitly (e.g. "212
+    Cleveland... 655 Garmisch"). Exact-match guard against projects.drive_folder_id
+    where status IN ('monitoring', 'reference').
+    2026-07-13 fix: this only checked status='monitoring', silently missing every
+    project stored as status='reference' (212CL, 370G, 655G, 675M) even though
+    Buck's directive names 212CL and 655G by name as protected. Found during a
+    GBT-requested retrieval/indexing break audit - real gap, not a guessed one.
+    Known incomplete: most monitoring/reference projects still have no
+    drive_folder_id populated in the DB, so this guard can't protect them yet.
+    Populating those is a data task, not a code task - flagged, not silently
     treated as complete coverage."""
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT project_code FROM projects WHERE status='monitoring' AND drive_folder_id=%s",
+                "SELECT project_code FROM projects WHERE status IN ('monitoring', 'reference') AND drive_folder_id=%s",
                 (folder_id,)
             )
             row = cur.fetchone()

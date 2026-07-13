@@ -153,12 +153,15 @@ class MonitoredFolderWriteError(Exception):
 
 def _reject_if_monitored_folder(folder_id: str) -> None:
     """Same permanent directive as bid_leveling_service.reject_if_monitored_folder -
-    monitored jobs are read-only. Applied here too (2026-07-12) for consistency
-    across every Drive-write tool, not just the bid-leveling ones."""
+    monitored/reference jobs are read-only. Applied here too (2026-07-12) for
+    consistency across every Drive-write tool, not just the bid-leveling ones.
+    2026-07-13 fix: widened from status='monitoring' to status IN ('monitoring',
+    'reference') - was silently missing 212CL/370G/655G/675M, which Buck's own
+    directive names by name as protected."""
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT project_code FROM projects WHERE status='monitoring' AND drive_folder_id=%s",
+                "SELECT project_code FROM projects WHERE status IN ('monitoring', 'reference') AND drive_folder_id=%s",
                 (folder_id,)
             )
             row = cur.fetchone()
