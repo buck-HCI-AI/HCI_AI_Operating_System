@@ -2708,3 +2708,15 @@ Immediate priority shift. Treat the current bid leveling/tracking platform as re
 *Source: ChatGPT | 2026-07-13*
 
 Execute immediately. Rebuild the live bid platform to match the approved future operating model. For all ACTIVE live bid projects: reread every source bid PDF, rebuild bid tracking and leveling from source evidence, implement gold-standard scope-equivalency analysis (scope matrix, inclusions, exclusions, allowances, qualifications, finishes, risk, clarification RFIs, award recommendation), align all bid packages to the HCI 16-division and subdivision structure, generate SOWs and email templates from that canonical structure, eliminate reliance on HubSpot as the operational model, correct all identified defects, and add regression tests so every future bid follows this workflow automatically. Coordinate with Browser Claude on documentation and architecture. Do not stop at partial fixes; deliver a production-ready platform.
+
+
+### P0 Clean Live Project Bid Folders
+*Source: ChatGPT | 2026-07-13*
+
+Add folder cleanup to the active rebuild. For LIVE projects only (64EW, 101F, 1355R): remove obsolete/generated superseded bid summaries and legacy leveling artifacts from the working folder structure, archive outdated material appropriately rather than leaving duplicate working files, and leave each division/subdivision with one clean, canonical set of current deliverables: Executive Bid Summary, Bid Tracker, Gold-Standard Bid Leveling, SOW, Email Template, Award Recommendation, and supporting source bids. A PM should be able to open any division folder and immediately understand the current bid status without sorting through historical artifacts. Preserve source documents and required history, but present only the current canonical working set in the active folders. Validate the final folder structure against the HCI 16-division standard.
+
+
+### P0 Build Canonical HCI Bid Management Workflow
+*Source: ChatGPT | 2026-07-13*
+
+Execute the approved future-state bid workflow now for LIVE projects 64EW, 101F, and 1355R, using Browser Claude's full folder audit as the baseline. Required end state for every active division/subdivision: (1) simple executive bid summary; (2) full bid tracker across all bidders; (3) gold-standard scope comparison that reads every source bid and identifies inclusions, exclusions, allowances, qualifications, finishes, missing scope, estimated gap values, risk, and clarification items; (4) clear PM recommendation and next actions; (5) SOW and email-template outputs tied to the canonical HCI 16-division/subdivision folder structure; (6) project-level rollup showing division readiness, missing bids, unresolved clarifications, risk, and award status. Treat the HCI folder hierarchy as the workflow/data model. Rebuild outputs from source documents, not existing summaries. Add regression tests and do not declare complete until a PM can open each division folder and understand the bid positio
