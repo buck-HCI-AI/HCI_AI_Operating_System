@@ -19,6 +19,9 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
+2026-07-13, ~15:43 MT, by Claude Code — Buck gave conditional final authorization ("if the team agrees... do it") - real consensus now confirmed (his GO + GBT's 2 detailed P0 specs + BC's audit baseline + my validated pilot). Launched the real extraction run in the background: all 77 real bids on 1355R, writing to bid_line_items (dry_run=False). Log at /private/tmp/.../scratchpad/extraction_1355r.log. Will process results when the background task completes (notified automatically, not polling). 101F and 64EW (30 combined bids) queued next once 1355R completes cleanly. Also acknowledged GBT's clean Workflow Boundary Enforcement directive (Bid/RFI systems stay separate) - no conflict, everything built today is bid-side only.
+
+## Last updated (superseded)
 2026-07-13, ~15:40 MT, by Claude Code — Piloted the line-item scope-matrix extraction (built earlier this session) on TJ Concrete's real bid, dry-run only. Worked correctly: extracted all 8 real base-bid line items summing to exactly $162,505 (matches my independent manual verification exactly), correctly flagged the 4 "Add" rigid foam insulation options + pump mobilization fee as excluded/allowance, not base bid. Real proof the GBT-specified approach works as intended. Asked Buck to confirm proceeding at full scale (~300 files, 3 projects, real time/API cost) vs piloting a specific division/project first - awaiting his answer before running further extractions.
 
 ## Last updated (superseded)
