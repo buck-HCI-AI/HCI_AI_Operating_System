@@ -2,12 +2,19 @@
 HCI AI — Microsoft Graph API client (Outlook / MS 365).
 Account: buck@hendricksoninc.com
 """
-import json, ssl, urllib.error, urllib.parse, urllib.request
+import json, ssl, time, urllib.error, urllib.parse, urllib.request
 import certifi
 from credentials import get_ms_token
 
 BASE    = "https://graph.microsoft.com/v1.0"
 SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+
+# 2026-07-13, per GBT's P0 "Graph 504 handling breaks RFI workflow" defect
+# report: transient Graph gateway errors (502/503/504) were treated as hard
+# failures, aborting the whole RFI workflow with no retry.
+_RETRYABLE_STATUS = {502, 503, 504}
+_MAX_RETRIES = 3
+_BACKOFF_BASE_SECONDS = 1.0
 
 
 def _token() -> str:
@@ -15,21 +22,37 @@ def _token() -> str:
 
 
 def _request(method: str, path: str, body: dict = None, params: dict = None):
+    """GET/PATCH/DELETE are safe to auto-retry on a transient Graph gateway
+    error (502/503/504) since they're idempotent - retrying just re-reads or
+    re-applies the same state. POST is NOT auto-retried here even on a
+    transient error, because a 504 can mean Graph committed the write but the
+    response was lost in transit - blindly retrying a POST risks creating a
+    duplicate resource (e.g. a second draft). Callers that create resources
+    via POST (create_draft) are responsible for their own idempotency check
+    before deciding to retry."""
     url = BASE + path
     if params:
         url += "?" + urllib.parse.urlencode(params)
     data = json.dumps(body).encode() if body else None
-    req = urllib.request.Request(url, data=data, method=method)
-    req.add_header("Authorization", f"Bearer {_token()}")
-    req.add_header("Accept", "application/json")
-    if body:
-        req.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(req, context=SSL_CTX) as r:
-            content = r.read()
-            return json.loads(content) if content else {}, None
-    except urllib.error.HTTPError as e:
-        return None, f"{e.code}: {e.read().decode()[:300]}"
+    attempts = _MAX_RETRIES if method in ("GET", "PATCH", "DELETE") else 1
+    last_err = None
+    for attempt in range(attempts):
+        req = urllib.request.Request(url, data=data, method=method)
+        req.add_header("Authorization", f"Bearer {_token()}")
+        req.add_header("Accept", "application/json")
+        if body:
+            req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, context=SSL_CTX) as r:
+                content = r.read()
+                return json.loads(content) if content else {}, None
+        except urllib.error.HTTPError as e:
+            last_err = f"{e.code}: {e.read().decode()[:300]}"
+            if e.code in _RETRYABLE_STATUS and attempt < attempts - 1:
+                time.sleep(_BACKOFF_BASE_SECONDS * (2 ** attempt))
+                continue
+            return None, last_err
+    return None, last_err
 
 
 def list_inbox(top: int = 20, folder: str = "inbox") -> list[dict]:
@@ -64,9 +87,37 @@ def download_attachment_bytes(msg_id: str, att_id: str) -> bytes:
     return base64.b64decode(r.get("contentBytes", ""))
 
 
+def _find_recent_draft_by_subject(subject: str, within_seconds: int = 180) -> dict:
+    """Post-timeout verification helper: check whether a draft with this
+    exact subject was actually created in the last few minutes, so a caller
+    that got a transient error can tell "Graph committed the write but the
+    response was lost" apart from "the write genuinely never happened"
+    before deciding whether retrying would create a duplicate."""
+    from datetime import datetime, timezone
+    drafts = list_drafts(top=10)
+    cutoff = time.time() - within_seconds
+    for d in drafts:
+        if d.get("subject") != subject:
+            continue
+        created = d.get("createdDateTime")
+        if not created:
+            continue
+        created_ts = datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
+        if created_ts >= cutoff:
+            return d
+    return None
+
+
 def create_draft(subject: str, html_body: str, to: list[tuple[str, str]],
                   cc: list[tuple[str, str]] = None, bcc: list[tuple[str, str]] = None) -> dict:
-    """to: [(name, email), ...]"""
+    """to: [(name, email), ...]
+
+    2026-07-13, per GBT's P0 Graph-504 defect report: a transient gateway
+    timeout on this POST previously aborted the whole RFI workflow. Now, on
+    a retryable error (502/503/504), checks whether Graph actually committed
+    the draft despite the lost response before giving up - and if so, one
+    single automatic retry of the POST only fires if that check comes back
+    negative (no duplicate risk either way)."""
     msg = {
         "subject": subject,
         "body": {"contentType": "HTML", "content": html_body},
@@ -79,6 +130,16 @@ def create_draft(subject: str, html_body: str, to: list[tuple[str, str]],
         msg["bccRecipients"] = [{"emailAddress": {"name": n, "address": e}} for n, e in bcc]
     r, err = _request("POST", "/me/messages", body=msg)
     if err:
+        status_code = int(err.split(":", 1)[0]) if err[:3].isdigit() else None
+        if status_code in _RETRYABLE_STATUS:
+            existing = _find_recent_draft_by_subject(subject)
+            if existing:
+                return get_message(existing["id"])
+            time.sleep(_BACKOFF_BASE_SECONDS)
+            r2, err2 = _request("POST", "/me/messages", body=msg)
+            if err2:
+                raise RuntimeError(f"Graph 504/transient error, retry also failed: {err2}")
+            return r2
         raise RuntimeError(err)
     return r
 
