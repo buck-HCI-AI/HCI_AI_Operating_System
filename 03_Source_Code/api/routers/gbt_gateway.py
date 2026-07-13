@@ -5200,7 +5200,12 @@ def field_submit_rfi(req: FieldRFIPayload):
         conn = _pg()
         conn.autocommit = True
         with conn.cursor() as cur:
-            cur.execute("SELECT COALESCE(MAX(CAST(NULLIF(rfi_number, '') AS INTEGER)), 0) + 1 AS next_num FROM rfis WHERE project_id = %s AND rfi_number ~ '^[0-9]+$'", (pid,))
+            # 2026-07-13 fix: void/test_pending_reverify RFIs (e.g. the old
+            # self-drafted 001-010 batch superseded by Buck's real Field GPT
+            # retest) must not count toward "next number" - a real submission
+            # right after those was getting numbered 011 instead of restarting
+            # at 001, because this query originally counted every status.
+            cur.execute("SELECT COALESCE(MAX(CAST(NULLIF(rfi_number, '') AS INTEGER)), 0) + 1 AS next_num FROM rfis WHERE project_id = %s AND rfi_number ~ '^[0-9]+$' AND status NOT IN ('void', 'test_pending_reverify')", (pid,))
             next_num = cur.fetchone()["next_num"]
             subject = req.subject or req.question[:80]
             cur.execute("""
@@ -5439,6 +5444,7 @@ def _create_rfis_from_gaps(pid: int, gaps: list, reviewed_by: str) -> list:
         cur.execute("""
             SELECT COALESCE(MAX(CAST(NULLIF(rfi_number, '') AS INTEGER)), 0) AS max_num
             FROM rfis WHERE project_id = %s AND rfi_number ~ '^[0-9]+$'
+              AND status NOT IN ('void', 'test_pending_reverify')
         """, (pid,))
         next_num = cur.fetchone()["max_num"] + 1
         for gap in gaps:
