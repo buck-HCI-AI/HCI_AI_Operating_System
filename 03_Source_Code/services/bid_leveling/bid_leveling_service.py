@@ -917,8 +917,16 @@ class BidLevelingService:
 
         result = {}
         for div_num, div_data in divisions.items():
-            div_name = div_data.get("name") or CSI_DIVISIONS.get(div_num, f"Division {div_num}")
-            folder_name = f"{div_num}_{div_name}"
+            # 2026-07-13: division keys can now be compound ambiguous keys
+            # like "07__Thermal & Moisture" (from read_drive_bids()'s
+            # division-13-collision fix) - this folder-matching code predates
+            # that and expects a bare numeric division_num, crashing on
+            # int(div_num). Use the bare number for matching/folder-naming;
+            # the full division_name (already correct) still comes through
+            # div_data for display.
+            div_num_bare = div_num.split("__")[0]
+            div_name = div_data.get("name") or CSI_DIVISIONS.get(div_num_bare, f"Division {div_num_bare}")
+            folder_name = f"{div_num_bare}_{div_name}"
             # Collect every existing folder that could plausibly BE this
             # division's folder, ranked by how explicit/canonical its naming
             # convention is - and pick the single best one. Deliberately NOT
@@ -933,10 +941,10 @@ class BidLevelingService:
             # being fixed here.
             candidates = []
             for name, fid in existing_map.items():
-                rank = cls._division_folder_match_rank(name, div_num)
+                rank = cls._division_folder_match_rank(name, div_num_bare)
                 if rank == 0:
                     continue
-                desc = cls._folder_description(name, div_num)
+                desc = cls._folder_description(name, div_num_bare)
                 agrees = cls._division_names_agree(desc, div_name)
                 candidates.append((agrees, rank, name, fid))
 
@@ -1128,6 +1136,26 @@ class BidLevelingService:
             bids_folder_id = None
             div_folders = {}
 
+        # 2026-07-13: div_num can be a compound ambiguous key like
+        # "07__Thermal & Moisture" (see ensure_division_folders fix above).
+        # A bare sibling ("07", sourced from the Google Sheet tracker, which
+        # doesn't know about the Drive-side sub-package disambiguation) can
+        # legitimately carry different real content (Sheet narrative/package
+        # tracking) than its compound sibling (real Drive-sourced bids) - so
+        # neither should be silently dropped - but both reduce to the
+        # identical filename once the compound suffix is stripped for
+        # display, and whichever queued second would silently overwrite the
+        # other's real data in Drive. Found live regenerating 1355R's Excel
+        # summaries. Compute every filename first, then disambiguate any
+        # collision with a numbered suffix rather than dropping data.
+        filename_counts: dict = {}
+        for div_num, div_data in divisions_merged.items():
+            div_num_bare = div_num.split("__")[0]
+            safe_name = div_data["name"].replace("/", "-").replace("&", "and").replace(" ", "_")
+            base_filename = f"{project_name.replace(' ', '_')}_Div{div_num_bare}_{safe_name}_Bid_Leveling.xlsx"
+            filename_counts[base_filename] = filename_counts.get(base_filename, 0) + 1
+        filename_seen: dict = {}
+
         # Generate Excel files per division
         excel_actions = []
         queued_items  = []
@@ -1139,8 +1167,15 @@ class BidLevelingService:
             packages = div_data["packages"]
             div_name = div_data["name"]
 
+            div_num_bare = div_num.split("__")[0]
             safe_name = div_name.replace("/", "-").replace("&", "and").replace(" ", "_")
-            filename = f"{project_name.replace(' ', '_')}_Div{div_num}_{safe_name}_Bid_Leveling.xlsx"
+            base_filename = f"{project_name.replace(' ', '_')}_Div{div_num_bare}_{safe_name}_Bid_Leveling.xlsx"
+            if filename_counts[base_filename] > 1:
+                filename_seen[base_filename] = filename_seen.get(base_filename, 0) + 1
+                stem, ext = base_filename.rsplit(".", 1)
+                filename = f"{stem}_{filename_seen[base_filename]}.{ext}"
+            else:
+                filename = base_filename
 
             folder_info = div_folders.get(div_num, {"folder_id": None, "action": "unknown"})
 
@@ -1170,7 +1205,7 @@ class BidLevelingService:
                         action_type="drive_upload_file",
                         target_system="google_drive",
                         target_id=f"drive:{folder_id}/{filename}",
-                        target_description=f"{project_name} Div {div_num} bid leveling Excel",
+                        target_description=f"{project_name} Div {div_num_bare} {div_name} bid leveling Excel",
                         proposed_payload={
                             "folder_id":  folder_id,
                             "filename":   filename,

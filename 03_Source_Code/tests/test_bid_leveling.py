@@ -529,6 +529,58 @@ test("BL-DEFECT-03: misfiled Furnishings duplicate removed, not fabricated",    
 test("BL-DEFECT-04: same-division duplicate submission also caught",           test_same_division_duplicate_submission_also_caught)
 
 
+# ── BL-EXCEL: Per-division Excel regeneration - real bugs found 2026-07-13 ──
+# Found while regenerating 1355R's stale (2026-07-09) per-division Bid_Leveling
+# xlsx files per Buck's directive: (1) ensure_division_folders crashed on
+# compound ambiguous division keys like "07__Thermal & Moisture" (introduced by
+# the earlier division-13-collision fix) - int(div_num) raised ValueError;
+# (2) even after that fix, the resulting filename baked the division name in
+# twice; (3) a bare division_num (Sheet-tracker-sourced) and its compound
+# sibling (Drive-bid-sourced) can carry genuinely different real content but
+# reduce to the identical filename, risking a silent overwrite in Drive.
+print("\nGroup: BL-EXCEL — Per-division Excel regeneration (regression, 2026-07-13)")
+
+def test_run_bid_leveling_does_not_crash_on_ambiguous_divisions():
+    """1355R has real ambiguous-key divisions (07__Thermal & Moisture,
+    10__Specialties — X). run_bid_leveling() must not crash on them."""
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "bid_leveling"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "approval_queue"))
+    from bid_leveling_service import BidLevelingService
+    try:
+        result = BidLevelingService.run_bid_leveling(3, dry_run=True, scan_drive=False)
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+    return result.get("error") is None, f"error={result.get('error')}"
+
+def test_excel_filenames_never_collide():
+    """Every generated filename for a project must be unique - a collision
+    means one division's real data would silently overwrite another's when
+    uploaded to Drive. Real case: bare '07' and '07__Thermal & Moisture'
+    reduced to the identical filename before this fix."""
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "bid_leveling"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "approval_queue"))
+    from bid_leveling_service import BidLevelingService
+    result = BidLevelingService.run_bid_leveling(3, dry_run=True, scan_drive=False)
+    filenames = [a["filename"] for a in result.get("excel_actions", [])]
+    return len(filenames) == len(set(filenames)), \
+           f"{len(filenames)} filenames, {len(set(filenames))} unique" if len(filenames) != len(set(filenames)) else "all unique"
+
+def test_excel_filename_never_double_embeds_division_name():
+    """A compound ambiguous division key's filename must use only the bare
+    numeric division for the 'DivNN' portion, not the raw compound key text -
+    real bug found: "...Div07__Thermal & Moisture_Thermal_and_Moisture_..."."""
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "bid_leveling"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "approval_queue"))
+    from bid_leveling_service import BidLevelingService
+    result = BidLevelingService.run_bid_leveling(3, dry_run=True, scan_drive=False)
+    bad = [a["filename"] for a in result.get("excel_actions", []) if "__" in a["filename"]]
+    return len(bad) == 0, "; ".join(bad) if bad else "no raw compound keys leaked into any filename"
+
+test("BL-EXCEL-01: run_bid_leveling doesn't crash on ambiguous division keys", test_run_bid_leveling_does_not_crash_on_ambiguous_divisions)
+test("BL-EXCEL-02: generated Excel filenames never collide",                  test_excel_filenames_never_collide)
+test("BL-EXCEL-03: compound division key never leaks raw into a filename",    test_excel_filename_never_double_embeds_division_name)
+
+
 def test_cleanup_queued_bid_leveling_items():
     """test_live_run_queues_items creates a real live approval-queue row every run
     and nothing above consumes it - found 2026-07-07 that repeated runs left 3
