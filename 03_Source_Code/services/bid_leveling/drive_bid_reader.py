@@ -185,7 +185,8 @@ def extract_bid_with_claude(pdf_bytes: bytes, vendor_name: str,
 
 
 def extract_bid_line_items_with_claude(pdf_bytes: bytes, vendor_name: str,
-                                        project_name: str, div_name: str) -> dict:
+                                        project_name: str, div_name: str,
+                                        known_total: float = None) -> dict:
     """
     2026-07-13, per Buck's explicit directive ("full bid level summaries
     that compare the bid... read every bid") and GBT's gold-standard
@@ -208,9 +209,21 @@ def extract_bid_line_items_with_claude(pdf_bytes: bytes, vendor_name: str,
         import anthropic
         from config import settings
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        total_line = (
+            f"\nThe vendor's stated bid total is ${known_total:,.2f}. Every included, "
+            f"non-allowance line item's amount MUST sum to exactly this total. If some "
+            f"of the bid's value isn't broken into its own line item, add one final "
+            f"item with category \"Remaining/Unspecified Scope\" and whatever amount "
+            f"makes the included items sum to ${known_total:,.2f} exactly. Do not let "
+            f"the sum come out higher or lower than this - if you're unsure whether an "
+            f"amount is separately priced or already covered elsewhere in the total, "
+            f"resolve it by adjusting the Remaining/Unspecified Scope amount, not by "
+            f"double-counting or dropping a line.\n"
+        ) if known_total else ""
         prompt = (
             f"This is a bid proposal PDF for the {div_name} division of {project_name}.\n"
-            f"Vendor: {vendor_name}\n\n"
+            f"Vendor: {vendor_name}\n"
+            f"{total_line}\n"
             "Extract a detailed line-item scope breakdown and return ONLY valid JSON "
             "(no markdown, no explanation):\n"
             '{"line_items": [{"category": "...", "description": "...", '
@@ -276,7 +289,7 @@ def ingest_bid_line_items(drive_bid_id: int, dry_run: bool = True) -> dict:
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, project_id, vendor_name, division_name, file_id FROM drive_bids WHERE id=%s",
+                "SELECT id, project_id, vendor_name, division_name, file_id, bid_amount FROM drive_bids WHERE id=%s",
                 (drive_bid_id,)
             )
             row = cur.fetchone()
@@ -289,15 +302,47 @@ def ingest_bid_line_items(drive_bid_id: int, dry_run: bool = True) -> dict:
             proj = cur.fetchone()
     project_name = proj["project_code"] if proj else str(row["project_id"])
 
+    known_total = float(row["bid_amount"]) if row.get("bid_amount") else None
     token = get_google_token("drive")
     pdf_bytes = _download_bytes(row["file_id"], token)
     result = extract_bid_line_items_with_claude(
-        pdf_bytes, row["vendor_name"], project_name, row["division_name"]
+        pdf_bytes, row["vendor_name"], project_name, row["division_name"], known_total
     )
     if "error" in result:
         return result
 
     line_items = result.get("line_items", [])
+
+    # 2026-07-13: found live across the real 1355R extraction run - 26 of 77
+    # bids didn't reconcile (line-item sum != the bid's real total), some by
+    # six figures. Passing known_total into the prompt (above) reduces this,
+    # but an LLM doing arithmetic across 30-50+ line items isn't reliable
+    # enough to trust blindly - reconciling in Python is deterministic.
+    # Under-itemization (sum too low) is auto-corrected by appending a
+    # remainder line, since that's an unambiguous, safe fix. Over-itemization
+    # (sum too high) is NOT auto-corrected - which specific item is wrong
+    # can't be determined programmatically - it's flagged instead so a human
+    # or a future re-extraction resolves it, rather than silently guessing.
+    reconciliation = None
+    if known_total and line_items:
+        included_sum = sum(
+            (item.get("amount") or 0) for item in line_items
+            if item.get("included", True)
+        )
+        gap = round(known_total - included_sum, 2)
+        if abs(gap) > 1:
+            if gap > 0:
+                line_items.append({
+                    "category": "Remaining/Unspecified Scope [auto-reconciled]",
+                    "description": "Programmatically added to reconcile the line-item sum to the vendor's stated total - the extraction did not itemize this portion of the bid.",
+                    "included": True, "is_allowance": False, "amount": gap,
+                    "qualification_notes": None,
+                })
+                reconciliation = {"status": "auto_corrected_under_itemized", "gap": gap}
+            else:
+                reconciliation = {"status": "FLAGGED_over_itemized", "gap": gap,
+                                   "note": "Line items sum higher than the vendor's stated total - needs manual review, not auto-corrected."}
+
     if not dry_run and line_items:
         with _pg() as conn:
             with conn.cursor() as cur:
@@ -317,7 +362,8 @@ def ingest_bid_line_items(drive_bid_id: int, dry_run: bool = True) -> dict:
             conn.commit()
 
     return {"drive_bid_id": drive_bid_id, "dry_run": dry_run,
-            "line_items_found": len(line_items), "line_items": line_items}
+            "line_items_found": len(line_items), "line_items": line_items,
+            "reconciliation": reconciliation}
 
 
 def extract_bid_from_text(text: str, vendor_name: str, file_name: str) -> dict:
