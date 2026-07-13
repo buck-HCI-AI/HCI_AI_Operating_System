@@ -19,7 +19,31 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-12, ~10:56 MT, by Claude Code — monitored-folder guard coverage improved from 1/7 to 4/7 (275SS, 606SW, 574J folder IDs found+verified+recorded)
+2026-07-12, ~19:07 MT, by Claude Code — monitored-folder guard now covers BOTH Drive-write tools (bid-leveling AND the general-purpose /gateway/drive/write), verified live
+
+## Second monitored-folder guard shipped, closing the last open item (2026-07-12 ~19:04-19:07 MT)
+Buck asked for clarification (msg 1561) on which "gateway" the still-open
+allowlist item referred to, since the policy itself (never write to monitored
+jobs) was never in question. Explained the distinction (bid-leveling-specific
+vs. general-purpose `/gateway/drive/write`), then added the same guard to the
+second one for consistency rather than leaving it open - low-risk since its
+default already points to the correct system folder.
+
+Added `_reject_if_monitored_folder()` to `gbt_gateway.py` (same pattern as
+`bid_leveling_service.reject_if_monitored_folder()`), wired into `/drive/write`
+right after `folder_id` resolution. Restarted API, verified live: a write
+attempt to 275SS's folder is correctly refused, a normal default-folder write
+still succeeds (200), test file cleaned up. Commit `3ed40f1`.
+
+**Both Drive-write guard items from earlier today are now closed.** Remaining
+open item, unchanged: 4 of 7 monitored projects (83SB, 813MS, 1395SV, LICHT)
+still don't have a findable top-level Drive folder ID, so neither guard
+protects them yet - not guessed at, genuinely unresolved.
+
+GBT confirmed live again ~19:05 MT during this cycle's coms check (fresh
+heartbeat, server-verified). Sent Buck a full "status update"-style report
+per his own stated preference (msg 1560) covering the idle stretch and real
+progress with evidence, not just a ping.
 
 ## Bid-leveling guard coverage improved (2026-07-12 ~10:48-10:56 MT)
 Follow-up to the guard shipped earlier this cycle - it only protected 246GW since
