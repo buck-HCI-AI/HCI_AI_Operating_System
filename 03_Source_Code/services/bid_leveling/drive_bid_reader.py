@@ -967,8 +967,49 @@ def _infer_subgroups(division_num: str, bids: list) -> dict:
                 break
         buckets.setdefault(label, []).append(bid)
 
-    subgroups = {}
+    # 2026-07-13, per Buck's live report: even after trade-grouping, some
+    # buckets still showed wildly implausible spreads (e.g. Stone/Countertops
+    # 15,284%). Root cause, confirmed against real 1355R data: a keyword
+    # match on trade alone doesn't mean two bids are for the same SCOPE of
+    # work - "Decorative Materials" ($1,621, a small supply-only order) and
+    # "InStone" ($249,460, full templating/fabrication/installation across
+    # multiple rooms) both matched "stone" but aren't competing for the same
+    # job at all. Split off any bid whose amount is under 25% of the
+    # bucket's median into its own "Partial/Supply-Only Scope" group so the
+    # main comparison isn't distorted by an order-of-magnitude scope
+    # mismatch - it stays fully visible, just not blended into a spread%
+    # that implies it's a real competing bid for the whole trade package.
+    # This does NOT explain genuine price differences between comparable
+    # full-scope bids (e.g. Ajac Stone $79,848 vs InStone $249,460, both
+    # real full packages) - that gap needs actual line-item scope reading,
+    # not a magnitude heuristic; flagged separately, not solved here.
+    def _median(values):
+        s = sorted(values)
+        n = len(s)
+        mid = n // 2
+        return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2
+
+    split_buckets: dict = {}
     for label, group_bids in buckets.items():
+        priced_amounts = [b["amount"] for b in group_bids if b.get("amount")]
+        if len(priced_amounts) < 3:
+            split_buckets[label] = group_bids
+            continue
+        med = _median(priced_amounts)
+        main, outliers = [], []
+        for b in group_bids:
+            amt = b.get("amount")
+            if amt and med and amt < 0.25 * med:
+                outliers.append(b)
+            else:
+                main.append(b)
+        split_buckets[label] = main
+        if outliers:
+            base_label = label[:-len(" [inferred]")] if label.endswith(" [inferred]") else label
+            split_buckets.setdefault(f"{base_label} — Partial/Supply-Only Scope [inferred]", []).extend(outliers)
+
+    subgroups = {}
+    for label, group_bids in split_buckets.items():
         priced = [b for b in group_bids if b.get("amount")]
         if not priced:
             subgroups[label] = {

@@ -439,10 +439,40 @@ def test_bid_leveling_summary_file_not_ingested_as_vendor():
                     if "bid" in b["vendor"].lower() and "leveling" in b["vendor"].lower()]
     return len(contaminated) == 0, "; ".join(contaminated) if contaminated else "no self-referential summary-file rows found"
 
+def test_magnitude_outlier_split_from_trade_bucket():
+    """2026-07-13, per Buck's live report ("still wild differences" even
+    after trade-grouping): a keyword match on trade alone doesn't mean two
+    bids compete for the same SCOPE. Real case: 1355R division 09's
+    "Stone / Countertops" bucket blended a $1,621 supply-only order in with
+    two full install packages ($79,848 / $249,460), producing a fake
+    15,284% spread. A bid under 25% of its bucket's median must be split
+    into a separate "Partial/Supply-Only Scope" group, and the main bucket's
+    spread must drop to a plausible number once the outlier is removed -
+    not just hidden, still fully visible in its own labeled group."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    sub = d.get("leveling_summary", {}).get("09", {}).get("inferred_subgroups", {})
+    main = sub.get("Stone / Countertops [inferred]")
+    outlier = sub.get("Stone / Countertops — Partial/Supply-Only Scope [inferred]")
+    if not main or not outlier:
+        return False, f"expected both groups present, got keys: {list(sub.keys())}"
+    ok = main["spread_pct"] < 300 and outlier["bid_count"] == 1 and outlier["low_bid"] < 0.25 * main["low_bid"]
+    return ok, f"main spread%={main['spread_pct']}, outlier bid_count={outlier['bid_count']}, outlier low={outlier['low_bid']}"
+
+def test_outlier_labels_never_double_marked():
+    """The '[inferred]' marker must appear exactly once per label, even
+    after the magnitude-outlier split appends a suffix to an already-marked
+    base label - a real cosmetic bug found and fixed the same cycle."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    bad = [l for v in summary.values() for l in (v.get("inferred_subgroups") or {}) if l.count("[inferred]") > 1]
+    return len(bad) == 0, "; ".join(bad) if bad else "no double-marked labels found"
+
 test("BL-INFER-01: inferred subgroups present + correctly marked '[inferred]'", test_inferred_subgroups_present_for_flagged_divisions)
 test("BL-INFER-02: inferred subgroup counts reconcile to division totals",      test_inferred_subgroups_sum_to_division_bid_count)
 test("BL-INFER-03: inference is additive only, same underlying bid rows",       test_inference_does_not_alter_underlying_division_data)
 test("BL-INFER-04: no inferred_subgroups noise on single-bid divisions",        test_inference_not_shown_for_single_bid_divisions)
+test("BL-INFER-05: magnitude outlier split out of trade bucket, spread fixed",  test_magnitude_outlier_split_from_trade_bucket)
+test("BL-INFER-06: outlier-split labels never double-marked '[inferred]'",      test_outlier_labels_never_double_marked)
 test("BL-DEFECT-01: auto-generated summary file never ingested as a vendor",    test_bid_leveling_summary_file_not_ingested_as_vendor)
 
 
