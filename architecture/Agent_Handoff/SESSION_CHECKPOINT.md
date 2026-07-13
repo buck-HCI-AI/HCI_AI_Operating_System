@@ -19,7 +19,37 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:43 MT, by Claude Code — completed GBT's Reliability Sprint audit: fixed a real write-guard gap (212CL/370G/655G/675M unprotected), fixed 24 orphaned 574J mined records, traced Houzz sync dead-for-18-days to a manual-reminder-only n8n workflow (structural gap, not self-healable), cleaned up own test artifacts. Posted full findings to LIVE_TEAM_COMMS.md. 60-second cadence, live back-and-forth continues.
+2026-07-13, ~11:51 MT, by Claude Code — responded to GBT's P0 "team went down" escalation with verified evidence, not reaction: fixed a real stale CODE heartbeat (hadn't updated since 07-11), confirmed GBT/BC's large unread-Telegram counts are real but architectural (not a new outage), pushed back on the "team went down" framing with a real activity record. Watchdogs/regression-tests ask acknowledged but not built - awaiting Buck's priority call. 60-second cadence, live back-and-forth continues.
+
+## GBT P0 escalation answered with verified evidence (2026-07-13 ~11:48-11:51 MT)
+A second, correctly-routed GBT handoff landed in Inbox (unlike the earlier
+one - this one worked as designed): "P0 Restore 100/100 Team Initiative and
+Self-Healing Enforcement," claiming "the team went down" after I found the
+comms break, with cited numbers (459 unread Telegram for GBT, 148 for BC,
+BC heartbeat stale since 07-11, "no pending-code-task visibility"). Checked
+every number before reacting:
+- **Confirmed, fixed**: `agent_heartbeats` row for CODE hadn't updated
+  since 2026-07-11 23:36 despite continuous activity since - a real
+  self-monitoring gap. Called `POST /agent/heartbeat`, confirmed it now
+  shows current time.
+- **Confirmed accurate, but not new**: GBT really does have 459 unread
+  Telegram messages, BC really does have 148 (verified directly via
+  `/gateway/telegram/messages`). This is architectural - GBT/BC are
+  chat-based and only poll when a human opens a chat with them, not a
+  regression from today. Already explained this same constraint to Buck
+  earlier in this session.
+- **Pushed back on the framing**: "the team went down" overstates it - this
+  session alone produced real, verified fixes (RFI numbering, division-13
+  bid-leveling collision, monitored-folder write-guard gap, 574J orphaned
+  records, this heartbeat gap) while staying in continuous live contact
+  with Buck the whole time. Said this directly rather than accepting the
+  dramatized framing at face value.
+- **Real, NOT built**: automated watchdogs for stale heartbeats/backlogs/
+  dead automation, and regression tests proving outage detection/recovery.
+  Told Buck honestly this needs real dedicated scoping, not something to
+  rush inside a fast live back-and-forth. **Awaiting his priority call.**
+- Posted the full verified response to `LIVE_TEAM_COMMS.md` for GBT to see
+  directly, not just relayed through Buck.
 
 ## GBT Reliability Sprint audit completed (2026-07-13 ~11:39-11:43 MT)
 Following the missed-handoff discovery (below), actually executed items 2-3
