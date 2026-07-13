@@ -19,7 +19,61 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~11:31 MT, by Claude Code — found the real "something is missing" gap Buck asked about: a real GBT handoff (implementation_request, "Execute Reliability Sprint Immediately") landed 35 min ago but auto-routed to STRATEGIC_BACKLOG.md + ntfy (neither of which my check-in loop polls), never surfacing in Inbox/Telegram/ai_messages. Confirmed Excel-vs-Word RFI reading issue (Code Interpreter toggle is the real fix). Awaiting Buck's answer on whether to start the 2 new GBT-requested audits now. 60-second cadence, live back-and-forth continues.
+2026-07-13, ~11:43 MT, by Claude Code — completed GBT's Reliability Sprint audit: fixed a real write-guard gap (212CL/370G/655G/675M unprotected), fixed 24 orphaned 574J mined records, traced Houzz sync dead-for-18-days to a manual-reminder-only n8n workflow (structural gap, not self-healable), cleaned up own test artifacts. Posted full findings to LIVE_TEAM_COMMS.md. 60-second cadence, live back-and-forth continues.
+
+## GBT Reliability Sprint audit completed (2026-07-13 ~11:39-11:43 MT)
+Following the missed-handoff discovery (below), actually executed items 2-3
+of GBT's ask ("audit monitored Shared Drive mining pipeline," "identify
+every break in retrieval/indexing") rather than just acknowledging them:
+
+1. **Fixed - monitored-folder write guard had a real coverage gap.**
+   `reject_if_monitored_folder()` / `_reject_if_monitored_folder()` (both
+   copies) only checked `status='monitoring'`. Projects `212CL` (212
+   Cleveland), `370G`, `655G` (655 Garmisch), `675M` are stored as
+   `status='reference'` - a status tier that existed but I hadn't
+   previously accounted for. Buck's own permanent directive names 212
+   Cleveland and 655 Garmisch by name as protected read-only jobs, so this
+   was a real, named-project protection gap. Widened both queries to
+   `status IN ('monitoring', 'reference')`. Commit `eb708af`, API restarted.
+
+2. **Fixed - 24 real mined cost records for 574J were orphaned.**
+   `historical_cost_records` rows with `source='drive_mine_574_johnson_costdb'`
+   (real division/scope/dollar data, clearly attributable) had `project_id
+   IS NULL` - invisible to any per-project query. Re-linked to
+   `project_id=17`. This is a DB-only fix (fixing our own system's FK
+   linkage on already-mined data), not a write to 574J's actual Drive
+   files, so within the allowed monitored-project scope.
+
+3. **Found, NOT fixed - needs a decision.** Houzz sync for 1355R hasn't run
+   in 18 days (`connector_sync_state.last_synced_at` = 2026-06-25) across 14
+   of 15 entity types (budget, contracts, POs, change orders, selections,
+   vendors, etc. - only `daily_logs`/`schedule_items` are less stale, ~6
+   days). Traced root cause via n8n API: the active workflow responsible is
+   literally named "AUTO-HOUZZ-REMINDER — Daily 07:15 Manual Extraction
+   Prompt" - a reminder telling a human to pull data manually, not an
+   automated sync. A dedicated "HZ-004 Houzz Daily Log Extraction Trigger"
+   workflow exists but is disabled (`active: False`). This is a structural
+   gap - no real automated Houzz sync exists - not something restartable.
+   Reported to Buck, no action taken pending his priority call.
+
+4. **Found, deliberately NOT guessed at.** 21 `historical_cost_records` rows
+   (ids 1-21, created 2026-06-26, no `source` label, no
+   `scope_description`, summing to $17.97M) have `project_id IS NULL` with
+   no traceable owner. Left alone rather than guess-linking or deleting -
+   flagged as open/unresolved provenance.
+
+5. **Cleaned up own test artifacts**: 7 leftover `project_events` rows
+   (from my earlier live diagnostic RFI-number tests this session, missed
+   during initial cleanup) and confirmed the 2 diagnostic `rfis` rows were
+   already deleted. `test_data_in_real_project` drift-check finding now
+   clear.
+
+Posted a full writeup to `LIVE_TEAM_COMMS.md` addressed to GBT/BC, since
+this directly answers GBT's own handoff request. Also noted there that the
+handoff-routing gap (item 1 below) is itself worth a separate fix.
+
+## Missed GBT handoff found - real blind spot in check-in loop coverage (2026-07-13 ~11:27-11:31 MT)
+Buck: "GBT said it tested it. Something is missing?" Investigated for real
 
 ## Missed GBT handoff found - real blind spot in check-in loop coverage (2026-07-13 ~11:27-11:31 MT)
 Buck: "GBT said it tested it. Something is missing?" Investigated for real
