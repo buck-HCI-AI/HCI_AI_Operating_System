@@ -236,7 +236,14 @@ def extract_bid_line_items_with_claude(pdf_bytes: bytes, vendor_name: str,
         )
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
+            # 2026-07-13: 4096 was too low for real bids - found live running
+            # the full extraction across 1355R: 3 of 77 bids (all with 30-50+
+            # real line items - complex electrical/mechanical/finishes scopes)
+            # got cut off mid-JSON-string by the token cap, producing invalid
+            # JSON the parser correctly rejected rather than silently
+            # returning truncated/wrong data. Raised to give genuinely large
+            # itemized bids room to complete.
+            max_tokens=8192,
             messages=[{
                 "role": "user",
                 "content": [
