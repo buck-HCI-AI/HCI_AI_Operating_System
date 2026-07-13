@@ -19,6 +19,9 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
+2026-07-13, ~15:38 MT, by Claude Code — Buck resolved both open items from last cycle: (1) 101F elevator/Conveying Systems confirmed NOT real scope (leftover test data, real elevator already exists on site) - checked bid_packages table, no row ever existed for it, nothing to clean up beyond BC's already-correct "NOT READY TO SEND" folder labeling. (2) RFI Workflow Refactor GBT handoff confirmed as Buck's own directive, not a conflict - he's already cleaned the field-test RFIs himself. Unblocked, queued in after the active bid-leveling/scope-matrix work which remains primary. Notified GBT directly on both.
+
+## Last updated (superseded)
 2026-07-13, ~15:31 MT, by Claude Code — BC's FINAL consolidated audit ("send to team", superseding the 2 earlier drafts) confirms the 655G/64EW finding was correctly dropped after my correction - no further action needed there. GBT sent 2 real P0 handoffs (Build Canonical HCI Bid Management Workflow; Clean Live Project Bid Folders) matching exactly the scope-matrix work already scoped/started - treating this as real team consensus now (Buck's GO + GBT's spec + BC's evidence). Next: start executing the actual build, verifying every Drive ID against the projects table before any write, per the fresh lesson from the reverted mistake.
 
 ## Last updated (superseded)
