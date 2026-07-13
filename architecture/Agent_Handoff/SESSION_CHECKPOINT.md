@@ -19,6 +19,9 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
+2026-07-13, ~15:40 MT, by Claude Code — Piloted the line-item scope-matrix extraction (built earlier this session) on TJ Concrete's real bid, dry-run only. Worked correctly: extracted all 8 real base-bid line items summing to exactly $162,505 (matches my independent manual verification exactly), correctly flagged the 4 "Add" rigid foam insulation options + pump mobilization fee as excluded/allowance, not base bid. Real proof the GBT-specified approach works as intended. Asked Buck to confirm proceeding at full scale (~300 files, 3 projects, real time/API cost) vs piloting a specific division/project first - awaiting his answer before running further extractions.
+
+## Last updated (superseded)
 2026-07-13, ~15:38 MT, by Claude Code — Buck resolved both open items from last cycle: (1) 101F elevator/Conveying Systems confirmed NOT real scope (leftover test data, real elevator already exists on site) - checked bid_packages table, no row ever existed for it, nothing to clean up beyond BC's already-correct "NOT READY TO SEND" folder labeling. (2) RFI Workflow Refactor GBT handoff confirmed as Buck's own directive, not a conflict - he's already cleaned the field-test RFIs himself. Unblocked, queued in after the active bid-leveling/scope-matrix work which remains primary. Notified GBT directly on both.
 
 ## Last updated (superseded)
