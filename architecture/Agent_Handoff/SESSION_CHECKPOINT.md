@@ -19,7 +19,35 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~12:52 MT, by Claude Code — Buck asked for a real workaround to make GBT/BC coms actually work. Checked 2 genuine paths (browser automation, direct OpenAI API) - neither available (extension still not connected, no API creds configured). Reported honestly rather than fabricating a fix. Asked Buck to either reconnect the extension or make the bid-leveling Drive-reorg-vs-AI-infer call himself, since GBT/BC input is genuinely unavailable right now. 60-second cadence continues.
+2026-07-13, ~12:55 MT, by Claude Code — Buck asked for a full read-back audit of the session before moving to 100/100. Cross-referenced against this checkpoint log and found 2 genuinely dropped threads (275SS mine-vs-wipe decision, 2 old Outbox items) - surfaced both honestly rather than claiming nothing was missed. Everything else traced back to either a real answer or an already-stated known-open item. 60-second cadence continues.
+
+## Full session read-back audit (2026-07-13 ~12:53-12:55 MT)
+Buck: "before [100/100] read back on our coms and make sure we are not
+missing anything!" Did a real audit, not a reassurance - walked the
+checkpoint's ~30 dated entries from this session (09:44 MT through now)
+against what Buck actually asked, checking each thread for a real
+resolution vs. a dropped one.
+
+**Found 2 genuinely dropped threads, not previously re-surfaced:**
+1. **275SS mine-vs-wipe decision** - flagged ~09:56 MT (14 unbacked bid
+   line items, self-flagged as `direct_sql_unverified_likely_incomplete_init`)
+   with an explicit either/or question (mine real Drive data vs wipe the
+   placeholders). Buck never answered it - got buried under the RFI/bid-
+   leveling work that followed. Still genuinely open.
+2. **2 old Outbox items** - found ~12:03 MT while investigating the drafts
+   mess (stuck since 2026-06-05, addressed to Buck's own email, never
+   sent). Asked if he wanted them looked at - no answer came, not
+   re-asked since. Still open.
+
+**Confirmed NOT missed** (already has either a real answer or an honestly-
+stated open status, not silently dropped): the 5 remaining bid-leveling
+divisions (posted to GBT/BC, awaiting response), the broader outage-
+detection regression-test suite (acknowledged not built), Field GPT not
+yet told to stop bundling RFI questions at the source (acknowledged gap),
+GBT/BC reachability (checked twice today with real evidence both times).
+
+Asked Buck whether to close out the 2 genuinely-dropped items now or fold
+them into the upcoming 100/100 push - awaiting his answer.
 
 ## RFI pipeline completed end-to-end, own splitting mistake corrected (2026-07-13 ~12:41-12:45 MT)
 Buck: "Those 2 garage door questions seem like 1 to me? Just asked
