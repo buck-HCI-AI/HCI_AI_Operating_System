@@ -19,7 +19,43 @@ Always overwrite in full — this is current state, not a log.
 ---
 
 ## Last updated
-2026-07-13, ~10:31 MT, by Claude Code — 1355R RFI-001-010 set aside as test data pending Buck's real-world Field GPT retest; team notified via LIVE_TEAM_COMMS.md. Buck opening a fresh GBT chat next.
+2026-07-13, ~10:41 MT, by Claude Code — 1355R bid audit found a real, currently-live bug (division "13" merges Insulation and Fire Suppression bids into one nonsensical comparison) plus a sync gap between drive_bids (rich) and bid_packages/tracker Sheet (thin). Reported to Buck with a fix-now-vs-later choice, awaiting his call.
+
+## 1355R bid audit: real division-13 bug found, tracker sync gap confirmed (2026-07-13 ~10:38-10:41 MT)
+Buck asked whether 1355R bids are "done to standard" — folders correct,
+leveled, tracker/summary updated, including single-bid divisions. Actually
+verified rather than reassured:
+- **Real bug, live right now**: the `/bid-leveling/projects/{id}/drive-bids`
+  leveling summary key "13" merges two unrelated sub-packages that both use
+  the number 13 - `13_Insulation` (a sub-package of Division 07 Thermal &
+  Moisture) and `13_Special Construction` (a sub-package of Division 10
+  Specialties, includes fire suppression). Result: Insulation bids
+  ($56-79K) and Fire Suppression bids ($31-108K) show up as if competing for
+  the same scope, producing a `spread_pct` of 10,906% - meaningless, and
+  actively misleading if anyone reads that division's summary today. Root
+  cause is the already-documented two-level division→sub-package gap (see
+  CLAUDE.md "HCI Canonical 16-Division Bid Folder Structure" - the code
+  doesn't yet model division→sub-package, so any two sub-packages sharing
+  a bare number collide). This is the first *concrete, numbers-are-wrong-right-
+  now* instance of that known gap, not just a theoretical folder-naming issue.
+- **Good, verified**: bid documents ARE being read well - `drive_bids`
+  (Gemini-extracted from real Drive PDFs) has real multi-vendor data for 17
+  of 20 divisions, and single-bid divisions (07 excluding the 13 collision,
+  10, 12) are handled correctly - real vendor, real amount, spread=0, no
+  fabricated second bid.
+- **Sync gap, separate finding**: the `bid_packages`/`bid_entries` relational
+  tables (which the tracker Sheet and `/summary` endpoint read from) are NOT
+  synced with the much richer `drive_bids` extraction - 0 of 128 packages
+  have 2+ priced `bid_entries`, 83 have zero pricing, even though
+  `drive_bids` shows real multi-bid comparisons for most divisions. The
+  Sheet Buck actually looks at (39/110 rows filled) undersells what's really
+  been collected.
+- **Awaiting Buck's call**: fix the division-13 split now (isolated, safe -
+  needs `division_num` + a sub-package identifier instead of bare "13"), or
+  fold into the broader division-restructure work already tracked as open
+  (see the "HCI Canonical 16-Division Bid Folder Structure" section of
+  `/Users/buckadams/HCI_AI_Operating_System/CLAUDE.md`). Not started without
+  his answer.
 
 ## 1355R RFI test-data reset, real-world retest incoming (2026-07-13 ~10:29-10:31 MT)
 Following the provenance trace (RFIs 001-005 traced to BC's document read,
