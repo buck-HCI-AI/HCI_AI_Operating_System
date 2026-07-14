@@ -9240,6 +9240,101 @@ def agent_unread(agent: str = Query(..., description="chatgpt|browser_claude|cla
         return _response("/agent/unread", {}, errors=[str(e)], start=t0)
 
 
+@router.get("/agent/sync")
+def agent_sync(agent: str = Query(..., description="GBT|BC|CODE - the ADR-003 agent id")):
+    """
+    Checkpoint-based state recovery - Phase 1 of the AI Team OS stabilization
+    roadmap (2026-07-14). GBT's own architectural ruling: "Instead of 'give
+    me unread messages', ask 'what changed since checkpoint X'" - so a brand
+    new session (chat died, browser tab closed, overnight gap) can
+    reconstruct its work state in one call instead of a human manually
+    pasting backlog into a fresh chat, which is what this session found
+    itself doing all night (41 agent_messages piled up unread for GBT with
+    no other path in).
+
+    Reads both message tables (ai_messages for Buck/system directives,
+    agent_messages for CODE/GBT/BC peer messages) since this agent's last
+    checkpoint, updates the checkpoint, and logs the sync. Does not yet
+    unify the two tables into one canonical queue (that's a larger,
+    separate migration) - this is the recovery layer GBT specifically asked
+    for built first, on top of the existing durable stores.
+    """
+    t0 = time.time()
+    key = _ADR003_AGENT_ID.get((agent or "").strip().lower(), agent.upper())
+    sync_start = datetime.now(timezone.utc)
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM agent_checkpoints WHERE agent_id = %s", (key,))
+                cp = cur.fetchone()
+                since = cp["last_sync_at"] if cp and cp["last_sync_at"] else datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+                # agent_messages addressed to this agent (or ALL) since last sync
+                cur.execute("""
+                    SELECT message_id, thread_id, from_agent, to_agent, priority, status,
+                           subject, body, requires_response, timestamp_mt
+                    FROM agent_messages
+                    WHERE (to_agent = %s OR to_agent = 'ALL') AND timestamp_mt > %s
+                    ORDER BY timestamp_mt ASC
+                """, (key, since))
+                new_agent_messages = [dict(r) for r in cur.fetchall()]
+
+                # ai_messages addressed to this agent's ai_messages target-name equivalent
+                ai_target = {"GBT": "chatgpt", "BC": "browser_claude", "CODE": "claude_code"}.get(key, key.lower())
+                cur.execute("""
+                    SELECT id, source_agent, message_type, title, body, priority, status,
+                           related_file, created_at
+                    FROM ai_messages
+                    WHERE target_agent = %s AND created_at > %s
+                    ORDER BY created_at ASC
+                """, (ai_target, since))
+                new_directives = [dict(r) for r in cur.fetchall()]
+
+                new_last_message_id = new_agent_messages[-1]["message_id"] if new_agent_messages else (cp["last_message_id"] if cp else None)
+                new_last_directive_id = new_directives[-1]["id"] if new_directives else (cp["last_directive_id"] if cp else None)
+
+                cur.execute("""
+                    INSERT INTO agent_checkpoints (agent_id, last_sync_at, last_message_id, last_directive_id,
+                                                     last_warm_start, last_successful_rebuild, version)
+                    VALUES (%s, %s, %s, %s, %s, %s, 1)
+                    ON CONFLICT (agent_id) DO UPDATE SET
+                        last_sync_at = EXCLUDED.last_sync_at,
+                        last_message_id = EXCLUDED.last_message_id,
+                        last_directive_id = EXCLUDED.last_directive_id,
+                        last_successful_rebuild = EXCLUDED.last_successful_rebuild,
+                        version = agent_checkpoints.version + 1,
+                        updated_at = NOW()
+                """, (key, sync_start, new_last_message_id, new_last_directive_id, sync_start, sync_start))
+
+                cur.execute("""
+                    INSERT INTO agent_sync_log (agent_id, started_at, completed_at, result,
+                                                  messages_loaded, directives_loaded, duration_ms)
+                    VALUES (%s, %s, NOW(), 'ok', %s, %s, %s)
+                """, (key, sync_start, len(new_agent_messages), len(new_directives), round((time.time()-t0)*1000)))
+            conn.commit()
+
+        for m in new_agent_messages:
+            m["timestamp_mt"] = m["timestamp_mt"].isoformat()
+            m["message_id"] = str(m["message_id"])
+            m["thread_id"] = str(m["thread_id"])
+        for d in new_directives:
+            d["created_at"] = d["created_at"].isoformat()
+
+        payload = {
+            "agent": key,
+            "checkpoint_previous": since.isoformat() if since.year > 2000 else None,
+            "checkpoint_now": sync_start.isoformat(),
+            "is_first_sync": cp is None,
+            "new_agent_messages": new_agent_messages,
+            "new_agent_messages_count": len(new_agent_messages),
+            "new_directives": new_directives,
+            "new_directives_count": len(new_directives),
+        }
+        return _response("/agent/sync", payload, start=t0)
+    except Exception as e:
+        return _response("/agent/sync", {}, errors=[str(e)], start=t0)
+
+
 class AgentHeartbeatPayload(BaseModel):
     agent: str
     mission: Optional[str] = None
