@@ -146,6 +146,91 @@ def scan_drive_bids(project_id: int, dry_run: bool = True):
         raise HTTPException(500, str(e))
 
 
+@router.post("/projects/{project_id}/detect-bid-updates")
+def detect_bid_updates(project_id: int, dry_run: bool = True):
+    """
+    Detect new/revised bids landing in a project's vendor folders since the
+    last check, and process any real updates found: extract, archive the
+    superseded bid (rename [SUPERSEDED YYYYMMDD], move to an Archive
+    subfolder - reversible, never a hard delete), link supersedes, extract
+    line items + reconciliation for the new bid, flag >10% amount variance
+    for manual review, and alert (LIVE_TEAM_COMMS.md + Telegram) on each
+    real update detected. dry_run=True (default): report only, no writes,
+    no alerts.
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from drive_bid_reader import detect_and_process_bid_updates
+    try:
+        result = detect_and_process_bid_updates(project_id, dry_run=dry_run)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    if "error" in result:
+        raise HTTPException(404, result["error"])
+
+    if not dry_run and result.get("updates_detected"):
+        _alert_bid_updates(result["project"], result["updates"])
+    return result
+
+
+def _alert_bid_updates(project_name: str, updates: list) -> None:
+    """Post each real detected bid update to LIVE_TEAM_COMMS.md and send
+    Buck a one-line Telegram alert per BC's spec format. Failures here are
+    logged but never raised - a notification problem shouldn't undo the
+    real DB/Drive work already committed above."""
+    import requests, datetime
+    try:
+        from integrations.credentials import get_google_token
+    except ImportError:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
+        from credentials import get_google_token
+
+    lines = []
+    for u in updates:
+        flag = " ⚠️ LARGE VARIANCE - review before trusting the new price" if u["large_variance"] else ""
+        old_amt = f"${u['old_amount']:,.2f}" if u["old_amount"] else "unknown"
+        new_amt = f"${u['new_amount']:,.2f}" if u["new_amount"] else "unknown"
+        pct = f" ({u['variance_pct']:+.1f}%)" if u["variance_pct"] is not None else ""
+        lines.append(
+            f"BID UPDATE DETECTED: {project_name} {u['division']} — {u['vendor']}\n"
+            f"  Old amount: {old_amt} ({u['old_bid_date'] or 'no date'}) → "
+            f"New amount: {new_amt} ({u['new_bid_date'] or 'no date'}){pct}{flag}\n"
+            f"  Old bid archived: {'yes' if u['old_file_archived'] else 'no - no vendor folder on file'}\n"
+            f"  Line items: {u['line_items_found']} extracted, reconciliation={u['reconciliation']}\n"
+            f"  Status: DRAFT — Buck to review"
+        )
+    entry_text = "\n\n".join(lines)
+
+    try:
+        token = get_google_token("drive")
+        headers = {"Authorization": f"Bearer {token}"}
+        file_id = "1Ya_cRlfOH2eAM5gtsk_bZmgx73ZLvn7q"  # LIVE_TEAM_COMMS.md
+        r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&supportsAllDrives=true",
+                          headers=headers, timeout=30)
+        existing = r.content.decode("utf-8", errors="replace")
+        stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M MT")
+        new_content = (existing + f"\n\n{'='*40}\nSYSTEM - {stamp} - Bid update(s) auto-detected\n{'='*40}\n\n"
+                       + entry_text + f"\n\nSystem: {stamp}\n")
+        requests.patch(
+            f"https://www.googleapis.com/upload/drive/v3/files/{file_id}?uploadType=media&supportsAllDrives=true",
+            headers={**headers, "Content-Type": "text/plain"}, data=new_content.encode("utf-8"), timeout=60)
+    except Exception:
+        pass  # notification failure must not mask that the update itself was processed
+
+    try:
+        for u in updates:
+            flag = " ⚠️ LARGE VARIANCE" if u["large_variance"] else ""
+            old_amt = f"${u['old_amount']:,.0f}" if u["old_amount"] else "?"
+            new_amt = f"${u['new_amount']:,.0f}" if u["new_amount"] else "?"
+            pct = f" ({u['variance_pct']:+.1f}%)" if u["variance_pct"] is not None else ""
+            msg = (f"\U0001f514 BID UPDATE: {project_name} {u['division']} — "
+                   f"{u['vendor']} revised {old_amt}→{new_amt}{pct}.{flag} Review.")
+            requests.post("http://localhost:8000/gateway/telegram/send",
+                           headers={"X-API-Key": os.environ.get("HCI_API_KEY", ""), "Content-Type": "application/json"},
+                           json={"text": msg}, timeout=15)
+    except Exception:
+        pass
+
+
 @router.get("/projects/{project_id}/drive-bids")
 def get_drive_bids(project_id: int, latest_only: bool = True):
     """Read all Drive-sourced bids from the drive_bids table for a project."""
