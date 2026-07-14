@@ -366,6 +366,40 @@ def project_bids(code: str):
         return _response(f"/project/{code}/bids", {}, errors=[str(e.detail)], start=t0)
 
 
+@router.get("/project/{code}/budget-baselines")
+def project_budget_baselines(code: str):
+    """Budget Baseline Register — every ROM/estimate/bid figure found for a project,
+    with source document, date, author, and status (draft/working/approved/historical),
+    so there is one place to see all competing budget numbers instead of them floating
+    around in chat threads. Architected by GBT 2026-07-13 after a real incident where
+    3 different "original ROM" figures for the same project were in circulation with
+    no record of which one, if any, was authoritative."""
+    t0 = time.time()
+    try:
+        pid = _get_pid(code)
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, source_document, drive_file_id, budget_name, revision,
+                           document_date, drive_created_at, author, status,
+                           total_low, total, total_high, notes, created_at
+                    FROM budget_baselines WHERE project_id = %s
+                    ORDER BY total ASC
+                """, (pid,))
+                rows = cur.fetchall()
+        working = [r for r in rows if r["status"] == "working"]
+        payload = {
+            "project_code": code,
+            "baselines": rows,
+            "count": len(rows),
+            "working_baseline": working[0] if len(working) == 1 else None,
+            "warning": None if len(working) <= 1 else f"{len(working)} rows marked 'working' — ambiguous, needs a human decision",
+        }
+        return _response(f"/project/{code}/budget-baselines", payload, start=t0)
+    except HTTPException as e:
+        return _response(f"/project/{code}/budget-baselines", {}, errors=[str(e.detail)], start=t0)
+
+
 @router.get("/project/{code}/pm")
 def project_pm(code: str):
     """PM weekly console — health, risks, procurement, client comms, ranked actions."""

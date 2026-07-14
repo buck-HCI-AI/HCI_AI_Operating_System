@@ -5,6 +5,29 @@
 
 ---
 
+## v5.0 — 2026-07-13 | Budget Baseline Register (budget_baselines table + gateway endpoint)
+
+**Trigger:** Self-initiated spot-check (after catching a wrong "original ROM" figure
+for 101F) found a third distinct budget figure for 1355R in circulation
+($5,693,297.12 from a real plan-driven ROM file), on top of two already being
+discussed ($3,541,000, $4,842,136). Buck: "this has been the most aggravating
+points... talk to the team about this." GBT architected the fix.
+
+- New `budget_baselines` table: every ROM/estimate/bid figure found for a project,
+  with source document, Drive file ID, internal document date vs Drive upload date
+  (kept as two separate fields — they can legitimately differ), author, and a
+  status enum (`draft`/`working`/`approved`/`historical`). Historical figures are
+  never deleted, only superseded in status — full audit trail preserved.
+- New `GET /gateway/project/{code}/budget-baselines` endpoint — surfaces all
+  competing figures for a project plus a computed `working_baseline` (null with a
+  `warning` if more than one row is ambiguously marked `working`, so the system
+  never silently picks a number when humans haven't agreed on one).
+- Populated for 1355R (3 rows) and 101F (4 rows) from this session's real findings;
+  `projects.bid_budget`/`contract_value` deliberately left unchanged — promoting a
+  `working` baseline to the live system-of-record field is a separate decision for
+  Buck/GBT, not something this build does unilaterally.
+- 4 regression tests in `tests/test_budget_baselines.py`, all passing.
+
 ## v4.9 — 2026-07-10 | Unattended restart/recovery: ngrok/mcp-server monitoring + Docker self-heal
 
 **Trigger:** Buck stepping away, asked to prep the system for unattended recovery.
