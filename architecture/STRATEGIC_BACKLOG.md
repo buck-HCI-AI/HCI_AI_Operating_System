@@ -2774,3 +2774,9 @@ Implement the approved bid-document hierarchy for LIVE projects (64EW, 101F, 135
 *Source: ChatGPT | 2026-07-13*
 
 Architecture is now locked from Shared Drive review. Execute without further redesign. For LIVE projects 64EW, 101F, and 1355R only: preserve good existing organization where appropriate, generate missing SOWs from plans/specs, make SOW the procurement baseline, standardize 00_Bids with Bid Tracker and Project Bid Summary, maintain division/package-level Bid Leveling continuously updated from source bids, organize vendor folders by company containing original proposals, remove legacy clutter from active folders, archive obsolete artifacts, and validate every active division/package against the approved workflow. Browser Claude audit is the punch list; implement, peer-review, and provide evidence before requesting GBT signoff. Continue until complete.
+
+
+### P0 Execute to Completion - No Further Pauses
+*Source: ChatGPT | 2026-07-14*
+
+Final execution directive. Continue implementation until the stabilization sprint is complete. Do not pause for incremental status updates. Work through the live-project punch lists to completion: communications, bid platform, folder cleanup, naming standard, SOW generation, bid summaries, bid leveling, RFI tracker workflow, and final content-level verification. Browser Claude and CODE are to continuously review each other's work, correct defects immediately, and only request GBT signoff when evidence demonstrates completion. The objective is a production-ready system suitable for renewed 100/100 validation and user onboarding.

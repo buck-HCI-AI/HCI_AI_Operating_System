@@ -53,12 +53,25 @@ def get_rfi(rfi_id: int) -> dict:
 
 
 def update_rfi(rfi_id: int, status: str = None, response: str = None,
-                response_date: str = None, updated_by: str = "system") -> dict:
+                response_date: str = None, updated_by: str = "system",
+                rfi_document_id: str = None, email_draft_id: str = None,
+                response_document_id: str = None, originating_discipline: str = None,
+                responsible_consultant: str = None, drawing_references: list = None,
+                spec_references: list = None, cost_impact: float = None,
+                schedule_impact_days: float = None, linked_change_order: str = None,
+                linked_bulletin: str = None, linked_revision: str = None) -> dict:
     """
     The one real gap Field GPT correctly reported as missing: there was no
     way to update an existing RFI's status/response at all, only create new
     ones. Also logs the update to project_events for the same timeline
     every other project action feeds.
+
+    Extended 2026-07-14 per GBT's RFI Tracker Refactor architecture: the
+    tracker should be the master record, not just an Excel log, so every
+    field GBT specified (discipline, consultant, drawing/spec refs, cost/
+    schedule impact, linked change order/bulletin/revision, and the
+    generated document + email draft IDs) can be set here rather than
+    only existing as one-time API response evidence in run_rfi_workflow().
     """
     fields, values = [], []
     if status is not None:
@@ -67,6 +80,30 @@ def update_rfi(rfi_id: int, status: str = None, response: str = None,
         fields.append("response = %s"); values.append(response)
     if response_date is not None:
         fields.append("response_date = %s"); values.append(response_date)
+    if rfi_document_id is not None:
+        fields.append("rfi_document_id = %s"); values.append(rfi_document_id)
+    if email_draft_id is not None:
+        fields.append("email_draft_id = %s"); values.append(email_draft_id)
+    if response_document_id is not None:
+        fields.append("response_document_id = %s"); values.append(response_document_id)
+    if originating_discipline is not None:
+        fields.append("originating_discipline = %s"); values.append(originating_discipline)
+    if responsible_consultant is not None:
+        fields.append("responsible_consultant = %s"); values.append(responsible_consultant)
+    if drawing_references is not None:
+        fields.append("drawing_references = %s"); values.append(drawing_references)
+    if spec_references is not None:
+        fields.append("spec_references = %s"); values.append(spec_references)
+    if cost_impact is not None:
+        fields.append("cost_impact = %s"); values.append(cost_impact)
+    if schedule_impact_days is not None:
+        fields.append("schedule_impact_days = %s"); values.append(schedule_impact_days)
+    if linked_change_order is not None:
+        fields.append("linked_change_order = %s"); values.append(linked_change_order)
+    if linked_bulletin is not None:
+        fields.append("linked_bulletin = %s"); values.append(linked_bulletin)
+    if linked_revision is not None:
+        fields.append("linked_revision = %s"); values.append(linked_revision)
     if not fields:
         return {"error": "nothing to update"}
     values.append(rfi_id)
@@ -438,4 +475,19 @@ def run_rfi_workflow(rfi_id: int, to_email: str = None, to_name: str = None) -> 
     )
 
     evidence["all_steps_ok"] = all(s.get("ok") for s in evidence["steps"].values())
+
+    # Persist the generated document + email draft as durable links on the RFI
+    # row itself, not just one-time API response evidence - per GBT's "tracker
+    # becomes the master record" architecture. Best-effort: a failure here
+    # doesn't roll back the real Drive/email actions already taken above.
+    doc_id = evidence["steps"]["save_to_drive"].get("file_id")
+    draft_id = evidence["steps"]["create_email_draft"].get("draft_id")
+    if doc_id or draft_id:
+        try:
+            update_rfi(rfi_id, updated_by="rfi_workflow",
+                       rfi_document_id=doc_id, email_draft_id=draft_id)
+            evidence["steps"]["persist_links"] = {"ok": True, "rfi_document_id": doc_id, "email_draft_id": draft_id}
+        except Exception as e:
+            evidence["steps"]["persist_links"] = {"ok": False, "error": str(e)}
+
     return evidence

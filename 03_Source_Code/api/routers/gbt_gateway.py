@@ -17,7 +17,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, Form
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 from datetime import datetime, timezone, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -5425,23 +5425,51 @@ class RFIUpdatePayload(BaseModel):
     response: Optional[str] = None
     response_date: Optional[str] = None
     updated_by: str = "field"
+    # Added 2026-07-14 per GBT's RFI Tracker Refactor architecture - the
+    # tracker is meant to be the master record for the full RFI workflow,
+    # not just status/response. See rfis table migration same date.
+    rfi_document_id: Optional[str] = None
+    email_draft_id: Optional[str] = None
+    response_document_id: Optional[str] = None
+    originating_discipline: Optional[str] = None
+    responsible_consultant: Optional[str] = None
+    drawing_references: Optional[List[str]] = None
+    spec_references: Optional[List[str]] = None
+    cost_impact: Optional[float] = None
+    schedule_impact_days: Optional[float] = None
+    linked_change_order: Optional[str] = None
+    linked_bulletin: Optional[str] = None
+    linked_revision: Optional[str] = None
 
 
 @router.patch("/field/rfi/{rfi_id}")
 def field_update_rfi(rfi_id: int, req: RFIUpdatePayload):
     """
-    Updates an existing RFI's status/response. Added 2026-07-09/10 - this
-    did not exist before (POST /field/rfi only created new RFIs), which was
-    the exact gap Field GPT correctly reported ("cannot update the RFI
-    tracker") in the 2026-07-10 capability audit.
+    Updates an existing RFI's status/response, and (2026-07-14) the fuller
+    master-record fields from GBT's RFI Tracker Refactor architecture:
+    discipline/consultant, drawing/spec references, cost/schedule impact,
+    linked change order/bulletin/revision, and document/draft IDs. Added
+    2026-07-09/10 - PATCH did not exist before (POST /field/rfi only
+    created new RFIs), which was the exact gap Field GPT correctly reported
+    ("cannot update the RFI tracker") in the 2026-07-10 capability audit.
     """
     t0 = time.time()
     try:
         import sys as _sys
         _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services"))
         import rfi_workflow
-        result = rfi_workflow.update_rfi(rfi_id, status=req.status, response=req.response,
-                                          response_date=req.response_date, updated_by=req.updated_by)
+        result = rfi_workflow.update_rfi(
+            rfi_id, status=req.status, response=req.response,
+            response_date=req.response_date, updated_by=req.updated_by,
+            rfi_document_id=req.rfi_document_id, email_draft_id=req.email_draft_id,
+            response_document_id=req.response_document_id,
+            originating_discipline=req.originating_discipline,
+            responsible_consultant=req.responsible_consultant,
+            drawing_references=req.drawing_references, spec_references=req.spec_references,
+            cost_impact=req.cost_impact, schedule_impact_days=req.schedule_impact_days,
+            linked_change_order=req.linked_change_order, linked_bulletin=req.linked_bulletin,
+            linked_revision=req.linked_revision,
+        )
         if "error" in result:
             return _response(f"/field/rfi/{rfi_id}", {}, errors=[result["error"]], start=t0)
         _log(f"/field/rfi/{rfi_id}", req.updated_by, "", "rfi_updated", round((time.time()-t0)*1000), str(uuid.uuid4())[:8])
