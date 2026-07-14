@@ -4069,6 +4069,31 @@ def system_drift_check():
                         "detail": f"{len(padding_dupes)} project/division_name pair(s) have inconsistent division_num values (e.g. '4' vs '04') - a division_num filter will silently miss real bids stored under the other variant",
                         "items": [f"project {r['project_id']}: {r['division_name']} has division_num variants {r['num_variants']}" for r in padding_dupes[:15]],
                     })
+
+                # 2e. Folder Integrity Gate - GBT's proposed permanent control
+                # (2026-07-14) after tonight's real ingestion-defect find (RFI
+                # documents and 2 un-ingested real bids sitting misfiled as
+                # generic "Unknown.pdf" at project roots). Fails validation if
+                # any active project has unresolved ingestion_exceptions rows -
+                # turns "tonight's surprise into tomorrow's checklist" per
+                # GBT's own framing, rather than requiring another manual
+                # folder walk to catch a recurrence.
+                cur.execute("""
+                    SELECT p.project_code, p.name, COUNT(*) as unresolved_count,
+                           array_agg(ie.current_filename) as filenames
+                    FROM ingestion_exceptions ie
+                    JOIN projects p ON p.id = ie.project_id
+                    WHERE ie.resolved = FALSE
+                    GROUP BY p.project_code, p.name
+                """)
+                unresolved_exceptions = cur.fetchall()
+                if unresolved_exceptions:
+                    findings.append({
+                        "severity": "medium",
+                        "category": "folder_integrity_gate",
+                        "detail": f"{sum(r['unresolved_count'] for r in unresolved_exceptions)} unresolved ingestion exception(s) across {len(unresolved_exceptions)} project(s) - generic/misfiled documents not yet reviewed or explicitly excluded. Some may be RFI-territory (never auto-resolve, human decision required) - check ingestion_exceptions.exception_reason before acting.",
+                        "items": [f"{r['project_code']} ({r['name']}): {r['unresolved_count']} unresolved - {r['filenames'][:5]}" for r in unresolved_exceptions],
+                    })
     except Exception as e:
         findings.append({"severity": "high", "category": "check_failed", "detail": f"DB checks errored: {e}"})
 
