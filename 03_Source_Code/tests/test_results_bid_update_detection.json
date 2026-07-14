@@ -1,0 +1,22 @@
+{
+  "results": [
+    {
+      "name": "BID-UPDATE-DETECT-01: dry_run never writes to drive_bids",
+      "status": "PASS"
+    },
+    {
+      "name": "BID-UPDATE-DETECT-02: runs cleanly on all 3 active projects",
+      "status": "PASS"
+    },
+    {
+      "name": "BID-UPDATE-DETECT-03: variance percentage math is correct",
+      "status": "PASS"
+    },
+    {
+      "name": "BID-UPDATE-DETECT-04: no false-positive updates on unchanged project",
+      "status": "PASS"
+    }
+  ],
+  "passed": 4,
+  "total": 4
+}

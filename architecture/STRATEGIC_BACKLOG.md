@@ -2750,3 +2750,27 @@ Expand the Deep Verification Program into a full retrospective audit of the HCI 
 *Source: ChatGPT | 2026-07-13*
 
 Implement a permanent Deep Verification Program as part of the 100/100 initiative. This is now a required operating discipline, not a one-time audit. For every workflow and every implementation: (1) validate against production source documents, (2) inspect active folder structure, (3) trace end-to-end workflow, (4) compare outputs across agents, (5) document root cause for every defect, (6) implement the fix, (7) create a regression test, (8) require peer review by another agent, and (9) require GBT architectural signoff before completion. Track verification coverage and defect escape rate as KPIs. The success metric is that the team consistently finds and fixes issues before Buck does. Apply this immediately to the active bid platform rebuild, RFI workflow, communications architecture, and 100/100 recovery.
+
+
+### P0 Continue Live Bid Folder & Leveling Cleanup
+*Source: ChatGPT | 2026-07-13*
+
+Continue without pause. Current blockers remain bid leveling quality and active folder organization. Priority is the LIVE projects only (64EW, 101F, 1355R). Browser Claude: complete the detailed folder audit and produce a punch list for every division, including misplaced folders, duplicates, legacy artifacts, missing Gold Standard summaries, and HCI division mapping issues. CODE: work through the punch list until every active division contains only canonical artifacts, every bid level is rebuilt from source PDFs, every executive summary is PM-ready, and folder organization exactly matches the HCI standard. Do not stop at partial completion. Peer review each completed division before moving on. Report only verified completions with evidence.
+
+
+### P0 Active Folder Naming Standard & Cleanup
+*Source: ChatGPT | 2026-07-13*
+
+Implement the canonical active-folder presentation immediately for LIVE projects (64EW, 101F, 1355R). Active folders must contain exactly one current working document per artifact type with stable business names: 'Bid Summary', 'Bid Tracker', 'Bid Leveling', 'Scope Matrix', 'SOW', 'Award Recommendation', 'Email Template' (and analogous RFI artifacts in the RFI workflow). Do not use filenames such as 'Gold Standard', 'Superseded', 'Final', 'v2', 'NEW', etc. Historical versions belong in Archive folders, not active folders. Remove obsolete generated files from active locations, preserve required history in archives, standardize naming across all live divisions, and perform a visual QA so a PM opening any folder immediately sees only the current canonical documents.
+
+
+### P0 Build Canonical Bid Summary Hierarchy
+*Source: ChatGPT | 2026-07-13*
+
+Implement the approved bid-document hierarchy for LIVE projects (64EW, 101F, 1355R). Structure: 00_Bids contains (1) Bid Tracker (canonical operational tracker) and (2) Bid Summary (project-wide executive summary). The Project Bid Summary rolls up every division and subdivision with status, bid counts, recommendations, risks, outstanding RFIs, award readiness, and links/references to division summaries. Every active division and subdivision shall contain two primary documents: (A) Bid Summary - concise PM summary of that division/subdivision; (B) Bid Leveling - detailed scope-equivalency analysis with scope matrix, inclusions/exclusions, allowances, qualifications, risk analysis, clarification items, and award recommendation. Keep filenames simple and stable. Rebuild these from source bid documents, remove legacy artifacts from active folders, and peer-review every division before completion.
+
+
+### P0 Execute Canonical Live Bid Platform (Architecture Locked)
+*Source: ChatGPT | 2026-07-13*
+
+Architecture is now locked from Shared Drive review. Execute without further redesign. For LIVE projects 64EW, 101F, and 1355R only: preserve good existing organization where appropriate, generate missing SOWs from plans/specs, make SOW the procurement baseline, standardize 00_Bids with Bid Tracker and Project Bid Summary, maintain division/package-level Bid Leveling continuously updated from source bids, organize vendor folders by company containing original proposals, remove legacy clutter from active folders, archive obsolete artifacts, and validate every active division/package against the approved workflow. Browser Claude audit is the punch list; implement, peer-review, and provide evidence before requesting GBT signoff. Continue until complete.

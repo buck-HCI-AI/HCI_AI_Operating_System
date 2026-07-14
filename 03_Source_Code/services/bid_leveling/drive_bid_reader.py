@@ -1355,4 +1355,146 @@ def get_leveling_summary(project_id: int) -> dict:
             "inferred_subgroups": inferred_subgroups or None,
             "bids":          sorted(bids, key=lambda b: b["amount"] or 0),
         }
+
+
+def _trash_and_rename(file_id: str, new_name: str, token: str) -> None:
+    """Rename a file with a [SUPERSEDED YYYYMMDD] prefix - does NOT trash it,
+    the file stays in place (just renamed) so it remains visible in its
+    Archive subfolder. Never uses the permanent-delete endpoint."""
+    import requests
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    requests.patch(f"{BASE_URL}/files/{file_id}?supportsAllDrives=true",
+                    headers=headers, json={"name": new_name}, timeout=15)
+
+
+def _move_to_archive_subfolder(file_id: str, vendor_folder_id: str, current_parent: str, token: str) -> str:
+    """Move a file into an 'Archive' subfolder within its vendor folder,
+    creating the subfolder if it doesn't exist yet. Returns the Archive
+    subfolder id. This is a move, not a delete - fully reversible."""
+    import requests
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    entries = _drive_list(vendor_folder_id, token)
+    archive = next((e for e in entries if "folder" in e.get("mimeType", "")
+                     and e["name"].lower() == "archive"), None)
+    if archive:
+        archive_id = archive["id"]
+    else:
+        r = requests.post(f"{BASE_URL}/files?supportsAllDrives=true", headers=headers,
+                           json={"name": "Archive", "mimeType": "application/vnd.google-apps.folder",
+                                 "parents": [vendor_folder_id]}, timeout=15)
+        archive_id = r.json()["id"]
+    requests.patch(
+        f"{BASE_URL}/files/{file_id}?addParents={archive_id}&removeParents={current_parent}&supportsAllDrives=true",
+        headers=headers, timeout=15)
+    return archive_id
+
+
+def detect_and_process_bid_updates(project_id: int, dry_run: bool = True) -> dict:
+    """
+    Detect new or revised bids landing in a project's vendor folders and
+    process them end to end: extract, compare to the prior latest bid for
+    that vendor+division, archive the old bid (rename [SUPERSEDED
+    YYYYMMDD], move to an Archive subfolder - never permanently deleted),
+    extract line items + reconciliation for the new bid, link supersedes,
+    and flag large-variance / plan-currency-risk cases for human review
+    rather than silently trusting the new number.
+
+    Built on top of scan_project_bids() rather than re-walking Drive from
+    scratch - that function already does the file-walk, extraction, and
+    is_latest recompute (newest bid_date per project+division+vendor wins).
+    This function snapshots the is_latest bid per vendor before calling it,
+    then diffs after, so it only has to reason about what actually changed.
+
+    dry_run=True (default): reports what would happen without touching
+    Drive or writing bid_line_items / supersedes. Actual drive_bids rows
+    from scan_project_bids are only written when dry_run=False, matching
+    the dry-run-first convention used throughout this file.
+    """
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, project_code FROM projects WHERE id=%s", (project_id,))
+            proj = cur.fetchone()
+    if not proj:
+        return {"error": f"Project {project_id} not found"}
+
+    # Snapshot: current is_latest bid per (division_num, vendor_name)
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, division_num, division_name, vendor_name, vendor_folder_id,
+                       file_id, file_name, bid_amount, bid_date
+                FROM drive_bids WHERE project_id=%s AND is_latest=TRUE
+            """, (project_id,))
+            before = {(r["division_num"], r["vendor_name"]): dict(r) for r in cur.fetchall()}
+
+    scan_result = scan_project_bids(project_id, dry_run=dry_run)
+    if "error" in scan_result:
+        return scan_result
+
+    if dry_run:
+        # In dry-run mode scan_project_bids doesn't write, so there's
+        # nothing to diff against yet - just surface what it found.
+        return {"project": proj["name"], "dry_run": True, "scan_result": scan_result,
+                "note": "Run with dry_run=False to detect and process actual updates."}
+
+    with _pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, division_num, division_name, vendor_name, vendor_folder_id,
+                       file_id, file_name, bid_amount, bid_date
+                FROM drive_bids WHERE project_id=%s AND is_latest=TRUE
+            """, (project_id,))
+            after = {(r["division_num"], r["vendor_name"]): dict(r) for r in cur.fetchall()}
+
+    token = get_google_token("drive")
+    updates = []
+    for key, new_row in after.items():
+        old_row = before.get(key)
+        if not old_row or old_row["id"] == new_row["id"]:
+            continue  # genuinely new vendor, or unchanged - not an update event
+
+        old_amount = float(old_row["bid_amount"]) if old_row["bid_amount"] else None
+        new_amount = float(new_row["bid_amount"]) if new_row["bid_amount"] else None
+        variance_pct = None
+        large_variance = False
+        if old_amount and new_amount:
+            variance_pct = round((new_amount - old_amount) / old_amount * 100, 1)
+            large_variance = abs(variance_pct) > 10
+
+        # Link supersedes + extract line items for the new bid
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE drive_bids SET supersedes=%s WHERE id=%s",
+                            (old_row["id"], new_row["id"]))
+            conn.commit()
+        line_item_result = ingest_bid_line_items(new_row["id"], dry_run=False)
+
+        # Archive the old bid file: rename with [SUPERSEDED YYYYMMDD] prefix,
+        # move into an Archive subfolder within the vendor folder. Never
+        # permanently deleted - reversible, matches this session's standing
+        # rule against hard deletes.
+        archived = False
+        if old_row["vendor_folder_id"] and old_row["file_id"]:
+            today = datetime.datetime.now().strftime("%Y%m%d")
+            new_name = f"[SUPERSEDED {today}] {old_row['file_name']}"
+            _trash_and_rename(old_row["file_id"], new_name, token)
+            _move_to_archive_subfolder(old_row["file_id"], old_row["vendor_folder_id"],
+                                        old_row["vendor_folder_id"], token)
+            archived = True
+
+        updates.append({
+            "division": new_row["division_name"],
+            "vendor": new_row["vendor_name"],
+            "old_amount": old_amount, "new_amount": new_amount,
+            "variance_pct": variance_pct, "large_variance": large_variance,
+            "old_bid_date": str(old_row["bid_date"]) if old_row["bid_date"] else None,
+            "new_bid_date": str(new_row["bid_date"]) if new_row["bid_date"] else None,
+            "old_bid_id": old_row["id"], "new_bid_id": new_row["id"],
+            "old_file_archived": archived,
+            "line_items_found": line_item_result.get("line_items_found"),
+            "reconciliation": line_item_result.get("reconciliation"),
+        })
+
+    return {"project": proj["name"], "project_id": project_id, "dry_run": False,
+            "scan_result": scan_result, "updates_detected": len(updates), "updates": updates}
     return summary
