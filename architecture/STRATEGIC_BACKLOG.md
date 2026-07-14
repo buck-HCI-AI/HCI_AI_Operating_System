@@ -2780,3 +2780,9 @@ Architecture is now locked from Shared Drive review. Execute without further red
 *Source: ChatGPT | 2026-07-14*
 
 Final execution directive. Continue implementation until the stabilization sprint is complete. Do not pause for incremental status updates. Work through the live-project punch lists to completion: communications, bid platform, folder cleanup, naming standard, SOW generation, bid summaries, bid leveling, RFI tracker workflow, and final content-level verification. Browser Claude and CODE are to continuously review each other's work, correct defects immediately, and only request GBT signoff when evidence demonstrates completion. The objective is a production-ready system suitable for renewed 100/100 validation and user onboarding.
+
+
+### P0 Deliver Production Bid Intelligence Using Live + Historical Data
+*Source: ChatGPT | 2026-07-14*
+
+Execute the Bid Leveling subsystem as the first production-grade module of the HCI Construction OS, built for long-term integration. Use live project data for 64EW, 101F, and 1355R plus HCI historical bid/cost data as reference intelligence. Required workflow: read full plans/specs/addenda, generate division/subdivision SOWs, organize incoming bids by vendor, compare every bid against the SOW and against peer bids, identify inclusions/exclusions/allowances/qualifications, estimate missing-scope impact using historical benchmarks where appropriate, update division-level Bid Leveling continuously, update project Bid Tracker and Project Bid Summary, generate clarification items and award recommendations, and feed awarded values into the hard-budget/procurement model. Historical data must be used as evidence and benchmark support, never as a substitute for current source documents. Preserve provenance for every extracted fact and every inferred value. Deliver end-to-end regression tests, r
