@@ -4019,6 +4019,56 @@ def system_drift_check():
                         "detail": f"{len(sow_contaminated)} drive_bids row(s) are outbound docs/trackers/archived items/garbage division codes misfiled as vendor bids - will appear in generated leveling sheets as fake vendors or fake divisions",
                         "items": [f"project {r['project_id']}: {r['vendor_name']}" for r in sow_contaminated[:15]],
                     })
+
+                # 2c. Cross-division duplicate bids - the exact pattern Buck's
+                # "bid leveling must be 100% correct" push surfaced 2026-07-13:
+                # the same vendor PDF gets filed into 2+ division folders in Drive
+                # (e.g. a cabinetry bid also placed in Finishes), and scan_project_bids
+                # ingests each folder placement as an independent bid, silently
+                # inflating division bid counts and double-counting the same dollar
+                # amount as if 2-3 vendors bid it. Found and manually fixed 10 rows
+                # across 1355R/64EW that day; this check catches any that recur or
+                # were missed, without needing another full manual audit.
+                cur.execute("""
+                    SELECT project_id, bid_amount, COUNT(*) as occurrences,
+                           array_agg(vendor_name) as vendors,
+                           array_agg(DISTINCT division_name) as divisions,
+                           array_agg(id) as ids
+                    FROM drive_bids
+                    WHERE bid_amount IS NOT NULL
+                    GROUP BY project_id, bid_amount
+                    HAVING COUNT(*) > 1 AND COUNT(DISTINCT division_name) > 1
+                """)
+                cross_div_dupes = cur.fetchall()
+                if cross_div_dupes:
+                    findings.append({
+                        "severity": "high",
+                        "category": "bid_leveling_cross_division_duplicate",
+                        "detail": f"{len(cross_div_dupes)} bid amount(s) appear more than once across different divisions in the same project - almost always the same PDF filed into multiple Drive folders and double-counted, not real independent bids",
+                        "items": [f"project {r['project_id']}: ${r['bid_amount']} x{r['occurrences']} across {r['divisions']} (ids {r['ids']}, vendors {r['vendors']})" for r in cross_div_dupes[:15]],
+                    })
+
+                # 2d. division_num zero-padding inconsistency - found 2026-07-13
+                # when CK Stone's bid (stored as division_num='4') was silently
+                # excluded from a division_num='04' filter used to build the
+                # Division 04 Masonry leveling doc. Any project/division_name pair
+                # split across a padded and unpadded division_num is a real gap:
+                # every fixed-string filter on division_num will only see one of
+                # the two variants and miss real bids.
+                cur.execute("""
+                    SELECT project_id, division_name, array_agg(DISTINCT division_num) as num_variants
+                    FROM drive_bids
+                    GROUP BY project_id, division_name
+                    HAVING COUNT(DISTINCT division_num) > 1
+                """)
+                padding_dupes = cur.fetchall()
+                if padding_dupes:
+                    findings.append({
+                        "severity": "high",
+                        "category": "bid_leveling_division_num_padding",
+                        "detail": f"{len(padding_dupes)} project/division_name pair(s) have inconsistent division_num values (e.g. '4' vs '04') - a division_num filter will silently miss real bids stored under the other variant",
+                        "items": [f"project {r['project_id']}: {r['division_name']} has division_num variants {r['num_variants']}" for r in padding_dupes[:15]],
+                    })
     except Exception as e:
         findings.append({"severity": "high", "category": "check_failed", "detail": f"DB checks errored: {e}"})
 
