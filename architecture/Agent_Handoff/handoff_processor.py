@@ -152,9 +152,18 @@ def route_handoff(file_path: Path, header: dict, payload: str, dry_run: bool) ->
     if doc_type == "implementation_request":
         backlog = REPO_ROOT / "Architecture/STRATEGIC_BACKLOG.md"
         title   = header.get("title", "Untitled")
+        # 2026-07-14 fix: this silently truncated every directive body to
+        # 1000 chars, cutting GBT's "Deliver Production Bid Intelligence"
+        # directive off mid-sentence with no marker that anything was
+        # missing - the exact "truncated directives" failure mode Phase 1
+        # of the AI Team OS stabilization roadmap names as unacceptable.
+        # Full payload now, with an explicit marker only if it's still
+        # implausibly long (protects against a genuinely malformed file,
+        # not normal directive length).
+        body = payload if len(payload) <= 20000 else payload[:20000] + "\n\n[TRUNCATED - payload exceeded 20000 chars, see original handoff file for full text]"
         entry   = (f"\n\n### {title}\n"
                    f"*Source: {source} | {header.get('created_at', '')}*\n\n"
-                   f"{payload[:1000]}\n")
+                   f"{body}\n")
         if not dry_run:
             with open(backlog, "a", encoding="utf-8") as f:
                 f.write(entry)
