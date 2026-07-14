@@ -3,8 +3,19 @@
 
 **Organization:** Hendrickson Construction, Inc. (owned by Chris Hendrickson)
 **Owner:** @buck-HCI-AI (Buck Adams) — PM & Superintendent at Hendrickson Construction; owner/operator of HCI-AI, this repository
-**Last Updated:** 2026-07-13T13:00 MST
-**Updated By:** Claude Code — SYSTEM WIDE DIRECTIVE filed permanently, n8n governance fix, systemic fabricated-data cleanup (246GW + 5 other projects), analyzePlanReview verified end-to-end from live GBT, approval-queue/project-table refresh below. See handoff block below.
+**Last Updated:** 2026-07-14T01:35 MST
+**Updated By:** Claude Code — overnight session per Buck's hard deadline: bid leveling on 64EW/101F/1355R complete, all 3 canonical Bid Trackers synced with real findings (Phase 3 of GBT's 5-phase stabilization roadmap), a real directive-truncation bug found+fixed (88 historical STRATEGIC_BACKLOG.md entries affected), and a real ingestion defect found (misfiled "Unknown.pdf" files at 2 project roots — some are Buck's real RFI docs, untouched; 2 were previously un-ingested real bids at 64EW, now ingested). GBT withholding final Phase 3 sign-off pending a folder-integrity sweep across all 3 projects (in progress). See handoff block below for prior history.
+
+## [STATE CHANGE 2026-07-14 01:35 MST] Overnight: Phase 3 (Bid Management) substantially complete, real ingestion defect found
+
+Correcting a factual claim: GBT stated in a live session that this file was stale showing "June 28" state - checked directly, that's inaccurate; this file was last updated 2026-07-13T13:00 MST (same day, not June), just genuinely stale relative to tonight's work, which is what this update addresses.
+
+Real work tonight, driven by Buck's direct order ("bid leveling and that 64, 101, and 1355 are done when I wake up - no exceptions") relayed via a recovered GBT transcript containing a locked 5-phase roadmap (AI Team OS → Operations Manual/Book → Bid Management → 100/100 → Continuous Improvement, no phase advances without CODE+BC+GBT evidence):
+
+- All 3 canonical Google Sheet Bid Trackers (not just the Project Bid Summary Docs) updated with real, current per-division status - closes Phase 3's "Synchronize Bid Tracker" acceptance item.
+- Found and fixed the real STRATEGIC_BACKLOG.md truncation bug (`handoff_processor.py` was hard-truncating every directive to 1000 chars with no marker) - affected 88 historical entries across the project's full history.
+- Found a real, active ingestion defect during a folder-organization audit GBT recommended: files landing at each project's 00_Bids root with generic `[date]_[project]_Unknown.pdf` names instead of proper classification/placement. At 1355R, 7 of these are real RFI documents (untouched, RFI disposition is Buck's alone). At 64EW, 2 of these were real, previously un-ingested bids (Western Slope Waterproofing $21,798, Pella $43,105.84) - ingested properly since 64EW is an active project. Root cause of the misfiling pipeline itself not yet identified. GBT proposed a permanent "Ingestion Exceptions" registry + nightly scan as the fix and is withholding final Phase 3 sign-off until a full 3-project folder sweep confirms nothing else is hiding.
+- Telegram notifications to Buck paused until 6am per his explicit instruction; status routed to LIVE_TEAM_COMMS.md instead.
 **Sprint:** Sprint 3 — Production Stabilization (ACTIVE — opened 2026-07-01). Sprint 2 — Registry Consolidation CLOSED 2026-07-01 (see CURRENT_SPRINT.md for archived detail; formal ARB close ruling pending Chief Architect review).
 **Authority:** LIVE_PROJECT_STATE_TEMPLATE.md v1.0
 
