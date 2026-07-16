@@ -1389,7 +1389,7 @@
     "type": "function",
     "function": {
       "name": "GetMyQueue",
-      "description": "Your queue dashboard (agent: 'bc', 'arch', or 'code', lowercase) - depth by status, your last completed/claimed task, and the next task queued for you. Call this to know what work you're actually assigned before starting on something self-directed.",
+      "description": "Your queue dashboard (agent: 'bc' or 'ca', lowercase - 'ca' is you, the Chief Architect; 'arch'/'code' are not valid values for this endpoint) - depth by status, your last completed/claimed task, and the next task queued for you. Call this to know what work you're actually assigned before starting on something self-directed.",
       "parameters": {
         "type": "object",
         "properties": {
