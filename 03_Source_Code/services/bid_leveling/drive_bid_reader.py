@@ -15,6 +15,7 @@ Only PDFs and DOCx files are read. The most recently modified file per vendor is
 marked is_latest=True; older files for the same vendor are set is_latest=False.
 """
 import sys, os, json, re, ssl, urllib.request, urllib.parse, datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "api"))
 
@@ -585,8 +586,20 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
     stays anchored to the top-level folder throughout - a vendor found via a
     subdivision still reports its parent division, not the subdivision number.
     """
+    # 2026-07-15: this walk was fully serial (one division folder at a time,
+    # then recursing depth-first into each) - measured live at 50+ seconds for
+    # a single project's dry-run scan, a real contributing factor in
+    # AUTO-BID-UPDATE-DETECTION's intermittent ECONNABORTED failures. Top-level
+    # division folders are fully independent of each other (no shared state,
+    # no ordering dependency in the returned flat list), so parallelize just
+    # this outer loop via a thread pool - Drive API calls are I/O-bound, and
+    # this doesn't touch any of the recursive parsing/classification logic
+    # inside _walk_vendor_level, which has a lot of carefully-tuned historical
+    # bugfixes (archive-skipping, division-prefix parsing, sub-package
+    # disambiguation) that a broader rewrite would risk breaking.
     results = []
     div_folders = _drive_list(bid_folder_id, token)
+    division_jobs = []
 
     for div_folder in div_folders:
         if "folder" not in div_folder.get("mimeType", ""):
@@ -624,7 +637,19 @@ def walk_bid_folders(bid_folder_id: str, token: str) -> list:
                 continue
 
         division_num, division_name = _sub_package_parent(div_raw, division_num, division_name)
-        results.extend(_walk_vendor_level(div_folder["id"], token, division_num, division_name, depth=0))
+        division_jobs.append((div_folder["id"], division_num, division_name))
+
+    if not division_jobs:
+        return results
+
+    with ThreadPoolExecutor(max_workers=min(8, len(division_jobs))) as pool:
+        futures = {
+            pool.submit(_walk_vendor_level, folder_id, token, div_num, div_name, 0): div_num
+            for folder_id, div_num, div_name in division_jobs
+        }
+        for future in as_completed(futures):
+            results.extend(future.result())
+
     return results
 
 
@@ -647,7 +672,8 @@ def _vendor_name_from_filename(filename: str) -> str:
 _NON_BID_FILENAME_RE = re.compile(
     r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
     r"email templates?|division index|bid instructions?|"
-    r"bid level tracker|level tracker|bid tracker|bid leveling|bid audit)\b|"
+    r"bid level tracker|level tracker|bid tracker|bid leveling|bid audit|"
+    r"bid summary)\b|"
     r"^(archived?|old|superseded)([\s_-]|$)", re.IGNORECASE
 )
 
@@ -933,19 +959,45 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
                 if row["bid_amount"]:
                     _sync_bid_package(cur, row)
 
-            # Fix is_latest: for each (project, division, vendor) set only the newest file as latest
+            # is_latest recompute (2026-07-14 rewrite - see lessons_learned #57/#66):
+            # the old version partitioned by (project, division, vendor) alone, which
+            # silently collapsed genuinely distinct concurrent line items from the same
+            # vendor (multi-scope submissions like LEAX Controls' 7 items) down to a
+            # single is_latest=true row - real dollar amounts went invisible with no
+            # error. Fixed model: is_latest is only ever auto-collapsed within
+            # (project, division, vendor, file_name) - i.e. a literal re-scan of the
+            # identical file, which is always safe to dedupe. A genuine revision
+            # (same scope, new file, meant to replace the old one) must have its OWN
+            # supersedes column explicitly set to point at the current row's id -
+            # either by this same auto-detection for identical filenames, or by a
+            # human/agent verification step for a differently-named resubmission.
+            # Convention: supersedes points FORWARD (old row -> the row that replaced
+            # it), so a row with its own supersedes set is, by definition, not latest -
+            # this lets many old duplicates point at one current row, which a reverse
+            # convention (current -> old) cannot represent with a single-value column.
             cur.execute("""
                 WITH ranked AS (
                     SELECT id,
                            ROW_NUMBER() OVER (
-                               PARTITION BY project_id, division_num, vendor_name
+                               PARTITION BY project_id, division_num, vendor_name, file_name
                                ORDER BY COALESCE(bid_date, '1900-01-01'::date) DESC, id DESC
                            ) AS rn
                     FROM drive_bids WHERE project_id = %s
                 )
                 UPDATE drive_bids
                 SET is_latest = (ranked.rn = 1)
-                FROM ranked WHERE drive_bids.id = ranked.id
+                FROM ranked
+                WHERE drive_bids.id = ranked.id
+                  AND drive_bids.supersedes IS NULL
+            """, (project_id,))
+            # Explicit supersedes always overrides: a row that has been marked as
+            # superseded (its own supersedes column is set) is never latest, no matter
+            # what the filename-collapse above did.
+            cur.execute("""
+                UPDATE drive_bids
+                SET is_latest = FALSE
+                WHERE supersedes IS NOT NULL
+                  AND project_id = %s
             """, (project_id,))
         conn.commit()
 
@@ -1296,6 +1348,77 @@ def _infer_subgroups(division_num: str, bids: list) -> dict:
     return subgroups
 
 
+def get_bid_breakout(project_id: int, division_num: str) -> dict:
+    """
+    Mike Mount-style side-by-side vendor comparison for one division: a grid
+    of scope category rows x vendor columns, so "what does Vendor A charge
+    for X vs Vendor B" reads directly off the table instead of requiring a
+    human to cross-reference narrative paragraphs. Built 2026-07-15 per
+    GBT/Buck architecture requirement (msg f28e417c) after reviewing Mike
+    Mount's real 246 Gallo Way workbook, which has a dedicated Bid Breakout
+    tab doing exactly this.
+
+    HONEST LIMITATION, not glossed over: this is CATEGORY-level, not true
+    LINE-ITEM-level like Mike's. drive_bids stores one aggregate bid_amount
+    per vendor per division - there is no itemized per-line-item dollar data
+    extracted from source bid PDFs anywhere in this system. Mike's Bid
+    Breakout works because his source data has real line-item pricing to
+    pull from. This function reuses the EXACT same source
+    (read_drive_bids() -> _infer_subgroups(), the same path get_leveling_summary()
+    uses) so the category grid and the narrative doc can never diverge - but
+    each vendor's number in a cell is still their one whole-scope bid amount,
+    not a true line-item split. Getting real line-item parity with Mike's
+    format requires extracting itemized pricing from vendor PDFs, which is a
+    separate, larger data-extraction project, not something this function can
+    manufacture from data that doesn't exist.
+    """
+    divisions = read_drive_bids(project_id, latest_only=True)
+    div_data = divisions.get(division_num)
+    if not div_data:
+        matches = {k: v for k, v in divisions.items() if k.startswith(f"{division_num}__")}
+        if len(matches) == 1:
+            div_data = next(iter(matches.values()))
+        elif len(matches) > 1:
+            return {
+                "error": "ambiguous_division",
+                "detail": f"division {division_num} has {len(matches)} disambiguated scopes - "
+                          f"call with the full composite key, one of: {list(matches.keys())}",
+            }
+    if not div_data:
+        return {"error": "not_found", "detail": f"no bids found for division {division_num}"}
+
+    bids = [b for b in div_data["bids"] if b.get("amount")]
+    vendors = sorted({b["vendor"] for b in bids})
+    subgroups = _infer_subgroups(division_num, bids)
+
+    if subgroups:
+        rows = []
+        for category, group in subgroups.items():
+            row = {"category": category, "vendors": {}}
+            for b in group["bids"]:
+                row["vendors"][b["vendor"]] = b["amount"]
+            rows.append(row)
+    else:
+        # No inference ruleset for this division - fall back to one
+        # "Total Bid" row so the grid still renders instead of being empty.
+        rows = [{
+            "category": "Total Bid (no category ruleset for this division)",
+            "vendors": {b["vendor"]: b["amount"] for b in bids},
+        }]
+
+    return {
+        "division_num": div_data["division_num"],
+        "division_name": div_data["division_name"],
+        "vendors": vendors,
+        "rows": rows,
+        "granularity": "category",
+        "granularity_note": "Category-level (inferred from vendor name + scope text), "
+                             "not true line-item pricing - see function docstring.",
+        "source": "read_drive_bids() + _infer_subgroups() - same source as the narrative "
+                  "leveling doc (get_leveling_summary), cannot diverge.",
+    }
+
+
 def get_leveling_summary(project_id: int) -> dict:
     """
     Return leveling summary per division: low bid, spread, vendor count.
@@ -1355,6 +1478,7 @@ def get_leveling_summary(project_id: int) -> dict:
             "inferred_subgroups": inferred_subgroups or None,
             "bids":          sorted(bids, key=lambda b: b["amount"] or 0),
         }
+    return summary
 
 
 def _trash_and_rename(file_id: str, new_name: str, token: str) -> None:
@@ -1389,6 +1513,47 @@ def _move_to_archive_subfolder(file_id: str, vendor_folder_id: str, current_pare
     return archive_id
 
 
+def _group_bids_by_vendor_division(snapshot: dict) -> dict:
+    """snapshot is keyed (division_num, vendor_name, file_name) -> row, as
+    produced by detect_and_process_bid_updates' before/after queries. Regroups
+    to (division_num, vendor_name) -> {file_name: row} so a vendor's several
+    concurrent bids within one division can be reasoned about as a set,
+    instead of being silently collapsed into a single dict entry."""
+    groups = {}
+    for (div, vendor, fname), row in snapshot.items():
+        groups.setdefault((div, vendor), {})[fname] = row
+    return groups
+
+
+def _classify_bid_change(before_files: dict, after_files: dict) -> str | None:
+    """Given one vendor+division's file_name->row sets before and after a
+    scan, decide what kind of event (if any) this is:
+      - None: nothing new appeared - not an update event, skip silently.
+      - "revision": exactly one file disappeared and exactly one new file
+        appeared, with only one file present on each side - a clean 1-for-1
+        replacement, safe to auto-supersede and archive the old file.
+      - "concurrent": anything messier (a genuinely new file appeared
+        alongside an existing one, e.g. a vendor with two distinct concurrent
+        bids for different scopes in the same division) - must NOT be
+        auto-superseded, since there is no way to tell which old file (if any)
+        the new one is meant to replace. This is the exact bug class that
+        caused Kubed Fire Suppression's interior-sprinkler bid to be wrongly
+        archived as "superseded" by their unrelated exterior-wildfire bid
+        (2026-07-14) - both were genuinely still-current, just for different
+        scopes, and got collapsed by a too-coarse (division, vendor) key.
+    """
+    new_filenames = set(after_files) - set(before_files)
+    removed_filenames = set(before_files) - set(after_files)
+
+    if not new_filenames:
+        return None
+
+    if len(after_files) > 1 or len(before_files) > 1 or len(new_filenames) != 1 or len(removed_filenames) != 1:
+        return "concurrent"
+
+    return "revision"
+
+
 def detect_and_process_bid_updates(project_id: int, dry_run: bool = True) -> dict:
     """
     Detect new or revised bids landing in a project's vendor folders and
@@ -1417,7 +1582,16 @@ def detect_and_process_bid_updates(project_id: int, dry_run: bool = True) -> dic
     if not proj:
         return {"error": f"Project {project_id} not found"}
 
-    # Snapshot: current is_latest bid per (division_num, vendor_name)
+    # Snapshot: current is_latest bid per (division_num, vendor_name, file_name).
+    # Must match scan_project_bids' own is_latest partition key exactly - that
+    # recompute already keys on file_name too (2026-07-14 rewrite, see
+    # lessons_learned #57/#66) precisely because a single vendor can have
+    # multiple genuinely distinct concurrent bids in the same division (e.g.
+    # Kubed Fire Suppression submitting separate interior-sprinkler and
+    # exterior-wildfire quotes under the same vendor+division). A coarser key
+    # here silently collapses two real, unrelated is_latest rows into one dict
+    # entry, and this function then misreads the survivor as a "revision" of
+    # the other - archiving a still-current bid as if it were superseded.
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -1425,7 +1599,7 @@ def detect_and_process_bid_updates(project_id: int, dry_run: bool = True) -> dic
                        file_id, file_name, bid_amount, bid_date
                 FROM drive_bids WHERE project_id=%s AND is_latest=TRUE
             """, (project_id,))
-            before = {(r["division_num"], r["vendor_name"]): dict(r) for r in cur.fetchall()}
+            before = {(r["division_num"], r["vendor_name"], r["file_name"]): dict(r) for r in cur.fetchall()}
 
     scan_result = scan_project_bids(project_id, dry_run=dry_run)
     if "error" in scan_result:
@@ -1444,14 +1618,40 @@ def detect_and_process_bid_updates(project_id: int, dry_run: bool = True) -> dic
                        file_id, file_name, bid_amount, bid_date
                 FROM drive_bids WHERE project_id=%s AND is_latest=TRUE
             """, (project_id,))
-            after = {(r["division_num"], r["vendor_name"]): dict(r) for r in cur.fetchall()}
+            after = {(r["division_num"], r["vendor_name"], r["file_name"]): dict(r) for r in cur.fetchall()}
+
+    before_groups = _group_bids_by_vendor_division(before)
+    after_groups = _group_bids_by_vendor_division(after)
 
     token = get_google_token("drive")
     updates = []
-    for key, new_row in after.items():
-        old_row = before.get(key)
-        if not old_row or old_row["id"] == new_row["id"]:
-            continue  # genuinely new vendor, or unchanged - not an update event
+    skipped_concurrent = []
+    for vkey, after_files in after_groups.items():
+        before_files = before_groups.get(vkey, {})
+        decision = _classify_bid_change(before_files, after_files)
+
+        if decision is None:
+            continue  # nothing new for this vendor+division - not an update event
+
+        if decision == "concurrent":
+            # Not a clean 1-for-1 replacement - e.g. a vendor with multiple
+            # concurrent distinct-scope bids in the same division (like Kubed's
+            # separate interior-sprinkler and exterior-wildfire quotes). Report,
+            # don't archive anything or guess a supersedes link.
+            skipped_concurrent.append({
+                "division": vkey[0], "vendor": vkey[1],
+                "before_files": list(before_files), "after_files": list(after_files),
+                "reason": "multiple concurrent files for this vendor+division - not auto-superseded, needs human review",
+            })
+            continue
+
+        new_filenames = set(after_files) - set(before_files)
+        removed_filenames = set(before_files) - set(after_files)
+
+        old_fname = next(iter(removed_filenames))
+        new_fname = next(iter(new_filenames))
+        old_row = before_files[old_fname]
+        new_row = after_files[new_fname]
 
         old_amount = float(old_row["bid_amount"]) if old_row["bid_amount"] else None
         new_amount = float(new_row["bid_amount"]) if new_row["bid_amount"] else None
@@ -1496,5 +1696,5 @@ def detect_and_process_bid_updates(project_id: int, dry_run: bool = True) -> dic
         })
 
     return {"project": proj["name"], "project_id": project_id, "dry_run": False,
-            "scan_result": scan_result, "updates_detected": len(updates), "updates": updates}
-    return summary
+            "scan_result": scan_result, "updates_detected": len(updates), "updates": updates,
+            "skipped_concurrent": skipped_concurrent}

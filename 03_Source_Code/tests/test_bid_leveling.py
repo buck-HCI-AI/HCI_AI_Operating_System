@@ -233,7 +233,11 @@ test("BL-EXCEL-02: generate Excel — Outstanding Items sheet generated",       
 print("\nGroup: BL-DRIVE — Drive Read/Write Endpoints")
 
 def test_drive_list_bids_folder():
-    folder_id = "1YJatvTnK0-vxiHmI0FxVE8e9jUubVcef"  # 101 Francis 00_Bids
+    # Was hardcoded to a stale folder_id that predated the 2026-07-09 101F folder
+    # consolidation (task: "101F: consolidate '0- Bid Tracking' folder into 00_Bids
+    # root") - found 2026-07-15 returning count=0 against the old ID while the
+    # current bid_folder_id (from projects.bid_folder_id) returns 31 real items.
+    folder_id = "1UhsCkKuep9n9E8-uiK9FK_Owmyz8dvXR"  # 101 Francis 00_Bids (current, from DB)
     s, d = req("GET", f"/api/v1/services/bid-leveling/drive/list/{folder_id}")
     ok = s == 200 and d.get("count", 0) > 0
     return ok, f"status={s} items={d.get('count')}"
@@ -424,6 +428,22 @@ def test_inference_not_shown_for_single_bid_divisions():
                 bad.append(f"project {pid} div {k}")
     return len(bad) == 0, "; ".join(bad) if bad else "no single-bid division produced inferred_subgroups noise"
 
+def test_bid_summary_artifact_not_ingested_as_vendor():
+    """2026-07-16, found live via drift-check (bid_leveling_cross_division_
+    duplicate): "1355_Riverside_ProGuard_Bid_Summary.pdf" (an auto-generated
+    rollup artifact, $31,280.27) was ingested as its own independent vendor
+    row alongside the real ProGuard bid PDF (same $31,280.27, different real
+    filename) - a distinct gap from BL-DEFECT-01's "_Bid_Leveling" pattern,
+    since "_Bid_Summary" was never in the exclusion regex at all. Fixed at
+    the filter level (_NON_BID_FILENAME_RE now includes "bid summary") and
+    the one contaminated row (drive_bids id 818) was soft-excluded via
+    is_latest=FALSE, not deleted. Must never come back."""
+    s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
+    summary = d.get("leveling_summary", {})
+    contaminated = [b["vendor"] for v in summary.values() for b in v.get("bids", [])
+                    if "bid" in b["vendor"].lower() and "summary" in b["vendor"].lower()]
+    return len(contaminated) == 0, "; ".join(contaminated) if contaminated else "no self-referential summary-artifact rows found"
+
 def test_bid_leveling_summary_file_not_ingested_as_vendor():
     """2026-07-13 defect found via cross-project deep-test (1355R division
     07 Insulation showed an implausible 7907% spread): the system's own
@@ -478,10 +498,16 @@ def test_cross_division_duplicate_bid_not_double_counted():
     fix, each must appear in exactly ONE division (06, its canonical HCI
     division per the documented Wood & Plastic/Cabinets sub-package) and
     be fully absent from 09."""
+    # The service now splits Division 6 into compound sub-package keys
+    # (e.g. "06__Woods and Plastics") rather than a bare "06" bucket - found
+    # 2026-07-15 while chasing a GBT-flagged failure. Test originally assumed
+    # a bare "06" key, which no longer exists, so every vendor lookup silently
+    # returned empty and the test misreported real, correctly-deduped data as
+    # "missing". Match any key starting with "06" or "09" instead.
     s, d = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
-    s2, d2 = req("GET", "/api/v1/services/bid-leveling/projects/3/drive-bids?latest_only=true")
-    div06_vendors = {b["vendor"].strip() for b in d.get("leveling_summary", {}).get("06", {}).get("bids", [])}
-    div09_vendors = {b["vendor"].strip() for b in d.get("leveling_summary", {}).get("09", {}).get("bids", [])}
+    ls = d.get("leveling_summary", {})
+    div06_vendors = {b["vendor"].strip() for k in ls if k.startswith("06") for b in ls[k].get("bids", [])}
+    div09_vendors = {b["vendor"].strip() for k in ls if k.startswith("09") for b in ls[k].get("bids", [])}
     dupes_that_should_be_06_only = {"Basalt Kitchen & Bath", "Ellis Design", "Long Beach Enterprise"}
     still_in_both = dupes_that_should_be_06_only & div06_vendors & div09_vendors
     missing_from_06 = dupes_that_should_be_06_only - div06_vendors
@@ -524,6 +550,7 @@ test("BL-INFER-04: no inferred_subgroups noise on single-bid divisions",        
 test("BL-INFER-05: magnitude outlier split out of trade bucket, spread fixed",  test_magnitude_outlier_split_from_trade_bucket)
 test("BL-INFER-06: outlier-split labels never double-marked '[inferred]'",      test_outlier_labels_never_double_marked)
 test("BL-DEFECT-01: auto-generated summary file never ingested as a vendor",    test_bid_leveling_summary_file_not_ingested_as_vendor)
+test("BL-DEFECT-05: '_Bid_Summary' artifact never ingested as a vendor",        test_bid_summary_artifact_not_ingested_as_vendor)
 test("BL-DEFECT-02: cross-division duplicate bid not double-counted",           test_cross_division_duplicate_bid_not_double_counted)
 test("BL-DEFECT-03: misfiled Furnishings duplicate removed, not fabricated",    test_misfiled_furnishings_duplicate_removed)
 test("BL-DEFECT-04: same-division duplicate submission also caught",           test_same_division_duplicate_submission_also_caught)
