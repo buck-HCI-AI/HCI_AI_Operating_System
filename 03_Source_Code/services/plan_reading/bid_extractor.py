@@ -52,7 +52,7 @@ def extract_bid_with_claude(file_id: str, model: str = "claude-sonnet-4-6") -> d
 
     try:
         resp = client.messages.create(
-            model=model, max_tokens=4000, system=BID_EXTRACTION_SYSTEM,
+            model=model, max_tokens=8000, system=BID_EXTRACTION_SYSTEM,
             messages=[{"role": "user", "content": [
                 {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
                 {"type": "text", "text": "Extract the bid data per your instructions. Return the JSON object only."},
