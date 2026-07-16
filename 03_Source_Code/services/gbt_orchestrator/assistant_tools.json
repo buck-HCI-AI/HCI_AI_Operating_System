@@ -1,0 +1,1543 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadProjectRegistry",
+      "description": "Read full project context from the HCI Construction OS registry. Returns: project info, recent bids, HubSpot deals, daily logs, schedule variance, open risks. project_id: 1=64 Eastwood, 2=101 Francis, 3=1355 Riverside project_code: '64EW', '101F', or '1355R' If neither provided, returns list of all projects.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          },
+          "project_code": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadVendorRegistry",
+      "description": "Read the HCI Vendor Registry. Search by name, trade, or filter by CSI division. Returns vendor records including trade, contact info, performance data, and HubSpot IDs. search: keyword to search vendor names/trades (e.g. 'electrical', 'concrete') csi_division: filter by CSI division number e.g. '16' for electrical limit: max results (default 50)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string"
+          },
+          "csi_division": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 50
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadConstructionOS",
+      "description": "Read the HCI Construction Operating System \u2014 SOPs, operating rules, lessons learned, business processes, and KPI standards. category: 'sops' | 'operating_rules' | 'lessons_learned' | 'business_processes' | 'all'",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "default": "all"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SearchDrive",
+      "description": "Search Google Drive for files by name/keyword. query: search string (e.g. 'bid leveling', 'structural drawings', 'schedule') folder_id: restrict search to a specific folder (optional) file_type: filter by type \u2014 'pdf', 'xlsx', 'folder', 'doc', 'drawing' (optional) Known folder IDs:   HCI Master: 1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI   64 Eastwood: 1ovKLTSyZhmi4RpP5RD6sdhY0oYjwUCJv   101 Francis: 1athsij_coRIngqnIe8SSHQbB51_RyZAs   1355 Riverside: 1u4DMaAul951QAZgsp5lAKyQwv2EQNHJt",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadDriveFile",
+      "description": "Read file content from Google Drive. file_id: the Drive file ID. as_text: if True, returns text content (for text, CSV, exported Google Docs).          if False, returns base64-encoded binary content (for xlsx, pdf, etc.) Google Docs/Sheets are exported as text/plain or csv automatically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "as_text": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SearchHubSpotDeals",
+      "description": "Search HubSpot deals from the HCI local database. search: keyword to search deal names (e.g. '101 Francis', 'electrical', 'Division 16') project_name: filter by project (e.g. '101 Francis', '1355 Riverside') stage: filter by stage name (partial match) limit: max results (default 50)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 50
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SearchCompanies",
+      "description": "Search HubSpot companies (vendors/subcontractors) from the HCI database. search: keyword to search company names or descriptions trade: filter by trade/CSI division (e.g. 'electrical', 'concrete', 'mechanical') limit: max results (default 50)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string"
+          },
+          "trade": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 50
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SearchContacts",
+      "description": "Search HubSpot contacts (subcontractor reps, vendors, owners) from the HCI database. search: name or email keyword company: filter by company name limit: max results (default 50)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 50
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadBidTracker",
+      "description": "Read the complete bid tracking data for a project directly from Google Sheets. Returns bid_tracking (all vendors/bids by division), division_summary (leveling status, risk, recommendations), and package_detail (per-trade breakdown). project_id: 1=64 Eastwood, 2=101 Francis, 3=1355 Riverside",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GenerateBidLevel",
+      "description": "Generate bid leveling analysis and Excel files for a project. dry_run=True (default): analyze all divisions and return what would be generated \u2014 no writes. dry_run=False: generate per-division Excel files and queue Drive uploads for Buck's approval. divisions: optional list of CSI division numbers to process, e.g. ['15', '16']. None = all. project_id: 1=64 Eastwood, 2=101 Francis, 3=1355 Riverside",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          },
+          "divisions": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "HistoricalCostLookup",
+      "description": "Look up historical cost data from the HCI Historical Cost Database. trade: trade description (e.g. 'framing', 'electrical', 'mechanical') csi_division: CSI division number (e.g. '06', '15', '16') project_type: filter by project type (e.g. 'residential', 'commercial') Returns cost benchmarks and historical project data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trade": {
+            "type": "string"
+          },
+          "csi_division": {
+            "type": "string"
+          },
+          "project_type": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ProcurementStatus",
+      "description": "Get procurement status for a project or all projects. Returns open procurement items, long-lead status, package awards, and pending decisions. project_id: 1=64 Eastwood, 2=101 Francis, 3=1355 Riverside. None = all projects.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ScheduleStatus",
+      "description": "Get schedule status and variance intelligence for a project. Returns variance analysis, decision points, risk level, and recommended notifications. project_code: '64EW', '101F', or '1355R'. If None, returns executive report for all.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "DraftEmail",
+      "description": "APPROVAL REQUIRED \u2014 Drafts an email and queues it for Buck's review before sending. The email will NOT be sent automatically. Buck must review and approve in the queue. to: recipient email address(es) subject: email subject body: email body text project_id: associated project (optional) cc: CC email addresses (optional)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "cc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SearchEmailAttachments",
+      "description": "Workaround for HubSpot's blocked emails scope (plan-tier limitation, confirmed 2026-07-15 - not fixable by granting a scope, HubSpot's plan just doesn't include it). Searches the actual Outlook mailbox for vendor bid emails matching q (e.g. a vendor name, division name, or project name) and returns subject/sender/date/attachment filenames for anything with attachments - real visibility into vendor bid correspondence without needing HubSpot at all, since HubSpot would have synced these same emails from this same mailbox anyway.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          },
+          "top": {
+            "type": "integer",
+            "default": 25
+          }
+        },
+        "required": [
+          "q"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GenerateSOW",
+      "description": "Generate a formatted Scope of Work document from structured scope input. Pure template function - does NOT read plan PDFs itself and does NOT write anything to Drive, it only returns markdown text for you to review or hand off. Closes gap #5 from the pre-start gap review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_name": {
+            "type": "string"
+          },
+          "division_num": {
+            "type": "string"
+          },
+          "division_name": {
+            "type": "string"
+          },
+          "package_name": {
+            "type": "string"
+          },
+          "scope_items": {
+            "type": "array"
+          },
+          "inclusions": {
+            "type": "array"
+          },
+          "exclusions": {
+            "type": "array"
+          },
+          "reference_docs": {
+            "type": "array"
+          },
+          "bid_due_date": {
+            "type": "string"
+          },
+          "special_notes": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_name",
+          "division_num",
+          "division_name",
+          "package_name",
+          "scope_items"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GenerateBidInviteEmail",
+      "description": "Generate a bid-invite email (subject + body) for one vendor/package. Returns text only - does NOT send anything. Use DraftEmail separately if you want it queued for Buck's approval to actually send.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_name": {
+            "type": "string"
+          },
+          "division_name": {
+            "type": "string"
+          },
+          "package_name": {
+            "type": "string"
+          },
+          "vendor_name": {
+            "type": "string"
+          },
+          "sow_summary": {
+            "type": "string"
+          },
+          "bid_due_date": {
+            "type": "string"
+          },
+          "contact_name": {
+            "type": "string",
+            "default": "Buck Adams"
+          },
+          "contact_email": {
+            "type": "string",
+            "default": "buck@ahmaspen.com"
+          }
+        },
+        "required": [
+          "project_name",
+          "division_name",
+          "package_name",
+          "vendor_name",
+          "sow_summary"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CreateTask",
+      "description": "Creates a task and queues it for Buck's awareness and action. Tasks are logged in the approval queue as informational items. title: task title description: what needs to be done and why project_id: associated project (optional) priority: 'low', 'normal', 'high', 'urgent' assigned_to: who should action this (default: Buck Adams)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "priority": {
+            "type": "string",
+            "default": "normal"
+          },
+          "assigned_to": {
+            "type": "string",
+            "default": "Buck Adams"
+          }
+        },
+        "required": [
+          "title",
+          "description"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "UpdateRegistry",
+      "description": "APPROVAL REQUIRED \u2014 Queues a registry update for Buck's review before execution. The update will NOT be applied until Buck approves. registry_type: 'vendor', 'project', 'historical_cost', 'lessons_learned', 'procurement', 'bid_tracker' record_id: ID or identifier of the record to update updates: dict of field \u2192 new_value changes reason: why this update is needed",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registry_type": {
+            "type": "string"
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "object"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "registry_type",
+          "record_id",
+          "updates"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "AwardRecommendation",
+      "description": "APPROVAL REQUIRED \u2014 Generates a bid award recommendation and queues for Buck's approval. This does NOT award anything. Buck must review analysis and explicitly approve. project_id: 1=64 Eastwood, 2=101 Francis, 3=1355 Riverside csi_division: CSI division number being awarded (e.g. '16') recommended_vendor: name of recommended subcontractor bid_amount: their bid amount (e.g. '$168,000') basis: why they are recommended (scope, value, qualifications, etc.) conditions: any conditions or clarifications required before award",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          },
+          "csi_division": {
+            "type": "string"
+          },
+          "recommended_vendor": {
+            "type": "string"
+          },
+          "bid_amount": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string"
+          },
+          "conditions": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "project_id",
+          "csi_division",
+          "recommended_vendor",
+          "bid_amount",
+          "basis"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ProjectMining",
+      "description": "Mine project intelligence from all connected sources: Drive documents, HubSpot emails, daily logs, schedule variance, bids, and background learning pipeline. Returns synthesized intelligence candidates and key insights. project_id: 1=64 Eastwood, 2=101 Francis, 3=1355 Riverside source: 'drive' | 'hubspot' | 'daily_logs' | 'schedule' | 'bids' | 'all'",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string",
+            "default": "all"
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetApprovalQueue",
+      "description": "Get items in the approval queue waiting for Buck's review. status: 'pending' (waiting for approval), 'approved', 'executed', 'rejected' All write actions (emails, awards, registry updates, Drive uploads) queue here.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "default": "pending"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CreateDriveFolder",
+      "description": "Create a folder in Google Drive. Returns folder_id. Safe to call \u2014 returns existing if already exists. parent_folder_id: where to create the folder. folder_name: name for the new folder. Known parent IDs: 64EW=1ovKLTSyZhmi4RpP5RD6sdhY0oYjwUCJv, 101F=1athsij_coRIngqnIe8SSHQbB51_RyZAs, 1355R=1u4DMaAul951QAZgsp5lAKyQwv2EQNHJt",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent_folder_id": {
+            "type": "string"
+          },
+          "folder_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_folder_id",
+          "folder_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CreateCanonicalBidFolderTree",
+      "description": "Create the full 16-division canonical folder tree (Division -> Sub-package, per Buck's permanent 2026-07-09 directive) under a project's 00_Bids folder. Closes the gap confirmed 2026-07-15: WF-009 New Job Setup only creates one flat \"Bids\" subfolder, not this structure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bids_folder_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "bids_folder_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CreateProjectRootStructure",
+      "description": "Create the full project scaffold: 00_Bids (with the 16-division canonical tree inside it) plus 01_Budget, 02_Schedule, 03_RFIs as sibling folders alongside it. Per BC's Template Build Audit (2026-07-15 P0) - these are project-root output folders (ROM output, schedule output, RFI list from plan read), not bid divisions, so they sit next to 00_Bids, not inside it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_root_folder_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "project_root_folder_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "UploadFileToDrive",
+      "description": "Upload a file to Google Drive. Creates or replaces a file with the same name. folder_id: Drive folder ID where the file should go. filename: file name (e.g. 'report.xlsx', 'bid_summary.pdf'). content_b64: base64-encoded file content. mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' for xlsx,            'application/pdf' for pdf, 'text/plain' for txt, 'application/octet-stream' default.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "content_b64": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string",
+            "default": "application/octet-stream"
+          }
+        },
+        "required": [
+          "folder_id",
+          "filename",
+          "content_b64"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ListDriveFolder",
+      "description": "List contents of a Google Drive folder \u2014 files and subfolders with IDs, names, types. Known top-level IDs: HCI Master=1ejYXRgS34c7JmQKfHwaPNnzEBcCGUmwI, 64EW=1ovKLTSyZhmi4RpP5RD6sdhY0oYjwUCJv, 101F=1athsij_coRIngqnIe8SSHQbB51_RyZAs, 1355R=1u4DMaAul951QAZgsp5lAKyQwv2EQNHJt, 101F 00_Bids=1YJatvTnK0-vxiHmI0FxVE8e9jUubVcef",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadSheet",
+      "description": "Read data from any Google Sheets range. Returns rows as list of lists. sheet_id: Google Sheets file ID. range_name: e.g. 'Sheet1!A1:Z200', 'HCI 16 Div Summary!A1:H50', 'Bid Tracking!A1:J100' Known sheet IDs: 64EW=1yAmLo3IIp3Vqs3BQJ6QB2O4as0KqXMZxcVvjzGBZDcQ, 101F=1JExX5CeVBedTEFitM8B6hveF4Prhk0Oy6BZSBu058LE, 1355R=1-64X4XGc4P_GmYl7DRt8nGsBNfaVdP_G3qwfBLJSsnA",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheet_id": {
+            "type": "string"
+          },
+          "range_name": {
+            "type": "string",
+            "default": "Sheet1!A1:Z200"
+          }
+        },
+        "required": [
+          "sheet_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "WriteSheet",
+      "description": "Write values to a Google Sheets range. Takes effect immediately \u2014 confirm intent before calling. sheet_id: Google Sheets file ID. range_name: e.g. 'Sheet1!A5' or 'Bid Tracking!F12:F15' values: list of rows, each row a list of cell values. Example: values=[['$50,000', 'Received', '2026-06-26']]",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheet_id": {
+            "type": "string"
+          },
+          "range_name": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "sheet_id",
+          "range_name",
+          "values"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ExecutiveReport",
+      "description": "Get the cross-project executive morning briefing. Returns budget health, schedule health, active risks, approval queue count, and key decisions needed across all 3 pilot projects (64EW, 101F, 1355R).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetROISummary",
+      "description": "Get total ROI summary \u2014 minutes saved, workflows run, and per-workflow breakdown.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadLiveProjectState",
+      "description": "Read LIVE_PROJECT_STATE.md \u2014 the single operational source of truth for the HCI AI OS. Created and maintained by Browser Claude in the Program Repository, synced to the implementation repo root. Returns 'not_found' if Browser Claude has not yet synced it.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadCurrentSprint",
+      "description": "Read CURRENT_SPRINT.md \u2014 active sprint plan, task assignments, and status. Created and maintained by Browser Claude / ChatGPT in the Program Repository. Returns 'not_found' if not yet synced.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadAutomationRegistry",
+      "description": "Read the full automation registry: all n8n workflows, Python workflow files, and MCP tools. Provides ChatGPT visibility into every automation in the system to detect duplicates and gaps.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadDecisionLog",
+      "description": "Read the architecture and implementation decision log. Returns logged decisions with outcomes \u2014 use to avoid revisiting closed decisions. status: 'open' | 'resolved' | 'pending_outcome' \u2014 omit for all limit: max records (default 20)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 20
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ReadRepositoryStatus",
+      "description": "Read current implementation repository status: git branch, last commit, service health, and the IMPLEMENTATION_REPOSITORY_STATUS.md document. Use this to verify what is built, what is running, and what is on hold.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetProjectState",
+      "description": "ACR-002: Live system snapshot for architecture review sessions. Fetches real-time data from all key services and bundles the LIVE_PROJECT_STATE.md document. Use this to open any architecture review, sprint planning, or status check session.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "RunMiner",
+      "description": "ACR-004: Run one or all background mining agents. dry_run=True (default): scan and report what would be extracted \u2014 no writes to any registry. dry_run=False: only valid after go-live ACR is issued and _GO_LIVE_AUTHORIZED=True in the engine.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "miner_name": {
+            "type": "string",
+            "default": "all"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetMiningStatus",
+      "description": "ACR-004: Get current status of the mining engine. Returns: registered miners (8 total), dry_run mode, go-live authorization status, lifetime extraction counts, per-miner run summaries, and recent run history. Use this to check whether the engine has run today and what it found.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetMiningLog",
+      "description": "ACR-004: Get recent mining run log from the mining_runs table. Shows per-run results: miner name, records scanned, intelligence extracted, items queued for review, items auto-written, dry_run flag, errors. limit: number of recent runs to return (default 20, max 100)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 20
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CheckAgentInbox",
+      "description": "CRITICAL \u2014 Call this at the START of every GBT session before doing anything else.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SendHandoffToClaude",
+      "description": "Send a handoff message from GBT to Claude Code. Use this to: return audit results, share analysis, request builds, report completion. Claude Code picks this up from Agent_Handoff/Inbox at its next session start. Also triggers an ntfy push notification to hci-executive topic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "default": "high"
+          },
+          "document_type": {
+            "type": "string",
+            "default": "implementation_request"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SubmitFieldLog",
+      "description": "Submit a daily field log from the superintendent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "manpower": {
+            "type": "integer",
+            "default": 0
+          },
+          "weather": {
+            "type": "string",
+            "default": ""
+          },
+          "date": {
+            "type": "string",
+            "default": ""
+          },
+          "actor": {
+            "type": "string",
+            "default": "superintendent"
+          }
+        },
+        "required": [
+          "project_code",
+          "notes"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetFieldStatus",
+      "description": "Quick field status for SS morning check-in. Returns: project health, today's priorities, open risks, recent logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "FlagRisk",
+      "description": "Flag a new risk or issue from the field. One-touch escalation to PM. Logs the risk as a project event so PM sees it immediately in their timeline and digest.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "default": "medium"
+          },
+          "risk_type": {
+            "type": "string",
+            "default": "schedule"
+          }
+        },
+        "required": [
+          "project_code",
+          "description"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetWeeklyDigest",
+      "description": "PM weekly digest \u2014 what happened last 7 days, open items, next week priorities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetTimeline",
+      "description": "Chronological project event timeline \u2014 daily logs, risks, RFIs, awards, meetings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer",
+            "default": 30
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetActionList",
+      "description": "AI-ranked top 10 actions for the PM today.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetRisks",
+      "description": "Gap9 \u2014 Get the risk register for a project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CreateRisk",
+      "description": "Gap9 \u2014 Log a new risk to the risk register.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "risk_type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "default": "medium"
+          },
+          "mitigation": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "project_code",
+          "risk_type",
+          "description"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "UpdateRiskStatus",
+      "description": "Gap9 \u2014 Update a risk's status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "risk_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "risk_id",
+          "status"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetSubmittals",
+      "description": "Gap12 \u2014 Get the submittals log for a project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CreateSubmittal",
+      "description": "Gap12 \u2014 Log a new submittal. Auto-assigns submittal number.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "spec_section": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "submitted_by": {
+            "type": "string"
+          },
+          "required_approval_date": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "project_code",
+          "spec_section",
+          "description",
+          "submitted_by"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "UpdateSubmittalStatus",
+      "description": "Gap12 \u2014 Update a submittal's status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "submittal_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "submittal_id",
+          "status"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetMarketRates",
+      "description": "Aspen market rates from real HCI bid data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "division": {
+            "type": "string",
+            "default": ""
+          },
+          "months_back": {
+            "type": "integer",
+            "default": 24
+          },
+          "project_type": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetROMEstimate",
+      "description": "ROM cost estimate for a project, calibrated from real HCI historical data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sf": {
+            "type": "integer"
+          },
+          "project_type": {
+            "type": "string",
+            "default": "new"
+          }
+        },
+        "required": [
+          "sf"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetBidLevel",
+      "description": "Bid leveling view for a project \u2014 all packages with all bids ranked low to high.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          },
+          "division": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetBidBreakout",
+      "description": "Mike Mount-style side-by-side vendor comparison for one division: a grid of scope-category rows x vendor columns (raw dollar amounts), so you can read \"what does Vendor A charge vs Vendor B\" directly off the table instead of cross-referencing narrative paragraphs. Built from the same source as GetBidLevel/leveling summaries - cannot diverge from them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          },
+          "division_num": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "division_num"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetProcurementRisk",
+      "description": "Procurement risk analysis for a project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetProjectRegistry",
+      "description": "Full HCI project registry \u2014 all real projects with status, team, and bid counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "AgentHeartbeat",
+      "description": "Self-report that you (agent: 'BC', 'GBT', or 'CODE') are online right now, with an optional one-line current mission. Call this at the start of every active work cycle - Mission Control's Team Status panel reads this to show whether you're actually online, and shows you as offline/stale if it's never called or goes stale.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "mission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetAgentStatus",
+      "description": "Current online/stale/offline status + last heartbeat + current mission for BC, GBT, and CODE.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetMyQueue",
+      "description": "Your queue dashboard (agent: 'bc', 'arch', or 'code', lowercase) - depth by status, your last completed/claimed task, and the next task queued for you. Call this to know what work you're actually assigned before starting on something self-directed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "CompleteQueueTask",
+      "description": "Mark a queue task complete once you've actually finished the underlying work (found via GetMyQueue). This is what makes the queue count on Mission Control reflect real progress instead of staying stuck at its starting depth - without this call, your completed work is invisible to the team.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "integer"
+          },
+          "result_summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "SendAgentMessage",
+      "description": "Send a message to another team member. from_agent/to_agent: 'BC', 'GBT', 'CODE', or 'ALL'. priority: 'P0' (critical) through 'P3' (low). Messages to BC or ALL are automatically mirrored to a real Drive file since BC can only read Drive, not call this gateway directly - this is the one channel that reaches BC either way.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_agent": {
+            "type": "string"
+          },
+          "to_agent": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "default": "P2"
+          },
+          "requires_response": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "from_agent",
+          "to_agent",
+          "subject",
+          "body"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetUnreadMessages",
+      "description": "Your pending (unread) messages, newest first, capped at `limit` to stay under response-size limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10
+          }
+        },
+        "required": [
+          "agent"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetMessageHistory",
+      "description": "Full paged message history (all statuses: pending/read/replied/closed, not just unread) - use this to catch up on everything, not just what's currently pending. status: optional filter to one of pending/read/replied/closed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10
+          },
+          "offset": {
+            "type": "integer",
+            "default": 0
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetSOExecutionState",
+      "description": "The System Orchestrator's current state, active objective, cycle count, and health.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "GetMissionControlSummary",
+      "description": "Full Mission Control snapshot: team status, SO state, bid progress, drift findings, pending approvals.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  }
+]

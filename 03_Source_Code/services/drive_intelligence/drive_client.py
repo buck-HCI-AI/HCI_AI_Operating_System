@@ -75,7 +75,21 @@ def list_folder_all(folder_id: str) -> list:
     return files
 
 
+import re
+DRIVE_ID_RE = re.compile(r'^[A-Za-z0-9_-]{25,60}$')
+
+
 def search_files(query: str, folder_id: str = None) -> list:
+    # 2026-07-14: gateway callers (GBT) only have a single `q` string param exposed
+    # in the Actions schema - editing that schema mid-session breaks already-open
+    # GBT chats (creates a new GPT version they can't follow), so it can't be
+    # extended with a real folder_id param without real risk. Instead: detect when
+    # `query` is itself a bare Drive folder/file ID (not a real search term - no
+    # spaces, no folder_id already given) and treat it as "list this folder"
+    # instead of a fullText search, which was silently returning a 400 from the
+    # Drive API when a raw ID got wrapped in a fullText contains '...' clause.
+    if folder_id is None and query and ' ' not in query and DRIVE_ID_RE.match(query):
+        return list_folder_all(query)
     # 2026-07-02: was "name contains" only, which misses matches inside document
     # content and even some folder-name matches - found while GBT couldn't locate a
     # real, existing "Asbestos Report" folder for 1355R. fullText covers both name
@@ -162,6 +176,49 @@ def rename_file(file_id: str, new_name: str) -> dict:
         return json.loads(r.read())
 
 
+def trash_file(file_id: str) -> dict:
+    """PATCH trashed=true - moves to Drive trash (recoverable for 30 days),
+    never a permanent delete. Added 2026-07-16 for cleaning up premature
+    scaffold/template folders from the isolated 1355R AI-pipeline test copy -
+    Buck's explicit instruction was to remove everything except the real
+    drawings folder, since the test needs to prove the system can generate
+    this output itself, not have it pre-populated."""
+    url = f"{BASE_URL}/files/{file_id}"
+    body = json.dumps({"trashed": True}).encode()
+    req = urllib.request.Request(
+        url + "?" + urllib.parse.urlencode({"supportsAllDrives": "true"}),
+        data=body, method="PATCH",
+        headers={"Authorization": f"Bearer {_token()}", "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=30) as r:
+        return json.loads(r.read())
+
+
+def copy_file(file_id: str, new_parent_id: str, new_name: str = None) -> dict:
+    """
+    Uses Drive's native files.copy - creates an independent new file object
+    in new_parent_id, leaving the source file completely untouched (no read
+    lock, no metadata change, nothing). Added 2026-07-16 for the isolated
+    1355R AI-pipeline test copy - Buck's explicit requirement: the real
+    Shared Drive folder "needs to remain as is like we were never there."
+    copy() is the only Drive operation that guarantees that; move/rename
+    would alter the source and must never be used against a monitored or
+    live Shared Drive folder for this purpose.
+    """
+    url = f"{BASE_URL}/files/{file_id}/copy"
+    body = {"parents": [new_parent_id]}
+    if new_name:
+        body["name"] = new_name
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(
+        url + "?" + urllib.parse.urlencode({"supportsAllDrives": "true"}),
+        data=data, method="POST",
+        headers={"Authorization": f"Bearer {_token()}", "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=60) as r:
+        return json.loads(r.read())
+
+
 def get_file_content(file_id: str) -> dict:
     """
     Return text content of a Drive file.
@@ -220,3 +277,19 @@ def get_file_content(file_id: str) -> dict:
             "content": "", "char_count": 0,
             "source": "none",
             "note": f"Binary file ({mime}) — text extraction requires MCP session or local OCR"}
+
+
+def download_binary(file_id: str) -> bytes:
+    """
+    Downloads a file's raw bytes via the same alt=media pattern used for
+    text-family files above, but without UTF-8 decoding - for PDFs, images,
+    and other binary formats get_file_content() can't handle. Added
+    2026-07-16 for the multi-document plan reader (services/plan_reading) -
+    no real binary download existed anywhere in this module before.
+    """
+    url = f"{BASE_URL}/files/{file_id}"
+    params = {"alt": "media", "supportsAllDrives": "true"}
+    url_with_params = url + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url_with_params, headers={"Authorization": f"Bearer {_token()}"})
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=120) as r:
+        return r.read()

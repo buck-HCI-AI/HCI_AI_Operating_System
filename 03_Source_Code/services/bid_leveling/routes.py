@@ -40,6 +40,43 @@ class WriteSheetRequest(BaseModel):
     values: List[List]
 
 
+class GenerateSOWRequest(BaseModel):
+    project_name: str
+    package_name: str
+    send_to: str
+    purpose: str
+    base_scope_items: List[str]
+    clarifications: Optional[List[str]] = None
+    exclusions: Optional[List[str]] = None
+    required_proposal_format: Optional[List[str]] = None
+    division_num: Optional[str] = None
+    division_name: Optional[str] = None
+    bid_due_date: Optional[str] = None
+    special_notes: Optional[List[str]] = None
+
+
+class ReferenceDoc(BaseModel):
+    label: str
+    url: str
+
+
+class GenerateBidInviteEmailRequest(BaseModel):
+    project_name: str
+    project_location: str
+    division_name: str
+    package_name: str
+    vendor_name: str
+    reference_docs: List[ReferenceDoc]
+    scope_items: List[str]
+    bid_due_date: Optional[str] = None
+    inclusions_prompt: Optional[bool] = True
+    contact_name: Optional[str] = "Buck Adams"
+    contact_title: Optional[str] = "Superintendent"
+    contact_phone: Optional[str] = "720-346-4654"
+    contact_email: Optional[str] = "buck@hendricksoninc.com"
+    pm_cc_email: Optional[str] = None
+
+
 @router.get("")
 def service_info():
     return {
@@ -241,6 +278,96 @@ def get_drive_bids(project_id: int, latest_only: bool = True):
         summary = get_leveling_summary(project_id)
         return {"project_id": project_id, "divisions": bids,
                 "leveling_summary": summary, "division_count": len(bids)}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.get("/projects/{project_id}/bid-breakout/{division_num}")
+def get_bid_breakout_view(project_id: int, division_num: str):
+    """
+    Mike Mount-style side-by-side vendor comparison grid for one division -
+    scope category rows x vendor columns. Built 2026-07-15 per GBT/Buck
+    architecture requirement after reviewing Mike's real 246 Gallo Way
+    workbook. Same source as get_leveling_summary (read_drive_bids +
+    _infer_subgroups) so this can never diverge from the narrative doc.
+    Category-level, not true line-item - see drive_bid_reader.get_bid_breakout
+    docstring for the honest limitation.
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from drive_bid_reader import get_bid_breakout
+        return get_bid_breakout(project_id, division_num)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+class CreateCanonicalTreeRequest(BaseModel):
+    bids_folder_id: str
+    dry_run: bool = True
+
+
+@router.post("/create-canonical-bid-tree")
+def create_canonical_bid_tree_endpoint(req: CreateCanonicalTreeRequest):
+    """
+    Create the full 16-division canonical folder tree under a project's
+    00_Bids folder. Gap confirmed 2026-07-15: WF-009 New Job Setup only
+    creates one flat Bids subfolder, not this structure. dry_run=True
+    (default) returns the plan without touching Drive.
+    """
+    try:
+        reject_if_monitored_folder(req.bids_folder_id)
+        return BidLevelingService.create_canonical_bid_folder_tree(req.bids_folder_id, req.dry_run)
+    except MonitoredFolderWriteError as e:
+        raise HTTPException(403, str(e))
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+class CreateProjectRootStructureRequest(BaseModel):
+    project_root_folder_id: str
+    dry_run: bool = True
+
+
+@router.post("/create-project-root-structure")
+def create_project_root_structure_endpoint(req: CreateProjectRootStructureRequest):
+    """
+    Create the full project scaffold: 00_Bids (with the 16-division canonical
+    tree inside it) plus 01_Budget, 02_Schedule, 03_RFIs as sibling folders
+    alongside it. Per BC's Template Build Audit (2026-07-15 P0) - Buck's
+    expanded test scope needs these as project-root outputs, not nested under
+    00_Bids. dry_run=True (default) returns the plan without touching Drive.
+    """
+    try:
+        reject_if_monitored_folder(req.project_root_folder_id)
+        return BidLevelingService.create_project_root_structure(req.project_root_folder_id, req.dry_run)
+    except MonitoredFolderWriteError as e:
+        raise HTTPException(403, str(e))
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/generate-sow")
+def generate_sow_endpoint(req: GenerateSOWRequest):
+    """
+    Generate a formatted SOW document from structured scope input. Pure
+    template function - does not read plans or write to Drive. Gap #5 from
+    GBT's pre-start gap review (msg b19308e3, 2026-07-15).
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from sow_generator import generate_sow
+        return {"sow_markdown": generate_sow(**req.model_dump())}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/generate-bid-invite-email")
+def generate_bid_invite_email_endpoint(req: GenerateBidInviteEmailRequest):
+    """Generate a bid-invite email (subject + body) for one vendor/package."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from sow_generator import generate_bid_invite_email
+        return generate_bid_invite_email(**req.model_dump())
     except Exception as e:
         raise HTTPException(500, str(e))
 

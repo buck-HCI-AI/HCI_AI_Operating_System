@@ -1394,6 +1394,257 @@ class BidLevelingService:
         return {"folder_id": folder_id, "name": folder_name,
                 "parent": parent_folder_id, "action": "created"}
 
+    # CORRECTED 2026-07-16: the previous tree below was built from a CLAUDE.md
+    # "permanent" 2026-07-09 directive that was itself never actually verified
+    # against the real HCI docs - an unfounded assumption, per Buck's direct
+    # correction. Rebuilt from the REAL source: HCI_Cost_Code_Structure_v1.xlsx
+    # (file 1O4sTvLGGTPxpTiZyicm08f2cHHnnFWfQ), cross-confirmed against
+    # HCI_Scope_Package_Registry_v1.xlsx and HCI_Master_Tracker_Workbook_v1.xlsx.
+    # RE-CONFIRMED 2026-07-16 as the default: Buck confirmed this Division+
+    # Letter scheme (16 divisions incl. standalone 32_Site and 33_Utilities)
+    # matches what's actually live on 1355R and 101F - the two larger active
+    # jobs - so it stays the default for new-job scaffolding. Sunnyside's
+    # real CSI MasterFormat scheme (14 divisions, no standalone 32/33) is a
+    # genuine, separately-validated alternative - kept as
+    # SUNNYSIDE_MODEL_DIVISION_TREE below, earmarked specifically for 64
+    # Eastwood's pilot given its small scope makes it the lowest-risk place
+    # to try the new model before deciding whether to migrate the whole
+    # company to it. Division folder name is "{division}_{Trade}"; sub-
+    # package folder name is "{HCI Code}_{Scope}".
+    CANONICAL_DIVISION_TREE = {
+        "01_General Conditions": ["01A_Project Management"],
+        "02_Demo": ["02A_Existing Conditions", "02B_Utilities"],
+        "03_Concrete": ["03A_Footings-Foundation Walls", "03B_Slabs-Flatwork", "03C_Waterproofing-Foundation Drainage"],
+        "04_Masonry": ["04A_Masonry"],
+        "05_Metals": ["05A_Structural Steel"],
+        "06_Carpentry": ["06A_Rough Framing", "06B_Finish Carpentry", "06C_Cabinetry"],
+        "07_Thermal": ["07A_Insulation", "07B_Roofing"],
+        "08_Openings": ["08A_Windows", "08B_Exterior Doors", "08C_Interior Doors", "08D_Garage Doors", "08E_Glass & Mirrors"],
+        "09_Finishes": ["09A_Tile", "09B_Stone Slabs", "09C_Hardwood", "09D_Carpet", "09E_Paint", "09F_Drywall"],
+        "10_Specialties": ["10A_Fireplaces"],
+        "11_Equipment": ["11A_Appliances"],
+        "15_Mechanical": ["15A_HVAC", "15B_Fire Suppression"],
+        "16_Electrical": ["16A_Power", "16B_Decorative Lighting", "16C_Low Voltage-AV", "16D_Exterior Lighting", "16E_Solar"],
+        "22_Plumbing": ["22A_Plumbing", "22B_Plumbing Fixtures"],
+        "32_Site": ["32A_Hardscape", "32B_Irrigation", "32C_Planting"],
+        "33_Utilities": ["33A_Site Utilities", "33B_Drainage", "33C_Radon"],
+    }
+
+    # SUNNYSIDE_MODEL_DIVISION_TREE: real, live, filled-in CSI MasterFormat
+    # scheme from 275 Sunnyside Lane - Bid Form.xlsx (id
+    # 117u7Pwbn36XR4V4TQSLcXfraeMxB5c85) and 275_Sunnyside_Master_Budget_v4_1.xlsx
+    # (id 1d0FDYtwNvEPTPw1L1PignWeqU0CCQzDO), both authored by Chris Hendrickson
+    # for HCI's largest-ever project (~$58M GMP). Full 5-digit CSI MasterFormat
+    # (1995) codes - a genuine third real scheme alongside Division+Letter
+    # (above) and the numeric-dash budget-tracking codes (Mockup Budget). Not
+    # the default (see note above) - pass this explicitly for a project piloting
+    # the Sunnyside model (64 Eastwood).
+    SUNNYSIDE_MODEL_DIVISION_TREE = {
+        "01_General Requirements": [
+            "01100_Summary of Work", "01310_Project Management & Coordination",
+            "01320_Method Statements & Inspection-Testing Plans",
+            "01410_Regulatory Compliance Codes & Permits",
+            "01510_Temporary Utilities", "01520_Construction Facilities",
+            "01540_Construction Aids", "01560_Temporary Barriers & Enclosures",
+            "01740_Cleaning & Waste Management", "01770_Closeout Procedures",
+            "01810_Commissioning", "01950_Insurance Bonds & Statutory Fees",
+        ],
+        "02_Existing Conditions and Site Work": [
+            "02060_Selective Demolition", "02300_Excavation Backfill & Compaction",
+            "02350_Site Drainage Systems", "02360_Radon Mitigation",
+            "02500_Utility Service Connections", "02700_Bases Ballasts & Pavements",
+            "02780_Unit Paving", "02810_Irrigation Systems", "02820_Fences & Gates",
+            "02870_Site Furnishings", "02900_Planting & Soil Preparation",
+            "02950_Site Restoration",
+        ],
+        "03_Concrete": [
+            "03100_Concrete Forms & Accessories", "03200_Concrete Reinforcement",
+            "03300_Cast-in-Place Concrete", "03350_Concrete Finishing",
+            "03400_Precast Concrete",
+        ],
+        "04_Masonry": [
+            "04200_Masonry Units", "04400_Stone Veneer & Dimension Stone",
+            "04050_Masonry Accessories",
+        ],
+        "05_Metals": [
+            "05100_Structural Metal Framing", "05400_Cold-Formed Metal Framing",
+            "05500_Metal Fabrications", "05700_Ornamental Metal",
+        ],
+        "06_Wood Plastics and Composites": [
+            "06100_Rough Carpentry", "06170_Engineered Wood Products",
+            "06150_Wood Decking", "06200_Finish Carpentry",
+            "06400_Architectural Woodwork", "06450_Exterior Wood Siding-Soffits-Fascia",
+        ],
+        "07_Thermal and Moisture Protection": [
+            "07100_Foundation Waterproofing & Dampproofing", "07200_Thermal Insulation",
+            "07300_Roof Underlayment & Shingles-Tiles", "07410_Metal Roofing & Siding Panels",
+            "07500_Membrane Roofing", "07600_Flashing & Sheet Metal",
+            "07710_Roof Specialties", "07900_Joint Sealers-Sealants",
+        ],
+        "08_Openings": [
+            "08100_Metal Doors & Frames", "08210_Wood-Interior Doors",
+            "08300_Specialty Doors-Garage Doors", "08500_Windows",
+            "08700_Door Hardware", "08800_Glazing",
+        ],
+        "09_Finishes": [
+            "09200_Plaster & Gypsum Board Assemblies", "09300_Tile & Stone Finishes",
+            "09640_Wood Flooring", "09680_Carpet", "09690_Specialty Flooring",
+            "09900_Painting & Coatings",
+        ],
+        "10_Specialties": [
+            "10300_Fireplaces", "10800_Bath Accessories", "10810_Glass & Mirrors",
+        ],
+        "11_Equipment": [
+            "11400_Foodservice-Kitchen Equipment", "11450_Residential Built-In Appliances",
+            "11480_Specialty Residential Equipment",
+        ],
+        "12_Furnishings": [
+            "12500_Window Treatments", "12600_Decorative Architectural Elements",
+            "12300_Manufactured Casework",
+        ],
+        "13_Special Construction": [
+            "13030_Special Purpose Rooms", "13050_Custom Architectural-Special Construction",
+        ],
+        "15_Mechanical": [
+            "15300_Fire Protection Piping", "15400_Plumbing Fixtures & Sanitary Fittings",
+            "15410_Plumbing Piping & Pumps", "15490_Gas Service & Distribution",
+            "15700_HVAC Equipment", "15710_Hydronic Heating-Snowmelt",
+            "15800_HVAC Air Distribution", "15900_HVAC Controls & BAS",
+        ],
+        "16_Electrical": [
+            "16100_Wiring Methods & Electrical Distribution", "16210_Solar PV System",
+            "16220_Standby Generator", "16500_Lighting", "16550_Lighting Controls",
+            "16720_Communications", "16770_Audio-Visual Infrastructure",
+            "16780_Security Systems",
+        ],
+    }
+
+    @classmethod
+    def create_canonical_bid_folder_tree(cls, bids_folder_id: str, dry_run: bool = True,
+                                          division_tree: dict = None) -> dict:
+        """
+        Creates the full division canonical folder tree under a project's
+        00_Bids folder - the gap confirmed 2026-07-15: WF-009 New Job Setup
+        only creates one flat "Bids" subfolder, not this structure. Idempotent
+        (create_folder checks for existing folders first), so safe to re-run.
+
+        bids_folder_id: the Drive folder ID of the project's 00_Bids folder.
+        dry_run=True (default): returns the plan without creating anything.
+        dry_run=False: actually creates the folders.
+        division_tree: defaults to CANONICAL_DIVISION_TREE (the Division+
+        Letter scheme matching 1355R/101F). Pass SUNNYSIDE_MODEL_DIVISION_TREE
+        for a project piloting the Sunnyside CSI scheme (64 Eastwood).
+        """
+        division_tree = division_tree if division_tree is not None else cls.CANONICAL_DIVISION_TREE
+        plan = []
+        for division, sub_packages in division_tree.items():
+            plan.append({"path": division, "type": "division"})
+            for pkg in sub_packages:
+                plan.append({"path": f"{division}/{pkg}", "type": "sub_package"})
+
+        if dry_run:
+            return {"bids_folder_id": bids_folder_id, "dry_run": True,
+                    "would_create": len(plan), "plan": plan}
+
+        created = []
+        errors = []
+        division_ids = {}
+        for division, sub_packages in division_tree.items():
+            try:
+                result = cls.create_folder(bids_folder_id, division)
+                division_ids[division] = result["folder_id"]
+                created.append({"path": division, **result})
+            except Exception as e:
+                errors.append({"path": division, "error": str(e)})
+                continue
+            for pkg in sub_packages:
+                try:
+                    sub_result = cls.create_folder(division_ids[division], pkg)
+                    created.append({"path": f"{division}/{pkg}", **sub_result})
+                except Exception as e:
+                    errors.append({"path": f"{division}/{pkg}", "error": str(e)})
+
+        return {"bids_folder_id": bids_folder_id, "dry_run": False,
+                "created_count": len(created), "error_count": len(errors),
+                "created": created, "errors": errors}
+
+    # Corrected 2026-07-16 against the REAL HCI_Project_Folder_Organization_Standard.docx
+    # (file 1jkhKqeKyxTIaQYzoEqa8vz1J7UkrBw-T, read directly - this is the actual
+    # canonical top-level structure, not the ad-hoc 01_Budget/02_Schedule/03_RFIs
+    # set built earlier from a verbal Telegram request before this doc was found).
+    # 06_RFI & Submittals requires two subfolders per the standard's own text
+    # ("Required folders: RFIs / Submittals"); everything else is a flat sibling.
+    PROJECT_ROOT_SIBLING_FOLDERS = [
+        "01_Budget", "02_Pay Applications", "03_Permit Information", "04_Drawings",
+        "05_Specifications", "06_RFI & Submittals", "07_Change Orders",
+        "08_General Photos", "09_Contracts", "10_Project Notes", "11_Schedule",
+        "12_Client", "13_Internal", "14_Survey Information", "15_Weekly Meetings",
+    ]
+    PROJECT_ROOT_SIBLING_SUBFOLDERS = {
+        "06_RFI & Submittals": ["RFIs", "Submittals"],
+    }
+
+    @classmethod
+    def create_project_root_structure(cls, project_root_folder_id: str, dry_run: bool = True,
+                                       division_tree: dict = None) -> dict:
+        """
+        Creates the full project scaffold under a project's root Drive folder:
+        00_Bids (with the full division canonical tree inside it) plus the
+        15 real HCI standard folders (01_Budget through 15_Weekly Meetings) as
+        siblings alongside it.
+
+        project_root_folder_id: the Drive folder ID of the project's root
+        (the parent that would contain 00_Bids, 01_Budget, etc. as children).
+        dry_run=True (default): returns the plan without creating anything.
+        dry_run=False: actually creates the folders.
+        division_tree: defaults to CANONICAL_DIVISION_TREE (matches 1355R/101F).
+        Pass SUNNYSIDE_MODEL_DIVISION_TREE for a project piloting the
+        Sunnyside CSI scheme (64 Eastwood).
+        """
+        division_tree = division_tree if division_tree is not None else cls.CANONICAL_DIVISION_TREE
+        plan = [{"path": "00_Bids", "type": "root_sibling"}]
+        for division, sub_packages in division_tree.items():
+            plan.append({"path": f"00_Bids/{division}", "type": "division"})
+            for pkg in sub_packages:
+                plan.append({"path": f"00_Bids/{division}/{pkg}", "type": "sub_package"})
+        for sibling in cls.PROJECT_ROOT_SIBLING_FOLDERS:
+            plan.append({"path": sibling, "type": "root_sibling"})
+            for sub in cls.PROJECT_ROOT_SIBLING_SUBFOLDERS.get(sibling, []):
+                plan.append({"path": f"{sibling}/{sub}", "type": "root_sibling_subfolder"})
+
+        if dry_run:
+            return {"project_root_folder_id": project_root_folder_id, "dry_run": True,
+                    "would_create": len(plan), "plan": plan}
+
+        created = []
+        errors = []
+        try:
+            bids_result = cls.create_folder(project_root_folder_id, "00_Bids")
+            created.append({"path": "00_Bids", **bids_result})
+            division_tree_result = cls.create_canonical_bid_folder_tree(
+                bids_result["folder_id"], dry_run=False, division_tree=division_tree)
+            created.extend(division_tree_result["created"])
+            errors.extend(division_tree_result["errors"])
+        except Exception as e:
+            errors.append({"path": "00_Bids", "error": str(e)})
+
+        for sibling in cls.PROJECT_ROOT_SIBLING_FOLDERS:
+            try:
+                result = cls.create_folder(project_root_folder_id, sibling)
+                created.append({"path": sibling, **result})
+                for sub in cls.PROJECT_ROOT_SIBLING_SUBFOLDERS.get(sibling, []):
+                    try:
+                        sub_result = cls.create_folder(result["folder_id"], sub)
+                        created.append({"path": f"{sibling}/{sub}", **sub_result})
+                    except Exception as e:
+                        errors.append({"path": f"{sibling}/{sub}", "error": str(e)})
+            except Exception as e:
+                errors.append({"path": sibling, "error": str(e)})
+
+        return {"project_root_folder_id": project_root_folder_id, "dry_run": False,
+                "created_count": len(created), "error_count": len(errors),
+                "created": created, "errors": errors}
+
     @classmethod
     def upload_file(cls, folder_id: str, filename: str, content_b64: str,
                      mime_type: str = "application/octet-stream") -> dict:

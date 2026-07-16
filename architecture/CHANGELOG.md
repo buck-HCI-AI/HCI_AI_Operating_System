@@ -5,6 +5,241 @@
 
 ---
 
+## v5.9 — 2026-07-16 | SOW/email/budget/bid-leveling rebuilt against real sources; 1355R AI pipeline test scaffolded
+
+**Trigger:** Buck: verify the bid-level, SOW, and email templates against real documents before
+building anything further, then use the largest live job (275 Sunnyside, Chris Hendrickson) as
+the model to build toward.
+
+- `generate_sow()` and `generate_bid_invite_email()` rewritten to match real sources: Chris
+  Hendrickson's real Sunnyside SOW structure, and Buck's own real sent bid-request emails (pulled
+  live via Graph API, not guessed). Fixed a real bug: contact email defaulted to the wrong domain
+  (`buck@ahmaspen.com`).
+- New `services/bid_leveling/budget_generator.py`: bid-leveling row builder, spread-flagging,
+  budget-line crosswalk (`carry_to_budget_modification` — never auto-picks a winning bid; that's
+  a human award decision), and `generate_bid_leveling_gold_standard()` — rebuilt to match Buck's
+  own already-approved 2026-07-13 "BID LEVELING GOLD STANDARD" format (7 sections), found and
+  substituted in after the initial Sunnyside-based version was checked against it and didn't
+  match. Verified against the real approved 1355R Div 03 Concrete example.
+- `CANONICAL_DIVISION_TREE` in `bid_leveling_service.py` briefly migrated to Sunnyside's 5-digit
+  CSI MasterFormat scheme, then reverted to the original Division+Letter scheme after confirming
+  that's what's actually live on 1355R and 101F; Sunnyside's scheme kept as
+  `SUNNYSIDE_MODEL_DIVISION_TREE`, available via an explicit `division_tree` param, earmarked for
+  a possible 64 Eastwood pilot (small scope, lowest risk) - not applied anywhere yet.
+- QATEST's `00_Bids` rebuilt to match (archived old scheme via rename, no data lost), templates
+  distributed to the 16 main division folders, master bid tracker and ROM/budget templates added
+  at the appropriate root folders, using schemas validated against real McSkimming/Starwood files.
+- Full session decision log with sources: `CODE_SESSION_LOG_2026-07-16_bid_leveling_templates_and_decisions.md`
+  (HCI AI Master Drive, file `1r3MXK6ikaLTmVxMRUWs2BcwVWIZPopTS`).
+- Created isolated `1355 AI TEST` project in Buck's own Drive (not the real 1355R Shared Drive,
+  verified untouched throughout via copy-only operations) to prove the pipeline works before
+  trusting it on live data. Real 1355R `04_Drawings` folder copied in full (129 files). Buck
+  flagged that pre-populating templates defeats the purpose of an actual test - everything except
+  the real drawings was trashed (recoverable) pending a proper step-by-step run: plan review → ROM
+  + prelim schedule from real historical mining → SOW/email per division → real bid ingestion →
+  Gold Standard leveling.
+- **Open, unresolved as of this entry:** CA (GBT orchestrator) acked the rollout-plan review
+  request twice (coordination bus post + direct Telegram trigger) but replied with generic
+  "no actionable items" boilerplate both times rather than substantive review - real consensus
+  from the team was not obtained, only requested. BC unreachable (no active session this cycle).
+
+---
+
+## v5.8 — 2026-07-15 | CRITICAL FIX: old orchestrator scaffolding was silently completing real BC verification tasks
+
+**Trigger:** Routine health check found 11 BC tasks `status=completed` with empty checkpoints -
+no evidence, nothing actually verified, silently making real work look done.
+
+- Root cause: `AUTO-ORCHESTRATOR — 5min Work Queue Scheduler` (built weeks earlier, "Orchestrator
+  MVP" phase) claims the oldest pending row in `orchestrator_work_queue` with no `job_type`
+  filter, then immediately marks it complete - explicitly documented at build time as scaffolding
+  never wired to real logic. Once tonight's ARCH/BC populator started inserting real rows into
+  that same (correctly reused) table, this old workflow started blindly draining them.
+- Isolated with a controlled experiment, not just a plausible-looking correlation: deactivated
+  the FIRST suspect (`AUTO-HANDOFF-PROCESSOR`, which fires on a similar cadence), reset, watched
+  it recur anyway - clean negative result, ruled it out for real before landing on the actual
+  cause.
+- Fix: deactivated `AUTO-ORCHESTRATOR — 5min Work Queue Scheduler` (was never doing real work).
+  Reset all 11 affected rows to pending with checkpoints cleared.
+- Filed as ADR-027, including the full investigation trail so this doesn't read as a mystery
+  next time.
+
+---
+
+## v5.7 — 2026-07-15 | BC "no coms" FIXED live; GBT "no coms" partially diagnosed (ADR-026 updated)
+
+**Trigger:** Buck, live: both GBT and BC independently reporting "no coms" despite an active
+night of real work - "this is real drift and real issue that keeps happening - it has to be
+fixed."
+
+- **BC: fixed, verified.** Opened BC's real Claude.ai session directly, confirmed via its own
+  self-audit and via the Drive API that `LIVE_TEAM_COMMS.md` sat unmodified for 9.5 hours
+  despite an active coordination bus - the bridge script that copies posts into it was never
+  running automatically, and its filter only ever covered GBT's posts, not Code's own. Ran it
+  (29 real entries caught up), widened the filter, added `POST /gateway/comms/bridge-coordination-bus`,
+  wired into the 15-min n8n cycle.
+- **GBT: real progress, not fully resolved.** Opened GBT's Custom GPT config directly. Found
+  its Actions schema was missing a document-discovery action entirely (could read a coordination
+  doc by ID, had no way to learn new IDs existed) - added `listCoordinationDocuments`, hit and
+  resolved a real 30-action hard cap, published. Then found the deeper issue live: GBT's Actions
+  aren't currently executing in ANY session, old or new, pre- or post-publish - a ChatGPT
+  platform-level issue, not a schema problem. Documented fully in ADR-026 rather than claiming
+  a fix that isn't verified.
+
+---
+
+## v5.6 — 2026-07-15 | WF-010 intermittent 405 - real root cause found (partial)
+
+**Trigger:** A ~50% intermittent 405 on WF-010 (Outlook Email Router) flagged earlier tonight
+as unexplained; circled back to actually root-cause it instead of leaving it as a shrug.
+
+- WF-010 triggers on every incoming email (Outlook trigger, not a schedule) - explains its high
+  execution frequency, which matters because it means almost any server restart has a real
+  chance of colliding with an in-flight execution.
+- Cross-referenced WF-010's failure timestamps against this session's own API server restart
+  log: the 14:01 UTC failure lines up exactly with a `launchctl kickstart` restart at the same
+  moment - a real, self-inflicted collision, same underlying mechanism as ADR-026's GBT finding
+  (this session restarted the server 6+ times).
+- **Not fully closed:** WF-010's older failures (2026-07-14 and earlier, predating this session)
+  are NOT explained by tonight's restarts and remain a genuine unresolved intermittent issue -
+  stating this explicitly rather than letting one real explanation stand in for all instances.
+- Bumped its one HTTP node's retry from 3 tries/3s to 5 tries/5s (matching the pattern already
+  applied to AUTO-BID-UPDATE-DETECTION) to better survive a restart window. Verified live.
+
+---
+
+## v5.5 — 2026-07-15 | GBT "no coms" recurrence - root cause confirmed (ADR-026)
+
+**Trigger:** Buck, live: GBT reporting "no coms" again despite 8+ real CODE_TO_GBT posts this
+session - "this is real drift and real issue that keeps happening - it has to be fixed."
+
+- Confirmed with live evidence (not repeating the 2026-07-10 theory unverified): the auto-
+  generated `/openapi.json` schema GBT's Custom GPT Action imports now has 746 paths and
+  already reflects every endpoint added tonight. The API server was restarted 6+ times this
+  session, each following a new endpoint addition - meaning the exposed schema changed
+  repeatedly within one continuous GBT chat session's lifetime.
+- Server + ngrok independently verified healthy at the moment of the report (external calls,
+  200s, <1.5s) - ruled out an actual outage.
+- Most probable direct trigger: Code's own high rate of schema-changing restarts this session,
+  not a new bug. Matches the already-documented ChatGPT platform behavior (an open chat is
+  permanently pinned to whatever Action-schema version existed when it started; only a new
+  chat picks up a changed schema).
+- No server-side fix exists for the underlying platform behavior. Filed as ADR-026: standing
+  procedural mitigation (batch schema-changing restarts, treat GBT reseed as an expected
+  session follow-up rather than a surprise, verify reseed with a live Action call).
+
+---
+
+## v5.4 — 2026-07-15 | CRITICAL FIX: /drive/write silently failed on Google Doc creation
+
+**Trigger:** Building a real SOW for 1355R Interior Doors, /drive/write reported
+`status: ok, action: created` while `file_id: null` - the file was never actually created.
+
+- **Bug 1:** the create/update calls were missing `supportsAllDrives=true` (same class of bug
+  already fixed in `/drive/move` on 2026-07-08) - any target folder living in a Shared Drive
+  404'd with "File not found," silently, since nothing checked the response for an error.
+- **Bug 2:** when `mime_type` was a Google Workspace type (`application/vnd.google-apps.document`),
+  the code used it as BOTH the metadata target type AND the upload media's own Content-Type -
+  Drive rejects raw bytes typed directly as a Workspace mimeType ("Invalid MIME type provided").
+  Fix: Workspace types now go in file metadata `mimeType`; the media part uses `text/plain` as
+  the real importable source format, which Drive then converts.
+- **Bug 3 (root cause of the false "ok"):** neither the create nor update path checked the Drive
+  API response for an `"error"` key before declaring success. Fixed - both paths now return a
+  real `errors` array and `status: "error"` on any Drive-side failure.
+- **Real-world implication, checked not assumed:** audited all 98 historical `/drive/write`
+  "created" log entries - this endpoint had only ever been used to write into the HCI AI Master
+  folder (My Drive, not a Shared Drive) before tonight; my own 2 calls building the Interior
+  Doors SOW were the first time it ever hit a Shared-Drive target. Retroactive audit closed with
+  a real negative result: no historical SOW or other document writes were silently affected.
+- Live-verified the fix: reproduced the original 404, reproduced the mimeType rejection, then
+  confirmed a real Google Doc was created (file_id populated, appears in the target folder,
+  content reads back correctly) - the 1355R Interior Doors & Hardware SOW.
+
+---
+
+## v5.3 — 2026-07-15 | SO Execution Map (state machine)
+
+**Trigger:** GBT P0 handoff requesting a formal SO state machine on top of the ARCH/BC
+Service built earlier tonight (v5.2) - "SO owns WHEN work runs, ARCH/CODE/BC own HOW."
+
+- New `so_execution_state` (append-only transition log) and `so_active_objective`
+  (priority engine - single active objective by rank) tables.
+- New `services/agent_ops/execution_map.py` - `run_cycle()` walks startup ->
+  health_check -> select_objective -> dispatch_arch -> dispatch_code -> dispatch_bc ->
+  collect_results -> consensus_check -> (advance|recover|escalate) -> checkpoint -> repeat.
+- New endpoints: `/gateway/so/execution/run-cycle`, `/state`, `/dashboard`.
+- Extended `/gateway/agent-queue/populate-from-drift`'s trigger map: new plans/drawings
+  (reused `drive_file_log` from the pre-existing AUTO-EVENT-DRIVE-SCAN workflow) and new
+  bids (`drive_bids`, `is_latest=TRUE`) - 4 of 6 requested triggers now wired.
+- Wired into `AUTO-ARCH-BC-POPULATOR` as a second branch - every 15-min tick both
+  populates the queue and advances the execution map.
+- Live-tested: `run_cycle()` correctly selected `bid_system_v1` (rank 1) as active
+  objective, read real pending-task counts from the queue, and completed a full cycle.
+- Explicit gaps, not hidden: QA-failure-specific trigger (distinct from drift-check) and
+  Buck-directive-as-trigger not built - see ADR-025.
+- Filed as ADR-025.
+
+---
+
+## v5.2 — 2026-07-15 | ARCH Service + BC Verification Service (agent_brain, three_team_consensus)
+
+**Trigger:** GBT P0 handoffs requesting persistent state for GBT (ARCH) and Browser Claude (BC),
+converting both from ephemeral chat sessions into services with durable memory, a work queue, and
+cross-agent consensus tracking. Buck confirmed approval in-session after Code flagged it could not
+independently verify the "Buck approved" claim from the coordination bus alone.
+
+- New `agent_brain` table (Postgres): hypotheses/findings/risks/architectural_debt/
+  pending_decisions/roadmap_context/next_task/checkpoint, scoped per agent (arch/bc).
+- New `three_team_consensus` table: AGREE/DISAGREE/CONDITIONAL per agent, auto-advances to
+  3/3 on all-AGREE, auto-escalates to Buck on any DISAGREE.
+- Reused (not duplicated) the existing `orchestrator_work_queue` for ARCH/BC task queues —
+  `services/agent_ops/agent_queue.py`, `services/agent_ops/brain_service.py`.
+- New endpoints: `/gateway/agent-brain/*`, `/gateway/agent-queue/*`, `/gateway/consensus/*`,
+  including `/gateway/agent-queue/populate-from-drift` — the real event source (live drift-check
+  findings + new coordination-bus check-ins), idempotent, feeding n8n workflow
+  `AUTO-ARCH-BC-POPULATOR` (15-min schedule).
+- Acceptance-tested live: checkpoint survives a simulated worker kill (stale-lock reclaim),
+  Brain/Queue data survives an n8n container restart, new Code check-ins and new GBT/BC findings
+  auto-queue review tasks, reruns are fully idempotent (0 duplicates).
+- Explicit known gap, documented not hidden: GBT and BC are pull-only chat agents, not
+  API-invokable — this queues work and notifies via Telegram/coordination bus, it does not
+  achieve true autonomous invocation. See ADR-024.
+- Filed as ADR-024 — the first ADR to name "System Orchestrator" despite it being one of the
+  two Dual Mission Lock objectives; the 2026-07-15 self-audit found zero prior ADRs referenced it.
+
+---
+
+## v5.1 — 2026-07-15 | Protected Canonical Asset Registry + Bid Leveling QA Gate
+
+**Trigger:** An archive sweep on 1355 Riverside trashed/misfiled 3 of Buck's
+own hand-authored canonical bid-leveling reference docs. Buck caught it live
+and directed a permanent fix (via GBT P0 handoff) so it can't recur silently.
+
+- New `protected_canonical_docs`, `canonical_working_copies`, and
+  `canonical_guard_operations` tables. New
+  `services/bid_leveling/protected_canonical_guard.py`: registry lookup,
+  `guard_before_archive()` (raises and refuses on a protected file),
+  full lifecycle workflow (`create_working_copy` → `submit_as_candidate_revision`
+  → `approve_revision`, which hard-blocks agent self-approval), and
+  `rollback()` restoring from a preflight snapshot. 12/12 tests passing
+  against live Drive + DB (`tests/test_protected_canonical_guard.py`).
+- Restored Buck's 3 misfiled reference docs (Masonry, Concrete, Drywall) via
+  untrash/move — nothing deleted. 3/8 of his 1355R Div 02-09 canonical
+  exemplars are registered; the other 5 need Buck to identify the specific
+  files, since Drive metadata can't distinguish his authored docs from
+  AI-generated ones.
+- New `scripts/bid_leveling_qa_gate.py`: validates bid-leveling Google Docs
+  against Buck's canonical Div 02-07 status vocabulary/section format. Run
+  across all 56 docs in 64EW/101F/1355R: 33 pass, 23 fail — mostly a status-
+  vocabulary mismatch between this session's earlier real-construction
+  statuses (BLOCKED/AWAITING BIDS/AWARD READY) and the later 5-value
+  canonical enum. New `bid_leveling_summaries` manifest table records QA
+  status per doc. Findings reported, not auto-rewritten (touches real
+  award-recommendation language) — proposed status mapping pending review.
+- See ADR-023, `HCI_AI_OS_MANUAL.md` § 5.10.
+
+---
+
 ## v5.0 — 2026-07-13 | Budget Baseline Register (budget_baselines table + gateway endpoint)
 
 **Trigger:** Self-initiated spot-check (after catching a wrong "original ROM" figure
