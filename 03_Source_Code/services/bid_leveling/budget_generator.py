@@ -224,7 +224,7 @@ def generate_bid_leveling_gold_standard(project_name: str, division_num: str, di
         # of a plain string - handle both rather than print a raw dict repr.
         if isinstance(rfi, dict):
             bidder = rfi.get("bidder")
-            question = rfi.get("question", str(rfi))
+            question = rfi.get("question") or rfi.get("rfi") or rfi.get("text") or str(rfi)
             lines.append(f"{i}. [{bidder}] {question}" if bidder else f"{i}. {question}")
         else:
             lines.append(f"{i}. {rfi}")

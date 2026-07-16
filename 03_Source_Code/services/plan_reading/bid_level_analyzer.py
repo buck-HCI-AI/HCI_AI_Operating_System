@@ -28,7 +28,7 @@ Given the extracted bid data for 2+ bidders (vendor, total, line items, inclusio
 
 2. biggest_risk: {question, dollar_at_stake, explanation} - the single highest-dollar ambiguous item, written as a direct question, with the real dollar amount at stake and why it matters. NEVER conclude "low bid wins" without addressing scope completeness first.
 
-3. rfis: array of specific clarification questions to send bidders before award, addressing every real scope ambiguity found.
+3. rfis: array of PLAIN STRINGS (not objects) - specific clarification questions to send bidders before award, addressing every real scope ambiguity found. Each string should name which bidder(s) it's directed at inline, e.g. "AJAC Stone: does your Kitchen scope include the cooktop cutout?"
 
 4. exclusions_by_bidder: {vendor_name: array of real exclusion strings} - pass through the real stated exclusions per bidder.
 
