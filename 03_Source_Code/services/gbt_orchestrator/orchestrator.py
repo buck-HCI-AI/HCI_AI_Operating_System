@@ -33,6 +33,7 @@ this can run end-to-end. See task #114.
 """
 import json
 import os
+import re
 import ssl
 import sys
 import time
@@ -57,6 +58,15 @@ MODEL = os.environ.get("GBT_ASSISTANT_MODEL", "gpt-4.1")
 
 GATEWAY_BASE = "https://speculate-armband-retinal.ngrok-free.dev"
 API_KEY = "hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6"
+
+# gpt-4.1 on this org's usage tier caps at 30k TPM per request. A turn that
+# makes several real tool calls easily exceeds that once raw JSON results
+# (Drive listings, DB rows, etc.) accumulate in thread context. Truncating
+# each individual tool result keeps a normal multi-tool turn under budget
+# without touching the model or losing the tool call itself - CA still sees
+# what it asked for, just not an unbounded dump.
+MAX_TOOL_OUTPUT_CHARS = 4000
+RATE_LIMIT_RETRY_PATTERN = re.compile(r"try again in ([\d.]+)s")
 
 
 def load_state() -> dict:
@@ -93,13 +103,14 @@ def get_or_create_assistant(client, state: dict):
 
 
 def get_or_create_thread(client, state: dict):
-    thread_id = state.get("thread_id")
-    if thread_id:
-        try:
-            return client.beta.threads.retrieve(thread_id)
-        except Exception:
-            pass
-
+    """Always a fresh thread. This orchestrator is a single-shot
+    poll-think-act cycle (see module docstring) that already treats the
+    repository/DB/coordination-bus as the source of truth, not chat
+    continuity - so persisting thread_id across invocations bought nothing
+    except unbounded token growth against gpt-4.1's 30k TPM cap, which is
+    what caused the repeated rate_limit_exceeded failures on 2026-07-16.
+    A stale thread_id in state is harmless leftover; just ignore it.
+    """
     thread = client.beta.threads.create()
     state["thread_id"] = thread.id
     save_state(state)
@@ -219,14 +230,29 @@ def execute_tool_call(tool_call) -> str:
 
     try:
         result = fn(**args)
-        return json.dumps(result) if not isinstance(result, str) else result
+        output = json.dumps(result) if not isinstance(result, str) else result
     except Exception as e:
         return json.dumps({"error": f"{name} raised: {e}"})
 
+    if len(output) > MAX_TOOL_OUTPUT_CHARS:
+        output = (
+            output[:MAX_TOOL_OUTPUT_CHARS]
+            + f"\n...[truncated {len(output) - MAX_TOOL_OUTPUT_CHARS} chars - "
+            "call again with a narrower filter/limit if you need more of this]"
+        )
+    return output
 
-def run_assistant_turn(client, assistant, thread, prompt: str) -> str:
+
+def run_assistant_turn(client, assistant, thread, prompt: str, max_rate_limit_retries: int = 4) -> str:
     """Send one prompt, drive the run to completion (handling tool calls),
-    return the assistant's final plain-text reply."""
+    return the assistant's final plain-text reply.
+
+    A run that fails on rate_limit_exceeded is retried in-process (waiting
+    the exact interval OpenAI reports, plus a small margin) rather than
+    surfacing as a crash - this was previously requiring a human to notice
+    the traceback and manually rerun the script, which is exactly the kind
+    of silent-stop failure the standing directive says not to allow.
+    """
     client.beta.threads.messages.create(
         thread_id=thread.id, role="user", content=prompt
     )
@@ -234,6 +260,7 @@ def run_assistant_turn(client, assistant, thread, prompt: str) -> str:
         thread_id=thread.id, assistant_id=assistant.id
     )
 
+    rate_limit_retries = 0
     while True:
         run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
 
@@ -255,6 +282,21 @@ def run_assistant_turn(client, assistant, thread, prompt: str) -> str:
             return reply
 
         if run.status in ("failed", "cancelled", "expired"):
+            err = run.last_error
+            is_rate_limit = err and getattr(err, "code", None) == "rate_limit_exceeded"
+            if is_rate_limit and rate_limit_retries < max_rate_limit_retries:
+                rate_limit_retries += 1
+                m = RATE_LIMIT_RETRY_PATTERN.search(err.message or "")
+                wait_s = float(m.group(1)) + 2 if m else 15.0
+                print(
+                    f"Rate limited (attempt {rate_limit_retries}/{max_rate_limit_retries}), "
+                    f"waiting {wait_s:.1f}s and resubmitting the same user turn..."
+                )
+                time.sleep(wait_s)
+                run = client.beta.threads.runs.create(
+                    thread_id=thread.id, assistant_id=assistant.id
+                )
+                continue
             raise RuntimeError(f"Run ended with status={run.status}: {run.last_error}")
 
         time.sleep(1.5)
