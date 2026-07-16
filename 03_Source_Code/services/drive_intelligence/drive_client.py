@@ -293,3 +293,126 @@ def download_binary(file_id: str) -> bytes:
     req = urllib.request.Request(url_with_params, headers={"Authorization": f"Bearer {_token()}"})
     with urllib.request.urlopen(req, context=SSL_CTX, timeout=120) as r:
         return r.read()
+
+
+def _markdown_to_html(md: str) -> str:
+    """
+    Minimal markdown->HTML for Drive's import-on-upload conversion. Added
+    2026-07-16 after Buck reported every bid-leveling deliverable "looks
+    like a typewriter" - the pipeline was uploading raw .md as
+    text/markdown, which Drive does not render (shows raw # / ** / | chars
+    on both desktop and mobile). Uploading the same content as text/html
+    with the target mimeType set to a Google Doc makes Drive actually
+    convert it into a real formatted document on import. Not a full CommonMark
+    implementation - just enough structure (headers, bold, tables, lists,
+    hr) for these AI-generated reports.
+    """
+    import re, html as _html
+
+    def esc(s):
+        return _html.escape(s, quote=False)
+
+    lines = md.replace("\r\n", "\n").split("\n")
+    out = []
+    in_table = False
+    in_list = False
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if not stripped:
+            if in_table:
+                out.append("</table>")
+                in_table = False
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            i += 1
+            continue
+
+        if stripped.startswith("|") and "|" in stripped[1:]:
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            is_sep = all(re.fullmatch(r":?-{2,}:?", c) for c in cells)
+            if is_sep:
+                i += 1
+                continue
+            if not in_table:
+                out.append("<table border='1' cellspacing='0' cellpadding='4'>")
+                in_table = True
+            tag = "th" if not out or out[-1].startswith("<table") else "td"
+            row = "".join(f"<{tag}>{esc(c)}</{tag}>" for c in cells)
+            out.append(f"<tr>{row}</tr>")
+            i += 1
+            continue
+        elif in_table:
+            out.append("</table>")
+            in_table = False
+
+        h = re.match(r"^(#{1,4})\s+(.*)", stripped)
+        if h:
+            level = min(len(h.group(1)) + 1, 6)
+            out.append(f"<h{level}>{esc(h.group(2))}</h{level}>")
+            i += 1
+            continue
+
+        if re.fullmatch(r"-{3,}", stripped):
+            out.append("<hr>")
+            i += 1
+            continue
+
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            if not in_list:
+                out.append("<ul>")
+                in_list = True
+            out.append(f"<li>{esc(stripped[2:])}</li>")
+            i += 1
+            continue
+        elif in_list:
+            out.append("</ul>")
+            in_list = False
+
+        text = esc(stripped)
+        text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+        text = re.sub(r"(?<!\*)\*([^*]+?)\*(?!\*)", r"<i>\1</i>", text)
+        out.append(f"<p>{text}</p>")
+        i += 1
+
+    if in_table:
+        out.append("</table>")
+    if in_list:
+        out.append("</ul>")
+
+    return "<html><body>" + "\n".join(out) + "</body></html>"
+
+
+def create_google_doc_from_markdown(name: str, parent_id: str, markdown_text: str) -> dict:
+    """
+    Uploads markdown as a real Google Doc (not a raw .md file) by setting
+    the target mimeType to application/vnd.google-apps.document while
+    sending text/html content - Drive's import-on-upload converts it into
+    an actually formatted, actually readable document. See
+    _markdown_to_html() docstring for why this exists.
+    """
+    html_content = _markdown_to_html(markdown_text).encode("utf-8")
+    boundary = "HCI_BOUNDARY_" + name.replace(" ", "_")
+    metadata = json.dumps({
+        "name": name,
+        "parents": [parent_id],
+        "mimeType": "application/vnd.google-apps.document",
+    }).encode()
+    body = (
+        f"--{boundary}\r\nContent-Type: application/json\r\n\r\n".encode()
+        + metadata
+        + f"\r\n--{boundary}\r\nContent-Type: text/html\r\n\r\n".encode()
+        + html_content
+        + f"\r\n--{boundary}--".encode()
+    )
+    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true"
+    req = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={"Authorization": f"Bearer {_token()}",
+                 "Content-Type": f"multipart/related; boundary={boundary}"},
+    )
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=60) as r:
+        return json.loads(r.read())

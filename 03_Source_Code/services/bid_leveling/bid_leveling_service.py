@@ -10,6 +10,7 @@ ChatGPT / GBT and other AI agents can call the API endpoints for full read/write
 import sys, os, io, json, re, uuid, ssl, urllib.parse, urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "integrations"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "approval_queue"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "drive_intelligence"))
 
 import psycopg2, psycopg2.extras
 from dotenv import load_dotenv
@@ -24,6 +25,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 
 from credentials import get_google_token
 from approval_queue_service import ApprovalQueueService
+from drive_client import create_google_doc_from_markdown as _create_google_doc_from_markdown
 
 DB = dict(
     host=os.environ.get("POSTGRES_HOST", "localhost"),
@@ -1652,10 +1654,33 @@ class BidLevelingService:
         Uploads a file to Drive (for GBT / authorized AI agent use).
         content_b64: base64-encoded file content.
         Returns {"file_id": str, "filename": str, "folder_id": str, "action": str}
+
+        Markdown content is auto-converted into a real Google Doc instead of a
+        raw .md file. Added 2026-07-16 after Buck reported every bid-leveling
+        deliverable "looks like a typewriter" - Drive does not render
+        text/markdown, it shows the raw # / ** / | characters on both desktop
+        and mobile. This is the one committed, reusable upload entry point
+        every AI agent (GBT, pipeline scripts) goes through, so fixing it here
+        prevents the same defect on every future division/report, not just
+        tonight's 1355R output.
         """
         import base64
         token   = get_google_token("drive")
         content = base64.b64decode(content_b64)
+        is_markdown = mime_type == "text/markdown" or filename.lower().endswith(".md")
+        if is_markdown:
+            doc_name = filename[:-3] if filename.lower().endswith(".md") else filename
+            existing_id = _drive_find_file(folder_id, doc_name, token)
+            if existing_id:
+                trash_result = None
+                try:
+                    from drive_client import trash_file as _trash_file
+                    _trash_file(existing_id)
+                except Exception:
+                    pass
+            result = _create_google_doc_from_markdown(doc_name, folder_id, content.decode("utf-8"))
+            return {"file_id": result["id"], "filename": doc_name,
+                    "folder_id": folder_id, "action": "created_as_google_doc"}
         existing_id = _drive_find_file(folder_id, filename, token)
         if existing_id:
             file_id = _drive_update_file(existing_id, content, mime_type, token)
