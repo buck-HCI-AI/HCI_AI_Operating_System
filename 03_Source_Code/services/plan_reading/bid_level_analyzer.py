@@ -53,7 +53,7 @@ def analyze_bid_leveling_with_claude(extracted_bids: dict, division_name: str, p
     )
     try:
         resp = client.messages.create(
-            model=model, max_tokens=8000, system=LEVELING_ANALYSIS_SYSTEM,
+            model=model, max_tokens=12000, system=LEVELING_ANALYSIS_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
         )
     except Exception as e:
