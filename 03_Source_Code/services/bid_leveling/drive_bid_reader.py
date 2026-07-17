@@ -677,6 +677,22 @@ _NON_BID_FILENAME_RE = re.compile(
     r"^(archived?|old|superseded)([\s_-]|$)", re.IGNORECASE
 )
 
+# "bid summary" alone is ambiguous: real vendors commonly name their own bid
+# document "{Project}_{VendorName}_Bid_Summary.pdf" (confirmed live 2026-07-16
+# against three known-real bids - ProGuard $31,280.27, CQ Roofing $153,900,
+# All Valley $95,224 - all cross-matching the independently-verified executive
+# summary data), while HCI's own generated roll-up artifacts follow
+# "{Project} - {Category} Bid Summary" with no vendor name and no file
+# extension (their vendor_name field, when ingested, literally becomes the
+# whole filename - the actual tell). Excluding the underscore+.pdf/.docx/.xlsx
+# vendor-style pattern from the "bid summary" match specifically (not the
+# other phrases) fixes the false positive without reopening BL-DEFECT-05,
+# whose original counter-example ("...Bid_Leveling.xlsx") matches a different
+# phrase in this same regex and is unaffected.
+_VENDOR_STYLE_BID_SUMMARY_RE = re.compile(
+    r"^\S+_\S+_bid_summary\.(pdf|docx?|xlsx?)$", re.IGNORECASE
+)
+
 
 def _is_outbound_not_a_bid(filename: str) -> bool:
     """Files HCI sends OUT (scope-of-work docs, email templates, bid-request
@@ -694,7 +710,15 @@ def _is_outbound_not_a_bid(filename: str) -> bool:
     it silently slipped past this filter and got ingested as a fake "vendor"
     bid ($985, matching nothing real) - found live via cross-project deep
     testing. Normalize underscores/hyphens to spaces before matching so the
-    filter catches HCI's own underscore-delimited naming convention too."""
+    filter catches HCI's own underscore-delimited naming convention too.
+
+    2026-07-16: "bid summary" specifically was a false-positive risk this
+    broad matching created - real vendor-authored "{Project}_{Vendor}_
+    Bid_Summary.pdf" files were being caught too. See
+    _VENDOR_STYLE_BID_SUMMARY_RE above for the verified distinguishing
+    signal."""
+    if _VENDOR_STYLE_BID_SUMMARY_RE.match(filename):
+        return False
     normalized = re.sub(r"[_\-]+", " ", filename)
     return bool(_NON_BID_FILENAME_RE.search(filename) or _NON_BID_FILENAME_RE.search(normalized))
 
