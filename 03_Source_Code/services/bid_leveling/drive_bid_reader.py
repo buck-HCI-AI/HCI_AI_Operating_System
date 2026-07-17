@@ -1023,6 +1023,24 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
                 WHERE supersedes IS NOT NULL
                   AND project_id = %s
             """, (project_id,))
+
+            # Contamination override, always last: the ranked recompute above has no
+            # concept of "not a real bid" - it only ranks by date within
+            # (division, vendor, file_name), and a contaminated row almost always has
+            # a unique file_name, so it ranks rn=1 alone in its own partition no
+            # matter what. A prior manual is_latest=FALSE fix on a contaminated row
+            # (e.g. task #136/BL-DEFECT-05) does NOT survive this recompute, because
+            # nothing above ever re-checks it - found live 2026-07-17 via the
+            # drive_bids_is_latest_audit trigger catching rows 807/812/817/818
+            # silently flip back to TRUE after a scan. Recomputed here every call
+            # (not cached) so a filter fix like tonight's _VENDOR_STYLE_BID_SUMMARY_RE
+            # narrowing takes effect on the next scan without a separate migration.
+            cur.execute("SELECT id, file_name FROM drive_bids WHERE project_id = %s", (project_id,))
+            contaminated_ids = [r["id"] for r in cur.fetchall() if _is_outbound_not_a_bid(r["file_name"] or "")]
+            if contaminated_ids:
+                cur.execute("""
+                    UPDATE drive_bids SET is_latest = FALSE WHERE id = ANY(%s)
+                """, (contaminated_ids,))
         conn.commit()
 
     stale_trackers = check_duplicate_tracker_files(proj["bid_folder_id"], token)
