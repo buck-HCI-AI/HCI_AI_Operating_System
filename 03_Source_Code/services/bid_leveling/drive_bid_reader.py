@@ -689,7 +689,7 @@ _NON_BID_FILENAME_RE = re.compile(
     r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
     r"email templates?|division index|bid instructions?|"
     r"bid level tracker|level tracker|bid tracker|bid leveling|bid audit|"
-    r"bid summary|duplicate folder notice)\b|"
+    r"bid summary|duplicate folder notice|3D renders?|renders? for reference)\b|"
     r"^(archived?|old|superseded)([\s_-]|$)", re.IGNORECASE
 )
 
