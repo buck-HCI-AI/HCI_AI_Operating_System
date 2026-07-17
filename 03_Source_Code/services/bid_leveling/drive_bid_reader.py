@@ -865,10 +865,80 @@ def _sync_bid_package(cur, row: dict) -> None:
         """, (row["project_id"], f"{row['division_num']} — {row['division_name']}", row["vendor_name"]))
 
 
-def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
+# 2026-07-17: 275 Sunnyside's real Bids folder (task #145/#149) uses bare
+# trade-name division folders ("Concrete", "Framing", "Structural STeel")
+# instead of the "0N_Name" or "Division N - Name" conventions
+# walk_bid_folders() recognizes - it correctly skips them rather than
+# inventing a division code. Rather than guess a mapping, this is built
+# directly from bid_leveling_service.SUNNYSIDE_MODEL_DIVISION_TREE - a real,
+# authoritative CSI scheme sourced from Chris Hendrickson's own
+# "275 Sunnyside Lane - Bid Form.xlsx" and "275_Sunnyside_Master_Budget_v4_1.xlsx".
+# Only folders with a clear, direct correspondence to that real tree are
+# mapped. "oxegenation" and "Pool and spa" have no match in the real tree and
+# are deliberately left unmapped rather than guessed - walk_bid_folders_by_
+# trade_name() reports them as unmapped for human review instead of silently
+# dropping or inventing a division for them.
+SUNNYSIDE_275_TRADE_MAP = {
+    "excavation":          ("02", "Existing Conditions and Site Work"),
+    "landscaping":         ("02", "Existing Conditions and Site Work"),
+    "concrete":            ("03", "Concrete"),
+    "masonry":             ("04", "Masonry"),
+    "structural steel":    ("05", "Metals"),
+    "framing":             ("06", "Wood Plastics and Composites"),
+    "interior trim":       ("06", "Wood Plastics and Composites"),
+    "waterproofing":       ("07", "Thermal and Moisture Protection"),
+    "insulation":          ("07", "Thermal and Moisture Protection"),
+    "roofing":             ("07", "Thermal and Moisture Protection"),
+    "garage door":         ("08", "Openings"),
+    "windows and doors":   ("08", "Openings"),
+    "finishes":            ("09", "Finishes"),
+    "tile and countertops": ("09", "Finishes"),
+    "drywall":             ("09", "Finishes"),
+    "fire places":         ("10", "Specialties"),
+    "appliances":          ("11", "Equipment"),
+    "hvac plumbing":       ("15", "Mechanical"),
+    "plumbing fixtures":   ("15", "Mechanical"),
+    "fire suppression":    ("15", "Mechanical"),
+    "electrical":          ("16", "Electrical"),
+    "solar":               ("16", "Electrical"),
+    "av and security":     ("16", "Electrical"),
+}
+
+
+def walk_bid_folders_by_trade_name(bid_folder_id: str, token: str, trade_map: dict) -> tuple:
+    """
+    Same return shape as walk_bid_folders() (flat list of vendor-file dicts)
+    but for projects whose Bids folder uses bare trade names instead of
+    numbered divisions. trade_map keys are matched case-insensitively
+    against folder names (whitespace-normalized). Unmapped top-level folders
+    are collected and returned separately rather than silently skipped, so
+    the caller can see exactly what wasn't covered instead of assuming
+    complete coverage. Reuses _walk_vendor_level() for the actual file walk -
+    the exact same proven logic walk_bid_folders() uses per division.
+    """
+    top = _drive_list(bid_folder_id, token)
+    results, unmapped = [], []
+    for entry in top:
+        if "folder" not in entry.get("mimeType", ""):
+            continue
+        key = re.sub(r"\s+", " ", entry["name"]).strip().lower()
+        mapped = trade_map.get(key)
+        if not mapped:
+            unmapped.append(entry["name"])
+            continue
+        division_num, division_name = mapped
+        results.extend(_walk_vendor_level(entry["id"], token, division_num, division_name, 0))
+    return results, unmapped
+
+
+def scan_project_bids(project_id: int, dry_run: bool = True, trade_map: dict = None) -> dict:
     """
     Scan a project's bid_folder_id, extract new/updated bids, upsert to drive_bids.
     dry_run=True: return what would be processed without writing to DB.
+    trade_map: optional dict of {lowercase folder name: (division_num,
+    division_name)} for projects using bare trade-name folders instead of
+    numbered divisions (see SUNNYSIDE_275_TRADE_MAP). When provided, uses
+    walk_bid_folders_by_trade_name() instead of the numbered-division walker.
     """
     with _pg() as conn:
         with conn.cursor() as cur:
@@ -886,9 +956,14 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
     drive_drive_token = get_google_token("drive")  # same token, named for clarity
 
     # Walk folder structure
-    files = walk_bid_folders(proj["bid_folder_id"], token)
+    unmapped_folders = []
+    if trade_map:
+        files, unmapped_folders = walk_bid_folders_by_trade_name(proj["bid_folder_id"], token, trade_map)
+    else:
+        files = walk_bid_folders(proj["bid_folder_id"], token)
     if not files:
-        return {"project": proj["name"], "files_found": 0, "new_bids": 0, "dry_run": dry_run}
+        return {"project": proj["name"], "files_found": 0, "new_bids": 0, "dry_run": dry_run,
+                "unmapped_folders": unmapped_folders}
 
     # Load existing drive_bids file_ids for this project
     with _pg() as conn:
@@ -969,6 +1044,7 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
             "would_extract": len(extracted),
             "errors":        errors,
             "preview":       extracted[:5],
+            "unmapped_folders": unmapped_folders,
         }
 
     # Write to DB — upsert and fix is_latest
@@ -1072,6 +1148,7 @@ def scan_project_bids(project_id: int, dry_run: bool = True) -> dict:
         "new_bids":      upserted,
         "errors":        errors,
         "duplicate_tracker_files": stale_trackers,
+        "unmapped_folders": unmapped_folders,
     }
 
 
