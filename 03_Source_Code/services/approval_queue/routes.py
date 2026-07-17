@@ -35,6 +35,14 @@ class RejectRequest(BaseModel):
     reason: Optional[str] = ""
 
 
+class BulkActionRequest(BaseModel):
+    workflow: str
+    action_type: str
+    decision: str
+    actor: Optional[str] = "Buck Adams"
+    reason: Optional[str] = ""
+
+
 @router.get("")
 def service_info():
     return {"service": "approval-queue", "description": "All proposed write actions pending Buck approval"}
@@ -43,6 +51,23 @@ def service_info():
 @router.get("/summary")
 def get_summary():
     return ApprovalQueueService.summary()
+
+
+@router.get("/triage")
+def get_triage_summary():
+    """Pending items grouped by workflow+action_type with one real sample
+    each, so 116 individual items become a handful of category decisions."""
+    return ApprovalQueueService.triage_summary()
+
+
+@router.post("/bulk-action")
+def bulk_action(req: BulkActionRequest):
+    result = ApprovalQueueService.bulk_action(
+        req.workflow, req.action_type, req.decision, req.actor or "Buck Adams", req.reason or ""
+    )
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
 
 
 @router.post("/enqueue")

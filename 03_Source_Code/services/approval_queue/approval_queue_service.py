@@ -210,3 +210,71 @@ class ApprovalQueueService:
                 cur.execute("SELECT COUNT(*) as total FROM approval_queue")
                 total = cur.fetchone()["total"]
         return {"total": total, "by_status": by_status, "pending": by_status.get("pending", 0)}
+
+    @classmethod
+    def triage_summary(cls) -> dict:
+        """Groups pending items by workflow+action_type so a human can clear
+        the queue in a handful of category decisions instead of reviewing
+        each item individually. Built 2026-07-16 - the real backlog (verified
+        live) is 116 pending items, 104 of them mining-suggested candidates
+        (lessons_learned/vendor/document intelligence) sitting untouched
+        since 2026-07-07/08, not the "real bids awaiting award" the queue
+        was designed for. One sample item per group so the reviewer can see
+        real content before deciding, not just a count."""
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT workflow, action_type, COUNT(*) as count,
+                           MIN(created_at) as oldest, MAX(created_at) as newest
+                    FROM approval_queue WHERE status = 'pending'
+                    GROUP BY workflow, action_type
+                    ORDER BY count DESC
+                """)
+                groups = [dict(r) for r in cur.fetchall()]
+                for g in groups:
+                    cur.execute("""
+                        SELECT id, target_description, reason, created_at
+                        FROM approval_queue
+                        WHERE status='pending' AND workflow=%s AND action_type=%s
+                        ORDER BY created_at ASC LIMIT 1
+                    """, (g["workflow"], g["action_type"]))
+                    sample = cur.fetchone()
+                    g["sample"] = dict(sample) if sample else None
+        return {"groups": groups, "total_pending": sum(g["count"] for g in groups)}
+
+    @classmethod
+    def bulk_action(cls, workflow: str, action_type: str, decision: str,
+                     actor: str = "Buck Adams", reason: str = "") -> dict:
+        """Approves or rejects every pending item matching one
+        workflow+action_type group in a single call - the actual fix for
+        "116 items, no triage mechanism": a human reviews one real sample
+        per category (via triage_summary) then clears the whole category at
+        once instead of clicking through each item. decision must be
+        'approve' or 'reject'. Never auto-invoked - always requires an
+        explicit human-triggered call naming the category and the decision."""
+        if decision not in ("approve", "reject"):
+            return {"error": "decision must be 'approve' or 'reject'"}
+        new_status = "approved" if decision == "approve" else "rejected"
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                if decision == "approve":
+                    cur.execute("""
+                        UPDATE approval_queue SET status='approved', approved_by=%s, approved_at=NOW()
+                        WHERE status='pending' AND workflow=%s AND action_type=%s
+                        RETURNING id
+                    """, (actor, workflow, action_type))
+                else:
+                    cur.execute("""
+                        UPDATE approval_queue SET status='rejected', approved_by=%s,
+                            approved_at=NOW(), rejected_reason=%s
+                        WHERE status='pending' AND workflow=%s AND action_type=%s
+                        RETURNING id
+                    """, (actor, reason, workflow, action_type))
+                ids = [r["id"] for r in cur.fetchall()]
+                conn.commit()
+        if ids:
+            _audit("approval_queue", f"action.bulk_{decision}", actor, None,
+                   f"[BULK {decision.upper()}] {len(ids)} items, {workflow}/{action_type}: {reason}",
+                   {"workflow": workflow, "action_type": action_type, "queue_ids": ids})
+        return {"decision": decision, "workflow": workflow, "action_type": action_type,
+                "count": len(ids), "queue_ids": ids}
