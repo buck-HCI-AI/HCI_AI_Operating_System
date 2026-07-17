@@ -658,13 +658,29 @@ _TRAILING_DATE_RE = re.compile(
 )
 
 
+_PROJECT_BID_SUMMARY_RE = re.compile(
+    r"^\d+_[^_]+_(.+)_bid_summary$", re.IGNORECASE
+)
+
+
 def _vendor_name_from_filename(filename: str) -> str:
     """Buck's stated canonical pattern: company-named folder, bid file named
     'Company Date.ext'. When a bid file is found loose (not in its own company
     folder - the exact gap Buck flagged: 'there might be bids placed in the
     divisional folders that are not in hubspot'), extract the vendor name from
-    the filename using that same convention rather than dropping the file."""
+    the filename using that same convention rather than dropping the file.
+
+    2026-07-17: real vendor bids also show up loose as
+    "{ProjectNum}_{ProjectName}_{Vendor}_Bid_Summary.pdf" (no date at all, so
+    _TRAILING_DATE_RE never matches, and the whole filename was being used as
+    vendor_name - "1355_Riverside_Creech_Architectural_Metals_Bid_Summary"
+    instead of "Creech Architectural Metals" - task #148. Strip the
+    project-number/name prefix and the trailing "_Bid_Summary" suffix for
+    this specific pattern before falling back to the general logic."""
     base = re.sub(r"\.(pdf|docx?|xlsx?)$", "", filename, flags=re.IGNORECASE).strip()
+    m2 = _PROJECT_BID_SUMMARY_RE.match(base)
+    if m2:
+        return m2.group(1).replace("_", " ").strip()
     m = _TRAILING_DATE_RE.match(base)
     return (m.group(1) if m else base).strip()
 
