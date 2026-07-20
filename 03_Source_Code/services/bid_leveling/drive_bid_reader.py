@@ -689,7 +689,8 @@ _NON_BID_FILENAME_RE = re.compile(
     r"\b(SOW|scope of work|bid email template|bid request|bid package set|"
     r"email templates?|division index|bid instructions?|"
     r"bid level tracker|level tracker|bid tracker|bid leveling|bid audit|"
-    r"bid summary|duplicate folder notice|3D renders?|renders? for reference)\b|"
+    r"bid summary|duplicate folder notice|3D renders?|renders? for reference|"
+    r"contractor.{0,3}takeoff|takeoff)\b|"
     r"^(archived?|old|superseded)([\s_-]|$)", re.IGNORECASE
 )
 
@@ -943,7 +944,7 @@ def scan_project_bids(project_id: int, dry_run: bool = True, trade_map: dict = N
     with _pg() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, name, bid_folder_id FROM projects WHERE id=%s",
+                "SELECT id, name, bid_folder_id, status FROM projects WHERE id=%s",
                 (project_id,)
             )
             proj = cur.fetchone()
@@ -951,6 +952,14 @@ def scan_project_bids(project_id: int, dry_run: bool = True, trade_map: dict = N
         return {"error": f"Project {project_id} not found"}
     if not proj["bid_folder_id"]:
         return {"error": f"Project {proj['name']} has no bid_folder_id configured", "project": proj["name"]}
+
+    # data_scope marks whether this write is live active-job leveling or just
+    # mined reference data from a monitoring/reference-status project - Buck
+    # flagged 2026-07-17 that 275SS's mining got indistinguishable from real
+    # active-pipeline rows with no way to tell them apart. Anything not
+    # status='active' is tagged monitored_reference, never active_pipeline,
+    # regardless of how the scan was invoked.
+    data_scope = "active_pipeline" if proj.get("status") == "active" else "monitored_reference"
 
     token = get_google_token("drive")
     drive_drive_token = get_google_token("drive")  # same token, named for clarity
@@ -1056,20 +1065,22 @@ def scan_project_bids(project_id: int, dry_run: bool = True, trade_map: dict = N
                     INSERT INTO drive_bids
                         (project_id, division_num, division_name, vendor_name,
                          vendor_folder_id, file_id, file_name, bid_date,
-                         bid_amount, bid_amount_raw, scope_summary, is_latest, extraction_source)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                         bid_amount, bid_amount_raw, scope_summary, is_latest, extraction_source,
+                         data_scope)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (file_id) DO UPDATE SET
                         bid_amount=EXCLUDED.bid_amount,
                         bid_date=EXCLUDED.bid_date,
                         scope_summary=EXCLUDED.scope_summary,
                         is_latest=EXCLUDED.is_latest,
-                        extracted_at=NOW()
+                        extracted_at=NOW(),
+                        data_scope=EXCLUDED.data_scope
                 """, (
                     row["project_id"], row["division_num"], row["division_name"],
                     row["vendor_name"], row["vendor_folder_id"], row["file_id"],
                     row["file_name"], row["bid_date"], row["bid_amount"],
                     row["bid_amount_raw"], row["scope_summary"],
-                    row["is_latest"], row["extraction_source"],
+                    row["is_latest"], row["extraction_source"], data_scope,
                 ))
                 upserted += 1
                 if row["bid_amount"]:
@@ -1091,11 +1102,22 @@ def scan_project_bids(project_id: int, dry_run: bool = True, trade_map: dict = N
             # it), so a row with its own supersedes set is, by definition, not latest -
             # this lets many old duplicates point at one current row, which a reverse
             # convention (current -> old) cannot represent with a single-value column.
+            # 2026-07-20 fix (System Brain caught the Doman dup): the partition
+            # used to key on file_name, so a vendor's REVISED bid (same project +
+            # division + amount, but a new-dated filename like 7.11.26 vs 7.9.26,
+            # and sometimes a different division_name from re-classification) fell
+            # into a separate partition and BOTH stayed is_latest - a silent
+            # double-count. Keying on bid_amount instead collapses same-amount
+            # revisions regardless of filename/classification, while genuinely
+            # different-amount bids from one vendor stay separate (the bid_bad_
+            # /duplicate drift-checks flag any true anomaly for human review).
+            # Still granular enough to never over-collapse (the #57/#66 failure
+            # where a whole project collapsed to one row) - 4 keys, amount-scoped.
             cur.execute("""
                 WITH ranked AS (
                     SELECT id,
                            ROW_NUMBER() OVER (
-                               PARTITION BY project_id, division_num, vendor_name, file_name
+                               PARTITION BY project_id, division_num, vendor_name, bid_amount
                                ORDER BY COALESCE(bid_date, '1900-01-01'::date) DESC, id DESC
                            ) AS rn
                     FROM drive_bids WHERE project_id = %s
