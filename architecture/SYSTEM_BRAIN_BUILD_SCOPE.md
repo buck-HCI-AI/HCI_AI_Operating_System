@@ -38,5 +38,21 @@ Add to `drift-check` the classes we've actually hit (task #176):
 ## Guardrails (unchanged standing rules)
 - Never auto-write/delete monitored-job Drive files; never hard-delete without asking; HubSpot is being phased out (don't build on it); emails all go to inbox (no auto-routing).
 
+## System-wide coverage (Buck 2026-07-20: "include the book and other parts of the system")
+The brain is **not** scoped to bid data — it spans the whole HCI OS. The `drift-check` "check" faculty already covers many system parts; the brain unifies them under one remember→check→heal→learn loop and adds the missing ones:
+
+| System part | In the brain as | Status |
+|---|---|---|
+| **The Book** — Architecture Handbook (volumes) + Operating Book (CH01–07) | *Remember* (canonical knowledge) + *Check* (Book stays in-sync with real code/config; numbering integrity; un-integrated authored content). Wire in `AUTO-BOOK-REFRESH` + the existing handbook-numbering / unintegrated-Drive-content checks; add a drift check for "code/config changed but the Book that documents it didn't." | partial — extend |
+| **SOPs / business processes** (`business_processes` BP-XX, `sop_approval_gates`) | *Check*: every built feature traces to a governing SOP (CLAUDE.md "SOP alignment check"); flag orphaned features + missing SOPs. | new |
+| **n8n workflows** | *Check* (failure rate, dead branches — already in drift-check) + *Heal* (container restart — already in self-heal). | done |
+| **Connectors** (Drive/Houzz; HubSpot phasing out) | *Check*: never-synced / stale connectors (already in drift-check). | done |
+| **Schedule / Houzz, RFI pipeline, budgets/ROM** | *Check*: semantic correctness (dates, durations vs multi-job norms, RFI freshness, carry vs bids). | extend |
+| **Agents** (GBT/CA, BC) | *Check*: heartbeat/staleness, sprint-claim drift, unacked coordination docs (already in drift-check). | done |
+| **Bid data** | *Check*: classification/dedup/catch-all (Phase 1, done). | done |
+| **Memory** (`memory/*.md`) | *Remember* — every check cross-references a lesson; a documented fix has a live check backing it. | Phase 2 |
+
+**Principle:** anything the system *knows* (the Book, SOPs, memory) is what it checks *against*; anything it *does* (workflows, ingestion, leveling, scheduling) is what it checks *for correctness*. The learning log + auto-promotion apply to ALL of it, not just bids.
+
 ## Sequencing
-Build **after** 64EW/101F finish (Buck's call). Phase 1 is the highest-value and reuses the existing drift-check plumbing. Each phase is independently shippable.
+Build **after** 64EW/101F finish (Buck's call). Phase 1 (bid semantic checks) + Phase 2 (learning log) are done. Next: extend the check layer across the Book + SOPs + schedule/RFI/budget (this section), then Phase 3 self-heal + Phase 4 continuous loop. Each phase/target is independently shippable.
