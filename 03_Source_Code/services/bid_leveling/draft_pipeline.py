@@ -433,11 +433,17 @@ def _get_or_create_vendor_subfolder(parent_folder: str, vendor_name: str, token:
     per-vendor - fixed so a vendor with multiple real documents (e.g. a
     summary + the actual bid) keeps them together under their own name."""
     import requests
+    # Escape single quotes for the Drive query - found 2026-07-20: a vendor with
+    # an apostrophe ("David's Tile") broke the name='...' clause, so the
+    # existence check silently failed and EVERY run created a new duplicate
+    # folder (found 18 stacked "David's Tile" dups in 1355R Div 09). Drive's
+    # query syntax escapes ' as \'.
+    q_name = vendor_name.replace("\\", "\\\\").replace("'", "\\'")
     r = requests.get(
         "https://www.googleapis.com/drive/v3/files",
         headers={"Authorization": f"Bearer {token}"},
         params={"q": f"'{parent_folder}' in parents and trashed=false and "
-                      f"mimeType='application/vnd.google-apps.folder' and name='{vendor_name}'",
+                      f"mimeType='application/vnd.google-apps.folder' and name='{q_name}'",
                 "fields": "files(id)", "supportsAllDrives": "true",
                 "includeItemsFromAllDrives": "true"},
         timeout=15,
