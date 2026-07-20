@@ -14,8 +14,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 import psycopg2, psycopg2.extras, requests
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
-from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Request, Query, UploadFile, File, Form, Depends
 from fastapi.responses import HTMLResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets as _secrets
 from pydantic import BaseModel
 from typing import Optional, Any, Dict, List
 from datetime import datetime, timezone, timedelta, date
@@ -93,6 +95,7 @@ SERVICE_REGISTRY = [
     {"name": "agent-heartbeat",     "path": "/gateway/agent/heartbeat",          "description": "POST explicit self-report {agent, mission?, session_id?} - marks this agent ONLINE right now with what it's working on"},
     {"name": "amb-send",            "path": "/gateway/agent/messages",           "description": "ADR-003 Agent Message Bus - POST send a message {from_agent, to_agent, subject, body, priority?, thread_id?, requires_response?} to BC/GBT/CODE/ALL"},
     {"name": "amb-unread",          "path": "/gateway/agent/messages/unread",    "description": "ADR-003 Agent Message Bus - GET ?agent=BC|GBT|CODE, everything pending for that agent, oldest first"},
+    {"name": "amb-history",         "path": "/gateway/agent/messages/history",   "description": "ADR-003 Agent Message Bus - GET ?agent=BC|GBT|CODE, paged history across ALL statuses (pending/read/replied/closed) both directions - use this to catch up on the full backlog, not just current unread"},
     {"name": "amb-read",            "path": "/gateway/agent/messages/{message_id}/read", "description": "ADR-003 Agent Message Bus - POST {agent} mark a message read"},
     {"name": "amb-reply",           "path": "/gateway/agent/messages/{message_id}/reply", "description": "ADR-003 Agent Message Bus - POST {from_agent, body} reply in-thread, auto-closes the original if it required a response"},
     {"name": "amb-status",          "path": "/gateway/agent/status",             "description": "ADR-003 Agent Message Bus - GET current status (online/offline/stale) + mission for all 3 agents"},
@@ -2241,12 +2244,18 @@ def _drive_token() -> str:
 
 
 def _drive_get_content(file_id: str) -> str:
+    """Force utf-8 decoding explicitly - never rely on requests' auto-detected
+    encoding. Found 2026-07-14: LIVE_TEAM_COMMS.md grew from ~20KB to 611MB of
+    repeating garbage because Drive's text/plain response has no charset in its
+    Content-Type header, so requests fell back to a guessed encoding on .text;
+    decoding wrong then re-encoding as utf-8 on every append compounded the
+    corruption exponentially across repeated read-modify-write cycles."""
     token = _drive_token()
     r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
                       headers={"Authorization": f"Bearer {token}"},
                       params={"alt": "media"}, timeout=20)
     r.raise_for_status()
-    return r.text
+    return r.content.decode("utf-8", errors="replace")
 
 
 def _drive_overwrite_content(file_id: str, content: str, mime: str = "text/plain") -> None:
@@ -3074,7 +3083,7 @@ def _sync_coordination_documents() -> list:
             conn.commit()
             cur.execute("""
                 SELECT file_id, filename, source, document_type, drive_created_at,
-                       drive_modified_at, first_seen_at
+                       drive_modified_at, first_seen_at, target_agent, priority
                 FROM coordination_documents ORDER BY drive_modified_at DESC
             """)
             rows = [dict(row) for row in cur.fetchall()]
@@ -3226,18 +3235,34 @@ def _sync_coordination_documents() -> list:
 
 
 @router.get("/coordination/documents")
-def coordination_documents_list(since: Optional[str] = Query(None, description="ISO timestamp - only docs modified after this")):
+def coordination_documents_list(
+    since: Optional[str] = Query(None, description="ISO timestamp - only docs modified after this"),
+    limit: int = Query(15, ge=1, le=300, description="Max docs returned, most-recently-modified first - keeps the response under GBT Actions' size cap; default lowered to 15 2026-07-15 after GBT's own session confirmed the unbounded list (300 docs) exceeded its response size limit"),
+    unacknowledged_by: Optional[str] = Query(None, description="Agent name (CODE/GBT/BC) - returns only docs that agent hasn't acknowledged yet, sorted critical-priority-first. Fixes the 2026-07-17 gap where a critical doc addressed to CODE sat 4+ hours unseen because nothing surfaced 'what's actually mine and unread' - callers were filtering by title/recency instead of real ack state."),
+):
     """AI Team Document Bus — LIST. Returns HCI AI Master coordination documents
     (optionally filtered to those modified after `since`), each carrying its own
-    acknowledged_by list so any caller can tell what it still needs to read."""
+    acknowledged_by list so any caller can tell what it still needs to read.
+    Bounded by `limit` (default 15, most-recent-first) so GBT Actions callers
+    don't hit the platform's response-size ceiling on the full 300+ doc list."""
     t0 = time.time()
     try:
         docs = _sync_coordination_documents()
         if since:
             since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
             docs = [d for d in docs if d.get("drive_modified_at") and datetime.fromisoformat(d["drive_modified_at"]) > since_dt]
+        if unacknowledged_by:
+            agent = unacknowledged_by.upper()
+            docs = [d for d in docs if agent not in (d.get("acknowledged_by") or [])
+                    and (d.get("target_agent") in (agent, "TEAM", None))]
+            _priority_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, None: 4}
+            docs.sort(key=lambda d: (_priority_rank.get(d.get("priority"), 4), d.get("drive_modified_at") or ""))
+        else:
+            docs.sort(key=lambda d: d.get("drive_modified_at") or "", reverse=True)
+        total = len(docs)
+        docs = docs[:limit]
         return _response("/coordination/documents", {
-            "count": len(docs), "documents": docs,
+            "count": len(docs), "total_matching": total, "documents": docs,
         }, start=t0)
     except Exception as e:
         return _response("/coordination/documents", {}, errors=[str(e)], start=t0)
@@ -3370,11 +3395,33 @@ def coordination_documents_create(req: CoordDocCreatePayload, request: Request):
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("UPDATE ai_messages SET related_file = %s WHERE id = %s", (drive_file["id"], msg_id))
+                # Backfill target_agent/priority onto the coordination_documents row
+                # created by the next LIST call's _sync_coordination_documents() -
+                # that scan runs off Drive metadata alone and has no way to know who
+                # this was addressed to or how urgent it was. Written here, at the
+                # only point that actually knows both, so unacknowledged-staleness
+                # checks (drift-check) can filter/prioritize without guessing from
+                # filenames. Upsert (not UPDATE) because the sync may not have run
+                # yet and inserted the row before this write lands.
+                cur.execute("""
+                    INSERT INTO coordination_documents
+                        (file_id, filename, source, document_type, drive_created_at,
+                         drive_modified_at, target_agent, priority)
+                    VALUES (%s, %s, %s, %s, NOW(), NOW(), %s, %s)
+                    ON CONFLICT (file_id) DO UPDATE SET
+                        target_agent = EXCLUDED.target_agent, priority = EXCLUDED.priority
+                """, (drive_file["id"], filename, req.from_agent, "team_message",
+                      req.to_agent.upper(), req.priority))
         _touch_heartbeat(req.from_agent, f"sent doc to {req.to_agent}: {req.subject[:60]}")
         _log("/coordination/documents", req.from_agent, "coordination_documents", "created",
              round((time.time() - t0) * 1000), str(msg_id), req.subject[:60])
         return _response("/coordination/documents", {
             "message_id": msg_id, "drive_file_id": drive_file["id"], "filename": filename,
+            "acknowledged": False, "acknowledged_by": [],
+            "note": ("Created, not yet delivered/read. This confirms the write succeeded - "
+                     "it does NOT confirm the recipient has seen it. Call "
+                     f"GET /gateway/coordination/documents/{drive_file['id']}/status "
+                     "to check real acknowledgment before treating this as received."),
         }, start=t0)
     except Exception as e:
         return _response("/coordination/documents", {}, errors=[str(e)], start=t0)
@@ -3803,25 +3850,44 @@ async def drive_write(req: DriveWritePayload):
         # Gap14 FIX: explicit timeouts on all Google API calls prevent ERR_NGROK_3004
         DRIVE_TIMEOUT = 20
 
+        # 2026-07-15 FIX: this endpoint silently reported "action: created, status: ok"
+        # on files that never actually got created - the Drive API 404'd (missing
+        # supportsAllDrives on a Shared-Drive folder, same bug already fixed in
+        # /drive/move on 2026-07-08) and the code never checked the response for an
+        # "error" key before declaring success. Found live while building a real
+        # 1355R SOW: the endpoint returned file_id=None with status="ok".
+
         # Check if file already exists in folder
         search_resp = requests.get(
             "https://www.googleapis.com/drive/v3/files",
             headers={"Authorization": f"Bearer {token}"},
-            params={"q": f"name='{req.filename}' and '{folder_id}' in parents and trashed=false", "fields": "files(id,name)"},
+            params={
+                "q": f"name='{req.filename}' and '{folder_id}' in parents and trashed=false",
+                "fields": "files(id,name)",
+                "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
+            },
             timeout=DRIVE_TIMEOUT
         )
+        if search_resp.status_code != 200:
+            return _response("/drive/write", {}, errors=[f"Drive search failed ({search_resp.status_code}): {search_resp.text[:300]}"], start=t0)
         existing = search_resp.json().get("files", [])
 
         content_bytes = req.content.encode("utf-8")
         mime = req.mime_type
+        # A Google Workspace target type (Doc/Sheet/Slide) can't be the upload media's
+        # own Content-Type - Drive rejects "Invalid MIME type provided for the uploaded
+        # content." The target type belongs in file metadata; the media part must be a
+        # real importable source format (text/plain), which Drive then converts.
+        is_google_native = mime.startswith("application/vnd.google-apps.")
+        media_content_type = "text/plain" if is_google_native else mime
 
         if existing:
             # Update existing file
             file_id = existing[0]["id"]
             update_resp = requests.patch(
                 f"https://www.googleapis.com/upload/drive/v3/files/{file_id}",
-                headers={"Authorization": f"Bearer {token}", "Content-Type": mime},
-                params={"uploadType": "media", "fields": "id,name,webViewLink"},
+                headers={"Authorization": f"Bearer {token}", "Content-Type": media_content_type},
+                params={"uploadType": "media", "fields": "id,name,webViewLink", "supportsAllDrives": "true"},
                 data=content_bytes,
                 timeout=DRIVE_TIMEOUT
             )
@@ -3830,12 +3896,15 @@ async def drive_write(req: DriveWritePayload):
         else:
             # Create new file
             import json as _json
-            metadata = _json.dumps({"name": req.filename, "parents": [folder_id]}).encode()
+            meta_dict = {"name": req.filename, "parents": [folder_id]}
+            if is_google_native:
+                meta_dict["mimeType"] = mime
+            metadata = _json.dumps(meta_dict).encode()
             boundary = "HCI_BOUNDARY_12345"
             body = (
                 f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".encode()
                 + metadata
-                + f"\r\n--{boundary}\r\nContent-Type: {mime}\r\n\r\n".encode()
+                + f"\r\n--{boundary}\r\nContent-Type: {media_content_type}\r\n\r\n".encode()
                 + content_bytes
                 + f"\r\n--{boundary}--".encode()
             )
@@ -3845,12 +3914,15 @@ async def drive_write(req: DriveWritePayload):
                     "Authorization": f"Bearer {token}",
                     "Content-Type": f"multipart/related; boundary={boundary}"
                 },
-                params={"uploadType": "multipart", "fields": "id,name,webViewLink"},
+                params={"uploadType": "multipart", "fields": "id,name,webViewLink", "supportsAllDrives": "true"},
                 data=body,
                 timeout=DRIVE_TIMEOUT
             )
             result = create_resp.json()
             action = "created"
+
+        if "error" in result or not result.get("id"):
+            return _response("/drive/write", {}, errors=[f"Drive {action} failed: {result.get('error', result)}"], start=t0)
 
         _log("/drive/write", "gbt", req.filename, action, round((time.time()-t0)*1000), str(uuid.uuid4())[:8],
              payload={"folder_id": folder_id, "filename": req.filename,
@@ -3995,6 +4067,41 @@ def system_drift_check():
                         "items": [f"#{r['id']} to {r['target_agent']}: {r['title']} (since {r['created_at'].date()})" for r in stale_msgs],
                     })
 
+                # 2a. Coordination-bus docs unacknowledged past a real deadline,
+                # not just the generic 24h STALE sweep above. Found 2026-07-17:
+                # a critical ARCH->CODE doc (msg 951, "P0 Reset Audit Reports")
+                # sat unacknowledged for 4+ hours - never marked STALE (that
+                # requires a separate 24h-later process to even fire), never
+                # surfaced by any comms check, only found by querying the raw
+                # table directly. Same night, GBT's own "Delivery: Sent" claim
+                # for its Architecture Summit doc cited a message ID that never
+                # existed. Thresholds are deliberately short - a critical/high
+                # doc going unseen for hours is itself the failure, waiting a
+                # full day (like the STALE check above) is too late to matter.
+                cur.execute("""
+                    SELECT cd.file_id, cd.filename, cd.target_agent, cd.priority, cd.drive_created_at,
+                           COALESCE(array_agg(a.agent) FILTER (WHERE a.agent IS NOT NULL), '{}') AS acked_by
+                    FROM coordination_documents cd
+                    LEFT JOIN coordination_document_acks a ON a.file_id = cd.file_id
+                    WHERE cd.priority IN ('critical', 'high')
+                      AND cd.target_agent IS NOT NULL
+                      AND (
+                        (cd.priority = 'critical' AND cd.drive_created_at < NOW() - INTERVAL '60 minutes')
+                        OR (cd.priority = 'high' AND cd.drive_created_at < NOW() - INTERVAL '4 hours')
+                      )
+                    GROUP BY cd.file_id, cd.filename, cd.target_agent, cd.priority, cd.drive_created_at
+                    HAVING NOT (cd.target_agent = ANY(COALESCE(array_agg(a.agent) FILTER (WHERE a.agent IS NOT NULL), '{}')))
+                    ORDER BY cd.priority, cd.drive_created_at ASC
+                """)
+                unacked_docs = cur.fetchall()
+                if unacked_docs:
+                    findings.append({
+                        "severity": "critical" if any(r["priority"] == "critical" for r in unacked_docs) else "high",
+                        "category": "unacknowledged_coordination_doc",
+                        "detail": f"{len(unacked_docs)} coordination-bus doc(s) past their ack deadline (critical: 60min, high: 4h) with no confirmed delivery",
+                        "items": [f"{r['file_id']} -> {r['target_agent']} ({r['priority']}): {r['filename']} (created {r['drive_created_at']}, acked_by={list(r['acked_by'])})" for r in unacked_docs],
+                    })
+
                 # 2b. drive_bids rows that are outbound documents (SOW, bid email
                 #     templates, bid requests) misfiled as vendor bids - the exact
                 #     pattern Buck caught live 2026-07-09 in generated leveling
@@ -4035,7 +4142,7 @@ def system_drift_check():
                            array_agg(DISTINCT division_name) as divisions,
                            array_agg(id) as ids
                     FROM drive_bids
-                    WHERE bid_amount IS NOT NULL
+                    WHERE bid_amount IS NOT NULL AND is_latest = TRUE
                     GROUP BY project_id, bid_amount
                     HAVING COUNT(*) > 1 AND COUNT(DISTINCT division_name) > 1
                 """)
@@ -4096,6 +4203,71 @@ def system_drift_check():
                     })
     except Exception as e:
         findings.append({"severity": "high", "category": "check_failed", "detail": f"DB checks errored: {e}"})
+
+    # 2b. BID-CLASSIFICATION SEMANTIC CHECKS (System Brain Phase 1, 2026-07-20,
+    # task #176/#177). The "correct first time" layer: validates bid DATA is
+    # semantically right, not just that the pipeline ran. Each is a real pattern
+    # that surfaced LIVE during Buck's review (ADR-016 "turn every catch into a
+    # check"): a bid in a non-real division (574 Johnson had Division "00"),
+    # duplicate is_latest bids (the apostrophe/re-scan dupes), and un-split
+    # catch-all divisions (101F Div 09 lumped tile+stone+glass+paint+hardware).
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                # union of ALL valid HCI division numbers across every scheme
+                # (Division+Letter 32/33, real HCI 12/13/14/28/33, Sunnyside CSI,
+                # 31 earthwork) so a genuinely-real Div 13/28 is NOT false-flagged.
+                VALID_DIVS = ('01','02','03','04','05','06','07','08','09','10',
+                              '11','12','13','14','15','16','21','22','23','24',
+                              '25','26','28','31','32','33','34')
+                cur.execute("""
+                    SELECT p.name, b.division_num, COUNT(*) n
+                    FROM drive_bids b JOIN projects p ON p.id = b.project_id
+                    WHERE b.is_latest = TRUE AND b.division_num IS NOT NULL
+                      AND b.division_num NOT IN %s
+                    GROUP BY p.name, b.division_num
+                """, (VALID_DIVS,))
+                bad_div = cur.fetchall()
+                if bad_div:
+                    findings.append({
+                        "severity": "high", "category": "bid_bad_division",
+                        "detail": f"{sum(r['n'] for r in bad_div)} bid(s) filed under a non-real division number (not in any HCI scheme)",
+                        "items": [f"{r['name']}: Div '{r['division_num']}' ({r['n']} bids)" for r in bad_div],
+                    })
+
+                cur.execute("""
+                    SELECT p.name, b.vendor_name, COUNT(*) n
+                    FROM drive_bids b JOIN projects p ON p.id = b.project_id
+                    WHERE b.is_latest = TRUE AND b.file_id IS NOT NULL
+                    GROUP BY p.name, b.vendor_name, b.file_id
+                    HAVING COUNT(*) > 1
+                """)
+                dup_bids = cur.fetchall()
+                if dup_bids:
+                    findings.append({
+                        "severity": "medium", "category": "bid_duplicate_latest",
+                        "detail": f"{len(dup_bids)} vendor+file combo(s) have >1 is_latest row (duplicate bids)",
+                        "items": [f"{r['name']}: {r['vendor_name']} x{r['n']}" for r in dup_bids[:10]],
+                    })
+
+                cur.execute("""
+                    SELECT p.name, b.division_num,
+                           COUNT(DISTINCT b.vendor_name) vendors
+                    FROM drive_bids b JOIN projects p ON p.id = b.project_id
+                    WHERE b.is_latest = TRUE
+                    GROUP BY p.name, b.division_num
+                    HAVING COUNT(DISTINCT b.vendor_name) >= 6
+                       AND COUNT(DISTINCT b.division_name) = 1
+                """)
+                catchall = cur.fetchall()
+                if catchall:
+                    findings.append({
+                        "severity": "low", "category": "bid_catchall_division",
+                        "detail": f"{len(catchall)} division(s) have 6+ vendors but no sub-package split - possible un-split catch-all needing sub-packaging",
+                        "items": [f"{r['name']}: Div {r['division_num']} ({r['vendors']} vendors, 1 sub-group)" for r in catchall],
+                    })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Bid-classification checks errored: {e}"})
 
     # 3. n8n execution failure rate - the 64%-failing-and-nobody-noticed pattern.
     try:
@@ -4210,23 +4382,36 @@ def system_drift_check():
                                 headers={"X-N8N-API-KEY": n8n_key}, params={"limit": 250}, timeout=10)
         if cred_resp.status_code == 200 and wf_resp.status_code == 200:
             creds = {c["id"]: c for c in cred_resp.json().get("data", [])}
-            active_cred_ids = set()
+            active_cred_ids: dict = {}
             for wf in wf_resp.json().get("data", []):
                 if not wf.get("active"):
                     continue
                 for node in wf.get("nodes", []):
                     for cred in (node.get("credentials") or {}).values():
-                        active_cred_ids.add(cred.get("id"))
+                        active_cred_ids.setdefault(cred.get("id"), set()).add(wf.get("name", "?"))
             stale_creds = []
-            for cid in active_cred_ids:
+            for cid, wf_names in active_cred_ids.items():
                 c = creds.get(cid)
                 if not c:
                     continue
                 updated = c.get("updatedAt")
+                created = c.get("createdAt")
                 if updated:
                     age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(updated.replace("Z", "+00:00"))).days
                     if age_days > 14:
-                        stale_creds.append(f"{c['name']} (unchanged {age_days}d, in active use)")
+                        # Found 2026-07-18: CA flagged that "unchanged Nd" alone
+                        # isn't enough to actually assess risk - added the
+                        # credential type (n8n's API safely exposes this without
+                        # the secret value) and which never-rotated-since case
+                        # this is (never_rotated == created == updated) vs a real
+                        # rotation gap, plus which active workflow(s) depend on
+                        # it, so a reviewer has real signal instead of a bare age.
+                        never_rotated = created == updated
+                        stale_creds.append(
+                            f"{c['name']} [{c.get('type', 'unknown type')}] "
+                            f"(unchanged {age_days}d{' - never rotated since creation' if never_rotated else ''}, "
+                            f"used by: {', '.join(sorted(wf_names))})"
+                        )
             if stale_creds:
                 findings.append({
                     "severity": "medium",
@@ -4853,7 +5038,8 @@ def system_drift_check():
         with _pg() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT p.project_code, p.name, bp.created_at::date as batch_date, count(*) c
+                    SELECT p.project_code, p.name, bp.created_at::date as batch_date, count(*) c,
+                           count(*) FILTER (WHERE bp.awarded_amount IS NOT NULL) as c_with_dollars
                     FROM bid_packages bp
                     JOIN projects p ON p.id = bp.project_id
                     WHERE bp.hubspot_deal_id IS NULL
@@ -4872,6 +5058,15 @@ def system_drift_check():
                       )
                     GROUP BY p.project_code, p.name, bp.created_at::date
                     HAVING count(*) >= 5
+                       -- 2026-07-15 fix: this check exists to catch fabricated dollar figures
+                       -- (246GW: package names were literal doc-title fragments with invented
+                       -- awarded_amount values). Confirmed on 275SS (14 packages, all
+                       -- awarded_amount IS NULL, created_via='direct_sql_unverified_likely_
+                       -- incomplete_init' - an honestly self-labeled empty division scaffold,
+                       -- not a fabrication: there is no dollar figure to falsely trust). A
+                       -- batch with zero awarded_amount values across every row has nothing
+                       -- the "verify before trusting any dollar figures" warning applies to.
+                       AND count(*) FILTER (WHERE bp.awarded_amount IS NOT NULL) > 0
                 """, (_SYNTHETIC_TEMPLATE_CODES,))
                 batches = cur.fetchall()
                 if batches:
@@ -4963,10 +5158,20 @@ def system_drift_check():
                 """)
                 collisions = cur.fetchall()
         if collisions:
+            # Downgraded 2026-07-15 after live verification: read_drive_bids()
+            # (services/bid_leveling/drive_bid_reader.py:1153-1179) generically
+            # splits ANY division_num with >1 division_name into composite
+            # "num__name" keys - not just the originally-discovered case. Called
+            # it directly against project 3 for both collisions below and
+            # confirmed zero cross-contamination (e.g. Insulation $56-79K stayed
+            # fully separate from Roofing $153-197K). So this is no longer a
+            # live leveling-correctness risk, just an FYI that folder naming has
+            # overlap - any code that reads drive_bids directly instead of
+            # through read_drive_bids() should still be aware of it.
             findings.append({
-                "severity": "high",
+                "severity": "low",
                 "category": "bid_division_num_collision",
-                "detail": f"{len(collisions)} project/division_num pair(s) where the same bare CSI number is shared by genuinely different scopes - any leveling summary for these will mix unrelated trades' bids together unless read_drive_bids() has an explicit disambiguation for them.",
+                "detail": f"{len(collisions)} project/division_num pair(s) where the same bare CSI number is shared by genuinely different scopes. VERIFIED SAFE: read_drive_bids() already splits these into separate composite keys (division_num__division_name) with no bid mixing - confirmed live 2026-07-15. FYI only for any code that reads drive_bids directly instead of through read_drive_bids().",
                 "items": [f"{r['project_code']} div {r['division_num']}: {r['names']}" for r in collisions],
             })
     except Exception as e:
@@ -5123,6 +5328,1039 @@ async def system_self_heal(request: Request):
     }, start=t0)
 
 
+# ── Orchestrator work queue (n8n lifecycle authority) ──────────────────────────
+# 2026-07-15: GBT's 5-year runtime target names n8n as "the lifecycle authority
+# for scheduler, work queue, heartbeat, retry, checkpoint, recovery" and requires
+# the queue/checkpoints to be "persisted outside ephemeral chat sessions". These
+# endpoints are the HTTP surface n8n calls into services/orchestrator/queue_service.py
+# (the actual Postgres-backed durable queue) — n8n itself holds no queue state.
+
+class OrchestratorEnqueuePayload(BaseModel):
+    idempotency_key: str
+    job_type: str
+    payload: dict = {}
+    max_retries: int = 5
+
+class OrchestratorClaimPayload(BaseModel):
+    worker_id: str
+    job_type: Optional[str] = None
+
+class OrchestratorCheckpointPayload(BaseModel):
+    job_id: int
+    checkpoint: dict
+
+class OrchestratorCompletePayload(BaseModel):
+    job_id: int
+
+class OrchestratorFailPayload(BaseModel):
+    job_id: int
+    error: str
+
+
+@router.post("/orchestrator/queue/enqueue")
+def orchestrator_queue_enqueue(req: OrchestratorEnqueuePayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from orchestrator import queue_service as qs
+    job = qs.enqueue(req.idempotency_key, req.job_type, req.payload, req.max_retries)
+    return _response("/orchestrator/queue/enqueue", job, start=t0)
+
+
+@router.post("/orchestrator/queue/claim")
+def orchestrator_queue_claim(req: OrchestratorClaimPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from orchestrator import queue_service as qs
+    job = qs.claim_next(req.worker_id, req.job_type)
+    return _response("/orchestrator/queue/claim", job, start=t0)
+
+
+@router.post("/orchestrator/queue/checkpoint")
+def orchestrator_queue_checkpoint(req: OrchestratorCheckpointPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from orchestrator import queue_service as qs
+    job = qs.checkpoint(req.job_id, req.checkpoint)
+    if not job:
+        raise HTTPException(404, f"job {req.job_id} not found")
+    return _response("/orchestrator/queue/checkpoint", job, start=t0)
+
+
+@router.post("/orchestrator/queue/complete")
+def orchestrator_queue_complete(req: OrchestratorCompletePayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from orchestrator import queue_service as qs
+    job = qs.complete(req.job_id)
+    if not job:
+        raise HTTPException(404, f"job {req.job_id} not found")
+    return _response("/orchestrator/queue/complete", job, start=t0)
+
+
+@router.post("/orchestrator/queue/fail")
+def orchestrator_queue_fail(req: OrchestratorFailPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from orchestrator import queue_service as qs
+    job = qs.fail_and_retry(req.job_id, req.error)
+    if not job:
+        raise HTTPException(404, f"job {req.job_id} not found")
+    return _response("/orchestrator/queue/fail", job, start=t0)
+
+
+@router.get("/orchestrator/queue/stats")
+def orchestrator_queue_stats():
+    t0 = time.time()
+    from orchestrator import queue_service as qs
+    return _response("/orchestrator/queue/stats", qs.queue_stats(), start=t0)
+
+
+# ── ARCH Service / BC Verification Service — Brain + Queue (2026-07-15) ────────
+# Buck-approved (confirmed 2026-07-15 07:31 MT, verbally in-session, after GBT's
+# handoff claimed prior approval that couldn't be independently verified from
+# the coordination bus alone). Converts GBT (ARCH) and Browser Claude (BC) from
+# ephemeral chat behavior into services with persistent state: agent_brain
+# holds hypotheses/findings/risks/decisions, orchestrator_work_queue (reused,
+# not duplicated — see services/agent_ops/agent_queue.py) holds their discrete
+# task queues, three_team_consensus tracks AGREE/DISAGREE/CONDITIONAL votes.
+#
+# REAL CAPABILITY CONSTRAINT (see project_multi_agent_collaboration_constraints
+# memory): GBT is a ChatGPT custom-GPT chat session and BC is a live browser
+# Claude session — neither is API-invokable. n8n cannot "wake up" or execute
+# them on a schedule the way it can call an HTTP endpoint. What n8n CAN
+# actually do: populate the queue/brain on schedule or event, and push a
+# notification through the channels they already poll (Telegram, coordination
+# bus). "SO invokes ARCH/BC" is implemented honestly as "SO queues work and
+# notifies" — not a fabricated claim of true autonomous invocation.
+
+class BrainEntryPayload(BaseModel):
+    agent: str
+    category: str
+    title: str
+    content: dict = {}
+    source_ref: Optional[str] = None
+
+class BrainUpdatePayload(BaseModel):
+    status: Optional[str] = None
+    content: Optional[dict] = None
+
+class AgentEnqueuePayload(BaseModel):
+    agent: str
+    task_id: str
+    task_type: str
+    objective_id: str
+    source: str
+    priority: str = "medium"
+    dependencies: list = []
+    input_refs: list = []
+    acceptance_criteria: str = ""
+    next_action: str = ""
+    max_retries: int = 5
+
+class ConsensusVotePayload(BaseModel):
+    objective_id: str
+    description: Optional[str] = None
+    voter: str  # "ca" | "code" | "bc"
+    vote: str   # "AGREE" | "DISAGREE" | "CONDITIONAL"
+    evidence: str = ""
+
+
+@router.get("/agent-brain/{agent}")
+def agent_brain_snapshot(agent: str):
+    t0 = time.time()
+    from agent_ops import brain_service as bs
+    if agent not in bs.VALID_AGENTS:
+        raise HTTPException(400, f"agent must be one of {sorted(bs.VALID_AGENTS)}")
+    return _response(f"/agent-brain/{agent}", bs.snapshot(agent), start=t0)
+
+
+@router.post("/agent-brain/entry")
+def agent_brain_add_entry(req: BrainEntryPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import brain_service as bs
+    try:
+        row = bs.add_entry(req.agent, req.category, req.title, req.content, req.source_ref)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return _response("/agent-brain/entry", row, start=t0)
+
+
+@router.post("/agent-brain/entry/{entry_id}")
+def agent_brain_update_entry(entry_id: int, req: BrainUpdatePayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import brain_service as bs
+    row = bs.update_entry(entry_id, req.status, req.content)
+    if not row:
+        raise HTTPException(404, f"brain entry {entry_id} not found")
+    return _response(f"/agent-brain/entry/{entry_id}", row, start=t0)
+
+
+@router.get("/agent-brain/{agent}/entries")
+def agent_brain_list_entries(agent: str, category: Optional[str] = None, status: str = "active", limit: int = 50):
+    t0 = time.time()
+    from agent_ops import brain_service as bs
+    if agent not in bs.VALID_AGENTS:
+        raise HTTPException(400, f"agent must be one of {sorted(bs.VALID_AGENTS)}")
+    rows = bs.list_entries(agent, category, status, limit)
+    return _response(f"/agent-brain/{agent}/entries", rows, start=t0)
+
+
+@router.post("/agent-brain/{agent}/next-task")
+def agent_brain_set_next_task(agent: str, req: BrainEntryPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import brain_service as bs
+    if agent not in bs.VALID_AGENTS:
+        raise HTTPException(400, f"agent must be one of {sorted(bs.VALID_AGENTS)}")
+    row = bs.set_next_task(agent, req.title, req.content, req.source_ref)
+    return _response(f"/agent-brain/{agent}/next-task", row, start=t0)
+
+
+@router.post("/agent-brain/{agent}/checkpoint")
+def agent_brain_set_checkpoint(agent: str, req: BrainEntryPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import brain_service as bs
+    if agent not in bs.VALID_AGENTS:
+        raise HTTPException(400, f"agent must be one of {sorted(bs.VALID_AGENTS)}")
+    row = bs.set_checkpoint(agent, req.title, req.content, req.source_ref)
+    return _response(f"/agent-brain/{agent}/checkpoint", row, start=t0)
+
+
+@router.post("/agent-queue/enqueue")
+def agent_queue_enqueue(req: AgentEnqueuePayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    try:
+        job = aq.enqueue_task(
+            req.agent, req.task_id, req.task_type, req.objective_id, req.source,
+            req.priority, req.dependencies, req.input_refs, req.acceptance_criteria,
+            req.next_action, req.max_retries,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return _response("/agent-queue/enqueue", job, start=t0)
+
+
+@router.get("/agent-queue/{agent}")
+def agent_queue_list(agent: str, status: Optional[str] = None, limit: int = 50):
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    if agent not in aq.VALID_AGENTS:
+        raise HTTPException(400, f"agent must be one of {sorted(aq.VALID_AGENTS)}")
+    rows = aq.list_by_agent(agent, status, limit)
+    return _response(f"/agent-queue/{agent}", rows, start=t0)
+
+
+@router.get("/agent-queue/{agent}/dashboard")
+def agent_queue_dashboard(agent: str):
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    if agent not in aq.VALID_AGENTS:
+        raise HTTPException(400, f"agent must be one of {sorted(aq.VALID_AGENTS)}")
+    return _response(f"/agent-queue/{agent}/dashboard", aq.dashboard(agent), start=t0)
+
+
+@router.post("/agent-queue/{agent}/claim")
+def agent_queue_claim(agent: str, req: OrchestratorClaimPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    job = aq.claim_next(req.worker_id, req.job_type)
+    if job and job.get("payload", {}).get("agent") != agent:
+        # claimed a job belonging to another agent's job_type namespace; put it back
+        from orchestrator import queue_service as qs
+        qs.fail_and_retry(job["id"], "claimed by wrong agent endpoint", backoff_base_seconds=1)
+        job = None
+    return _response(f"/agent-queue/{agent}/claim", job, start=t0)
+
+
+@router.post("/agent-queue/checkpoint")
+def agent_queue_checkpoint(req: OrchestratorCheckpointPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    job = aq.checkpoint(req.job_id, req.checkpoint)
+    if not job:
+        raise HTTPException(404, f"job {req.job_id} not found")
+    return _response("/agent-queue/checkpoint", job, start=t0)
+
+
+@router.post("/agent-queue/complete")
+def agent_queue_complete(req: OrchestratorCompletePayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    job = aq.complete(req.job_id)
+    if not job:
+        raise HTTPException(404, f"job {req.job_id} not found")
+    return _response("/agent-queue/complete", job, start=t0)
+
+
+@router.post("/agent-queue/fail")
+def agent_queue_fail(req: OrchestratorFailPayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    job = aq.fail_and_retry(req.job_id, req.error)
+    if not job:
+        raise HTTPException(404, f"job {req.job_id} not found")
+    return _response("/agent-queue/fail", job, start=t0)
+
+
+@router.post("/consensus/vote")
+def consensus_vote(req: ConsensusVotePayload, request: Request):
+    _require_key(request)
+    t0 = time.time()
+    # "arch" deliberately NOT renamed to "ca" here despite the ARCH->CA
+    # identity rename elsewhere (2026-07-16): this value builds a SQL column
+    # name (f"{voter}_vote") against three_team_consensus, whose columns are
+    # physically named arch_vote/code_vote/bc_vote - renaming those columns
+    # is a bigger, separate risk than this fix warrants. Internal-only
+    # exception, never surfaced to Buck.
+    if req.voter not in ("arch", "code", "bc"):
+        raise HTTPException(400, "voter must be arch, code, or bc")
+    if req.vote not in ("AGREE", "DISAGREE", "CONDITIONAL"):
+        raise HTTPException(400, "vote must be AGREE, DISAGREE, or CONDITIONAL")
+    import psycopg2, psycopg2.extras
+    from orchestrator.queue_service import DB
+    conn = psycopg2.connect(**DB, cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO three_team_consensus (objective_id, description)
+                VALUES (%s, %s)
+                ON CONFLICT (objective_id) DO NOTHING
+                """,
+                (req.objective_id, req.description or req.objective_id),
+            )
+            col_vote, col_ev = f"{req.voter}_vote", f"{req.voter}_evidence"
+            cur.execute(
+                f"UPDATE three_team_consensus SET {col_vote} = %s, {col_ev} = %s, updated_at = now() "
+                f"WHERE objective_id = %s RETURNING *",
+                (req.vote, req.evidence, req.objective_id),
+            )
+            row = dict(cur.fetchone())
+            votes = [row["arch_vote"], row["code_vote"], row["bc_vote"]]
+            if all(v == "AGREE" for v in votes):
+                cur.execute(
+                    "UPDATE three_team_consensus SET status = 'advanced_3_3', updated_at = now() "
+                    "WHERE objective_id = %s RETURNING *",
+                    (req.objective_id,),
+                )
+                row = dict(cur.fetchone())
+            elif any(v == "DISAGREE" for v in votes):
+                cur.execute(
+                    "UPDATE three_team_consensus SET status = 'escalated_to_buck', updated_at = now() "
+                    "WHERE objective_id = %s RETURNING *",
+                    (req.objective_id,),
+                )
+                row = dict(cur.fetchone())
+    finally:
+        conn.close()
+    return _response("/consensus/vote", row, start=t0)
+
+
+@router.post("/agent-queue/populate-from-drift")
+def agent_queue_populate_from_drift(request: Request):
+    """Real event source for the ARCH/BC queue populator: a live drift-check finding.
+    Idempotent per (category, day) so a standing finding isn't re-queued every 15 min,
+    but a genuinely new category (or the same one recurring on a new day) is."""
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import agent_queue as aq
+    from orchestrator import queue_service as qs
+    drift = system_drift_check()["payload"]  # calls the same function GET /admin/drift-check uses
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    def _already_queued(idem_key: str) -> bool:
+        with qs.pg() as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM orchestrator_work_queue WHERE idempotency_key = %s", (idem_key,))
+            return cur.fetchone() is not None
+
+    new_arch, new_bc, already_queued = [], [], []
+    for finding in drift.get("findings", []):
+        category = finding["category"]
+        task_id = f"drift_{category}_{today}"
+        arch_key, bc_key = f"ca:review_{task_id}", f"bc:verify_{task_id}"
+        arch_existed, bc_existed = _already_queued(arch_key), _already_queued(bc_key)
+        arch_job = aq.enqueue_task(
+            "ca", task_id=f"review_{task_id}", task_type="review_drift_finding",
+            objective_id="so_production_capable", source="drift_check",
+            priority=finding.get("severity", "medium"),
+            input_refs=[f"drift-check:{category}:{today}"],
+            acceptance_criteria="produce a finding, risk, drift correction, or backlog item",
+            next_action=f"study drift finding: {finding.get('detail', category)}",
+        )
+        bc_job = aq.enqueue_task(
+            "bc", task_id=f"verify_{task_id}", task_type="verify_drift_finding",
+            objective_id="so_production_capable", source="drift_check",
+            priority=finding.get("severity", "medium"),
+            input_refs=[f"drift-check:{category}:{today}"],
+            acceptance_criteria="AGREE/DISAGREE/CONDITIONAL with evidence against live system state",
+            next_action=f"verify drift finding: {finding.get('detail', category)}",
+        )
+        (already_queued if arch_existed else new_arch).append(arch_job["idempotency_key"])
+        (already_queued if bc_existed else new_bc).append(bc_job["idempotency_key"])
+
+    # Second real event source: new Code/BC/ARCH check-ins on the coordination bus,
+    # per acceptance-test requirements "new Code check-in" and "new BC/ARCH finding".
+    # Idempotency key is the Drive file_id itself - stable forever, no day-bucketing needed.
+    since = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    try:
+        recent_docs = coordination_documents_list(since=since)["payload"]["documents"]
+    except Exception:
+        recent_docs = []
+    for doc in recent_docs:
+        title = doc.get("title", "")
+        file_id = doc.get("file_id", "")
+        if not file_id:
+            continue
+        if title.startswith("CODE_TO_"):
+            key = f"ca:review_checkin_{file_id}"
+            if _already_queued(key):
+                already_queued.append(key)
+            else:
+                job = aq.enqueue_task(
+                    "ca", task_id=f"review_checkin_{file_id}", task_type="review_code_checkin",
+                    objective_id="so_production_capable", source="coordination_bus",
+                    input_refs=[f"coordination_bus:{file_id}"],
+                    acceptance_criteria="self-audit the Code check-in against Architecture Registry/ADRs/Manual/prior decisions",
+                    next_action=f"review Code check-in: {title}",
+                )
+                new_arch.append(job["idempotency_key"])
+        elif title.startswith("GBT_TO_"):
+            key = f"bc:verify_ca_finding_{file_id}"
+            if _already_queued(key):
+                already_queued.append(key)
+            else:
+                job = aq.enqueue_task(
+                    "bc", task_id=f"verify_ca_finding_{file_id}", task_type="verify_ca_finding",
+                    objective_id="so_production_capable", source="coordination_bus",
+                    input_refs=[f"coordination_bus:{file_id}"],
+                    acceptance_criteria="AGREE/DISAGREE/CONDITIONAL against live Drive/DB state",
+                    next_action=f"verify CA finding/directive: {title}",
+                )
+                new_bc.append(job["idempotency_key"])
+        elif title.startswith("BC_TO_"):
+            key = f"ca:review_bc_finding_{file_id}"
+            if _already_queued(key):
+                already_queued.append(key)
+            else:
+                job = aq.enqueue_task(
+                    "ca", task_id=f"review_bc_finding_{file_id}", task_type="review_bc_finding",
+                    objective_id="so_production_capable", source="coordination_bus",
+                    input_refs=[f"coordination_bus:{file_id}"],
+                    acceptance_criteria="cross-check BC's finding against Architecture Registry and prior decisions",
+                    next_action=f"review BC finding: {title}",
+                )
+                new_arch.append(job["idempotency_key"])
+
+    # Third event source: new plans/drawings, logged by AUTO-EVENT-DRIVE-SCAN into
+    # drive_file_log every 15 min. And fourth: new bids landed in drive_bids. Both
+    # idempotent on the file's own id/row id - no day-bucketing needed.
+    new_plans_count = new_bids_count = 0
+    with qs.pg() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT file_id, project_code, filename FROM drive_file_log "
+            "WHERE discovered_at > now() - interval '2 hours' ORDER BY discovered_at DESC LIMIT 20"
+        )
+        new_plans = cur.fetchall()
+        cur.execute(
+            "SELECT id, project_id, division_name, vendor_name FROM drive_bids "
+            "WHERE extracted_at > now() - interval '2 hours' AND is_latest = TRUE "
+            "ORDER BY extracted_at DESC LIMIT 20"
+        )
+        new_bids = cur.fetchall()
+
+    for p in new_plans:
+        key = f"ca:review_plan_{p['file_id']}"
+        if _already_queued(key):
+            already_queued.append(key)
+        else:
+            job = aq.enqueue_task(
+                "ca", task_id=f"review_plan_{p['file_id']}", task_type="review_new_plan",
+                objective_id="bid_system_v1", source="drive_scan",
+                input_refs=[f"drive:{p['file_id']}"],
+                acceptance_criteria="confirm plan is correctly routed, flag SOW/bid-leveling impact",
+                next_action=f"review new plan/drawing: {p['project_code']} - {p['filename']}",
+            )
+            new_arch.append(job["idempotency_key"])
+            new_plans_count += 1
+
+    for b in new_bids:
+        key = f"bc:verify_new_bid_{b['id']}"
+        if _already_queued(key):
+            already_queued.append(key)
+        else:
+            job = aq.enqueue_task(
+                "bc", task_id=f"verify_new_bid_{b['id']}", task_type="verify_new_bid",
+                objective_id="bid_system_v1", source="drive_bids",
+                input_refs=[f"drive_bids:{b['id']}"],
+                acceptance_criteria="confirm the bid is correctly attributed/priced, not a duplicate",
+                next_action=f"verify new bid: project {b['project_id']} / {b['division_name']} / {b['vendor_name']}",
+            )
+            new_bc.append(job["idempotency_key"])
+            new_bids_count += 1
+
+    result = {
+        "checked_at": drift.get("checked_at"),
+        "findings_count": drift.get("findings_count", 0),
+        "coordination_docs_scanned": len(recent_docs),
+        "new_plans_found": new_plans_count,
+        "new_bids_found": new_bids_count,
+        "new_ca_tasks": new_arch,
+        "new_bc_tasks": new_bc,
+        "already_queued": already_queued,
+        "note": "GBT/BC are pull-only chat agents, not API-invokable - this queues work and is meant to be paired with a notification (Telegram/coordination bus) they poll, not a true autonomous wake. Trigger map coverage: drift events, Code/BC/ARCH check-ins, new plans, new bids. NOT yet wired: QA-failure-specific trigger (distinct from drift), Buck-directive-as-trigger (would need to distinguish Buck's own Telegram messages from agent traffic) - honest gap, not built tonight.",
+    }
+    return _response("/agent-queue/populate-from-drift", result, start=t0)
+
+
+@router.get("/consensus/{objective_id}")
+def consensus_get(objective_id: str):
+    t0 = time.time()
+    import psycopg2, psycopg2.extras
+    from orchestrator.queue_service import DB
+    conn = psycopg2.connect(**DB, cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM three_team_consensus WHERE objective_id = %s", (objective_id,))
+            row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(404, f"objective {objective_id} not found")
+    return _response(f"/consensus/{objective_id}", dict(row), start=t0)
+
+
+@router.post("/comms/bridge-coordination-bus")
+def comms_bridge_coordination_bus(request: Request, since_hours: int = 1):
+    """Run scripts/coordination_bus_to_comms_bridge.py so GBT_TO_* and CODE_TO_*
+    coordination-bus posts reach LIVE_TEAM_COMMS.md, the single file BC actually
+    reads. 2026-07-15: found live that this had never been run automatically -
+    LIVE_TEAM_COMMS.md sat unmodified for 9.5 hours while both GBT and BC
+    independently reported "no coms," despite an active coordination bus the
+    whole time. This endpoint exists so it can run on a schedule instead of
+    depending on a human/agent remembering to invoke the script."""
+    _require_key(request)
+    t0 = time.time()
+    import subprocess
+    script = os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "coordination_bus_to_comms_bridge.py")
+    try:
+        result = subprocess.run(
+            [sys.executable, script, "--since-hours", str(since_hours)],
+            cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
+            capture_output=True, text=True, timeout=60,
+        )
+        output = result.stdout.strip() or result.stderr.strip()
+        return _response("/comms/bridge-coordination-bus", {
+            "returncode": result.returncode, "output": output,
+        }, start=t0, errors=[result.stderr] if result.returncode != 0 else [])
+    except Exception as e:
+        return _response("/comms/bridge-coordination-bus", {}, errors=[str(e)], start=t0)
+
+
+# ── SO Execution Map (state machine) — 2026-07-15 ──────────────────────────────
+# Per GBT's "Build SO Execution Map" P0: SO owns WHEN work runs, ARCH/CODE/BC own
+# HOW. This is a thin sequencing layer over the Brain/Queue/consensus infra built
+# earlier tonight - it does not duplicate that state, it reads and advances it.
+
+@router.post("/so/execution/run-cycle")
+def so_execution_run_cycle(request: Request):
+    _require_key(request)
+    t0 = time.time()
+    from agent_ops import execution_map as em
+    result = em.run_cycle()
+    return _response("/so/execution/run-cycle", result, start=t0)
+
+
+@router.get("/so/execution/state")
+def so_execution_state():
+    t0 = time.time()
+    from agent_ops import execution_map as em
+    return _response("/so/execution/state", em.current_state(), start=t0)
+
+
+@router.get("/so/execution/dashboard")
+def so_execution_dashboard():
+    t0 = time.time()
+    from agent_ops import execution_map as em
+    return _response("/so/execution/dashboard", em.dashboard(), start=t0)
+
+
+# ── Mission Control MVP (2026-07-15) ────────────────────────────────────────
+# Per GBT's "Build Mission Control MVP Now" P0 handoff. Single URL, read-only,
+# aggregates existing data sources (no duplicate store, per requirement 7):
+# SO execution state + ARCH/BC queue dashboards (built tonight), the existing
+# owner_dashboard() portfolio view (operations.py), and drift-check. Role-
+# specific drill-down reuses the ALREADY-BUILT /leadership, /pm/{id},
+# /superintendent/{id} HTML dashboards rather than rebuilding them - those
+# predate tonight and already cover Owner/PM/Superintendent in more depth
+# than an MVP summary page could.
+#
+# Honest gaps vs the full spec: single shared HTTP Basic credential, not
+# per-role accounts/RBAC. No audit-log UI (writes to gateway_request_log via
+# the existing _log() helper, same as every other endpoint - no new table).
+# Not yet migrated to Mac mini (still MacBook Air, per instruction #10 "design
+# for drop-in migration" - it is: no local file state, all Postgres-backed).
+
+_mc_security = HTTPBasic()
+
+def _require_mission_control_auth(credentials: HTTPBasicCredentials = Depends(_mc_security)):
+    correct_password = os.environ.get("MISSION_CONTROL_PASSWORD", "")
+    is_correct = _secrets.compare_digest(credentials.password, correct_password) if correct_password else False
+    is_user_ok = _secrets.compare_digest(credentials.username, "buck")
+    if not (correct_password and is_correct and is_user_ok):
+        raise HTTPException(status_code=401, detail="Unauthorized", headers={"WWW-Authenticate": "Basic"})
+    return credentials.username
+
+
+@router.get("/mission-control", response_class=HTMLResponse, include_in_schema=False)
+def mission_control(request: Request, user: str = Depends(_require_mission_control_auth)):
+    t0 = time.time()
+    from agent_ops import execution_map as em
+    from agent_ops import agent_queue as aq
+
+    try:
+        so_dash = em.dashboard()
+    except Exception as e:
+        so_dash = {"error": str(e)}
+    try:
+        arch_dash = aq.dashboard("ca")
+        bc_dash = aq.dashboard("bc")
+    except Exception as e:
+        arch_dash = bc_dash = {"error": str(e)}
+    try:
+        drift = system_drift_check()["payload"]
+    except Exception as e:
+        drift = {"error": str(e)}
+    try:
+        team_status = agent_status_all()["payload"]
+    except Exception as e:
+        team_status = {"error": str(e)}
+    try:
+        with _pg() as conn, conn.cursor() as cur:
+            cur.execute("""
+                SELECT message_id, from_agent, to_agent, subject, body, timestamp_mt, priority, status
+                FROM agent_messages
+                ORDER BY timestamp_mt DESC
+                LIMIT 20
+            """)
+            recent_messages = cur.fetchall()
+    except Exception as e:
+        recent_messages = []
+    try:
+        with _pg() as conn, conn.cursor() as cur:
+            cur.execute("SELECT id, project_code, name FROM projects WHERE status = 'active' ORDER BY id")
+            active_projects = cur.fetchall()
+            cur.execute(
+                "SELECT project_id, status, COUNT(*) n FROM bid_packages "
+                "GROUP BY project_id, status"
+            )
+            bid_status_rows = cur.fetchall()
+    except Exception:
+        active_projects, bid_status_rows = [], []
+
+    bid_by_project = {}
+    for r in bid_status_rows:
+        bid_by_project.setdefault(r["project_id"], {})[r["status"]] = r["n"]
+
+    _log("/mission-control", user, "dashboard", "viewed", round((time.time() - t0) * 1000), str(uuid.uuid4())[:8])
+
+    def _state_badge(state):
+        colors = {"escalate": "#ef4444", "advance": "#22c55e", "checkpoint": "#eab308", "recover": "#f97316"}
+        return colors.get((state or {}).get("current_state", ""), "#6b7280")
+
+    project_cards = ""
+    for p in active_projects:
+        stats = bid_by_project.get(p["id"], {})
+        total = sum(stats.values()) or 1
+        awarded = stats.get("awarded", 0)
+        pct = round(100 * awarded / total)
+        project_cards += f"""
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <b>{p['project_code']} — {p['name']}</b>
+            <span style="color:#9ca3af;font-size:12px;">{awarded}/{total} awarded</span>
+          </div>
+          <div style="background:#374151;border-radius:6px;height:8px;margin-top:8px;overflow:hidden;">
+            <div style="background:#22c55e;height:100%;width:{pct}%;"></div>
+          </div>
+          <div style="margin-top:8px;">
+            <a href="/pm/{p['id']}" style="color:#60a5fa;font-size:12px;margin-right:12px;">PM view →</a>
+            <a href="/superintendent/{p['id']}" style="color:#60a5fa;font-size:12px;">Super view →</a>
+          </div>
+        </div>"""
+
+    findings_html = "".join(
+        f'<div class="card" style="border-left:3px solid {"#ef4444" if f["severity"]=="high" else "#eab308"};">'
+        f'<b>{f["category"].replace("_"," ").title()}</b> <span style="color:#9ca3af;font-size:12px;">({f["severity"]})</span>'
+        f'<p style="color:#d1d5db;font-size:13px;margin-top:4px;">{f["detail"]}</p></div>'
+        for f in drift.get("findings", [])
+    ) or '<div class="card" style="color:#22c55e;">No open findings</div>'
+
+    _priority_colors = {"P0": "#ef4444", "P1": "#f97316", "P2": "#3b82f6", "P3": "#6b7280"}
+    import html as _html
+    messages_html = ""
+    for _i, m in enumerate(recent_messages):
+        _ts = m["timestamp_mt"].isoformat()[:16].replace("T", " ") + " MT"
+        _body_esc = _html.escape(m["body"])
+        _body_preview = (m["body"][:220] + "…") if len(m["body"]) > 220 else m["body"]
+        _body_preview_esc = _html.escape(_body_preview)
+        _mid = m["message_id"]
+        _hidden_style = ' style="display:none;"' if _i >= 10 else ""
+        _hidden_class = " mc-hidden-msg" if _i >= 10 else ""
+        _needs_expand = len(m["body"]) > 220
+        messages_html += f"""
+        <div class="card mc-msg{_hidden_class}"{_hidden_style} style="border-left:3px solid {_priority_colors.get(m['priority'],'#6b7280')};">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <b style="font-size:13px;">{m['from_agent']} → {m['to_agent']}</b>
+            <span style="color:#6b7280;font-size:11px;">{_ts} · {m['status']}</span>
+          </div>
+          <p style="font-weight:600;font-size:13px;margin-top:4px;">{m['subject']}</p>
+          <p class="mc-body-preview" style="color:#d1d5db;font-size:12px;margin-top:4px;white-space:pre-wrap;">{_body_preview_esc}</p>
+          <p class="mc-body-full" style="display:none;color:#d1d5db;font-size:12px;margin-top:4px;white-space:pre-wrap;">{_body_esc}</p>
+          <div style="margin-top:8px;display:flex;gap:12px;">
+            {'<a href="#" onclick="return mcToggleExpand(this)" style="color:#60a5fa;font-size:11px;">Expand →</a>' if _needs_expand else ''}
+            <a href="#" onclick="return mcToggleReply(this)" style="color:#60a5fa;font-size:11px;">Reply →</a>
+          </div>
+          <div class="mc-reply-box" style="display:none;margin-top:8px;">
+            <textarea class="mc-reply-text" placeholder="Your reply..." rows="2" style="width:100%;padding:6px;border-radius:6px;background:#111827;color:#f9fafb;border:1px solid #374151;font-size:12px;"></textarea>
+            <button onclick="return mcSendReply(this, '{_mid}')" style="margin-top:4px;padding:6px 12px;border-radius:6px;background:#2563eb;color:#fff;border:none;font-size:11px;font-weight:700;">Send Reply</button>
+            <span class="mc-reply-status" style="font-size:11px;margin-left:8px;"></span>
+          </div>
+        </div>"""
+    messages_html = messages_html or '<div class="card" style="color:#6b7280;">No messages yet</div>'
+    if len(recent_messages) > 10:
+        messages_html += f'<a href="#" id="mcShowMoreLink" onclick="return mcShowMore()" style="color:#60a5fa;font-size:12px;display:block;margin-top:8px;">Show {len(recent_messages)-10} more →</a>'
+
+    _team_colors = {"online": "#22c55e", "stale": "#eab308", "offline": "#6b7280"}
+    team_status_html = ""
+    for _agent_id, _label in (("CODE", "CODE (Claude Code)"), ("GBT", "GBT (Chief Architect)"), ("BC", "BC (Browser Claude)")):
+        _s = team_status.get(_agent_id, {}) if isinstance(team_status, dict) else {}
+        _status = _s.get("status", "offline")
+        _mission = _s.get("current_mission") or "no mission reported"
+        _hb = _s.get("last_heartbeat_mt")
+        _hb_label = _hb[:16].replace("T", " ") + " MT" if _hb else "never"
+        team_status_html += f"""
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <b>{_label}</b>
+            <span class="badge" style="background:{_team_colors.get(_status,'#6b7280')};">{_status}</span>
+          </div>
+          <p style="color:#9ca3af;font-size:12px;margin-top:6px;">{_mission}</p>
+          <p style="color:#4b5563;font-size:11px;margin-top:2px;">Last heartbeat: {_hb_label}</p>
+        </div>"""
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mission Control — HCI AI OS</title>
+<style>*{{box-sizing:border-box;margin:0;padding:0;}}body{{background:#111827;font-family:-apple-system,sans-serif;color:#f9fafb;padding:16px;max-width:640px;margin:0 auto;}}
+h1{{font-size:22px;font-weight:700;}}h2{{font-size:14px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 8px;}}
+.card{{background:#1f2937;border-radius:12px;padding:16px;margin:8px 0;}}
+.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px;}}
+.stat{{text-align:center;}}.stat .n{{font-size:24px;font-weight:700;}}.stat .l{{font-size:11px;color:#6b7280;}}
+.badge{{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;color:#111827;}}
+a{{text-decoration:none;}}
+</style></head><body>
+<h1>Mission Control</h1>
+<p style="color:#6b7280;font-size:12px;">Generated {datetime.now(timezone.utc).isoformat()[:16]}Z</p>
+
+<h2>Team Status</h2>
+{team_status_html}
+
+<h2>System Orchestrator</h2>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <b>Active objective: {(so_dash.get('active_objective') or {}).get('description', 'none set')}</b>
+    <span class="badge" style="background:{_state_badge(so_dash.get('current_state'))};">{(so_dash.get('current_state') or {}).get('current_state','unknown')}</span>
+  </div>
+  <p style="color:#9ca3af;font-size:12px;margin-top:6px;">Cycle #{(so_dash.get('current_state') or {}).get('cycle_count','?')} · {so_dash.get('transitions_last_hour','?')} transitions in the last hour · Next: {(so_dash.get('current_state') or {}).get('next_scheduled_action','?')}</p>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+  <div class="card stat"><div class="n">{(arch_dash.get('queue_depth_by_status') or {}).get('pending', 0)}</div><div class="l">CA pending</div></div>
+  <div class="card stat"><div class="n" style="color:#6b7280;">{(arch_dash.get('queue_depth_by_status') or {}).get('completed', 0)}</div><div class="l">CA done</div></div>
+  <div class="card stat"><div class="n">{(bc_dash.get('queue_depth_by_status') or {}).get('pending', 0)}</div><div class="l">BC pending</div></div>
+  <div class="card stat"><div class="n" style="color:#6b7280;">{(bc_dash.get('queue_depth_by_status') or {}).get('completed', 0)}</div><div class="l">BC done</div></div>
+</div>
+{(f'<p style="color:#f87171;font-size:12px;margin-top:6px;">⚠ {arch_dash.get("failed_invocations_dead_letter",0)} CA + {bc_dash.get("failed_invocations_dead_letter",0)} BC dead-letter (failed after max retries) — needs review.</p>' if (arch_dash.get('failed_invocations_dead_letter',0) or bc_dash.get('failed_invocations_dead_letter',0)) else '')}
+
+<h2>Bid System v1.0 Progress</h2>
+{project_cards or '<div class="card">No active projects found</div>'}
+
+<h2>Blockers / Drift Findings ({drift.get('findings_count','?')})</h2>
+{findings_html}
+
+<h2>Role Views</h2>
+<div class="card">
+  <a href="/leadership" style="color:#60a5fa;display:block;margin:6px 0;">Leadership / Owner dashboard →</a>
+  <a href="/gateway/agent-queue/ca/dashboard" style="color:#60a5fa;display:block;margin:6px 0;">CA queue detail (JSON) →</a>
+  <a href="/gateway/agent-queue/bc/dashboard" style="color:#60a5fa;display:block;margin:6px 0;">BC queue detail (JSON) →</a>
+  <a href="/gateway/so/execution/state" style="color:#60a5fa;display:block;margin:6px 0;">SO execution state (JSON) →</a>
+</div>
+<p style="color:#4b5563;font-size:11px;margin-top:16px;">MVP known gaps: single shared login (no per-role RBAC yet), no push notifications, refresh by reloading (no live websocket).</p>
+
+<h2>Send Message to Team</h2>
+<div class="card">
+  <form id="msgForm" onsubmit="return sendTeamMessage(event)">
+    <select id="msgTo" style="width:100%;padding:8px;border-radius:6px;background:#111827;color:#f9fafb;border:1px solid #374151;margin-bottom:8px;">
+      <option value="ALL">ALL (everyone)</option>
+      <option value="CODE">CODE (Claude Code)</option>
+      <option value="GBT">GBT (Chief Architect)</option>
+      <option value="BC">BC (Browser Claude)</option>
+      <option value="SO">SO (System Orchestrator)</option>
+    </select>
+    <input id="msgSubject" placeholder="Subject" required style="width:100%;padding:8px;border-radius:6px;background:#111827;color:#f9fafb;border:1px solid #374151;margin-bottom:8px;">
+    <textarea id="msgBody" placeholder="Message" required rows="3" style="width:100%;padding:8px;border-radius:6px;background:#111827;color:#f9fafb;border:1px solid #374151;margin-bottom:8px;"></textarea>
+    <select id="msgPriority" style="width:100%;padding:8px;border-radius:6px;background:#111827;color:#f9fafb;border:1px solid #374151;margin-bottom:8px;">
+      <option value="P0">P0 - Critical</option>
+      <option value="P1">P1 - High</option>
+      <option value="P2" selected>P2 - Normal</option>
+      <option value="P3">P3 - Low</option>
+    </select>
+    <button type="submit" style="width:100%;padding:10px;border-radius:6px;background:#2563eb;color:#fff;border:none;font-weight:700;">Send</button>
+  </form>
+  <p id="msgStatus" style="font-size:12px;margin-top:8px;"></p>
+</div>
+<p style="color:#4b5563;font-size:11px;">Messages land in the shared agent inbox (ADR-003) - GBT/BC pick them up on their next check-in cycle, not instantly. Not real-time chat. Auto-refreshes every 20s (paused while you're typing a message).</p>
+
+<h2>Recent Messages (last 20, newest first)</h2>
+{messages_html}
+
+<script>
+async function sendTeamMessage(e) {{
+  e.preventDefault();
+  const statusEl = document.getElementById('msgStatus');
+  statusEl.textContent = 'Sending...';
+  statusEl.style.color = '#9ca3af';
+  try {{
+    const resp = await fetch('/gateway/agent/messages', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{
+        from_agent: 'SYSTEM',
+        to_agent: document.getElementById('msgTo').value,
+        subject: document.getElementById('msgSubject').value,
+        body: 'From Buck (via Mission Control): ' + document.getElementById('msgBody').value,
+        priority: document.getElementById('msgPriority').value
+      }})
+    }});
+    const data = await resp.json();
+    if (data.status === 'ok') {{
+      statusEl.textContent = 'Sent - reloading...';
+      statusEl.style.color = '#22c55e';
+      document.getElementById('msgForm').reset();
+      setTimeout(() => window.location.reload(), 600);
+    }} else {{
+      statusEl.textContent = 'Failed: ' + (data.errors || []).join(', ');
+      statusEl.style.color = '#ef4444';
+    }}
+  }} catch (err) {{
+    statusEl.textContent = 'Failed: ' + err;
+    statusEl.style.color = '#ef4444';
+  }}
+  return false;
+}}
+// Auto-refresh every 45s so the page doesn't go stale between manual reloads -
+// but skip it if the message form has anything typed, so a refresh never wipes
+// out a message Buck is mid-composing.
+setInterval(() => {{
+  const subj = document.getElementById('msgSubject');
+  const body = document.getElementById('msgBody');
+  const to = document.getElementById('msgTo');
+  const priority = document.getElementById('msgPriority');
+  const toChanged = to && to.value !== 'ALL';
+  const priorityChanged = priority && priority.value !== 'P2';
+  if (subj && body && !subj.value && !body.value && !toChanged && !priorityChanged && !mcAnyReplyInProgress()) {{
+    window.location.reload();
+  }}
+}}, 45000);
+
+function mcToggleExpand(link) {{
+  const card = link.closest('.mc-msg');
+  const preview = card.querySelector('.mc-body-preview');
+  const full = card.querySelector('.mc-body-full');
+  const expanded = full.style.display !== 'none';
+  full.style.display = expanded ? 'none' : 'block';
+  preview.style.display = expanded ? 'block' : 'none';
+  link.textContent = expanded ? 'Expand →' : 'Collapse ←';
+  return false;
+}}
+
+function mcToggleReply(link) {{
+  const card = link.closest('.mc-msg');
+  const box = card.querySelector('.mc-reply-box');
+  const showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'block';
+  link.textContent = showing ? 'Reply →' : 'Cancel';
+  return false;
+}}
+
+function mcAnyReplyInProgress() {{
+  return Array.from(document.querySelectorAll('.mc-reply-text')).some(t => t.value.trim().length > 0);
+}}
+
+async function mcSendReply(btn, messageId) {{
+  const box = btn.closest('.mc-reply-box');
+  const textEl = box.querySelector('.mc-reply-text');
+  const statusEl = box.querySelector('.mc-reply-status');
+  if (!textEl.value.trim()) return false;
+  statusEl.textContent = 'Sending...';
+  statusEl.style.color = '#9ca3af';
+  try {{
+    const resp = await fetch('/gateway/agent/messages/' + messageId + '/reply', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{from_agent: 'SYSTEM', body: 'From Buck (via Mission Control): ' + textEl.value}})
+    }});
+    const data = await resp.json();
+    if (data.status === 'ok') {{
+      statusEl.textContent = 'Sent - reloading...';
+      statusEl.style.color = '#22c55e';
+      setTimeout(() => window.location.reload(), 600);
+    }} else {{
+      statusEl.textContent = 'Failed: ' + (data.errors || []).join(', ');
+      statusEl.style.color = '#ef4444';
+    }}
+  }} catch (err) {{
+    statusEl.textContent = 'Failed: ' + err;
+    statusEl.style.color = '#ef4444';
+  }}
+  return false;
+}}
+
+function mcShowMore() {{
+  document.querySelectorAll('.mc-hidden-msg').forEach(el => el.style.display = 'block');
+  const link = document.getElementById('mcShowMoreLink');
+  if (link) link.style.display = 'none';
+  return false;
+}}
+</script>
+</body></html>"""
+    return HTMLResponse(content=html)
+
+
+@router.get("/orchestrator/health")
+def orchestrator_health():
+    """Single aggregated read of every component GBT's health model names:
+    machine, n8n, gateway (self), CODE/BC/GBT agents, database, Drive, Telegram,
+    active workflows, and queue depth. 15-min-stale / 30-min-recovery thresholds
+    are applied per component, not just the existing 120-min agent-only check —
+    that longer window is right for a human-facing agent, wrong for infra."""
+    t0 = time.time()
+    now = datetime.now(timezone.utc)
+    components = {}
+
+    # Database
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+        components["database"] = {"status": "healthy"}
+    except Exception as e:
+        components["database"] = {"status": "down", "error": str(e)[:200]}
+
+    # n8n
+    try:
+        n8n_key = os.environ.get("N8N_API_KEY", "")
+        r = requests.get("http://localhost:5678/api/v1/workflows",
+                          headers={"X-N8N-API-KEY": n8n_key}, params={"limit": 1}, timeout=5)
+        if r.status_code == 200:
+            active = requests.get("http://localhost:5678/api/v1/workflows",
+                                   headers={"X-N8N-API-KEY": n8n_key},
+                                   params={"active": "true", "limit": 100}, timeout=5)
+            active_count = len(active.json().get("data", [])) if active.status_code == 200 else None
+            components["n8n"] = {"status": "healthy", "active_workflows": active_count}
+        else:
+            components["n8n"] = {"status": "degraded", "http_status": r.status_code}
+    except Exception as e:
+        components["n8n"] = {"status": "down", "error": str(e)[:200]}
+
+    # Gateway (self) — if this handler is running, the gateway process is up.
+    components["gateway"] = {"status": "healthy"}
+
+    # Machine — best-effort local resource check, not a hard dependency of the model.
+    try:
+        import shutil as _shutil
+        disk = _shutil.disk_usage("/")
+        components["machine"] = {
+            "status": "healthy",
+            "disk_free_pct": round(disk.free / disk.total * 100, 1),
+        }
+    except Exception as e:
+        components["machine"] = {"status": "unknown", "error": str(e)[:200]}
+
+    # Agents (claude_code/chatgpt/browser_claude, i.e. CODE/GBT/BC) — 15/30-min
+    # thresholds per this spec, independent of the 120-min AI_HEARTBEAT_STALE_MINUTES
+    # used for the human-facing dashboard. ai_agent_heartbeat.agent stores the
+    # lowercase system keys (see AI_HEARTBEAT_AGENTS), not the CODE/GBT/BC labels
+    # used in the separate agent_heartbeats table.
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT agent, last_seen_at, status FROM ai_agent_heartbeat WHERE agent IN ('claude_code','chatgpt','browser_claude')")
+                for row in cur.fetchall():
+                    age_min = (now - row["last_seen_at"]).total_seconds() / 60 if row["last_seen_at"] else None
+                    if age_min is None:
+                        state = "unknown"
+                    elif age_min > 30:
+                        state = "recovery_needed"
+                    elif age_min > 15:
+                        state = "stale_warning"
+                    else:
+                        state = "healthy"
+                    components[f"agent_{row['agent']}"] = {
+                        "status": state,
+                        "age_minutes": round(age_min, 1) if age_min is not None else None,
+                        "reported_status": row["status"],
+                    }
+    except Exception as e:
+        components["agents"] = {"status": "unknown", "error": str(e)[:200]}
+
+    # Telegram
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT COUNT(*) n FROM ai_messages
+                    WHERE created_at > NOW() - INTERVAL '24 hours' AND last_error IS NOT NULL""")
+                failed = cur.fetchone()["n"]
+        components["telegram"] = {"status": "healthy" if failed == 0 else "degraded", "failed_sends_24h": failed}
+    except Exception as e:
+        components["telegram"] = {"status": "unknown", "error": str(e)[:200]}
+
+    # Drive — lightweight reachability probe via existing credential path, not a full API call.
+    try:
+        from integrations.credentials import get_google_token
+        tok = get_google_token("drive")
+        components["drive"] = {"status": "healthy" if tok else "down"}
+    except Exception as e:
+        components["drive"] = {"status": "unknown", "error": str(e)[:200]}
+
+    # Orchestrator queue depth
+    try:
+        from orchestrator import queue_service as qs
+        components["queue"] = {"status": "healthy", "stats": qs.queue_stats()}
+    except Exception as e:
+        components["queue"] = {"status": "unknown", "error": str(e)[:200]}
+
+    down = [k for k, v in components.items() if v.get("status") in ("down", "recovery_needed")]
+    degraded = [k for k, v in components.items() if v.get("status") in ("degraded", "stale_warning")]
+    overall = "down" if down else ("degraded" if degraded else "healthy")
+
+    return _response("/orchestrator/health", {
+        "overall": overall,
+        "components": components,
+        "down": down,
+        "degraded": degraded,
+    }, start=t0)
+
+
 @router.post("/admin/daily-project-summaries")
 async def generate_daily_project_summaries(request: Request):
     """BTW-4's last remaining piece: 'Daily Project Summary auto-generation (scheduled,
@@ -5245,6 +6483,25 @@ class CreateProjectPayload(BaseModel):
     owner_name: str = ""
     status: str = "active"
     project_type: str = "remodel"
+
+
+@router.get("/email/search-attachments")
+def search_email_attachments(q: str, top: int = 25, request: Request = None):
+    """
+    Workaround for HubSpot's blocked emails scope (plan-tier limitation,
+    confirmed 2026-07-15). Searches the actual Outlook mailbox (same emails
+    HubSpot would have synced from) for messages matching q with
+    attachments, returning subject/from/date/attachment filenames - no
+    HubSpot scope needed, no attachments downloaded, just real visibility.
+    """
+    _require_key(request)
+    t0 = time.time()
+    try:
+        from microsoft_graph import search_messages_with_attachments
+        results = search_messages_with_attachments(q, top=top)
+        return _response("/email/search-attachments", {"query": q, "count": len(results), "messages": results}, start=t0)
+    except Exception as e:
+        return _response("/email/search-attachments", {}, errors=[str(e)], start=t0)
 
 
 @router.post("/field/note")
@@ -8849,7 +10106,7 @@ HEARTBEAT_STALE_MINUTES = int(os.environ.get("AI_HEARTBEAT_STALE_MINUTES", "120"
 _AGENT_ALIASES = {
     "buck": "buck", "buck adams": "buck",
     "chatgpt": "chatgpt", "gbt": "chatgpt", "chief_architect": "chatgpt", "chief architect": "chatgpt",
-    "claude_code": "claude_code", "claude code": "claude_code",
+    "claude_code": "claude_code", "claude code": "claude_code", "code": "claude_code",
     "browser_claude": "browser_claude", "browser claude": "browser_claude", "bc": "browser_claude",
     "n8n": "n8n", "system": "system",
 }
@@ -8879,8 +10136,7 @@ def _touch_heartbeat(agent: str, action: str = "", role: str = None,
                             role = COALESCE(EXCLUDED.role, ai_agent_heartbeat.role),
                             current_task = COALESCE(EXCLUDED.current_task, ai_agent_heartbeat.current_task),
                             last_directive_id = COALESCE(EXCLUDED.last_directive_id, ai_agent_heartbeat.last_directive_id),
-                            metadata = CASE WHEN EXCLUDED.metadata = '{}'::jsonb THEN ai_agent_heartbeat.metadata
-                                            ELSE EXCLUDED.metadata END
+                            metadata = ai_agent_heartbeat.metadata || EXCLUDED.metadata
                 """, (key, seen_at, (action or "")[:200], role, current_task, last_directive_id,
                       json.dumps(metadata) if metadata else None, seen_at))
             conn.commit()
@@ -9538,6 +10794,77 @@ def agent_messages_unread(agent: str = Query(..., description="BC|GBT|CODE"),
         return _response("/agent/messages/unread", {}, errors=[str(e)], start=t0)
 
 
+@router.get("/agent/messages/history")
+def agent_messages_history(
+    agent: str = Query(..., description="BC|GBT|CODE - returns messages sent TO this agent (or ALL) and messages sent FROM this agent, regardless of status"),
+    limit: int = Query(15, ge=1, le=100, description="Max messages per page - keeps the response under GBT Actions' size cap"),
+    offset: int = Query(0, ge=0, description="Skip this many messages (for paging through full history)"),
+    status: Optional[str] = Query(None, description="Filter to one status: pending|read|replied|closed. Omit for all statuses."),
+    since: Optional[str] = Query(None, description="ISO timestamp - only messages at or after this time"),
+    thread_id: Optional[str] = Query(None, description="Filter to a single thread's messages"),
+    newest_first: bool = Query(True, description="Default true (most recent first); false for oldest_first/FIFO order"),
+):
+    """
+    2026-07-15, built after GBT self-reported it could not properly catch up
+    on team history: /agent/messages/unread only ever returns status='pending'
+    messages, so anything already marked read/replied/closed - including a
+    directive GBT itself already opened once and forgot, or a BC message that
+    aged out of the unread queue - was permanently unreachable via any Action.
+    This endpoint is the paged "everything" companion: same size-capped
+    pagination pattern as /unread, but spans all statuses and both directions
+    (messages to this agent, and messages this agent sent), so ARCH/BC/CODE
+    can actually page back through the real communications history instead of
+    only ever seeing the current unread window.
+    """
+    t0 = time.time()
+    try:
+        if status and status not in ("pending", "read", "replied", "closed"):
+            return _response("/agent/messages/history", {}, errors=[f"invalid status '{status}' - must be pending|read|replied|closed"], start=t0)
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                where = ["(to_agent IN (%s, 'ALL') OR from_agent = %s)"]
+                params = [agent, agent]
+                if status:
+                    where.append("status = %s")
+                    params.append(status)
+                if since:
+                    where.append("timestamp_mt >= %s")
+                    params.append(since)
+                if thread_id:
+                    where.append("thread_id = %s")
+                    params.append(thread_id)
+                where_sql = " AND ".join(where)
+
+                cur.execute(f"SELECT COUNT(*) AS n FROM agent_messages WHERE {where_sql}", params)
+                total_matching = cur.fetchone()["n"]
+
+                order = "DESC" if newest_first else "ASC"
+                cur.execute(f"""
+                    SELECT message_id, thread_id, from_agent, to_agent, subject, body,
+                           timestamp_mt, priority, status, drive_file_id, requires_response,
+                           read_at_mt, replied_at_mt, closed_at_mt
+                    FROM agent_messages
+                    WHERE {where_sql}
+                    ORDER BY timestamp_mt {order}
+                    LIMIT %s OFFSET %s
+                """, params + [limit, offset])
+                rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            r["message_id"] = str(r["message_id"])
+            r["thread_id"] = str(r["thread_id"])
+            r["timestamp_mt"] = r["timestamp_mt"].isoformat()
+            for k in ("read_at_mt", "replied_at_mt", "closed_at_mt"):
+                if r.get(k) is not None:
+                    r[k] = r[k].isoformat()
+        return _response("/agent/messages/history", {
+            "agent": agent, "total_matching": total_matching, "returned": len(rows),
+            "limit": limit, "offset": offset, "has_more": offset + len(rows) < total_matching,
+            "messages": rows,
+        }, start=t0)
+    except Exception as e:
+        return _response("/agent/messages/history", {}, errors=[str(e)], start=t0)
+
+
 class AgentMessageReadPayload(BaseModel):
     agent: str
 
@@ -9600,6 +10927,33 @@ def agent_messages_reply(message_id: str, req: AgentMessageReplyPayload):
         return _response(f"/agent/messages/{message_id}/reply", {}, errors=[str(e)], start=t0)
 
 
+# 2026-07-15: BC self-reported it has no raw HTTP tool in its Claude.ai MCP
+# session - only Google Drive, HubSpot, and search - so it can never call
+# POST /agent/heartbeat directly (a real, structural gap, not an oversight).
+# BC's own suggested fix: since it already reads/writes Drive every cycle,
+# use a marker file's modifiedTime as its heartbeat instead. This is that file.
+_BC_HEARTBEAT_FILE_ID = "1ysPQBJ2s3gFtka-d5YI_wE1ICSSwTEOq"  # BC_HEARTBEAT.txt in HCI AI Master
+
+
+def _bc_drive_heartbeat():
+    """Best-effort: BC_HEARTBEAT.txt's Drive modifiedTime, as a fallback
+    last-seen signal for BC specifically. Returns None on any failure -
+    this must never break /agent/status if Drive is unreachable."""
+    try:
+        from integrations.credentials import get_google_token
+        token = get_google_token("drive")
+        r = requests.get(
+            f"https://www.googleapis.com/drive/v3/files/{_BC_HEARTBEAT_FILE_ID}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"fields": "modifiedTime"}, timeout=5,
+        )
+        if r.status_code == 200:
+            return datetime.fromisoformat(r.json()["modifiedTime"].replace("Z", "+00:00"))
+    except Exception:
+        pass
+    return None
+
+
 @router.get("/agent/status")
 def agent_status_all():
     t0 = time.time()
@@ -9613,14 +10967,25 @@ def agent_status_all():
             r = rows.get(agent_id, {"agent_id": agent_id, "status": "offline", "last_heartbeat_mt": None,
                                      "current_mission": None, "session_id": None, "announced_at_mt": None})
             status = r["status"]
-            if r["last_heartbeat_mt"]:
-                age_min = (datetime.now(timezone.utc) - r["last_heartbeat_mt"]).total_seconds() / 60
+            heartbeat_source = "agent_heartbeats"
+            last_hb = r["last_heartbeat_mt"]
+
+            if agent_id == "BC":
+                drive_hb = _bc_drive_heartbeat()
+                if drive_hb and (not last_hb or drive_hb > last_hb):
+                    last_hb = drive_hb
+                    heartbeat_source = "drive_file"
+                    status = "online"
+
+            if last_hb:
+                age_min = (datetime.now(timezone.utc) - last_hb).total_seconds() / 60
                 if status != "offline" and age_min > HEARTBEAT_STALE_MINUTES:
                     status = "stale"
-                r["last_heartbeat_mt"] = r["last_heartbeat_mt"].isoformat()
+                last_hb = last_hb.isoformat()
             if r.get("announced_at_mt"):
                 r["announced_at_mt"] = r["announced_at_mt"].isoformat()
-            out[agent_id] = {"status": status, "last_heartbeat_mt": r["last_heartbeat_mt"],
+            out[agent_id] = {"status": status, "last_heartbeat_mt": last_hb,
+                              "heartbeat_source": heartbeat_source,
                               "current_mission": r["current_mission"], "session_id": r["session_id"]}
         return _response("/agent/status", out, start=t0)
     except Exception as e:
