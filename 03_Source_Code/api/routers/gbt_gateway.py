@@ -5242,11 +5242,55 @@ def system_drift_check():
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Failed-handoffs check errored: {e}"})
 
+    # System Brain Phase 2 (2026-07-20, task #177): persist findings to the
+    # learning log so the system REMEMBERS across runs - the "remember" link of
+    # the learn-check-heal loop. Upsert on (category, detail): new -> insert,
+    # recurring -> bump detect_count. Open entries NOT seen this run -> auto-mark
+    # resolved (fixed or self-healed) - so the log tells the real story over time.
+    learning = {"new": 0, "recurring": 0, "resolved": 0}
+    try:
+        with _pg() as conn:
+            with conn.cursor() as cur:
+                current_keys = set()
+                for f in findings:
+                    if f.get("category") == "check_failed":
+                        continue  # infra hiccup, not a learnable pattern
+                    cat, det = f.get("category"), f.get("detail")
+                    current_keys.add((cat, det))
+                    cur.execute("""
+                        INSERT INTO system_learning_log (category, severity, detail, sample_items, status)
+                        VALUES (%s, %s, %s, %s, 'open')
+                        ON CONFLICT (category, detail) DO UPDATE
+                          SET last_detected_at = NOW(),
+                              detect_count = system_learning_log.detect_count + 1,
+                              severity = EXCLUDED.severity,
+                              sample_items = EXCLUDED.sample_items,
+                              status = CASE WHEN system_learning_log.status='resolved' THEN 'open' ELSE system_learning_log.status END,
+                              resolved_at = CASE WHEN system_learning_log.status='resolved' THEN NULL ELSE system_learning_log.resolved_at END
+                        RETURNING (xmax = 0) AS inserted
+                    """, (cat, f.get("severity"), det, json.dumps(f.get("items", [])[:8])))
+                    row = cur.fetchone()
+                    if row and row.get("inserted"):
+                        learning["new"] += 1
+                    else:
+                        learning["recurring"] += 1
+                cur.execute("SELECT category, detail FROM system_learning_log WHERE status='open'")
+                for r in cur.fetchall():
+                    if (r["category"], r["detail"]) not in current_keys:
+                        cur.execute("""UPDATE system_learning_log SET status='resolved', resolved_at=NOW(),
+                                       resolution='no longer detected (fixed or self-healed)'
+                                       WHERE category=%s AND detail=%s""", (r["category"], r["detail"]))
+                        learning["resolved"] += 1
+                conn.commit()
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Learning-log recording errored: {e}"})
+
     return _response("/admin/drift-check", {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "findings_count": len(findings),
         "findings": findings,
         "clean": len(findings) == 0,
+        "learning_log": learning,
     }, start=t0)
 
 
