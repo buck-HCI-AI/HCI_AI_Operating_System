@@ -50,27 +50,69 @@ def extract_bid_with_claude(file_id: str, model: str = "claude-sonnet-4-6") -> d
     content = download_binary(file_id)
     b64 = base64.standard_b64encode(content).decode()
 
-    try:
-        resp = client.messages.create(
-            model=model, max_tokens=8000, system=BID_EXTRACTION_SYSTEM,
-            messages=[{"role": "user", "content": [
-                {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
-                {"type": "text", "text": "Extract the bid data per your instructions. Return the JSON object only."},
-            ]}],
-        )
-    except Exception as e:
-        return {"error": str(e), "provider": "claude"}
+    # Streaming, not create(): a large scanned/image PDF (base64-embedded,
+    # requiring the model to effectively OCR it) can run past Anthropic's
+    # 10-minute non-streaming limit and get rejected outright before any
+    # response comes back - same real failure class found and fixed in
+    # bid_level_analyzer.py the same day (Div 09 Stone).
+    #
+    # Real second bug, found 2026-07-17 investigating BFS's "unreadable" bid
+    # at Buck's explicit push to actually try instead of writing it off as a
+    # scanned image: it was never unreadable - it's a genuinely huge,
+    # legitimate itemized lumber order (hundreds of real line items) that
+    # hit the fixed 8000-token ceiling and got cut off mid-string. This
+    # function never had the stop_reason-based retry-with-doubled-budget
+    # fix that bid_level_analyzer.py already got for the same failure mode -
+    # added here too instead of writing off large real bids as unextractable.
+    budget = 8000
+    last_error = None
+    for attempt in range(3):
+        try:
+            with client.messages.stream(
+                model=model, max_tokens=budget, system=BID_EXTRACTION_SYSTEM,
+                messages=[{"role": "user", "content": [
+                    {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
+                    {"type": "text", "text": "Extract the bid data per your instructions. Return the JSON object only."},
+                ]}],
+            ) as stream:
+                resp = stream.get_final_message()
+        except Exception as e:
+            return {"error": str(e), "provider": "claude"}
 
-    raw_text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
-    try:
-        extracted = _parse_findings_json(raw_text)
-    except Exception as e:
-        return {"error": f"Could not parse JSON: {e}", "provider": "claude", "raw_response": raw_text}
+        raw_text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+        if resp.stop_reason == "max_tokens":
+            last_error = f"response truncated at max_tokens={budget}"
+            budget *= 2
+            continue
+        try:
+            extracted = _parse_findings_json(raw_text)
+        except Exception as e:
+            return {"error": f"Could not parse JSON: {e}", "provider": "claude", "raw_response": raw_text}
 
-    return {"extracted": extracted, "file_name": meta.get("name"), "provider": "claude", "model": model}
+        return {"extracted": extracted, "file_name": meta.get("name"), "provider": "claude", "model": model,
+                "retries_used": attempt}
+
+    return {"error": f"Still truncating after 3 attempts (final budget {budget // 2}): {last_error}",
+            "provider": "claude", "file_name": meta.get("name")}
+
+
+# Circuit-breaker (Buck 2026-07-20 "speed up gemini"): the genai SDK auto-retries
+# a 429/rate-limit internally with a long backoff (~40-50s per call) before it
+# finally errors and we fall back to Claude. When Gemini's daily quota is out or
+# prepay isn't active, EVERY bid wastes ~47s in that backoff. This flag trips on
+# the FIRST quota/rate-limit signal and skips Gemini for the rest of the process,
+# turning "47s wasted x N bids" into "wasted once, then straight to Claude". Zero
+# effect when Gemini is healthy. Resets per process (fresh run re-tries Gemini).
+_GEMINI_DOWN = False
+
+
+def _is_quota_error(msg: str) -> bool:
+    m = (msg or "").lower()
+    return any(k in m for k in ("429", "resource_exhausted", "quota", "depleted", "rate_limit", "rate limit"))
 
 
 def extract_bid_with_gemini(file_id: str, model: str = None) -> dict:
+    global _GEMINI_DOWN
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
     if not gemini_key:
         return {"error": "GEMINI_API_KEY not set", "provider": "gemini"}
@@ -96,6 +138,8 @@ def extract_bid_with_gemini(file_id: str, model: str = None) -> dict:
         )
         raw_text = response.text.strip()
     except Exception as e:
+        if _is_quota_error(str(e)):
+            _GEMINI_DOWN = True  # trip the breaker - stop wasting the ~47s SDK backoff on every remaining bid
         return {"error": str(e), "provider": "gemini"}
 
     try:
@@ -108,6 +152,12 @@ def extract_bid_with_gemini(file_id: str, model: str = None) -> dict:
 
 def extract_bid(file_id: str, model: str = "claude-sonnet-4-6") -> dict:
     """Gemini-primary, Claude-fallback - same contract as the rest of the plan-reading pipeline."""
+    if _GEMINI_DOWN:
+        # circuit-breaker tripped earlier this run: skip Gemini's slow backoff, go straight to Claude
+        fallback = extract_bid_with_claude(file_id, model=model)
+        fallback["error"] = fallback.get("error")
+        fallback["gemini_error"] = "skipped (gemini quota/rate-limit circuit-breaker tripped this run)"
+        return fallback
     result = extract_bid_with_gemini(file_id)
     if "error" not in result:
         result["error"] = None
