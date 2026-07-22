@@ -2488,11 +2488,16 @@ def role_owner():
             """)
             project_summary = [dict(r) for r in cur.fetchall()]
 
-            # Total pending approval value
+            # Total pending approval value — EXCLUDE reference/seed projects (2026-07-21):
+            # the ASPN-* Gate-5-backfill reference projects carried 19 seed approvals that
+            # inflated "164 pending" and surfaced "Aspen 3" as if it were a live job. Active
+            # reporting must never count reference/seed rows. project_id NULL = keep (system-level).
             cur.execute("""SELECT COUNT(*) as cnt,
                 COALESCE(SUM((proposed_payload->>'amount')::numeric),0) as val
-                FROM approval_queue WHERE status='pending'
-                AND proposed_payload->>'amount' IS NOT NULL""")
+                FROM approval_queue aq WHERE aq.status='pending'
+                AND aq.proposed_payload->>'amount' IS NOT NULL
+                AND (aq.project_id IS NULL OR aq.project_id NOT IN
+                     (SELECT id FROM projects WHERE status='reference'))""")
             approval_totals = dict(cur.fetchone())
         conn.close()
 
@@ -2849,6 +2854,84 @@ def knowledge_vendor(name: str = Query(..., description="Vendor or subcontractor
         return _response("/knowledge/vendor", data, start=t0)
     except HTTPException as e:
         return _response("/knowledge/vendor", {}, errors=[str(e.detail)], start=t0)
+
+
+@router.get("/gbt-activity")
+def gbt_activity(actor: str = None, job_code: str = None, days: int = 30, limit: int = 100):
+    """GBT Activity & Performance Monitor (built 2026-07-20). Per-team-member GBT vs
+    manual Drive work + quality scores, sourced read-only from gbt_activity_log.
+    Attribution is by Google account (lastModifyingUser), NOT private ChatGPT prompts.
+    Filters: actor (partial), job_code (e.g. 275), days (default 30)."""
+    t0 = time.time()
+    try:
+        conn = _pg(); conn.autocommit = True
+        with conn.cursor() as cur:
+            where = ["observed_at > now() - (%s || ' days')::interval"]
+            params = [days]
+            if actor:
+                where.append("actor ILIKE %s"); params.append(f"%{actor}%")
+            if job_code:
+                where.append("job_code = %s"); params.append(job_code)
+            wc = " AND ".join(where)
+            cur.execute(f"""
+                SELECT actor, job_code,
+                       COUNT(*) AS sessions,
+                       SUM((activity_type='gbt_automated')::int) AS gbt_runs,
+                       SUM((activity_type='manual')::int) AS manual_sessions,
+                       ROUND(AVG(quality_score), 1) AS avg_quality,
+                       SUM(duplicates_created) AS duplicates,
+                       BOOL_OR(is_monitored) AS touched_monitored_job,
+                       MAX(last_ts) AS last_activity
+                FROM gbt_activity_log WHERE {wc}
+                GROUP BY actor, job_code
+                ORDER BY gbt_runs DESC, actor LIMIT %s""", params + [limit])
+            summary = [dict(r) for r in cur.fetchall()]
+            cur.execute(f"""
+                SELECT actor, job_code, drive_name, activity_type, file_count, burst_max,
+                       created_folders, moved_items, trashed_items, duplicates_created,
+                       reorg_detected, template_compliant, quality_score, quality_notes,
+                       first_ts, last_ts
+                FROM gbt_activity_log WHERE {wc}
+                ORDER BY last_ts DESC LIMIT %s""", params + [limit])
+            recent = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return _response("/gbt-activity", {"window_days": days,
+                         "summary_by_person": summary, "recent_sessions": recent}, start=t0)
+    except Exception as e:
+        return _response("/gbt-activity", {}, errors=[str(e)], start=t0)
+
+
+@router.get("/knowledge-register")
+def knowledge_register(status: str = None, doc_type: str = None):
+    """Governing Knowledge Register (Brain doctrine Stage 1, built 2026-07-20).
+    Every Book volume / ADR / SOP / directive classified by type, authority level
+    (1-10 source-authority hierarchy), and status (current/approved/draft/
+    historical/conflicting/superseded). Filters: status, doc_type."""
+    t0 = time.time()
+    try:
+        conn = _pg(); conn.autocommit = True
+        with conn.cursor() as cur:
+            where, params = ["1=1"], []
+            if status:
+                where.append("status = %s"); params.append(status)
+            if doc_type:
+                where.append("doc_type = %s"); params.append(doc_type)
+            wc = " AND ".join(where)
+            cur.execute(f"SELECT doc_type, status, COUNT(*) AS n, MIN(authority_level) AS authority "
+                        f"FROM governing_knowledge_register WHERE {wc} GROUP BY doc_type,status "
+                        f"ORDER BY authority, doc_type", params)
+            summary = [dict(r) for r in cur.fetchall()]
+            cur.execute(f"SELECT doc_key, title, doc_type, status, authority_level, location, notes "
+                        f"FROM governing_knowledge_register WHERE {wc} AND status <> 'current' "
+                        f"ORDER BY authority_level, doc_type", params)
+            needs_attention = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return _response("/knowledge-register", {"summary": summary,
+                         "needs_attention": needs_attention,
+                         "note": "authority_level: lower = higher authority (1=explicit human decision ... 10=transient chat)"},
+                        start=t0)
+    except Exception as e:
+        return _response("/knowledge-register", {}, errors=[str(e)], start=t0)
 
 
 @router.get("/knowledge/vendors")
@@ -4143,6 +4226,7 @@ def system_drift_check():
                            array_agg(id) as ids
                     FROM drive_bids
                     WHERE bid_amount IS NOT NULL AND is_latest = TRUE
+                      AND supersedes IS NULL
                     GROUP BY project_id, bid_amount
                     HAVING COUNT(*) > 1 AND COUNT(DISTINCT division_name) > 1
                 """)
@@ -4268,6 +4352,95 @@ def system_drift_check():
                     })
     except Exception as e:
         findings.append({"severity": "low", "category": "check_failed", "detail": f"Bid-classification checks errored: {e}"})
+
+    # 2e. Governing Knowledge Register (Brain doctrine Stage 1, 2026-07-20) - the
+    # memory-first foundation: surface governing docs that are conflicting (two
+    # canonicals), still draft where they should be approved, or an incomplete
+    # SOP pack. Populated by scripts/governing_knowledge_register.py.
+    try:
+        with _pg() as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute("SELECT to_regclass('public.governing_knowledge_register')")
+                if cur.fetchone()['to_regclass']:
+                    cur.execute("SELECT doc_key, notes FROM governing_knowledge_register WHERE status='conflicting' ORDER BY doc_key")
+                    conf = cur.fetchall()
+                    if conf:
+                        findings.append({
+                            "severity": "high", "category": "governing_doc_conflict",
+                            "detail": f"{len(conf)} governing doc(s) have a competing canonical - the Brain needs one authoritative version (doctrine: quarantine ambiguities)",
+                            "items": [f"{r['doc_key']}: {r['notes']}" for r in conf[:10]],
+                        })
+                    cur.execute("SELECT COUNT(*) AS n FROM governing_knowledge_register WHERE doc_type='sop'")
+                    n_sop = cur.fetchone()['n']
+                    if n_sop and n_sop < 42:
+                        findings.append({
+                            "severity": "low", "category": "governing_knowledge_incomplete",
+                            "detail": f"SOP pack incomplete in the register: {n_sop} of 42 modules classified ({42 - n_sop} from the SOP Pack not yet in business_processes)",
+                        })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Governing-knowledge check errored: {e}"})
+
+    # 2f. Golden-corpus regression guard (Brain blueprint AC-10, 2026-07-21): every
+    # KNOWN, previously-fixed defect must stay absent. If one recurs it's reported as
+    # a REGRESSION (a fixed defect came back), not a new unrelated issue. Active jobs only.
+    # Executable regression SQL keyed by golden_corpus.case_key. count>0 == the
+    # previously-fixed defect has RECURRED. Cases whose expected behavior is a
+    # process/authority assertion (not a data-integrity fact) have no SQL here and
+    # are reported below as an explicit coverage gap - the guard now READS the
+    # corpus and accounts for ALL cases instead of silently covering a hard-coded
+    # subset (P0 audit finding, 2026-07-21).
+    _CORPUS_CHECK_SQL = {
+        "cross_division_double_count": "SELECT COUNT(*) c FROM (SELECT 1 FROM drive_bids WHERE project_id IN (1,2,3) AND is_latest AND supersedes IS NULL AND bid_amount IS NOT NULL GROUP BY project_id,bid_amount HAVING COUNT(DISTINCT division_num)>1) a",
+        "reference_project_as_active": "SELECT COUNT(*) c FROM risks r JOIN projects p ON p.id=r.project_id WHERE p.status='reference' AND r.status='open'",
+        "miner_reseeds_reference_approvals": "SELECT COUNT(*) c FROM approval_queue a JOIN projects p ON p.id=a.project_id WHERE p.status='reference' AND a.status='pending'",
+        "bid_summary_as_vendor": "SELECT COUNT(*) c FROM drive_bids WHERE project_id IN (1,2,3) AND is_latest AND supersedes IS NULL AND (vendor_name ILIKE '%bid summary%' OR file_name ILIKE '%_Bid_Summary%')",
+        "64EW_misfiled_pella": "SELECT COUNT(*) c FROM drive_bids WHERE project_id=1 AND is_latest AND supersedes IS NULL AND vendor_name ILIKE '%pella%' AND division_num <> '08'",
+        "64EW_misfiled_western_slope": "SELECT COUNT(*) c FROM drive_bids WHERE project_id=1 AND is_latest AND supersedes IS NULL AND vendor_name ILIKE '%western slope%' AND division_num <> '07'",
+        "246gw_fabricated_bids": "SELECT COUNT(*) c FROM drive_bids WHERE project_id IN (1,2,3) AND is_latest AND supersedes IS NULL AND bid_amount IS NOT NULL AND (file_id IS NULL OR file_id='')",
+        "outbound_template_as_bid": "SELECT COUNT(*) c FROM drive_bids WHERE project_id IN (1,2,3) AND is_latest AND supersedes IS NULL AND (file_name ILIKE '%scope of work%' OR file_name ILIKE '%invitation to bid%' OR file_name ILIKE '%bid invite%')",
+    }
+    # Extra data-integrity regression checks not tied to a single corpus case_key.
+    _EXTRA_CHECKS = {
+        "is_latest_superseded_contradiction": "SELECT COUNT(*) c FROM drive_bids WHERE project_id IN (1,2,3) AND is_latest AND supersedes IS NOT NULL",
+        "within_div_duplicate": "SELECT COUNT(*) c FROM (SELECT 1 FROM drive_bids WHERE project_id IN (1,2,3) AND is_latest AND supersedes IS NULL AND bid_amount IS NOT NULL GROUP BY project_id,division_num,vendor_name,bid_amount HAVING COUNT(*)>1) a",
+    }
+    try:
+        with _pg() as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute("SELECT case_key FROM golden_corpus WHERE status='active'")
+                corpus_keys = [r["case_key"] for r in cur.fetchall()]
+                regressions = []
+                for key, sql in list(_CORPUS_CHECK_SQL.items()) + list(_EXTRA_CHECKS.items()):
+                    try:
+                        cur.execute(sql)
+                        n = cur.fetchone()["c"]
+                        if n and n > 0:
+                            regressions.append(f"{key}: {n}")
+                    except Exception as ce:
+                        regressions.append(f"{key}: check_errored ({str(ce)[:60]})")
+                if regressions:
+                    findings.append({
+                        "severity": "high", "category": "golden_corpus_regression",
+                        "detail": f"{len(regressions)} previously-FIXED defect(s) have RECURRED (regression, not a new issue)",
+                        "items": regressions,
+                    })
+                # Honesty about coverage: every corpus case must be either executed
+                # above or explicitly listed as assertion-only, so no case is
+                # silently unguarded.
+                uncovered = [k for k in corpus_keys if k not in _CORPUS_CHECK_SQL]
+                executed = [k for k in corpus_keys if k in _CORPUS_CHECK_SQL]
+                if uncovered:
+                    findings.append({
+                        "severity": "low", "category": "golden_corpus_coverage_gap",
+                        "detail": (f"{len(executed)}/{len(corpus_keys)} golden-corpus cases have an executable "
+                                   f"regression check; {len(uncovered)} are assertion/process-only and are NOT "
+                                   f"continuously verified by SQL"),
+                        "assertion_only_cases": uncovered,
+                    })
+    except Exception as e:
+        findings.append({"severity": "low", "category": "check_failed", "detail": f"Golden-corpus regression guard errored: {e}"})
 
     # 3. n8n execution failure rate - the 64%-failing-and-nobody-noticed pattern.
     try:

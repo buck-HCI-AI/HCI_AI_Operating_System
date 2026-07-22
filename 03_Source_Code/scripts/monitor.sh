@@ -169,3 +169,30 @@ if [[ -f "$LOG_FILE" ]]; then
 fi
 
 log "[monitor] ✓ Monitor cycle complete"
+
+# --- Monitored-Drive write detector (2026-07-20, 275 Sunnyside incident) ---
+# Read-only. Alerts Buck via Telegram if an external agent burst-writes/reorganizes
+# a monitored job Drive. Human-cadence writes are NOT flagged.
+DET_OUT="$(cd "$(dirname "$0")/.." && python3 scripts/monitored_drive_write_detector.py 2>/dev/null)"
+if [ $? -eq 2 ]; then
+  MSG="ALERT: external agent wrote to a MONITORED Drive. $(echo "$DET_OUT" | python3 -c 'import sys,json;d=json.load(sys.stdin);print("; ".join(f"{x[\"drive\"]}: {x[\"reason\"]}" for x in d["findings"]))' 2>/dev/null)"
+  curl -s -X POST http://localhost:8000/gateway/telegram/send -H "X-API-Key: hci-a4fe3f56f42b981e59a98ec112c43ef975ac68c7fc0517c6" -H "Content-Type: application/json" -d "$(python3 -c 'import json,sys;print(json.dumps({"text":sys.argv[1],"agent":"claude_code"}))' "$MSG")" >/dev/null 2>&1
+fi
+
+# --- GBT Activity & Performance Monitor (2026-07-20) — hourly, read-only ---
+# Records per-team-member GBT/manual Drive activity + quality score to gbt_activity_log.
+if [ "$(date +%M)" -lt 5 ]; then
+  (cd "$(dirname "$0")/.." && python3 scripts/gbt_activity_monitor.py --hours 2 >/dev/null 2>&1)
+fi
+
+# --- Governing Knowledge Register refresh (2026-07-20) — daily, read-only ---
+if [ "$(date +%H%M)" = "0705" ]; then
+  (cd "$(dirname "$0")/.." && python3 scripts/governing_knowledge_register.py >/dev/null 2>&1)
+fi
+
+# ── Dead-man switch: P0s unacknowledged past deadline -> Telegram Buck ─────────
+# (built 2026-07-21 - independent of any agent session; catches the read-gap that
+#  silently swallowed P0s. Self-dedups + re-alerts every 2h while still open.)
+log "[monitor] Running dead-man switch (unacked P0 check)…"
+python3 "$HOME/HCI_AI_Operating_System/03_Source_Code/scripts/dead_man_switch.py" >> "$LOG_FILE" 2>&1 || log "[WARN] dead-man switch errored"
+

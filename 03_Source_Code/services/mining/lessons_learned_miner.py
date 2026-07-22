@@ -39,6 +39,11 @@ class LessonsLearnedMiner(BaseMiner):
             WHERE status = 'Human Review Needed'
               AND document_type IN ('meeting', 'daily_log', 'spec', 'rfi')
               AND (intelligence_candidates IS NOT NULL AND intelligence_candidates != '[]')
+              -- Never mine reference/seed projects (ASPN-* Gate-5 backfill) into the
+              -- approval queue: they surfaced as a live "Aspen 3 $11M RED" job and
+              -- re-inflated pending approvals every run (2026-07-21). Active work only.
+              AND (project_id IS NULL OR project_id NOT IN
+                   (SELECT id FROM projects WHERE status = 'reference'))
             ORDER BY created_at DESC
             LIMIT 30
         """)
@@ -86,6 +91,9 @@ class LessonsLearnedMiner(BaseMiner):
                 WHERE ll.source_reference = 'meeting:' || m.id::text
                    OR ll.title ILIKE '%' || m.title || '%'
             )
+              -- Skip reference/seed projects (see _mine_bl_candidates note).
+              AND (m.project_id IS NULL OR m.project_id NOT IN
+                   (SELECT id FROM projects WHERE status = 'reference'))
             ORDER BY m.meeting_date DESC NULLS LAST
             LIMIT 20
         """)

@@ -1413,24 +1413,14 @@ class BidLevelingService:
     # to try the new model before deciding whether to migrate the whole
     # company to it. Division folder name is "{division}_{Trade}"; sub-
     # package folder name is "{HCI Code}_{Scope}".
-    CANONICAL_DIVISION_TREE = {
-        "01_General Conditions": ["01A_Project Management"],
-        "02_Demo": ["02A_Existing Conditions", "02B_Utilities"],
-        "03_Concrete": ["03A_Footings-Foundation Walls", "03B_Slabs-Flatwork", "03C_Waterproofing-Foundation Drainage"],
-        "04_Masonry": ["04A_Masonry"],
-        "05_Metals": ["05A_Structural Steel"],
-        "06_Carpentry": ["06A_Rough Framing", "06B_Finish Carpentry", "06C_Cabinetry"],
-        "07_Thermal": ["07A_Insulation", "07B_Roofing"],
-        "08_Openings": ["08A_Windows", "08B_Exterior Doors", "08C_Interior Doors", "08D_Garage Doors", "08E_Glass & Mirrors"],
-        "09_Finishes": ["09A_Tile", "09B_Stone Slabs", "09C_Hardwood", "09D_Carpet", "09E_Paint", "09F_Drywall"],
-        "10_Specialties": ["10A_Fireplaces"],
-        "11_Equipment": ["11A_Appliances"],
-        "15_Mechanical": ["15A_HVAC", "15B_Fire Suppression"],
-        "16_Electrical": ["16A_Power", "16B_Decorative Lighting", "16C_Low Voltage-AV", "16D_Exterior Lighting", "16E_Solar"],
-        "22_Plumbing": ["22A_Plumbing", "22B_Plumbing Fixtures"],
-        "32_Site": ["32A_Hardscape", "32B_Irrigation", "32C_Planting"],
-        "33_Utilities": ["33A_Site Utilities", "33B_Drainage", "33C_Radon"],
-    }
+    # OVERRULED 2026-07-21 (Buck's folder-standard ruling): the old Division+Letter
+    # scheme (01_General Conditions/02_Demo/06_Carpentry/08_Openings/22_Plumbing/
+    # 32_Site/33_Utilities) did NOT match the canonical master doc and is gone.
+    # The ONLY scheme for HCI jobs now comes from canonical_folder_structure.py
+    # (the single source of truth). Sub-package numbers are independent of the
+    # division number, per the doc.
+    from canonical_folder_structure import CANONICAL_BID_STRUCTURE
+    CANONICAL_DIVISION_TREE = dict(CANONICAL_BID_STRUCTURE)
 
     # SUNNYSIDE_MODEL_DIVISION_TREE: real, live, filled-in CSI MasterFormat
     # scheme from 275 Sunnyside Lane - Bid Form.xlsx (id

@@ -26,8 +26,17 @@ import psycopg2, psycopg2.extras
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 
+import concurrent.futures
 from drive_bid_reader import _is_outbound_not_a_bid, scan_project_bids
 from bid_extractor import extract_bid
+
+# Bounded pool so live re-extraction is best-effort with a hard per-bid timeout.
+# Found 2026-07-21: extract_bid() (Gemini/Claude) has no reliable network
+# timeout, so a single slow/rate-limited call left the whole rebuild at 0% CPU
+# sleeping indefinitely. We cap each extraction and fall back to the cached
+# scan bid_amount (real data) so one stuck bid can't stall or fail a division.
+_EXTRACT_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+_EXTRACT_TIMEOUT_S = 40
 from bid_level_analyzer import analyze_bid_leveling
 from budget_generator import generate_bid_leveling_gold_standard
 from drive_client import create_google_doc_from_markdown, copy_file
@@ -162,29 +171,41 @@ def generate_draft_leveling(project_id: int, division_num: str, division_folder_
     # proven pipeline as the overnight 2026-07-15/16 run.
     extracted_bids = {}
     extraction_errors = []
+    # SKIP_LIVE_EXTRACTION (Buck 2026-07-21): during a Gemini/Claude outage, or
+    # when the goal is a correct folder STRUCTURE + real totals (not fresh
+    # line-item detail), skip the live re-extraction entirely and use the cached
+    # bid_amount already in drive_bids (real data from the prior scan). Makes the
+    # rebuild fast and immune to provider throttling; a later daily run re-enriches
+    # line items once the provider recovers.
+    _skip_live = os.environ.get("SKIP_LIVE_EXTRACTION") == "1"
     for b in bids:
-        try:
-            result = extract_bid(b["file_id"])
-        except Exception as e:
-            # Found 2026-07-17: a bid file that scan_project_bids() recorded
-            # 4 days ago no longer exists in Drive (real 404 - confirmed by
-            # querying it directly, not a transient failure) and this raised
-            # an unhandled exception that crashed the ENTIRE division's
-            # leveling, not just this one vendor. A stale/deleted source file
-            # is a data-quality fact about one bid, not a reason to fail
-            # every other real bid in the division alongside it.
-            extraction_errors.append({"vendor": b["vendor_name"], "file": b["file_name"],
-                                       "error": f"source file unreachable: {e}"})
-            continue
-        if result.get("error") or "extracted" not in result:
-            extraction_errors.append({"vendor": b["vendor_name"], "file": b["file_name"],
-                                       "error": result.get("error")})
-            continue
-        ext = result["extracted"]
-        if not ext.get("total_amount"):
-            extraction_errors.append({"vendor": b["vendor_name"], "file": b["file_name"],
-                                       "error": "extraction succeeded but total_amount is missing"})
-            continue
+        ext = None
+        if not _skip_live:
+            try:
+                # Best-effort live extraction, hard-capped at _EXTRACT_TIMEOUT_S.
+                # Found 2026-07-17: a bid file recorded days ago may no longer exist
+                # in Drive (real 404) - that's a data fact about one bid, never a
+                # reason to fail every other real bid in the division alongside it.
+                result = _EXTRACT_POOL.submit(extract_bid, b["file_id"]).result(
+                    timeout=_EXTRACT_TIMEOUT_S)
+                if (result and not result.get("error") and "extracted" in result
+                        and result["extracted"].get("total_amount")):
+                    ext = result["extracted"]
+            except Exception:
+                ext = None
+        if ext is None:
+            # Fall back to the cached bid_amount from the prior scan - this is
+            # real extracted data already in drive_bids, NOT fabricated - so a
+            # slow/unreachable AI call degrades to the known total (with no
+            # line-item detail) instead of hanging or failing the division.
+            # Buck 2026-07-21: the folder rebuild must complete reliably.
+            if b.get("bid_amount") is not None:
+                ext = {"total_amount": float(b["bid_amount"]), "line_items": [],
+                       "_source": "cached_scan_amount"}
+            else:
+                extraction_errors.append({"vendor": b["vendor_name"], "file": b["file_name"],
+                                           "error": "no live extraction and no cached bid_amount"})
+                continue
         extracted_bids[b["vendor_name"]] = ext
 
     # Gate 4 — extraction completeness: every bid must extract cleanly.
@@ -204,24 +225,45 @@ def generate_draft_leveling(project_id: int, division_num: str, division_folder_
                         "requires at least two bids to compare.",
     }
 
-    if not single_bidder:
-        analysis_result = analyze_bid_leveling(extracted_bids, div_name, div_name)
-        if analysis_result.get("error") or "analysis" not in analysis_result:
-            return _gate_fail(
-                "leveling analysis gate failed",
-                {"error": analysis_result.get("error")}, project_id, division_num,
-            )
-        analysis = analysis_result["analysis"]
-        # Gate 5 — analysis completeness.
-        if not analysis.get("scope_matrix") or not analysis.get("biggest_risk"):
-            return _gate_fail(
-                "analysis completeness gate failed - scope_matrix or biggest_risk missing",
-                {"analysis_keys": list(analysis.keys())}, project_id, division_num,
-            )
-        scope_matrix = analysis["scope_matrix"]
-        biggest_risk = analysis["biggest_risk"]
-        rfis = analysis.get("rfis", [])
-        exclusions = analysis.get("exclusions_by_bidder", {})
+    if not single_bidder and _skip_live:
+        # Fast structure-rebuild mode: skip the per-division AI scope analysis
+        # (analyze_bid_leveling) too - it's an unbounded Gemini/Claude call and
+        # during a provider outage it's the step that stalls the run. Real bid
+        # totals still populate the doc; the scope matrix/RFIs/risk regenerate on
+        # the next full run once the provider recovers. Buck 2026-07-21.
+        biggest_risk = {
+            "question": "AI scope analysis skipped (fast structure rebuild).",
+            "dollar_at_stake": "N/A",
+            "explanation": "Bid totals below are real (from the prior scan). Scope matrix, "
+                           "RFIs, and risk analysis will be generated on the next full run.",
+        }
+    elif not single_bidder:
+        # Bound analyze_bid_leveling with a timeout (same pool as extraction).
+        # Found 2026-07-21: this call is unbounded and STALLED the whole run when
+        # Gemini was 503-ing all day. On timeout/error, degrade gracefully to an
+        # unanalyzed doc (honest "Scope Not Analyzed") instead of hanging or
+        # hard-failing the division - a later healthy run re-analyzes it.
+        analysis = {}
+        try:
+            analysis_result = _EXTRACT_POOL.submit(
+                analyze_bid_leveling, extracted_bids, div_name, div_name).result(
+                timeout=_EXTRACT_TIMEOUT_S * 2)
+            if analysis_result and not analysis_result.get("error") and "analysis" in analysis_result:
+                analysis = analysis_result["analysis"]
+        except Exception:
+            analysis = {}
+        if analysis.get("scope_matrix") and analysis.get("biggest_risk"):
+            scope_matrix = analysis["scope_matrix"]
+            biggest_risk = analysis["biggest_risk"]
+            rfis = analysis.get("rfis", [])
+            exclusions = analysis.get("exclusions_by_bidder", {})
+        else:
+            biggest_risk = {
+                "question": "AI scope analysis unavailable this run (provider timeout/error).",
+                "dollar_at_stake": "N/A",
+                "explanation": "Bid totals below are real. Scope matrix, RFIs, and risk analysis "
+                               "regenerate on the next run once extraction is healthy.",
+            }
 
     bidders = [{"name": v, "total": d.get("total_amount")} for v, d in extracted_bids.items()]
     line_items_by_bidder = {v: d.get("line_items", []) for v, d in extracted_bids.items()}
@@ -243,7 +285,10 @@ def generate_draft_leveling(project_id: int, division_num: str, division_folder_
     markdown = (f"**STATUS: DRAFT — AUTO-GENERATED {datetime.date.today().isoformat()} — "
                 f"PENDING HUMAN REVIEW — NOT YET VALIDATED**\n\n" + markdown)
 
-    doc_prefix = f"DRAFT_AUTO_Div{division_num}_{div_name_safe}_"
+    # Buck 2026-07-21: docs must be named "<sub-package> Bid Level <date>", not
+    # "DRAFT_AUTO_DivXX_...". Keep a stable prefix (everything up to the date) so
+    # the same-sub-group dedup below still matches prior runs exactly.
+    doc_prefix = f"{div_name_safe} Bid Level "
     doc_name = f"{doc_prefix}{datetime.date.today().isoformat()}"
 
     # Trash any prior draft(s) for THIS SAME sub-group before writing the new
@@ -272,7 +317,7 @@ def generate_draft_leveling(project_id: int, division_num: str, division_folder_
     # (07A_Insulation / 07B_Roofing), not flat at the division level, so it sits
     # alongside that sub-package's own vendor bids. Falls back to the division
     # folder when there's no matching sub-package.
-    _target_folder = _resolve_subpackage_folder(division_folder_id, div_name, _token)
+    _target_folder = _resolve_subpackage_folder(division_folder_id, div_name, _token, division_num=division_num)
     _all_docs = requests.get(
         "https://www.googleapis.com/drive/v3/files",
         headers={"Authorization": f"Bearer {_token}"},
@@ -305,14 +350,10 @@ def generate_draft_leveling(project_id: int, division_num: str, division_folder_
 # match real practice, e.g. real Div 10/11/12/13/14 are flat siblings, not
 # nested sub-packages). Used only when auto-creating a missing top-level
 # folder - matching by number alone (below) still works regardless of name.
-_CANONICAL_DIVISION_FOLDER_NAMES = {
-    "00": "00_Archived Subcontractor Proposals", "01": "01_General Requirement",
-    "02": "02_Site Work", "03": "03_Concrete", "04": "04_Masonry", "05": "05_Metals",
-    "06": "06_Wood & Plastic", "07": "07_Thermal & Moisture", "08": "08_Door & Windows",
-    "09": "09_Finishes", "10": "10_Specialties", "11": "11_Equipment & Appliances",
-    "12": "12_Furnishings", "13": "13_Special Construction", "14": "14_Conveying Systems",
-    "15": "15_Mechanical", "16": "16_Electrical", "28": "28_Landscaping", "33": "33_Radon",
-}
+# Division folder names come from the single source of truth (the HCI master doc).
+# "00" archive folder is a practical addition for superseded bids, not in the doc.
+from canonical_folder_structure import DIVISION_NUM_TO_FOLDER as _CANON_DIV
+_CANONICAL_DIVISION_FOLDER_NAMES = {"00": "00_Archived Subcontractor Proposals", **_CANON_DIV}
 
 
 def _resolve_draft_division_folder(draft_output_folder_id: str, division_num: str, token: str,
@@ -374,55 +415,51 @@ def _resolve_draft_division_folder(draft_output_folder_id: str, division_num: st
                         f"last error: {last_error}. Not treating this as 'no folder exists.'")
 
 
-def _resolve_subpackage_folder(division_folder_id: str, division_name: str, token: str) -> str:
-    """Buck 2026-07-20: within a multi-sub-package division, bids/leveling docs
-    must land in the RIGHT sub-package folder (insulation bids in 07A_Insulation,
-    roofing in 07B_Roofing), not flat at the division level. When division_name
-    carries a sub-package suffix (text after an em-dash, e.g. "Thermal & Moisture
-    — Insulation"), find the matching "NNx_" sub-package sub-folder inside the
-    division folder and return it. Falls back to division_folder_id when there's
-    no suffix or no confident match - so this is never worse than the old flat
-    behavior, only better where a sub-package folder clearly matches."""
+def _resolve_subpackage_folder(division_folder_id: str, division_name: str, token: str,
+                                division_num: str = None) -> str:
+    """Route a bid / leveling doc into its CANONICAL sub-package folder, per
+    canonical_folder_structure.py (the HCI master "Project Folder Organization"
+    doc). A Div 09 drywall bid -> "18_Drywall & Plaster"; a Div 06 framing bid ->
+    "9_Carpentry"; Tile AND Stone -> "19_Tile & Stone". Only 06/07/08/09/15/16
+    have sub-packages; every other division is a leaf, so the bid stays at the
+    division level (returns division_folder_id). Creates the canonical sub-package
+    folder if it doesn't exist. Replaces the old ad-hoc "NNx_" letter scheme
+    (2026-07-21 folder-standard ruling - the doc, not our invented names)."""
     import requests, re
-    if not division_name or "—" not in division_name:
+    from canonical_folder_structure import canonical_subpackage_for
+    scope = (division_name.split("\u2014")[-1].strip()
+             if division_name and "\u2014" in division_name else (division_name or ""))
+    if not division_num:
+        try:
+            meta = requests.get(f"https://www.googleapis.com/drive/v3/files/{division_folder_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"fields": "name", "supportsAllDrives": "true"}, timeout=15).json()
+            m = re.match(r"^(\d{2})", meta.get("name", ""))
+            division_num = m.group(1) if m else None
+        except Exception:
+            division_num = None
+    if not division_num:
         return division_folder_id
-    suffix = division_name.split("—")[-1].strip()
-    if not suffix:
-        return division_folder_id
+    sub_name = canonical_subpackage_for(division_num, scope)
+    if not sub_name:
+        return division_folder_id  # leaf division or no scope match -> stays at division level
     try:
-        subs = requests.get(
-            "https://www.googleapis.com/drive/v3/files",
+        q_name = sub_name.replace("\\", "\\\\").replace("'", "\\'")
+        existing = requests.get("https://www.googleapis.com/drive/v3/files",
             headers={"Authorization": f"Bearer {token}"},
             params={"q": f"'{division_folder_id}' in parents and trashed=false and "
-                          f"mimeType='application/vnd.google-apps.folder'",
-                    "fields": "files(id,name)", "supportsAllDrives": "true",
-                    "includeItemsFromAllDrives": "true", "pageSize": 100},
-            timeout=15,
-        ).json().get("files", [])
+                          f"mimeType='application/vnd.google-apps.folder' and name='{q_name}'",
+                    "fields": "files(id)", "supportsAllDrives": "true",
+                    "includeItemsFromAllDrives": "true"}, timeout=15).json().get("files", [])
+        if existing:
+            return existing[0]["id"]
+        created = requests.post("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"name": sub_name, "mimeType": "application/vnd.google-apps.folder",
+                  "parents": [division_folder_id]}, timeout=15).json()
+        return created.get("id", division_folder_id)
     except Exception:
         return division_folder_id
-
-    def _key(name):  # strip the "07A_" code prefix, lowercase the rest
-        m = re.match(r"^\d{2}[A-Za-z]?[_ ]+(.*)$", name)
-        return (m.group(1) if m else name).lower()
-
-    def _wmatch(a, b):
-        # whole-word match, or one word is a >=4-char prefix of the other
-        # ("paint"~"painting"). NOT a raw substring test - that wrongly matched
-        # "roofing" inside "waterproofing" (real bug found 2026-07-20).
-        if a == b:
-            return True
-        lo, hi = (a, b) if len(a) <= len(b) else (b, a)
-        return len(lo) >= 4 and hi.startswith(lo)
-
-    suf_words = [w for w in re.split(r"[^a-z0-9]+", suffix.lower()) if len(w) > 2]
-    for f in subs:
-        if not re.match(r"^\d{2}[A-Za-z][_ ]", f["name"]):  # only real sub-package folders
-            continue
-        fk_words = [w for w in re.split(r"[^a-z0-9]+", _key(f["name"])) if len(w) > 2]
-        if any(_wmatch(sw, fw) for sw in suf_words for fw in fk_words):
-            return f["id"]
-    return division_folder_id
 
 
 def _get_or_create_vendor_subfolder(parent_folder: str, vendor_name: str, token: str) -> str:
@@ -571,7 +608,7 @@ def _copy_division_bids_into_test_folder(project_id: int, division_num: str, tar
         vendor = b["vendor_name"] or "Unknown Vendor"
         dn = b.get("division_name") or ""
         if dn not in subpkg_cache:
-            subpkg_cache[dn] = _resolve_subpackage_folder(target_folder, dn, token)
+            subpkg_cache[dn] = _resolve_subpackage_folder(target_folder, dn, token, division_num=division_num)
         parent = subpkg_cache[dn]
         vkey = (parent, vendor)
         if vkey not in vendor_folders:
